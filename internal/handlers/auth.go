@@ -111,6 +111,17 @@ func (h *AuthHandler) Signup(c *echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to hash password")
 	}
 
+	// Check if this is the first user (make them admin)
+	count, err := h.store.CountUsers(ctx)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to check user count")
+	}
+
+	userType := "user"
+	if count == 0 {
+		userType = "admin"
+	}
+
 	// Create user
 	user, err := h.store.CreateUser(ctx, store.CreateUserParams{
 		Username:     req.Username,
@@ -118,7 +129,7 @@ func (h *AuthHandler) Signup(c *echo.Context) error {
 		PasswordHash: passwordHash,
 		FirstName:    req.FirstName,
 		LastName:     req.LastName,
-		UserType:     "user",
+		UserType:     userType,
 	})
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to create user")

@@ -24,13 +24,14 @@ type AuthConfig struct {
 
 // Server wraps the Echo server with application configuration
 type Server struct {
-	echo        *echo.Echo
-	devMode     bool
-	db          *sql.DB
-	pool        *pgxpool.Pool
-	store       store.Querier
-	authManager *auth.Manager
-	authHandler *handlers.AuthHandler
+	echo         *echo.Echo
+	devMode      bool
+	db           *sql.DB
+	pool         *pgxpool.Pool
+	store        store.Querier
+	authManager  *auth.Manager
+	authHandler  *handlers.AuthHandler
+	adminHandler *handlers.AdminHandler
 }
 
 // New creates a new Server instance
@@ -74,6 +75,7 @@ func New(devMode bool, dbURL string, authConfig AuthConfig) (*Server, error) {
 	// Initialize auth handler
 	if srv.store != nil {
 		srv.authHandler = handlers.NewAuthHandler(srv.store, srv.authManager, devMode)
+		srv.adminHandler = handlers.NewAdminHandler(srv.store, srv.authManager, devMode)
 	}
 
 	// Register routes

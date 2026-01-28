@@ -28,3 +28,4 @@ go.work
 
 postgres-data/
 air.log
+tmp/

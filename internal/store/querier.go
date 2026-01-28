@@ -11,11 +11,18 @@ import (
 )
 
 type Querier interface {
+	CountActiveRefreshTokens(ctx context.Context) (int64, error)
+	CountUsers(ctx context.Context) (int64, error)
 	CreateRefreshToken(ctx context.Context, arg CreateRefreshTokenParams) (RefreshToken, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (CreateUserRow, error)
+	DeleteExpiredRefreshTokens(ctx context.Context) (int64, error)
+	DeleteUserByID(ctx context.Context, id uuid.UUID) error
 	GetRefreshTokenByHash(ctx context.Context, tokenHash string) (RefreshToken, error)
+	GetRefreshTokenByID(ctx context.Context, id uuid.UUID) (RefreshToken, error)
 	GetUserByEmailOrUsername(ctx context.Context, email string) (User, error)
 	GetUserByID(ctx context.Context, id uuid.UUID) (GetUserByIDRow, error)
+	ListActiveRefreshTokens(ctx context.Context, arg ListActiveRefreshTokensParams) ([]ListActiveRefreshTokensRow, error)
+	ListUsersPaginated(ctx context.Context, arg ListUsersPaginatedParams) ([]ListUsersPaginatedRow, error)
 	RevokeAllUserRefreshTokens(ctx context.Context, userID uuid.UUID) error
 	RevokeRefreshToken(ctx context.Context, id uuid.UUID) error
 	UserExistsByEmailOrUsername(ctx context.Context, arg UserExistsByEmailOrUsernameParams) (bool, error)

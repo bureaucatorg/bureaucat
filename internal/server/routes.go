@@ -34,6 +34,15 @@ func (s *Server) registerRoutes() {
 		// Protected routes
 		protected := api.Group("", auth.Middleware(s.authManager))
 		protected.GET("/me", s.authHandler.Me)
+
+		// Admin routes (requires auth + admin)
+		admin := api.Group("/admin", auth.Middleware(s.authManager), auth.AdminMiddleware())
+		admin.GET("/users", s.adminHandler.ListUsers)
+		admin.POST("/users", s.adminHandler.CreateUser)
+		admin.DELETE("/users/:id", s.adminHandler.DeleteUser)
+		admin.GET("/tokens", s.adminHandler.ListTokens)
+		admin.DELETE("/tokens/:id", s.adminHandler.RevokeToken)
+		admin.DELETE("/tokens/expired", s.adminHandler.CleanupExpiredTokens)
 	}
 }
 

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { User, LogOut, LayoutDashboard } from "lucide-vue-next";
+import { User, LogOut, LayoutDashboard, Users, Key, Shield } from "lucide-vue-next";
 
 const { user, isAuthenticated, logout } = useAuth();
 
@@ -27,6 +27,9 @@ async function handleLogout() {
           </template>
           <template v-else>
             <NuxtLink to="/dashboard" class="text-sm text-muted-foreground transition-colors hover:text-foreground">Dashboard</NuxtLink>
+            <template v-if="user?.user_type === 'admin'">
+              <NuxtLink to="/admin" class="text-sm text-muted-foreground transition-colors hover:text-foreground">Admin</NuxtLink>
+            </template>
           </template>
         </nav>
 
@@ -63,6 +66,15 @@ async function handleLogout() {
                   <span>Dashboard</span>
                 </NuxtLink>
               </DropdownMenuItem>
+              <template v-if="user?.user_type === 'admin'">
+                <DropdownMenuSeparator />
+                <DropdownMenuItem as-child>
+                  <NuxtLink to="/admin" class="flex cursor-pointer items-center gap-2">
+                    <Shield class="size-4" />
+                    <span>Admin Dashboard</span>
+                  </NuxtLink>
+                </DropdownMenuItem>
+              </template>
               <DropdownMenuSeparator />
               <DropdownMenuItem class="cursor-pointer text-destructive focus:text-destructive" @click="handleLogout">
                 <LogOut class="mr-2 size-4" />

@@ -38,3 +38,43 @@ WHERE id = $1;
 UPDATE refresh_tokens
 SET revoked_at = NOW()
 WHERE user_id = $1 AND revoked_at IS NULL;
+
+-- name: CountUsers :one
+SELECT COUNT(*) FROM users;
+
+-- name: ListUsersPaginated :many
+SELECT id, username, email, first_name, last_name, user_type, created_at, updated_at
+FROM users
+ORDER BY created_at ASC
+LIMIT $1 OFFSET $2;
+
+-- name: DeleteUserByID :exec
+DELETE FROM users WHERE id = $1;
+
+-- name: ListActiveRefreshTokens :many
+SELECT
+    rt.id,
+    rt.user_id,
+    rt.expires_at,
+    rt.created_at,
+    u.username,
+    u.email
+FROM refresh_tokens rt
+JOIN users u ON rt.user_id = u.id
+WHERE rt.revoked_at IS NULL AND rt.expires_at > NOW()
+ORDER BY rt.created_at DESC
+LIMIT $1 OFFSET $2;
+
+-- name: CountActiveRefreshTokens :one
+SELECT COUNT(*)
+FROM refresh_tokens
+WHERE revoked_at IS NULL AND expires_at > NOW();
+
+-- name: GetRefreshTokenByID :one
+SELECT id, user_id, token_hash, expires_at, created_at, revoked_at
+FROM refresh_tokens
+WHERE id = $1;
+
+-- name: DeleteExpiredRefreshTokens :execrows
+DELETE FROM refresh_tokens
+WHERE expires_at <= NOW();

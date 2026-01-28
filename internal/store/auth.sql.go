@@ -12,6 +12,30 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const countActiveRefreshTokens = `-- name: CountActiveRefreshTokens :one
+SELECT COUNT(*)
+FROM refresh_tokens
+WHERE revoked_at IS NULL AND expires_at > NOW()
+`
+
+func (q *Queries) CountActiveRefreshTokens(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, countActiveRefreshTokens)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countUsers = `-- name: CountUsers :one
+SELECT COUNT(*) FROM users
+`
+
+func (q *Queries) CountUsers(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, countUsers)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createRefreshToken = `-- name: CreateRefreshToken :one
 INSERT INTO refresh_tokens (user_id, token_hash, expires_at)
 VALUES ($1, $2, $3)
@@ -87,6 +111,28 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (CreateU
 	return i, err
 }
 
+const deleteExpiredRefreshTokens = `-- name: DeleteExpiredRefreshTokens :execrows
+DELETE FROM refresh_tokens
+WHERE expires_at <= NOW()
+`
+
+func (q *Queries) DeleteExpiredRefreshTokens(ctx context.Context) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteExpiredRefreshTokens)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const deleteUserByID = `-- name: DeleteUserByID :exec
+DELETE FROM users WHERE id = $1
+`
+
+func (q *Queries) DeleteUserByID(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, deleteUserByID, id)
+	return err
+}
+
 const getRefreshTokenByHash = `-- name: GetRefreshTokenByHash :one
 SELECT id, user_id, token_hash, expires_at, created_at, revoked_at
 FROM refresh_tokens
@@ -95,6 +141,26 @@ WHERE token_hash = $1 AND revoked_at IS NULL AND expires_at > NOW()
 
 func (q *Queries) GetRefreshTokenByHash(ctx context.Context, tokenHash string) (RefreshToken, error) {
 	row := q.db.QueryRow(ctx, getRefreshTokenByHash, tokenHash)
+	var i RefreshToken
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.TokenHash,
+		&i.ExpiresAt,
+		&i.CreatedAt,
+		&i.RevokedAt,
+	)
+	return i, err
+}
+
+const getRefreshTokenByID = `-- name: GetRefreshTokenByID :one
+SELECT id, user_id, token_hash, expires_at, created_at, revoked_at
+FROM refresh_tokens
+WHERE id = $1
+`
+
+func (q *Queries) GetRefreshTokenByID(ctx context.Context, id uuid.UUID) (RefreshToken, error) {
+	row := q.db.QueryRow(ctx, getRefreshTokenByID, id)
 	var i RefreshToken
 	err := row.Scan(
 		&i.ID,
@@ -161,6 +227,114 @@ func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (GetUserByIDRow
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const listActiveRefreshTokens = `-- name: ListActiveRefreshTokens :many
+SELECT
+    rt.id,
+    rt.user_id,
+    rt.expires_at,
+    rt.created_at,
+    u.username,
+    u.email
+FROM refresh_tokens rt
+JOIN users u ON rt.user_id = u.id
+WHERE rt.revoked_at IS NULL AND rt.expires_at > NOW()
+ORDER BY rt.created_at DESC
+LIMIT $1 OFFSET $2
+`
+
+type ListActiveRefreshTokensParams struct {
+	Limit  int32 `json:"limit"`
+	Offset int32 `json:"offset"`
+}
+
+type ListActiveRefreshTokensRow struct {
+	ID        uuid.UUID          `json:"id"`
+	UserID    uuid.UUID          `json:"user_id"`
+	ExpiresAt pgtype.Timestamptz `json:"expires_at"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	Username  string             `json:"username"`
+	Email     string             `json:"email"`
+}
+
+func (q *Queries) ListActiveRefreshTokens(ctx context.Context, arg ListActiveRefreshTokensParams) ([]ListActiveRefreshTokensRow, error) {
+	rows, err := q.db.Query(ctx, listActiveRefreshTokens, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListActiveRefreshTokensRow{}
+	for rows.Next() {
+		var i ListActiveRefreshTokensRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.ExpiresAt,
+			&i.CreatedAt,
+			&i.Username,
+			&i.Email,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listUsersPaginated = `-- name: ListUsersPaginated :many
+SELECT id, username, email, first_name, last_name, user_type, created_at, updated_at
+FROM users
+ORDER BY created_at ASC
+LIMIT $1 OFFSET $2
+`
+
+type ListUsersPaginatedParams struct {
+	Limit  int32 `json:"limit"`
+	Offset int32 `json:"offset"`
+}
+
+type ListUsersPaginatedRow struct {
+	ID        uuid.UUID          `json:"id"`
+	Username  string             `json:"username"`
+	Email     string             `json:"email"`
+	FirstName string             `json:"first_name"`
+	LastName  string             `json:"last_name"`
+	UserType  string             `json:"user_type"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+}
+
+func (q *Queries) ListUsersPaginated(ctx context.Context, arg ListUsersPaginatedParams) ([]ListUsersPaginatedRow, error) {
+	rows, err := q.db.Query(ctx, listUsersPaginated, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListUsersPaginatedRow{}
+	for rows.Next() {
+		var i ListUsersPaginatedRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Username,
+			&i.Email,
+			&i.FirstName,
+			&i.LastName,
+			&i.UserType,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const revokeAllUserRefreshTokens = `-- name: RevokeAllUserRefreshTokens :exec
