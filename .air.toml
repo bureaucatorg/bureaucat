@@ -15,23 +15,23 @@ env_files = [".env"]
 # Array of commands to run before each build
 pre_cmd = ["rm -f ./tmp/main"]
 # Just plain old shell command. You could use `make` as well.
-cmd = "go build -buildvcs=false -o ./tmp/main ."
+cmd = "go build -buildvcs=false -o ./tmp/main ./cmd/main"
 # Array of commands to run after ^C
 post_cmd = []
 # Binary file yields from 'cmd', will be deprecated soon, recommend using entrypoint.
 bin = "tmp/main"
 # Entrypoint binary relative to root. First item is the executable, more items are default arguments.
-entrypoint = ["./tmp/main"]
+entrypoint = ["./tmp/main", "serve", "--dev"]
 # Customize binary, can setup environment variables when run your app.
-full_bin = "APP_ENV=dev APP_USER=air ./tmp/main"
+full_bin = "./tmp/main serve --dev"
 # Add additional arguments when running binary (bin/full_bin). Will run './tmp/main hello world'.
-args_bin = ["hello", "world"]
+args_bin = []
 # Watch these filename extensions. Use ["*"] to watch all file extensions.
 include_ext = ["go", "tpl", "tmpl", "html"]
 # Ignore these filename extensions or directories.
 exclude_dir = ["assets", "tmp", "vendor", "frontend/node_modules"]
 # Watch these directories if you specified.
-include_dir = []
+include_dir = ["cmd", "internal"]
 # Watch these files.
 include_file = []
 # Exclude files.
