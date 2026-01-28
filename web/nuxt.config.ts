@@ -10,7 +10,15 @@ export default defineNuxtConfig({
     plugins: [tailwindcss()],
   },
 
-  modules: ["shadcn-nuxt"],
+  modules: ["shadcn-nuxt", "@nuxtjs/color-mode"],
+
+  colorMode: {
+    classSuffix: "",
+    preference: "system",
+    storageKey: "bureaucat-color-mode",
+  },
+
+  ssr: false,
 
   shadcn: {
     /**

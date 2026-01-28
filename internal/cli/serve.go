@@ -33,11 +33,17 @@ func ServeCommand() *cli.Command {
 				Value: false,
 				Usage: "Enable development mode (starts Nuxt dev server)",
 			},
+			&cli.StringFlag{
+				Name:    "database-url",
+				Sources: cli.EnvVars("DATABASE_URL"),
+				Usage:   "PostgreSQL database connection URL",
+			},
 		},
 		Action: func(ctx context.Context, cmd *cli.Command) error {
 			host := cmd.String("api-host")
 			port := cmd.Int("api-port")
 			dev := cmd.Bool("dev")
+			dbURL := cmd.String("database-url")
 
 			addr := fmt.Sprintf("%s:%d", host, port)
 
@@ -56,6 +62,12 @@ func ServeCommand() *cli.Command {
 				fmt.Println("Started Nuxt dev server")
 			}
 
+			// Start the Echo server
+			srv, err := server.New(dev, dbURL)
+			if err != nil {
+				return fmt.Errorf("failed to create server: %w", err)
+			}
+
 			// Handle graceful shutdown
 			sigChan := make(chan os.Signal, 1)
 			signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
@@ -69,11 +81,10 @@ func ServeCommand() *cli.Command {
 					nuxtCmd.Wait()
 				}
 
+				srv.Close()
 				os.Exit(0)
 			}()
 
-			// Start the Echo server
-			srv := server.New(dev)
 			return srv.Start(addr)
 		},
 	}
