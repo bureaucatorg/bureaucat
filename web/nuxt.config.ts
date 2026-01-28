@@ -6,6 +6,12 @@ export default defineNuxtConfig({
   devtools: { enabled: true },
   css: ["~/assets/css/tailwind.css"],
 
+  runtimeConfig: {
+    public: {
+      nodeEnv: process.env.NODE_ENV || "development",
+    },
+  },
+
   vite: {
     plugins: [tailwindcss()],
   },

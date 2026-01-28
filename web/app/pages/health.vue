@@ -41,14 +41,7 @@ const services = computed(() => [
 
 <template>
   <div class="flex min-h-screen flex-col">
-    <header class="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div class="mx-auto flex h-16 max-w-5xl items-center justify-between px-4">
-        <NuxtLink to="/" class="flex items-center gap-2">
-          <span class="text-xl font-bold">Bureaucat</span>
-        </NuxtLink>
-        <ThemeToggle />
-      </div>
-    </header>
+    <Navbar />
 
     <main class="flex-1">
       <div class="mx-auto max-w-2xl px-4 py-16">

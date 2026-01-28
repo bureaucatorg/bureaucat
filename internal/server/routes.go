@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/labstack/echo/v5"
+
+	"bereaucat/internal/auth"
 )
 
 // HealthResponse represents the health check response
@@ -21,6 +23,18 @@ func (s *Server) registerRoutes() {
 
 	api.GET("/health", healthCheck)
 	api.GET("/ht/", s.healthCheckDetailed)
+
+	// Auth routes (public)
+	if s.authHandler != nil {
+		api.POST("/signup", s.authHandler.Signup)
+		api.POST("/signin", s.authHandler.Signin)
+		api.POST("/token_refresh", s.authHandler.TokenRefresh)
+		api.POST("/logout", s.authHandler.Logout)
+
+		// Protected routes
+		protected := api.Group("", auth.Middleware(s.authManager))
+		protected.GET("/me", s.authHandler.Me)
+	}
 }
 
 func healthCheck(c *echo.Context) error {

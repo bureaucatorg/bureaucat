@@ -15,7 +15,7 @@ env_files = [".env"]
 # Array of commands to run before each build
 pre_cmd = ["rm -f ./tmp/main"]
 # Just plain old shell command. You could use `make` as well.
-cmd = "go build -buildvcs=false -o ./tmp/main ./cmd/main"
+cmd = "go build -buildvcs=false -o ./tmp/main ./cmd/bureaucat"
 # Array of commands to run after ^C
 post_cmd = []
 # Binary file yields from 'cmd', will be deprecated soon, recommend using entrypoint.

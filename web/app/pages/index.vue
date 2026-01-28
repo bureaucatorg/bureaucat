@@ -82,23 +82,7 @@ const steps = [
          style="background-image: url('data:image/svg+xml,%3Csvg viewBox=%220 0 256 256%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noise%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.9%22 numOctaves=%224%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noise)%22/%3E%3C/svg%3E');" />
 
     <!-- Header -->
-    <header class="sticky top-0 z-40 border-b border-border/50 bg-background/80 backdrop-blur-xl">
-      <div class="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
-        <div class="flex items-center gap-3">
-          <div class="flex size-8 items-center justify-center rounded-md bg-foreground">
-            <span class="font-mono text-sm font-bold text-background">B</span>
-          </div>
-          <span class="font-display text-lg font-semibold tracking-tight">Bureaucat</span>
-        </div>
-        <div class="flex items-center gap-4">
-          <nav class="hidden items-center gap-6 md:flex">
-            <a href="#features" class="text-sm text-muted-foreground transition-colors hover:text-foreground">Features</a>
-            <a href="#how-it-works" class="text-sm text-muted-foreground transition-colors hover:text-foreground">How it works</a>
-          </nav>
-          <ThemeToggle />
-        </div>
-      </div>
-    </header>
+    <Navbar />
 
     <main class="flex-1">
       <!-- Hero Section -->

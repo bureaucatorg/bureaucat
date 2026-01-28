@@ -7,7 +7,6 @@ RUN set -ex \
     curl \
     bash \
     unzip \
-  && go install -tags 'postgres' "github.com/golang-migrate/migrate/v4/cmd/migrate@v4.19.1" \
   && go install "github.com/air-verse/air@v1.63.6" \
   && go install "github.com/sqlc-dev/sqlc/cmd/sqlc@v1.30.0" \
   && curl -fsSL https://bun.com/install | bash -s "bun-v1.3.7"

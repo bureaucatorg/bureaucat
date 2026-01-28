@@ -2,6 +2,7 @@ package database
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
@@ -25,51 +26,166 @@ func NewMigrator(dbURL, migrationsPath string) (*Migrator, error) {
 	return &Migrator{m: m}, nil
 }
 
-// Up runs all pending migrations
+// Up runs all pending migrations one at a time with logging
 func (m *Migrator) Up() error {
-	err := m.m.Up()
-	if err != nil && err != migrate.ErrNoChange {
-		return fmt.Errorf("failed to run migrations: %w", err)
+	startVersion, dirty, _ := m.m.Version()
+	if dirty {
+		fmt.Printf("Warning: database is in dirty state at version %d\n", startVersion)
 	}
 
-	if err == migrate.ErrNoChange {
-		fmt.Println("No migrations to apply")
+	fmt.Printf("Current version: %s\n", formatVersion(startVersion))
+
+	totalStart := time.Now()
+	migrationCount := 0
+
+	for {
+		version, _, _ := m.m.Version()
+
+		start := time.Now()
+		err := m.m.Steps(1)
+		duration := time.Since(start)
+
+		if err != nil {
+			// Check for "no change" or "file does not exist" (no more migrations)
+			if err == migrate.ErrNoChange || isNoMoreMigrations(err) {
+				break
+			}
+			return fmt.Errorf("failed to run migration: %w", err)
+		}
+
+		newVersion, _, _ := m.m.Version()
+		fmt.Printf("  Applied %s (took %s)\n", formatVersion(newVersion), duration.Round(time.Millisecond))
+		migrationCount++
+
+		// Safety check to prevent infinite loop
+		if newVersion == version {
+			break
+		}
+	}
+
+	totalDuration := time.Since(totalStart)
+	endVersion, _, _ := m.m.Version()
+
+	if migrationCount == 0 {
+		fmt.Printf("No migrations to apply (at version %s)\n", formatVersion(endVersion))
 		return nil
 	}
 
-	fmt.Println("Migrations applied successfully")
+	fmt.Printf("Applied %d migration(s): %s -> %s (total %s)\n",
+		migrationCount, formatVersion(startVersion), formatVersion(endVersion), totalDuration.Round(time.Millisecond))
 	return nil
 }
 
-// Down reverts all migrations
+// Down reverts all migrations one at a time with logging
 func (m *Migrator) Down() error {
-	err := m.m.Down()
-	if err != nil && err != migrate.ErrNoChange {
-		return fmt.Errorf("failed to revert migrations: %w", err)
+	startVersion, dirty, _ := m.m.Version()
+	if dirty {
+		fmt.Printf("Warning: database is in dirty state at version %d\n", startVersion)
 	}
 
-	if err == migrate.ErrNoChange {
-		fmt.Println("No migrations to revert")
+	fmt.Printf("Current version: %s\n", formatVersion(startVersion))
+
+	totalStart := time.Now()
+	migrationCount := 0
+
+	for {
+		version, _, _ := m.m.Version()
+
+		start := time.Now()
+		err := m.m.Steps(-1)
+		duration := time.Since(start)
+
+		if err != nil {
+			// Check for "no change" or "file does not exist" (no more migrations)
+			if err == migrate.ErrNoChange || isNoMoreMigrations(err) {
+				break
+			}
+			return fmt.Errorf("failed to revert migration: %w", err)
+		}
+
+		fmt.Printf("  Reverted %s (took %s)\n", formatVersion(version), duration.Round(time.Millisecond))
+		migrationCount++
+
+		newVersion, _, _ := m.m.Version()
+		// Safety check to prevent infinite loop
+		if newVersion == version {
+			break
+		}
+	}
+
+	totalDuration := time.Since(totalStart)
+
+	if migrationCount == 0 {
+		fmt.Println("No migrations to revert (database is clean)")
 		return nil
 	}
 
-	fmt.Println("Migrations reverted successfully")
+	fmt.Printf("Reverted %d migration(s): %s -> none (total %s)\n",
+		migrationCount, formatVersion(startVersion), totalDuration.Round(time.Millisecond))
 	return nil
 }
 
 // MigrateToVersion migrates to a specific version (works for both up and down)
 func (m *Migrator) MigrateToVersion(version uint) error {
-	err := m.m.Migrate(version)
-	if err != nil && err != migrate.ErrNoChange {
-		return fmt.Errorf("failed to migrate to version %d: %w", version, err)
+	startVersion, dirty, _ := m.m.Version()
+	if dirty {
+		fmt.Printf("Warning: database is in dirty state at version %d\n", startVersion)
 	}
 
-	if err == migrate.ErrNoChange {
-		fmt.Printf("Already at version %d\n", version)
+	fmt.Printf("Current version: %s\n", formatVersion(startVersion))
+	fmt.Printf("Target version: %s\n", formatVersion(version))
+
+	totalStart := time.Now()
+	migrationCount := 0
+	step := 1
+	if version < startVersion {
+		step = -1
+	}
+
+	for {
+		currentVersion, _, _ := m.m.Version()
+
+		// Check if we've reached the target
+		if (step > 0 && currentVersion >= version) || (step < 0 && currentVersion <= version) {
+			break
+		}
+
+		start := time.Now()
+		err := m.m.Steps(step)
+		duration := time.Since(start)
+
+		if err == migrate.ErrNoChange {
+			break
+		}
+
+		if err != nil {
+			return fmt.Errorf("failed to migrate: %w", err)
+		}
+
+		newVersion, _, _ := m.m.Version()
+		if step > 0 {
+			fmt.Printf("  Applied %s (took %s)\n", formatVersion(newVersion), duration.Round(time.Millisecond))
+		} else {
+			fmt.Printf("  Reverted %s (took %s)\n", formatVersion(currentVersion), duration.Round(time.Millisecond))
+		}
+		migrationCount++
+
+		// Safety check
+		if newVersion == currentVersion {
+			break
+		}
+	}
+
+	totalDuration := time.Since(totalStart)
+	endVersion, _, _ := m.m.Version()
+
+	if migrationCount == 0 {
+		fmt.Printf("Already at version %s\n", formatVersion(version))
 		return nil
 	}
 
-	fmt.Printf("Migrated to version %d\n", version)
+	fmt.Printf("Migrated %d step(s): %s -> %s (total %s)\n",
+		migrationCount, formatVersion(startVersion), formatVersion(endVersion), totalDuration.Round(time.Millisecond))
 	return nil
 }
 
@@ -85,4 +201,21 @@ func (m *Migrator) Close() error {
 		return sourceErr
 	}
 	return dbErr
+}
+
+// formatVersion formats a version number, handling the case of no migrations applied
+func formatVersion(v uint) string {
+	if v == 0 {
+		return "none"
+	}
+	return fmt.Sprintf("%04d", v)
+}
+
+// isNoMoreMigrations checks if the error indicates there are no more migrations to apply
+func isNoMoreMigrations(err error) bool {
+	if err == nil {
+		return false
+	}
+	errStr := err.Error()
+	return errStr == "file does not exist" || errStr == "first : file does not exist"
 }
