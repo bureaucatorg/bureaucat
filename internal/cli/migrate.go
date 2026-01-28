@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"fmt"
+	"io/fs"
 	"strconv"
 	"strings"
 
@@ -10,6 +11,19 @@ import (
 
 	"github.com/urfave/cli/v3"
 )
+
+// MigrationsFS is set by the main package to provide embedded migration files
+var MigrationsFS fs.FS
+
+// createMigrator creates a migrator using embedded FS if available, otherwise from path
+func createMigrator(dbURL, path string) (*database.Migrator, error) {
+	// Use embedded migrations if available and no custom path specified
+	if MigrationsFS != nil && path == "migrations" {
+		return database.NewMigratorFromFS(dbURL, MigrationsFS)
+	}
+	// Fall back to filesystem path
+	return database.NewMigrator(dbURL, path)
+}
 
 func MigrateCommand() *cli.Command {
 	return &cli.Command{
@@ -24,7 +38,7 @@ func MigrateCommand() *cli.Command {
 			&cli.StringFlag{
 				Name:  "path",
 				Value: "migrations",
-				Usage: "Path to migration files",
+				Usage: "Path to migration files (ignored when using embedded migrations)",
 			},
 		},
 		Commands: []*cli.Command{
@@ -39,7 +53,7 @@ func MigrateCommand() *cli.Command {
 					}
 
 					path := cmd.String("path")
-					migrator, err := database.NewMigrator(dbURL, path)
+					migrator, err := createMigrator(dbURL, path)
 					if err != nil {
 						return fmt.Errorf("failed to create migrator: %w", err)
 					}
@@ -67,7 +81,7 @@ func MigrateCommand() *cli.Command {
 					}
 
 					path := cmd.String("path")
-					migrator, err := database.NewMigrator(dbURL, path)
+					migrator, err := createMigrator(dbURL, path)
 					if err != nil {
 						return fmt.Errorf("failed to create migrator: %w", err)
 					}

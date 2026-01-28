@@ -10,6 +10,22 @@ import (
 	ucli "github.com/urfave/cli/v3"
 )
 
+func init() {
+	// Set the embedded dist filesystem for production mode
+	distFS, err := GetDistFS()
+	if err != nil {
+		log.Printf("Warning: could not load embedded dist: %v", err)
+	}
+	cli.DistFS = distFS
+
+	// Set the embedded migrations filesystem for production mode
+	migrationsFS, err := GetMigrationsFS()
+	if err != nil {
+		log.Printf("Warning: could not load embedded migrations: %v", err)
+	}
+	cli.MigrationsFS = migrationsFS
+}
+
 func main() {
 	app := &ucli.Command{
 		Name:  "bureaucat",

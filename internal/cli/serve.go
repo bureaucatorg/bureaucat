@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"fmt"
+	"io/fs"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -12,6 +13,9 @@ import (
 
 	"github.com/urfave/cli/v3"
 )
+
+// DistFS is set by the main package to provide embedded static files
+var DistFS fs.FS
 
 func ServeCommand() *cli.Command {
 	return &cli.Command{
@@ -90,7 +94,13 @@ func ServeCommand() *cli.Command {
 				RefreshTokenExpiryDays: refreshTokenExpiryDays,
 			}
 
-			srv, err := server.New(dev, dbURL, authConfig)
+			// In production mode, use embedded static files
+			var staticFS fs.FS
+			if !dev {
+				staticFS = DistFS
+			}
+
+			srv, err := server.New(dev, dbURL, authConfig, staticFS)
 			if err != nil {
 				return fmt.Errorf("failed to create server: %w", err)
 			}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"io/fs"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/labstack/echo/v5"
@@ -32,10 +33,12 @@ type Server struct {
 	authManager  *auth.Manager
 	authHandler  *handlers.AuthHandler
 	adminHandler *handlers.AdminHandler
+	distFS       fs.FS
 }
 
 // New creates a new Server instance
-func New(devMode bool, dbURL string, authConfig AuthConfig) (*Server, error) {
+// distFS should be provided in production mode (non-dev) for serving embedded static files
+func New(devMode bool, dbURL string, authConfig AuthConfig, distFS fs.FS) (*Server, error) {
 	e := echo.New()
 
 	// Middleware
@@ -45,6 +48,7 @@ func New(devMode bool, dbURL string, authConfig AuthConfig) (*Server, error) {
 	srv := &Server{
 		echo:    e,
 		devMode: devMode,
+		distFS:  distFS,
 	}
 
 	// Open database connection if URL provided
@@ -81,9 +85,13 @@ func New(devMode bool, dbURL string, authConfig AuthConfig) (*Server, error) {
 	// Register routes
 	srv.registerRoutes()
 
-	// Set up reverse proxy in dev mode
+	// Set up static file serving
 	if devMode {
+		// Dev mode: proxy to Nuxt dev server
 		srv.setupProxy()
+	} else if distFS != nil {
+		// Production mode: serve embedded static files
+		srv.setupStatic(distFS)
 	}
 
 	return srv, nil

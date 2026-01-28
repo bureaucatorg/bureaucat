@@ -2,11 +2,13 @@ package database
 
 import (
 	"fmt"
+	"io/fs"
 	"time"
 
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
+	"github.com/golang-migrate/migrate/v4/source/iofs"
 )
 
 // Migrator wraps golang-migrate for database migrations
@@ -14,11 +16,26 @@ type Migrator struct {
 	m *migrate.Migrate
 }
 
-// NewMigrator creates a new Migrator instance
+// NewMigrator creates a new Migrator instance from a filesystem path
 func NewMigrator(dbURL, migrationsPath string) (*Migrator, error) {
 	sourceURL := fmt.Sprintf("file://%s", migrationsPath)
 
 	m, err := migrate.New(sourceURL, dbURL)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create migrator: %w", err)
+	}
+
+	return &Migrator{m: m}, nil
+}
+
+// NewMigratorFromFS creates a new Migrator instance from an embedded filesystem
+func NewMigratorFromFS(dbURL string, fsys fs.FS) (*Migrator, error) {
+	driver, err := iofs.New(fsys, ".")
+	if err != nil {
+		return nil, fmt.Errorf("failed to create iofs driver: %w", err)
+	}
+
+	m, err := migrate.NewWithSourceInstance("iofs", driver, dbURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create migrator: %w", err)
 	}

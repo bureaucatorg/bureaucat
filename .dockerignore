@@ -26,10 +26,9 @@ go.work
 
 # End of https://www.toptal.com/developers/gitignore/api/go
 
-postgres-data/
-air.log
-tmp/
-
-# Embedded dist (generated, but keep .gitkeep)
-cmd/bureaucat/dist/*
-!cmd/bureaucat/dist/.gitkeep
+.env
+postgres-data
+tmp
+Dockerfile.dev
+Dockerfile
+.git
