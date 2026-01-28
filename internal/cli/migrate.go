@@ -15,14 +15,20 @@ import (
 // MigrationsFS is set by the main package to provide embedded migration files
 var MigrationsFS fs.FS
 
-// createMigrator creates a migrator using embedded FS if available, otherwise from path
+// createMigrator creates a migrator - uses filesystem path if it exists, otherwise embedded FS
 func createMigrator(dbURL, path string) (*database.Migrator, error) {
-	// Use embedded migrations if available and no custom path specified
-	if MigrationsFS != nil && path == "migrations" {
+	// Try filesystem path first (for dev mode)
+	if migrator, err := database.NewMigrator(dbURL, path); err == nil {
+		return migrator, nil
+	}
+
+	// Fall back to embedded FS (for prod mode)
+	if MigrationsFS != nil {
 		return database.NewMigratorFromFS(dbURL, MigrationsFS)
 	}
-	// Fall back to filesystem path
-	return database.NewMigrator(dbURL, path)
+
+	// Neither available
+	return nil, fmt.Errorf("no migrations found at path %q and no embedded migrations available", path)
 }
 
 func MigrateCommand() *cli.Command {

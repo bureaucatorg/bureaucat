@@ -33,3 +33,7 @@ tmp/
 # Embedded dist (generated, but keep .gitkeep)
 cmd/bureaucat/dist/*
 !cmd/bureaucat/dist/.gitkeep
+
+# Embedded migrations (copied during build, but keep .gitkeep)
+cmd/bureaucat/migrations/*
+!cmd/bureaucat/migrations/.gitkeep

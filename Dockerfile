@@ -15,7 +15,7 @@ COPY . .
 # Copy Nuxt generated static files to embed location
 COPY --from=frontend /app/web/.output/public ./cmd/bureaucat/dist
 # Copy migrations to embed location
-RUN cp -r migrations ./cmd/bureaucat/migrations
+RUN cp -r migrations/* ./cmd/bureaucat/migrations/
 RUN go build -o bureaucat ./cmd/bureaucat
 
 # Runtime

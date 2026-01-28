@@ -2,7 +2,7 @@
 
 # Development mode - starts both Go server and Nuxt dev server
 dev:
-	go run cmd/bureaucat/main.go serve --dev
+	go run ./cmd/bureaucat serve --dev
 
 # Build frontend and copy to embed directory
 build-frontend:
@@ -12,7 +12,7 @@ build-frontend:
 
 # Build production binary with embedded frontend
 build: build-frontend
-	go build -o bureaucat cmd/bureaucat/main.go cmd/bureaucat/embed.go
+	go build -o bureaucat ./cmd/bureaucat
 
 # Clean build artifacts
 clean:

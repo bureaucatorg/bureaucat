@@ -8,7 +8,7 @@ import (
 //go:embed dist/*
 var distFS embed.FS
 
-//go:embed migrations/*.sql
+//go:embed all:migrations
 var migrationsFS embed.FS
 
 // GetDistFS returns the embedded dist filesystem, stripped of the dist prefix
