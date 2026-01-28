@@ -1,0 +1,30 @@
+services:
+  app:
+    restart: unless-stopped
+    build:
+      context: ./
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./:/app
+    working_dir: /app
+    ports:
+      - 1323:1323
+      - 3000:3000
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - .env
+
+  postgres:
+    image: postgres:18.1-alpine3.23
+    restart: unless-stopped
+    volumes:
+      - ./postgres-data:/var/lib/postgresql/18/docker
+    env_file:
+      - .postgres.env
+    healthcheck:
+      test: "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""
+      interval: 10s
+      timeout: 5s
+      retries: 5
