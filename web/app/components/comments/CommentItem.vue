@@ -3,12 +3,18 @@ import { MoreHorizontal, Pencil, Trash2, Loader2, Check, X } from "lucide-vue-ne
 import { toast } from "vue-sonner";
 import type { Comment } from "~/types";
 
-const props = defineProps<{
-  comment: Comment;
-  projectKey: string;
-  taskNum: number;
-  canEdit: boolean;
-}>();
+const props = withDefaults(
+  defineProps<{
+    comment: Comment;
+    projectKey: string;
+    taskNum: number;
+    canEdit: boolean;
+    compact?: boolean;
+  }>(),
+  {
+    compact: false,
+  }
+);
 
 const emit = defineEmits<{
   deleted: [];
@@ -88,7 +94,7 @@ function formatDate(dateStr: string): string {
 
 <template>
   <div class="group flex gap-3">
-    <Avatar class="size-8">
+    <Avatar v-if="!compact" class="size-8">
       <AvatarFallback class="text-xs">
         {{ comment.first_name[0] }}{{ comment.last_name[0] }}
       </AvatarFallback>

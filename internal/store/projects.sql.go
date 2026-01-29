@@ -182,19 +182,20 @@ func (q *Queries) CountUserProjects(ctx context.Context, userID uuid.UUID) (int6
 
 const createActivityLog = `-- name: CreateActivityLog :one
 
-INSERT INTO activity_log (task_id, activity_type, actor_id, field_name, old_value, new_value, checksum)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
+INSERT INTO activity_log (task_id, activity_type, actor_id, field_name, old_value, new_value, checksum, created_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 RETURNING id, task_id, activity_type, actor_id, field_name, old_value, new_value, created_at, checksum
 `
 
 type CreateActivityLogParams struct {
-	TaskID       uuid.UUID   `json:"task_id"`
-	ActivityType string      `json:"activity_type"`
-	ActorID      uuid.UUID   `json:"actor_id"`
-	FieldName    pgtype.Text `json:"field_name"`
-	OldValue     []byte      `json:"old_value"`
-	NewValue     []byte      `json:"new_value"`
-	Checksum     string      `json:"checksum"`
+	TaskID       uuid.UUID          `json:"task_id"`
+	ActivityType string             `json:"activity_type"`
+	ActorID      uuid.UUID          `json:"actor_id"`
+	FieldName    pgtype.Text        `json:"field_name"`
+	OldValue     []byte             `json:"old_value"`
+	NewValue     []byte             `json:"new_value"`
+	Checksum     string             `json:"checksum"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
 }
 
 // ==================== ACTIVITY LOG ====================
@@ -207,6 +208,7 @@ func (q *Queries) CreateActivityLog(ctx context.Context, arg CreateActivityLogPa
 		arg.OldValue,
 		arg.NewValue,
 		arg.Checksum,
+		arg.CreatedAt,
 	)
 	var i ActivityLog
 	err := row.Scan(

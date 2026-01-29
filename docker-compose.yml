@@ -16,6 +16,19 @@ services:
     env_file:
       - .env
 
+  pgweb:
+    image: sosedoff/pgweb:0.17.0
+    env_file:
+      - .pgweb.env
+    ports:
+      - 8081:8081
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "nc", "-vz", "127.0.0.1", "8081"]
+      interval: 5s
+
   postgres:
     image: postgres:18.1-alpine3.23
     restart: unless-stopped

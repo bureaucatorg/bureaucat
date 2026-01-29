@@ -359,8 +359,8 @@ SELECT COUNT(*) FROM comments WHERE task_id = $1 AND deleted_at IS NULL;
 -- ==================== ACTIVITY LOG ====================
 
 -- name: CreateActivityLog :one
-INSERT INTO activity_log (task_id, activity_type, actor_id, field_name, old_value, new_value, checksum)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
+INSERT INTO activity_log (task_id, activity_type, actor_id, field_name, old_value, new_value, checksum, created_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 RETURNING id, task_id, activity_type, actor_id, field_name, old_value, new_value, created_at, checksum;
 
 -- name: GetLastActivityChecksum :one

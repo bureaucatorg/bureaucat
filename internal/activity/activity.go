@@ -81,8 +81,8 @@ func (s *Service) LogActivity(ctx context.Context, params LogActivityParams) err
 		}
 	}
 
-	// Generate timestamp
-	now := time.Now().UTC()
+	// Generate timestamp - truncate to microseconds to match PostgreSQL precision
+	now := time.Now().UTC().Truncate(time.Microsecond)
 
 	// Calculate checksum
 	checksum := calculateChecksum(
@@ -105,6 +105,7 @@ func (s *Service) LogActivity(ctx context.Context, params LogActivityParams) err
 		OldValue:     oldValueJSON,
 		NewValue:     newValueJSON,
 		Checksum:     checksum,
+		CreatedAt:    pgtype.Timestamptz{Time: now, Valid: true},
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create activity log: %w", err)
@@ -127,14 +128,18 @@ func (s *Service) VerifyChain(ctx context.Context, taskID uuid.UUID) (bool, erro
 
 	previousChecksum := SeedChecksum
 	for _, activity := range activities {
+		// Normalize JSON to ensure consistent key ordering
+		oldValue := normalizeJSON(activity.OldValue)
+		newValue := normalizeJSON(activity.NewValue)
+
 		expectedChecksum := calculateChecksum(
 			previousChecksum,
 			activity.TaskID,
 			activity.ActivityType,
 			activity.ActorID,
 			textToStringPtr(activity.FieldName),
-			activity.OldValue,
-			activity.NewValue,
+			oldValue,
+			newValue,
 			activity.CreatedAt.Time,
 		)
 
@@ -178,6 +183,26 @@ func calculateChecksum(
 
 	hash := sha256.Sum256([]byte(data))
 	return hex.EncodeToString(hash[:])
+}
+
+// normalizeJSON unmarshals and re-marshals JSON to ensure consistent key ordering
+// Go's json.Marshal sorts map keys alphabetically
+func normalizeJSON(data []byte) []byte {
+	if data == nil || len(data) == 0 {
+		return data
+	}
+
+	var v interface{}
+	if err := json.Unmarshal(data, &v); err != nil {
+		return data // Return original if unmarshal fails
+	}
+
+	normalized, err := json.Marshal(v)
+	if err != nil {
+		return data // Return original if marshal fails
+	}
+
+	return normalized
 }
 
 // nullableText converts a *string to pgtype.Text
