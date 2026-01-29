@@ -8,26 +8,40 @@ const props = defineProps<{
   isMember: boolean;
 }>();
 
+const router = useRouter();
 const priorityInfo = computed(() => PRIORITY_LABELS[props.task.priority] || PRIORITY_LABELS[0]);
+const isDragging = ref(false);
 
 function handleDragStart(event: DragEvent) {
   if (!props.isMember) {
     event.preventDefault();
     return;
   }
+  isDragging.value = true;
   event.dataTransfer!.effectAllowed = "move";
   event.dataTransfer!.setData("application/json", JSON.stringify(props.task));
+}
+
+function handleDragEnd() {
+  isDragging.value = false;
+}
+
+function handleClick() {
+  if (!isDragging.value) {
+    router.push(`/projects/${props.projectKey}/tasks/${props.task.task_number}`);
+  }
 }
 </script>
 
 <template>
-  <NuxtLink :to="`/projects/${projectKey}/tasks/${task.task_number}`">
-    <div
-      :draggable="isMember"
-      class="group cursor-pointer rounded-lg border bg-background p-3 shadow-sm transition-all hover:border-amber-500/30 hover:shadow-md"
-      :class="{ 'cursor-grab active:cursor-grabbing': isMember }"
-      @dragstart="handleDragStart"
-    >
+  <div
+    :draggable="isMember"
+    class="group cursor-pointer rounded-lg border bg-background p-3 shadow-sm transition-all hover:border-amber-500/30 hover:shadow-md"
+    :class="{ 'cursor-grab active:cursor-grabbing': isMember }"
+    @dragstart="handleDragStart"
+    @dragend="handleDragEnd"
+    @click="handleClick"
+  >
       <!-- Task ID and priority -->
       <div class="mb-2 flex items-center justify-between">
         <span class="font-mono text-xs text-muted-foreground">
@@ -92,5 +106,4 @@ function handleDragStart(event: DragEvent) {
         </div>
       </div>
     </div>
-  </NuxtLink>
 </template>

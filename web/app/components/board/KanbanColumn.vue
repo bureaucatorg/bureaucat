@@ -17,9 +17,11 @@ const emit = defineEmits<{
 
 // Default state for this type (for dropping)
 const defaultState = computed(() => props.states[0]);
+const isDragOver = ref(false);
 
 function handleDrop(event: DragEvent) {
   event.preventDefault();
+  isDragOver.value = false;
   if (!props.isMember || !defaultState.value) return;
 
   const taskData = event.dataTransfer?.getData("application/json");
@@ -39,15 +41,22 @@ function handleDragOver(event: DragEvent) {
   event.preventDefault();
   if (props.isMember) {
     event.dataTransfer!.dropEffect = "move";
+    isDragOver.value = true;
   }
+}
+
+function handleDragLeave() {
+  isDragOver.value = false;
 }
 </script>
 
 <template>
   <div
-    class="flex w-72 shrink-0 flex-col rounded-lg border bg-muted/30"
+    class="flex w-72 shrink-0 flex-col rounded-lg border bg-muted/30 transition-colors"
+    :class="{ 'border-primary border-2 bg-primary/5': isDragOver }"
     @drop="handleDrop"
     @dragover="handleDragOver"
+    @dragleave="handleDragLeave"
   >
     <!-- Column header -->
     <div class="flex items-center gap-2 border-b px-3 py-2.5">
