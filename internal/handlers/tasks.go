@@ -293,6 +293,10 @@ func (h *TaskHandler) CreateTask(c *echo.Context) error {
 		if err != nil {
 			continue
 		}
+		assigneeUser, err := h.store.GetUserByID(ctx, assigneeID)
+		if err != nil {
+			continue
+		}
 		_, err = h.store.AddTaskAssignee(ctx, store.AddTaskAssigneeParams{
 			TaskID:     task.ID,
 			UserID:     assigneeID,
@@ -305,14 +309,22 @@ func (h *TaskHandler) CreateTask(c *echo.Context) error {
 			TaskID:       task.ID,
 			ActivityType: activity.AssigneeAdded,
 			ActorID:      userID,
-			FieldName:    activity.StringPtr("assignees"),
-			NewValue:     assigneeID.String(),
+			NewValue: map[string]interface{}{
+				"user_id":    assigneeID.String(),
+				"username":   assigneeUser.Username,
+				"first_name": assigneeUser.FirstName,
+				"last_name":  assigneeUser.LastName,
+			},
 		})
 	}
 
 	// Add labels
 	for _, labelIDStr := range req.Labels {
 		labelID, err := uuid.Parse(labelIDStr)
+		if err != nil {
+			continue
+		}
+		label, err := h.store.GetProjectLabelByID(ctx, labelID)
 		if err != nil {
 			continue
 		}
@@ -328,8 +340,11 @@ func (h *TaskHandler) CreateTask(c *echo.Context) error {
 			TaskID:       task.ID,
 			ActivityType: activity.LabelAdded,
 			ActorID:      userID,
-			FieldName:    activity.StringPtr("labels"),
-			NewValue:     labelID.String(),
+			NewValue: map[string]interface{}{
+				"label_id": labelID.String(),
+				"name":     label.Name,
+				"color":    label.Color,
+			},
 		})
 	}
 
@@ -660,6 +675,12 @@ func (h *TaskHandler) AddAssignee(c *echo.Context) error {
 		return echo.NewHTTPError(http.StatusConflict, "user is already assigned")
 	}
 
+	// Get assignee user info for activity log
+	assigneeUser, err := h.store.GetUserByID(ctx, assigneeID)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusNotFound, "assignee user not found")
+	}
+
 	// Add assignee
 	_, err = h.store.AddTaskAssignee(ctx, store.AddTaskAssigneeParams{
 		TaskID:     task.ID,
@@ -675,8 +696,12 @@ func (h *TaskHandler) AddAssignee(c *echo.Context) error {
 		TaskID:       task.ID,
 		ActivityType: activity.AssigneeAdded,
 		ActorID:      userID,
-		FieldName:    activity.StringPtr("assignees"),
-		NewValue:     assigneeID.String(),
+		NewValue: map[string]interface{}{
+			"user_id":    assigneeID.String(),
+			"username":   assigneeUser.Username,
+			"first_name": assigneeUser.FirstName,
+			"last_name":  assigneeUser.LastName,
+		},
 	})
 
 	return c.JSON(http.StatusCreated, map[string]string{"message": "assignee added"})
@@ -719,6 +744,12 @@ func (h *TaskHandler) RemoveAssignee(c *echo.Context) error {
 		return echo.NewHTTPError(http.StatusNotFound, "task not found")
 	}
 
+	// Get assignee user info for activity log
+	assigneeUser, err := h.store.GetUserByID(ctx, assigneeID)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusNotFound, "assignee user not found")
+	}
+
 	// Remove assignee
 	err = h.store.RemoveTaskAssignee(ctx, store.RemoveTaskAssigneeParams{
 		TaskID: task.ID,
@@ -733,8 +764,12 @@ func (h *TaskHandler) RemoveAssignee(c *echo.Context) error {
 		TaskID:       task.ID,
 		ActivityType: activity.AssigneeRemoved,
 		ActorID:      userID,
-		FieldName:    activity.StringPtr("assignees"),
-		OldValue:     assigneeID.String(),
+		OldValue: map[string]interface{}{
+			"user_id":    assigneeID.String(),
+			"username":   assigneeUser.Username,
+			"first_name": assigneeUser.FirstName,
+			"last_name":  assigneeUser.LastName,
+		},
 	})
 
 	return c.JSON(http.StatusOK, map[string]string{"message": "assignee removed"})
@@ -798,6 +833,12 @@ func (h *TaskHandler) AddLabel(c *echo.Context) error {
 		return echo.NewHTTPError(http.StatusConflict, "label already on task")
 	}
 
+	// Get label info for activity log
+	label, err := h.store.GetProjectLabelByID(ctx, labelID)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusNotFound, "label not found")
+	}
+
 	// Add label
 	err = h.store.AddTaskLabel(ctx, store.AddTaskLabelParams{
 		TaskID:  task.ID,
@@ -813,8 +854,11 @@ func (h *TaskHandler) AddLabel(c *echo.Context) error {
 		TaskID:       task.ID,
 		ActivityType: activity.LabelAdded,
 		ActorID:      userID,
-		FieldName:    activity.StringPtr("labels"),
-		NewValue:     labelID.String(),
+		NewValue: map[string]interface{}{
+			"label_id": labelID.String(),
+			"name":     label.Name,
+			"color":    label.Color,
+		},
 	})
 
 	return c.JSON(http.StatusCreated, map[string]string{"message": "label added"})
@@ -857,6 +901,12 @@ func (h *TaskHandler) RemoveLabel(c *echo.Context) error {
 		return echo.NewHTTPError(http.StatusNotFound, "task not found")
 	}
 
+	// Get label info for activity log
+	label, err := h.store.GetProjectLabelByID(ctx, labelID)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusNotFound, "label not found")
+	}
+
 	// Remove label
 	err = h.store.RemoveTaskLabel(ctx, store.RemoveTaskLabelParams{
 		TaskID:  task.ID,
@@ -871,8 +921,11 @@ func (h *TaskHandler) RemoveLabel(c *echo.Context) error {
 		TaskID:       task.ID,
 		ActivityType: activity.LabelRemoved,
 		ActorID:      userID,
-		FieldName:    activity.StringPtr("labels"),
-		OldValue:     labelID.String(),
+		OldValue: map[string]interface{}{
+			"label_id": labelID.String(),
+			"name":     label.Name,
+			"color":    label.Color,
+		},
 	})
 
 	return c.JSON(http.StatusOK, map[string]string{"message": "label removed"})

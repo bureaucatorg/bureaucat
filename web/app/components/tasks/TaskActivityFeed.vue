@@ -161,6 +161,62 @@ function getFieldLabel(fieldName?: string): string | null {
   };
   return labels[fieldName] || fieldName;
 }
+
+// Parse activity value to extract meaningful details
+function parseActivityValue(value: unknown): Record<string, unknown> | null {
+  if (!value) return null;
+
+  // If it's a string (JSON), try to parse it
+  if (typeof value === "string") {
+    try {
+      return JSON.parse(value);
+    } catch {
+      return null;
+    }
+  }
+
+  // If it's already an object
+  if (typeof value === "object") {
+    return value as Record<string, unknown>;
+  }
+
+  return null;
+}
+
+// Get display text for activity details (assignee name, label name, etc.)
+function getActivityDetail(activity: ActivityLogEntry): string | null {
+  const type = activity.activity_type;
+
+  if (type === "assignee_added") {
+    const data = parseActivityValue(activity.new_value);
+    if (data?.first_name && data?.last_name) {
+      return `${data.first_name} ${data.last_name}`;
+    }
+  }
+
+  if (type === "assignee_removed") {
+    const data = parseActivityValue(activity.old_value);
+    if (data?.first_name && data?.last_name) {
+      return `${data.first_name} ${data.last_name}`;
+    }
+  }
+
+  if (type === "label_added") {
+    const data = parseActivityValue(activity.new_value);
+    if (data?.name) {
+      return data.name as string;
+    }
+  }
+
+  if (type === "label_removed") {
+    const data = parseActivityValue(activity.old_value);
+    if (data?.name) {
+      return data.name as string;
+    }
+  }
+
+  return null;
+}
 </script>
 
 <template>
@@ -234,7 +290,10 @@ function getFieldLabel(fieldName?: string): string | null {
               </span>
               <span class="text-muted-foreground">
                 {{ " " }}{{ getActivityLabel(item.data) }}
-                <template v-if="getFieldLabel(item.data.field_name)">
+                <template v-if="getActivityDetail(item.data)">
+                  <span class="font-medium">{{ getActivityDetail(item.data) }}</span>
+                </template>
+                <template v-else-if="getFieldLabel(item.data.field_name)">
                   <span class="font-medium">{{
                     getFieldLabel(item.data.field_name)
                   }}</span>
