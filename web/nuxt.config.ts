@@ -6,6 +6,13 @@ export default defineNuxtConfig({
   devtools: { enabled: true },
   css: ["~/assets/css/tailwind.css"],
 
+  components: [
+    {
+      path: "~/components",
+      pathPrefix: false,
+    },
+  ],
+
   runtimeConfig: {
     public: {
       nodeEnv: process.env.NODE_ENV || "development",
