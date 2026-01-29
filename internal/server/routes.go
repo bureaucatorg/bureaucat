@@ -31,9 +31,80 @@ func (s *Server) registerRoutes() {
 		api.POST("/token_refresh", s.authHandler.TokenRefresh)
 		api.POST("/logout", s.authHandler.Logout)
 
+		// Public upload serving (no auth required)
+		if s.uploadHandler != nil {
+			api.GET("/uploads/:id", s.uploadHandler.Serve)
+		}
+
 		// Protected routes
 		protected := api.Group("", auth.Middleware(s.authManager))
 		protected.GET("/me", s.authHandler.Me)
+
+		// File uploads (authenticated)
+		if s.uploadHandler != nil {
+			protected.POST("/uploads", s.uploadHandler.Upload)
+		}
+
+		// Project routes (authenticated)
+		if s.projectHandler != nil {
+			protected.GET("/projects", s.projectHandler.ListProjects)
+			protected.POST("/projects", s.projectHandler.CreateProject)
+
+			// Project-specific routes (requires project membership)
+			projectGroup := protected.Group("/projects/:projectKey", auth.ProjectMiddleware(s.store))
+
+			// Project CRUD
+			projectGroup.GET("", s.projectHandler.GetProject)
+			projectGroup.PATCH("", s.projectHandler.UpdateProject, auth.ProjectRoleMiddleware("admin"))
+			projectGroup.DELETE("", s.projectHandler.DeleteProject, auth.ProjectRoleMiddleware("admin"))
+
+			// Project members
+			projectGroup.GET("/members", s.projectHandler.ListMembers)
+			projectGroup.POST("/members", s.projectHandler.AddMember, auth.ProjectRoleMiddleware("admin"))
+			projectGroup.PATCH("/members/:userId", s.projectHandler.UpdateMemberRole, auth.ProjectRoleMiddleware("admin"))
+			projectGroup.DELETE("/members/:userId", s.projectHandler.RemoveMember, auth.ProjectRoleMiddleware("admin"))
+
+			// Project states
+			projectGroup.GET("/states", s.projectHandler.ListStates)
+			projectGroup.POST("/states", s.projectHandler.CreateState, auth.ProjectRoleMiddleware("admin"))
+			projectGroup.PATCH("/states/:stateId", s.projectHandler.UpdateState, auth.ProjectRoleMiddleware("admin"))
+			projectGroup.DELETE("/states/:stateId", s.projectHandler.DeleteState, auth.ProjectRoleMiddleware("admin"))
+
+			// Project labels
+			projectGroup.GET("/labels", s.projectHandler.ListLabels)
+			projectGroup.POST("/labels", s.projectHandler.CreateLabel, auth.ProjectRoleMiddleware("member"))
+			projectGroup.PATCH("/labels/:labelId", s.projectHandler.UpdateLabel, auth.ProjectRoleMiddleware("admin"))
+			projectGroup.DELETE("/labels/:labelId", s.projectHandler.DeleteLabel, auth.ProjectRoleMiddleware("admin"))
+
+			// Tasks
+			if s.taskHandler != nil {
+				projectGroup.GET("/tasks", s.taskHandler.ListTasks)
+				projectGroup.POST("/tasks", s.taskHandler.CreateTask, auth.ProjectRoleMiddleware("member"))
+				projectGroup.GET("/tasks/:taskNum", s.taskHandler.GetTask)
+				projectGroup.PATCH("/tasks/:taskNum", s.taskHandler.UpdateTask, auth.ProjectRoleMiddleware("member"))
+				projectGroup.DELETE("/tasks/:taskNum", s.taskHandler.DeleteTask, auth.ProjectRoleMiddleware("admin"))
+
+				// Task assignees
+				projectGroup.POST("/tasks/:taskNum/assignees", s.taskHandler.AddAssignee, auth.ProjectRoleMiddleware("member"))
+				projectGroup.DELETE("/tasks/:taskNum/assignees/:userId", s.taskHandler.RemoveAssignee, auth.ProjectRoleMiddleware("member"))
+
+				// Task labels
+				projectGroup.POST("/tasks/:taskNum/labels", s.taskHandler.AddLabel, auth.ProjectRoleMiddleware("member"))
+				projectGroup.DELETE("/tasks/:taskNum/labels/:labelId", s.taskHandler.RemoveLabel, auth.ProjectRoleMiddleware("member"))
+			}
+
+			// Comments and Activity
+			if s.commentHandler != nil {
+				projectGroup.GET("/tasks/:taskNum/comments", s.commentHandler.ListComments)
+				projectGroup.POST("/tasks/:taskNum/comments", s.commentHandler.CreateComment, auth.ProjectRoleMiddleware("member"))
+				projectGroup.PATCH("/tasks/:taskNum/comments/:commentId", s.commentHandler.UpdateComment, auth.ProjectRoleMiddleware("member"))
+				projectGroup.DELETE("/tasks/:taskNum/comments/:commentId", s.commentHandler.DeleteComment, auth.ProjectRoleMiddleware("member"))
+
+				// Activity log
+				projectGroup.GET("/tasks/:taskNum/activity", s.commentHandler.GetActivity)
+				projectGroup.GET("/tasks/:taskNum/activity/verify", s.commentHandler.VerifyActivity)
+			}
+		}
 
 		// Admin routes (requires auth + admin)
 		admin := api.Group("/admin", auth.Middleware(s.authManager), auth.AdminMiddleware())

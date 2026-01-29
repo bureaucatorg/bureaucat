@@ -5,15 +5,19 @@ import (
 	"database/sql"
 	"fmt"
 	"io/fs"
+	"os"
+	"strconv"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/labstack/echo/v5"
 	"github.com/labstack/echo/v5/middleware"
 	_ "github.com/lib/pq"
 
+	"bereaucat/internal/activity"
 	"bereaucat/internal/auth"
 	"bereaucat/internal/handlers"
 	"bereaucat/internal/store"
+	"bereaucat/internal/uploads"
 )
 
 // AuthConfig holds authentication configuration
@@ -25,15 +29,21 @@ type AuthConfig struct {
 
 // Server wraps the Echo server with application configuration
 type Server struct {
-	echo         *echo.Echo
-	devMode      bool
-	db           *sql.DB
-	pool         *pgxpool.Pool
-	store        store.Querier
-	authManager  *auth.Manager
-	authHandler  *handlers.AuthHandler
-	adminHandler *handlers.AdminHandler
-	distFS       fs.FS
+	echo            *echo.Echo
+	devMode         bool
+	db              *sql.DB
+	pool            *pgxpool.Pool
+	store           store.Querier
+	authManager     *auth.Manager
+	authHandler     *handlers.AuthHandler
+	adminHandler    *handlers.AdminHandler
+	uploadHandler   *handlers.UploadHandler
+	projectHandler  *handlers.ProjectHandler
+	taskHandler     *handlers.TaskHandler
+	commentHandler  *handlers.CommentHandler
+	activityService *activity.Service
+	uploadService   *uploads.Service
+	distFS          fs.FS
 }
 
 // New creates a new Server instance
@@ -76,10 +86,39 @@ func New(devMode bool, dbURL string, authConfig AuthConfig, distFS fs.FS) (*Serv
 		RefreshTokenExpiryDays: authConfig.RefreshTokenExpiryDays,
 	})
 
-	// Initialize auth handler
+	// Initialize handlers
 	if srv.store != nil {
 		srv.authHandler = handlers.NewAuthHandler(srv.store, srv.authManager, devMode)
 		srv.adminHandler = handlers.NewAdminHandler(srv.store, srv.authManager, devMode)
+
+		// Initialize upload service
+		uploadsDir := os.Getenv("UPLOADS_DIR")
+		if uploadsDir == "" {
+			uploadsDir = "./uploads"
+		}
+		maxUploadSize := int64(5 * 1024 * 1024) // 5MB default
+		if sizeStr := os.Getenv("MAX_UPLOAD_SIZE"); sizeStr != "" {
+			if size, err := strconv.ParseInt(sizeStr, 10, 64); err == nil {
+				maxUploadSize = size
+			}
+		}
+		uploadService, err := uploads.NewService(uploads.Config{
+			UploadsDir:  uploadsDir,
+			MaxFileSize: maxUploadSize,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to create upload service: %w", err)
+		}
+		srv.uploadService = uploadService
+		srv.uploadHandler = handlers.NewUploadHandler(srv.store, uploadService)
+
+		// Initialize activity service
+		srv.activityService = activity.NewService(srv.store)
+
+		// Initialize project and task handlers
+		srv.projectHandler = handlers.NewProjectHandler(srv.store)
+		srv.taskHandler = handlers.NewTaskHandler(srv.store, srv.activityService)
+		srv.commentHandler = handlers.NewCommentHandler(srv.store, srv.activityService)
 	}
 
 	// Register routes

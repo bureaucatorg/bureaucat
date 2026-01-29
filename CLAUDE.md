@@ -52,7 +52,6 @@ bureaucat/
 │   ├── nuxt.config.ts
 │   └── components.json      # shadcn-nuxt config
 │
-├── Makefile                 # Build targets
 ├── Dockerfile               # Production multi-stage build
 ├── docker-compose.yml       # Development environment
 ├── docker-compose.prod.yml  # Production environment

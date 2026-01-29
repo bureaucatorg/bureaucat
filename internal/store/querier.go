@@ -11,21 +11,91 @@ import (
 )
 
 type Querier interface {
+	// ==================== PROJECT MEMBERS ====================
+	AddProjectMember(ctx context.Context, arg AddProjectMemberParams) (ProjectMember, error)
+	// ==================== TASK ASSIGNEES ====================
+	AddTaskAssignee(ctx context.Context, arg AddTaskAssigneeParams) (TaskAssignee, error)
+	// ==================== TASK LABELS ====================
+	AddTaskLabel(ctx context.Context, arg AddTaskLabelParams) error
 	CountActiveRefreshTokens(ctx context.Context) (int64, error)
+	CountProjectMembers(ctx context.Context, projectID uuid.UUID) (int64, error)
+	CountProjectTasks(ctx context.Context, projectID uuid.UUID) (int64, error)
+	CountProjectTasksFiltered(ctx context.Context, arg CountProjectTasksFilteredParams) (int64, error)
+	CountTaskComments(ctx context.Context, taskID uuid.UUID) (int64, error)
+	CountTasksInState(ctx context.Context, stateID uuid.UUID) (int64, error)
+	CountUserProjects(ctx context.Context, userID uuid.UUID) (int64, error)
 	CountUsers(ctx context.Context) (int64, error)
+	// ==================== ACTIVITY LOG ====================
+	CreateActivityLog(ctx context.Context, arg CreateActivityLogParams) (ActivityLog, error)
+	// ==================== COMMENTS ====================
+	CreateComment(ctx context.Context, arg CreateCommentParams) (Comment, error)
+	// ==================== PROJECTS ====================
+	CreateProject(ctx context.Context, arg CreateProjectParams) (Project, error)
+	// ==================== PROJECT LABELS ====================
+	CreateProjectLabel(ctx context.Context, arg CreateProjectLabelParams) (ProjectLabel, error)
+	// ==================== PROJECT STATES ====================
+	CreateProjectState(ctx context.Context, arg CreateProjectStateParams) (ProjectState, error)
 	CreateRefreshToken(ctx context.Context, arg CreateRefreshTokenParams) (RefreshToken, error)
+	// ==================== TASKS ====================
+	CreateTask(ctx context.Context, arg CreateTaskParams) (Task, error)
+	CreateUpload(ctx context.Context, arg CreateUploadParams) (Upload, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (CreateUserRow, error)
 	DeleteExpiredRefreshTokens(ctx context.Context) (int64, error)
+	DeleteProjectLabel(ctx context.Context, id uuid.UUID) error
+	DeleteProjectState(ctx context.Context, id uuid.UUID) error
+	DeleteUpload(ctx context.Context, id uuid.UUID) error
 	DeleteUserByID(ctx context.Context, id uuid.UUID) error
+	GetCommentByID(ctx context.Context, id uuid.UUID) (GetCommentByIDRow, error)
+	GetDefaultProjectState(ctx context.Context, projectID uuid.UUID) (ProjectState, error)
+	GetLastActivityChecksum(ctx context.Context, taskID uuid.UUID) (string, error)
+	GetNextTaskNumber(ctx context.Context, projectID uuid.UUID) (int32, error)
+	GetProjectByID(ctx context.Context, id uuid.UUID) (Project, error)
+	GetProjectByKey(ctx context.Context, projectKey string) (Project, error)
+	GetProjectLabelByID(ctx context.Context, id uuid.UUID) (ProjectLabel, error)
+	GetProjectMember(ctx context.Context, arg GetProjectMemberParams) (GetProjectMemberRow, error)
+	GetProjectMemberRole(ctx context.Context, arg GetProjectMemberRoleParams) (string, error)
+	GetProjectStateByID(ctx context.Context, id uuid.UUID) (ProjectState, error)
 	GetRefreshTokenByHash(ctx context.Context, tokenHash string) (RefreshToken, error)
 	GetRefreshTokenByID(ctx context.Context, id uuid.UUID) (RefreshToken, error)
+	GetTaskByID(ctx context.Context, id uuid.UUID) (GetTaskByIDRow, error)
+	GetTaskByProjectAndNumber(ctx context.Context, arg GetTaskByProjectAndNumberParams) (GetTaskByProjectAndNumberRow, error)
+	GetUploadByID(ctx context.Context, id uuid.UUID) (Upload, error)
 	GetUserByEmailOrUsername(ctx context.Context, email string) (User, error)
 	GetUserByID(ctx context.Context, id uuid.UUID) (GetUserByIDRow, error)
+	HasTaskLabel(ctx context.Context, arg HasTaskLabelParams) (bool, error)
+	IsProjectMember(ctx context.Context, arg IsProjectMemberParams) (bool, error)
+	IsTaskAssignee(ctx context.Context, arg IsTaskAssigneeParams) (bool, error)
 	ListActiveRefreshTokens(ctx context.Context, arg ListActiveRefreshTokensParams) ([]ListActiveRefreshTokensRow, error)
+	ListProjectLabels(ctx context.Context, projectID uuid.UUID) ([]ProjectLabel, error)
+	ListProjectMembers(ctx context.Context, projectID uuid.UUID) ([]ListProjectMembersRow, error)
+	ListProjectStates(ctx context.Context, projectID uuid.UUID) ([]ProjectState, error)
+	ListProjectTasks(ctx context.Context, arg ListProjectTasksParams) ([]ListProjectTasksRow, error)
+	ListProjectTasksFiltered(ctx context.Context, arg ListProjectTasksFilteredParams) ([]ListProjectTasksFilteredRow, error)
+	ListTaskActivity(ctx context.Context, taskID uuid.UUID) ([]ListTaskActivityRow, error)
+	ListTaskAssignees(ctx context.Context, taskID uuid.UUID) ([]ListTaskAssigneesRow, error)
+	ListTaskComments(ctx context.Context, taskID uuid.UUID) ([]ListTaskCommentsRow, error)
+	ListTaskLabels(ctx context.Context, taskID uuid.UUID) ([]ListTaskLabelsRow, error)
+	ListTasksByAssignee(ctx context.Context, arg ListTasksByAssigneeParams) ([]ListTasksByAssigneeRow, error)
+	ListUploadsByUser(ctx context.Context, arg ListUploadsByUserParams) ([]Upload, error)
+	ListUserProjects(ctx context.Context, arg ListUserProjectsParams) ([]ListUserProjectsRow, error)
 	ListUsersPaginated(ctx context.Context, arg ListUsersPaginatedParams) ([]ListUsersPaginatedRow, error)
+	ProjectKeyExists(ctx context.Context, projectKey string) (bool, error)
+	RemoveProjectMember(ctx context.Context, arg RemoveProjectMemberParams) error
+	RemoveTaskAssignee(ctx context.Context, arg RemoveTaskAssigneeParams) error
+	RemoveTaskLabel(ctx context.Context, arg RemoveTaskLabelParams) error
 	RevokeAllUserRefreshTokens(ctx context.Context, userID uuid.UUID) error
 	RevokeRefreshToken(ctx context.Context, id uuid.UUID) error
+	SoftDeleteComment(ctx context.Context, id uuid.UUID) error
+	SoftDeleteProject(ctx context.Context, id uuid.UUID) error
+	SoftDeleteTask(ctx context.Context, id uuid.UUID) error
+	UpdateComment(ctx context.Context, arg UpdateCommentParams) (Comment, error)
+	UpdateProject(ctx context.Context, arg UpdateProjectParams) (Project, error)
+	UpdateProjectLabel(ctx context.Context, arg UpdateProjectLabelParams) (ProjectLabel, error)
+	UpdateProjectMemberRole(ctx context.Context, arg UpdateProjectMemberRoleParams) error
+	UpdateProjectState(ctx context.Context, arg UpdateProjectStateParams) (ProjectState, error)
+	UpdateTask(ctx context.Context, arg UpdateTaskParams) (Task, error)
 	UserExistsByEmailOrUsername(ctx context.Context, arg UserExistsByEmailOrUsernameParams) (bool, error)
+	VerifyActivityChain(ctx context.Context, taskID uuid.UUID) ([]ActivityLog, error)
 }
 
 var _ Querier = (*Queries)(nil)

@@ -12,6 +12,145 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type ActivityType string
+
+const (
+	ActivityTypeTaskCreated     ActivityType = "task_created"
+	ActivityTypeTaskUpdated     ActivityType = "task_updated"
+	ActivityTypeTaskDeleted     ActivityType = "task_deleted"
+	ActivityTypeAssigneeAdded   ActivityType = "assignee_added"
+	ActivityTypeAssigneeRemoved ActivityType = "assignee_removed"
+	ActivityTypeLabelAdded      ActivityType = "label_added"
+	ActivityTypeLabelRemoved    ActivityType = "label_removed"
+	ActivityTypeStateChanged    ActivityType = "state_changed"
+	ActivityTypeCommentCreated  ActivityType = "comment_created"
+	ActivityTypeCommentUpdated  ActivityType = "comment_updated"
+	ActivityTypeCommentDeleted  ActivityType = "comment_deleted"
+)
+
+func (e *ActivityType) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = ActivityType(s)
+	case string:
+		*e = ActivityType(s)
+	default:
+		return fmt.Errorf("unsupported scan type for ActivityType: %T", src)
+	}
+	return nil
+}
+
+type NullActivityType struct {
+	ActivityType ActivityType `json:"activity_type"`
+	Valid        bool         `json:"valid"` // Valid is true if ActivityType is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullActivityType) Scan(value interface{}) error {
+	if value == nil {
+		ns.ActivityType, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.ActivityType.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullActivityType) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.ActivityType), nil
+}
+
+type ProjectRole string
+
+const (
+	ProjectRoleGuest  ProjectRole = "guest"
+	ProjectRoleMember ProjectRole = "member"
+	ProjectRoleAdmin  ProjectRole = "admin"
+)
+
+func (e *ProjectRole) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = ProjectRole(s)
+	case string:
+		*e = ProjectRole(s)
+	default:
+		return fmt.Errorf("unsupported scan type for ProjectRole: %T", src)
+	}
+	return nil
+}
+
+type NullProjectRole struct {
+	ProjectRole ProjectRole `json:"project_role"`
+	Valid       bool        `json:"valid"` // Valid is true if ProjectRole is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullProjectRole) Scan(value interface{}) error {
+	if value == nil {
+		ns.ProjectRole, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.ProjectRole.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullProjectRole) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.ProjectRole), nil
+}
+
+type StateType string
+
+const (
+	StateTypeBacklog   StateType = "backlog"
+	StateTypeUnstarted StateType = "unstarted"
+	StateTypeStarted   StateType = "started"
+	StateTypeCompleted StateType = "completed"
+	StateTypeCancelled StateType = "cancelled"
+)
+
+func (e *StateType) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = StateType(s)
+	case string:
+		*e = StateType(s)
+	default:
+		return fmt.Errorf("unsupported scan type for StateType: %T", src)
+	}
+	return nil
+}
+
+type NullStateType struct {
+	StateType StateType `json:"state_type"`
+	Valid     bool      `json:"valid"` // Valid is true if StateType is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullStateType) Scan(value interface{}) error {
+	if value == nil {
+		ns.StateType, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.StateType.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullStateType) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.StateType), nil
+}
+
 type UserType string
 
 const (
@@ -54,6 +193,69 @@ func (ns NullUserType) Value() (driver.Value, error) {
 	return string(ns.UserType), nil
 }
 
+type ActivityLog struct {
+	ID           uuid.UUID          `json:"id"`
+	TaskID       uuid.UUID          `json:"task_id"`
+	ActivityType string             `json:"activity_type"`
+	ActorID      uuid.UUID          `json:"actor_id"`
+	FieldName    pgtype.Text        `json:"field_name"`
+	OldValue     []byte             `json:"old_value"`
+	NewValue     []byte             `json:"new_value"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	Checksum     string             `json:"checksum"`
+}
+
+type Comment struct {
+	ID        uuid.UUID          `json:"id"`
+	TaskID    uuid.UUID          `json:"task_id"`
+	Content   string             `json:"content"`
+	Version   int32              `json:"version"`
+	CreatedBy uuid.UUID          `json:"created_by"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+	DeletedAt pgtype.Timestamptz `json:"deleted_at"`
+}
+
+type Project struct {
+	ID          uuid.UUID          `json:"id"`
+	ProjectKey  string             `json:"project_key"`
+	Name        string             `json:"name"`
+	Description pgtype.Text        `json:"description"`
+	IconID      pgtype.UUID        `json:"icon_id"`
+	CoverID     pgtype.UUID        `json:"cover_id"`
+	CreatedBy   uuid.UUID          `json:"created_by"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+	DeletedAt   pgtype.Timestamptz `json:"deleted_at"`
+}
+
+type ProjectLabel struct {
+	ID        uuid.UUID          `json:"id"`
+	ProjectID uuid.UUID          `json:"project_id"`
+	Name      string             `json:"name"`
+	Color     pgtype.Text        `json:"color"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}
+
+type ProjectMember struct {
+	ID        uuid.UUID          `json:"id"`
+	ProjectID uuid.UUID          `json:"project_id"`
+	UserID    uuid.UUID          `json:"user_id"`
+	Role      string             `json:"role"`
+	JoinedAt  pgtype.Timestamptz `json:"joined_at"`
+}
+
+type ProjectState struct {
+	ID        uuid.UUID          `json:"id"`
+	ProjectID uuid.UUID          `json:"project_id"`
+	StateType string             `json:"state_type"`
+	Name      string             `json:"name"`
+	Color     pgtype.Text        `json:"color"`
+	Position  int32              `json:"position"`
+	IsDefault bool               `json:"is_default"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}
+
 type RefreshToken struct {
 	ID        uuid.UUID          `json:"id"`
 	UserID    uuid.UUID          `json:"user_id"`
@@ -61,6 +263,45 @@ type RefreshToken struct {
 	ExpiresAt pgtype.Timestamptz `json:"expires_at"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
 	RevokedAt pgtype.Timestamptz `json:"revoked_at"`
+}
+
+type Task struct {
+	ID          uuid.UUID          `json:"id"`
+	ProjectID   uuid.UUID          `json:"project_id"`
+	TaskNumber  int32              `json:"task_number"`
+	Title       string             `json:"title"`
+	Description pgtype.Text        `json:"description"`
+	StateID     uuid.UUID          `json:"state_id"`
+	Priority    int32              `json:"priority"`
+	CreatedBy   uuid.UUID          `json:"created_by"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+	DeletedAt   pgtype.Timestamptz `json:"deleted_at"`
+}
+
+type TaskAssignee struct {
+	ID         uuid.UUID          `json:"id"`
+	TaskID     uuid.UUID          `json:"task_id"`
+	UserID     uuid.UUID          `json:"user_id"`
+	AssignedAt pgtype.Timestamptz `json:"assigned_at"`
+	AssignedBy uuid.UUID          `json:"assigned_by"`
+}
+
+type TaskLabel struct {
+	TaskID  uuid.UUID          `json:"task_id"`
+	LabelID uuid.UUID          `json:"label_id"`
+	AddedAt pgtype.Timestamptz `json:"added_at"`
+	AddedBy uuid.UUID          `json:"added_by"`
+}
+
+type Upload struct {
+	ID         uuid.UUID          `json:"id"`
+	Filename   string             `json:"filename"`
+	StoredName string             `json:"stored_name"`
+	MimeType   string             `json:"mime_type"`
+	SizeBytes  int64              `json:"size_bytes"`
+	UploadedBy uuid.UUID          `json:"uploaded_by"`
+	CreatedAt  pgtype.Timestamptz `json:"created_at"`
 }
 
 type User struct {
