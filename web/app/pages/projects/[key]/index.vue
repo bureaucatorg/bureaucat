@@ -16,7 +16,25 @@ definePageMeta({
 });
 
 const route = useRoute();
+const router = useRouter();
 const projectKey = computed(() => route.params.key as string);
+
+// Valid tab values
+const validTabs = ["tasks", "board", "members", "settings"] as const;
+type TabValue = (typeof validTabs)[number];
+
+// Get tab from URL query, default to "tasks"
+const activeTab = computed({
+  get: () => {
+    const tab = route.query.tab as string;
+    return validTabs.includes(tab as TabValue) ? tab : "tasks";
+  },
+  set: (value: string) => {
+    router.replace({
+      query: { ...route.query, tab: value === "tasks" ? undefined : value },
+    });
+  },
+});
 
 const {
   currentProject,
@@ -40,7 +58,6 @@ const {
 
 const loading = ref(true);
 const error = ref<string | null>(null);
-const activeTab = ref("tasks");
 const taskFilters = ref<TaskFilters>({});
 const showCreateTask = ref(false);
 const showAddMember = ref(false);
@@ -309,6 +326,10 @@ onMounted(() => {
                 :is-admin="isAdmin"
                 @refresh="listLabels(projectKey)"
               />
+
+              <Separator />
+
+              <ProjectDangerZone :project="currentProject" />
             </TabsContent>
           </Tabs>
         </template>
