@@ -7,12 +7,20 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"path/filepath"
+	"strconv"
 	"syscall"
 
 	"bereaucat/internal/server"
 
 	"github.com/urfave/cli/v3"
 )
+
+// PidFile is the location of the serve process PID file
+var PidFile = filepath.Join(os.TempDir(), "bureaucat-serve.pid")
+
+// NuxtPidFile is the location of the Nuxt process PID file
+var NuxtPidFile = filepath.Join(os.TempDir(), "bureaucat-nuxt.pid")
 
 // DistFS is set by the main package to provide embedded static files
 var DistFS fs.FS
@@ -72,9 +80,28 @@ func ServeCommand() *cli.Command {
 
 			addr := fmt.Sprintf("%s:%d", host, port)
 
+			// Write serve PID file
+			if err := os.WriteFile(PidFile, []byte(strconv.Itoa(os.Getpid())), 0644); err != nil {
+				fmt.Printf("Warning: could not write PID file: %v\n", err)
+			}
+			defer os.Remove(PidFile)
+
 			var nuxtCmd *exec.Cmd
-			if dev {
-				// Start Nuxt dev server
+			var nuxtMu = make(chan struct{}, 1)
+			nuxtMu <- struct{}{} // Initialize mutex
+
+			startNuxt := func() error {
+				<-nuxtMu // Lock
+				defer func() { nuxtMu <- struct{}{} }() // Unlock
+
+				// Stop existing Nuxt if running
+				if nuxtCmd != nil && nuxtCmd.Process != nil {
+					fmt.Println("Stopping existing Nuxt dev server...")
+					nuxtCmd.Process.Signal(syscall.SIGTERM)
+					nuxtCmd.Wait()
+				}
+
+				// Start new Nuxt dev server
 				nuxtCmd = exec.Command("bun", "run", "dev")
 				nuxtCmd.Dir = "web"
 				nuxtCmd.Stdout = os.Stdout
@@ -84,7 +111,19 @@ func ServeCommand() *cli.Command {
 					return fmt.Errorf("failed to start Nuxt dev server: %w", err)
 				}
 
+				// Write Nuxt PID file
+				if err := os.WriteFile(NuxtPidFile, []byte(strconv.Itoa(nuxtCmd.Process.Pid)), 0644); err != nil {
+					fmt.Printf("Warning: could not write Nuxt PID file: %v\n", err)
+				}
+
 				fmt.Println("Started Nuxt dev server")
+				return nil
+			}
+
+			if dev {
+				if err := startNuxt(); err != nil {
+					return err
+				}
 			}
 
 			// Start the Echo server
@@ -105,21 +144,34 @@ func ServeCommand() *cli.Command {
 				return fmt.Errorf("failed to create server: %w", err)
 			}
 
-			// Handle graceful shutdown
+			// Handle signals
 			sigChan := make(chan os.Signal, 1)
-			signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+			signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM, syscall.SIGUSR1)
 
 			go func() {
-				<-sigChan
-				fmt.Println("\nShutting down...")
+				for sig := range sigChan {
+					switch sig {
+					case syscall.SIGUSR1:
+						// Restart Nuxt dev server
+						if dev {
+							fmt.Println("\nReceived SIGUSR1, restarting Nuxt dev server...")
+							if err := startNuxt(); err != nil {
+								fmt.Printf("Error restarting Nuxt: %v\n", err)
+							}
+						}
+					case syscall.SIGINT, syscall.SIGTERM:
+						fmt.Println("\nShutting down...")
 
-				if nuxtCmd != nil && nuxtCmd.Process != nil {
-					nuxtCmd.Process.Signal(syscall.SIGTERM)
-					nuxtCmd.Wait()
+						if nuxtCmd != nil && nuxtCmd.Process != nil {
+							nuxtCmd.Process.Signal(syscall.SIGTERM)
+							nuxtCmd.Wait()
+						}
+						os.Remove(NuxtPidFile)
+
+						srv.Close()
+						os.Exit(0)
+					}
 				}
-
-				srv.Close()
-				os.Exit(0)
 			}()
 
 			return srv.Start(addr)

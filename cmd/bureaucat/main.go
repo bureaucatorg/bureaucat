@@ -33,6 +33,7 @@ func main() {
 		Commands: []*ucli.Command{
 			cli.ServeCommand(),
 			cli.MigrateCommand(),
+			cli.NuxtCommand(),
 		},
 	}
 
