@@ -225,7 +225,7 @@ onMounted(() => {
     <Navbar />
 
     <main class="flex-1">
-      <div class="mx-auto max-w-5xl px-6 py-8">
+      <div class="mx-auto max-w-6xl px-6 py-8">
         <!-- Loading -->
         <div v-if="loading" class="flex items-center justify-center py-20">
           <Loader2 class="size-8 animate-spin text-muted-foreground" />
@@ -263,143 +263,169 @@ onMounted(() => {
             </span>
           </div>
 
-          <div class="max-w-3xl space-y-6">
-            <!-- Title -->
-            <div>
-              <div v-if="editingTitle" class="space-y-2">
-                <Input
-                  v-model="editTitle"
-                  class="text-xl font-bold"
-                  :disabled="updating"
-                  @keydown.enter="saveTitle"
-                  @keydown.escape="cancelEditTitle"
-                />
-                <div class="flex gap-2">
-                  <Button size="sm" :disabled="updating" @click="saveTitle">
-                    <Loader2 v-if="updating" class="mr-1.5 size-3 animate-spin" />
-                    <Check v-else class="mr-1.5 size-3" />
-                    Save
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
+          <div class="flex flex-col gap-8 md:flex-row">
+            <!-- Main content -->
+            <div class="min-w-0 flex-1 space-y-6">
+              <!-- Title -->
+              <div>
+                <div v-if="editingTitle" class="space-y-2">
+                  <Input
+                    v-model="editTitle"
+                    class="text-xl font-bold"
                     :disabled="updating"
-                    @click="cancelEditTitle"
-                  >
-                    <X class="mr-1.5 size-3" />
-                    Cancel
-                  </Button>
+                    @keydown.enter="saveTitle"
+                    @keydown.escape="cancelEditTitle"
+                  />
+                  <div class="flex gap-2">
+                    <Button size="sm" :disabled="updating" @click="saveTitle">
+                      <Loader2 v-if="updating" class="mr-1.5 size-3 animate-spin" />
+                      <Check v-else class="mr-1.5 size-3" />
+                      Save
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      :disabled="updating"
+                      @click="cancelEditTitle"
+                    >
+                      <X class="mr-1.5 size-3" />
+                      Cancel
+                    </Button>
+                  </div>
                 </div>
-              </div>
-              <div v-else class="group flex items-start gap-2">
-                <h1 class="text-2xl font-bold">{{ currentTask.title }}</h1>
-                <Button
-                  v-if="isMember"
-                  variant="ghost"
-                  size="icon"
-                  class="mt-1 size-7 opacity-0 transition-opacity group-hover:opacity-100"
-                  @click="startEditTitle"
-                >
-                  <Pencil class="size-3.5" />
-                </Button>
-              </div>
-            </div>
-
-            <!-- Description -->
-            <div>
-              <h3 class="mb-2 text-sm font-medium text-muted-foreground">
-                Description
-              </h3>
-              <div v-if="editingDescription" class="space-y-2">
-                <Textarea
-                  v-model="editDescription"
-                  rows="4"
-                  :disabled="updating"
-                  placeholder="Add a description..."
-                />
-                <div class="flex gap-2">
-                  <Button size="sm" :disabled="updating" @click="saveDescription">
-                    <Loader2 v-if="updating" class="mr-1.5 size-3 animate-spin" />
-                    <Check v-else class="mr-1.5 size-3" />
-                    Save
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    :disabled="updating"
-                    @click="cancelEditDescription"
-                  >
-                    <X class="mr-1.5 size-3" />
-                    Cancel
-                  </Button>
-                </div>
-              </div>
-              <div v-else class="group">
-                <div
-                  v-if="currentTask.description"
-                  class="flex items-start gap-2"
-                >
-                  <p class="whitespace-pre-wrap text-sm">
-                    {{ currentTask.description }}
-                  </p>
+                <div v-else class="group flex items-start gap-2">
+                  <h1 class="text-2xl font-bold">{{ currentTask.title }}</h1>
                   <Button
                     v-if="isMember"
                     variant="ghost"
                     size="icon"
-                    class="size-7 shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
-                    @click="startEditDescription"
+                    class="mt-1 size-7 opacity-0 transition-opacity group-hover:opacity-100"
+                    @click="startEditTitle"
                   >
                     <Pencil class="size-3.5" />
                   </Button>
                 </div>
-                <button
-                  v-else-if="isMember"
-                  type="button"
-                  class="w-full rounded-lg border border-dashed p-4 text-left text-sm text-muted-foreground hover:border-solid hover:bg-muted/50"
-                  @click="startEditDescription"
-                >
-                  Add a description...
-                </button>
-                <p v-else class="text-sm italic text-muted-foreground">
-                  No description
-                </p>
               </div>
+
+              <!-- Description -->
+              <div>
+                <h3 class="mb-2 text-sm font-medium text-muted-foreground">
+                  Description
+                </h3>
+                <div v-if="editingDescription" class="space-y-2">
+                  <Textarea
+                    v-model="editDescription"
+                    rows="4"
+                    :disabled="updating"
+                    placeholder="Add a description..."
+                  />
+                  <div class="flex gap-2">
+                    <Button size="sm" :disabled="updating" @click="saveDescription">
+                      <Loader2 v-if="updating" class="mr-1.5 size-3 animate-spin" />
+                      <Check v-else class="mr-1.5 size-3" />
+                      Save
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      :disabled="updating"
+                      @click="cancelEditDescription"
+                    >
+                      <X class="mr-1.5 size-3" />
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+                <div v-else class="group">
+                  <div
+                    v-if="currentTask.description"
+                    class="flex items-start gap-2"
+                  >
+                    <p class="whitespace-pre-wrap text-sm">
+                      {{ currentTask.description }}
+                    </p>
+                    <Button
+                      v-if="isMember"
+                      variant="ghost"
+                      size="icon"
+                      class="size-7 shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
+                      @click="startEditDescription"
+                    >
+                      <Pencil class="size-3.5" />
+                    </Button>
+                  </div>
+                  <button
+                    v-else-if="isMember"
+                    type="button"
+                    class="w-full rounded-lg border border-dashed p-4 text-left text-sm text-muted-foreground hover:border-solid hover:bg-muted/50"
+                    @click="startEditDescription"
+                  >
+                    Add a description...
+                  </button>
+                  <p v-else class="text-sm italic text-muted-foreground">
+                    No description
+                  </p>
+                </div>
+              </div>
+
+              <Separator />
+
+              <!-- Activity & Comments Combined -->
+              <TaskActivityFeed
+                :activities="activities"
+                :comments="comments"
+                :project-key="projectKey"
+                :task-num="taskNum"
+                :activities-loading="activitiesLoading"
+                :comments-loading="commentsLoading"
+                :is-member="isMember"
+                @refresh-comments="refreshComments"
+                @refresh-activity="listActivity(projectKey, taskNum)"
+              />
+
+              <!-- Comment Form -->
+              <CommentForm
+                v-if="isMember"
+                :project-key="projectKey"
+                :task-num="taskNum"
+                @created="refreshComments"
+              />
             </div>
 
-            <!-- Task Details Card -->
-            <Card>
-              <CardContent class="grid gap-6 pt-6 sm:grid-cols-2 lg:grid-cols-4">
-                <!-- State -->
-                <div class="space-y-2">
-                  <p class="text-sm font-medium text-muted-foreground">State</p>
-                  <TaskStateSelector
-                    :states="states"
-                    :model-value="currentTask.state_id"
-                    :disabled="!isMember || updating"
-                    @update:model-value="handleStateChange"
-                  />
-                </div>
+            <!-- Sidebar -->
+            <div class="w-full space-y-6 md:w-72 md:shrink-0">
+              <Card>
+                <CardContent class="space-y-6 pt-6">
+                  <!-- State -->
+                  <div class="space-y-2">
+                    <p class="text-sm font-medium text-muted-foreground">State</p>
+                    <TaskStateSelector
+                      :states="states"
+                      :model-value="currentTask.state_id"
+                      :disabled="!isMember || updating"
+                      @update:model-value="handleStateChange"
+                    />
+                  </div>
 
-                <!-- Priority -->
-                <div class="space-y-2">
-                  <p class="text-sm font-medium text-muted-foreground">Priority</p>
-                  <NativeSelect
-                    :model-value="currentTask.priority"
-                    :disabled="!isMember || updating"
-                    @update:model-value="handlePriorityChange(parseInt($event.target.value))"
-                  >
-                    <option
-                      v-for="p in priorityOptions"
-                      :key="p.value"
-                      :value="p.value"
+                  <!-- Priority -->
+                  <div class="space-y-2">
+                    <p class="text-sm font-medium text-muted-foreground">Priority</p>
+                    <NativeSelect
+                      :model-value="currentTask.priority"
+                      :disabled="!isMember || updating"
+                      @update:model-value="handlePriorityChange(parseInt($event.target.value))"
                     >
-                      {{ p.label }}
-                    </option>
-                  </NativeSelect>
-                </div>
+                      <option
+                        v-for="p in priorityOptions"
+                        :key="p.value"
+                        :value="p.value"
+                      >
+                        {{ p.label }}
+                      </option>
+                    </NativeSelect>
+                  </div>
 
-                <!-- Assignees -->
-                <div class="space-y-2">
+                  <!-- Assignees -->
                   <TaskAssignees
                     :assignees="currentTask.assignees || []"
                     :project-key="projectKey"
@@ -408,10 +434,8 @@ onMounted(() => {
                     :is-member="isMember"
                     @refresh="refreshTask"
                   />
-                </div>
 
-                <!-- Labels -->
-                <div class="space-y-2">
+                  <!-- Labels -->
                   <TaskLabels
                     :task-labels="currentTask.labels || []"
                     :project-key="projectKey"
@@ -420,54 +444,37 @@ onMounted(() => {
                     :is-member="isMember"
                     @refresh="refreshTask"
                   />
-                </div>
-              </CardContent>
 
-              <CardFooter class="flex flex-wrap items-center justify-between gap-4 border-t pt-4 text-sm text-muted-foreground">
-                <div class="flex flex-wrap items-center gap-4">
-                  <div class="flex items-center gap-2">
-                    <Calendar class="size-4" />
-                    <span>Created {{ formatDate(currentTask.created_at) }}</span>
+                  <Separator />
+
+                  <!-- Dates -->
+                  <div class="space-y-3 text-sm">
+                    <div class="flex items-center gap-2 text-muted-foreground">
+                      <Calendar class="size-4" />
+                      <span>Created {{ formatDate(currentTask.created_at) }}</span>
+                    </div>
+                    <div class="flex items-center gap-2 text-muted-foreground">
+                      <Clock class="size-4" />
+                      <span>Updated {{ formatDate(currentTask.updated_at) }}</span>
+                    </div>
                   </div>
-                  <div class="flex items-center gap-2">
-                    <Clock class="size-4" />
-                    <span>Updated {{ formatDate(currentTask.updated_at) }}</span>
+
+                  <!-- Delete -->
+                  <div v-if="isAdmin">
+                    <Separator class="mb-4" />
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      class="w-full"
+                      @click="showDeleteConfirm = true"
+                    >
+                      <Trash2 class="mr-2 size-4" />
+                      Delete Task
+                    </Button>
                   </div>
-                </div>
-                <Button
-                  v-if="isAdmin"
-                  variant="destructive"
-                  size="sm"
-                  @click="showDeleteConfirm = true"
-                >
-                  <Trash2 class="mr-2 size-4" />
-                  Delete Task
-                </Button>
-              </CardFooter>
-            </Card>
-
-            <Separator />
-
-            <!-- Activity & Comments Combined -->
-            <TaskActivityFeed
-              :activities="activities"
-              :comments="comments"
-              :project-key="projectKey"
-              :task-num="taskNum"
-              :activities-loading="activitiesLoading"
-              :comments-loading="commentsLoading"
-              :is-member="isMember"
-              @refresh-comments="refreshComments"
-              @refresh-activity="listActivity(projectKey, taskNum)"
-            />
-
-            <!-- Comment Form -->
-            <CommentForm
-              v-if="isMember"
-              :project-key="projectKey"
-              :task-num="taskNum"
-              @created="refreshComments"
-            />
+                </CardContent>
+              </Card>
+            </div>
           </div>
         </template>
 
