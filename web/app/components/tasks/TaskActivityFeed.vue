@@ -217,6 +217,23 @@ function getActivityDetail(activity: ActivityLogEntry): string | null {
 
   return null;
 }
+
+// Get state change details separately for special formatting
+function getStateChangeDetail(activity: ActivityLogEntry): { from: string; to: string } | null {
+  if (activity.activity_type !== "state_changed") return null;
+
+  const oldData = parseActivityValue(activity.old_value);
+  const newData = parseActivityValue(activity.new_value);
+
+  if (oldData?.name && newData?.name) {
+    return {
+      from: oldData.name as string,
+      to: newData.name as string,
+    };
+  }
+
+  return null;
+}
 </script>
 
 <template>
@@ -290,7 +307,11 @@ function getActivityDetail(activity: ActivityLogEntry): string | null {
               </span>
               <span class="text-muted-foreground">
                 {{ " " }}{{ getActivityLabel(item.data) }}
-                <template v-if="getActivityDetail(item.data)">
+                <template v-if="getStateChangeDetail(item.data)">
+                  from <span class="font-medium">{{ getStateChangeDetail(item.data)!.from }}</span>
+                  to <span class="font-medium">{{ getStateChangeDetail(item.data)!.to }}</span>
+                </template>
+                <template v-else-if="getActivityDetail(item.data)">
                   <span class="font-medium">{{ getActivityDetail(item.data) }}</span>
                 </template>
                 <template v-else-if="getFieldLabel(item.data.field_name)">

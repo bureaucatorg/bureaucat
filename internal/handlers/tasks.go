@@ -513,13 +513,21 @@ func (h *TaskHandler) UpdateTask(c *echo.Context) error {
 		})
 	}
 	if stateID.Valid && stateID.Bytes != oldTask.StateID {
+		// Get old and new state names for activity log
+		oldState, _ := h.store.GetProjectStateByID(ctx, oldTask.StateID)
+		newState, _ := h.store.GetProjectStateByID(ctx, uuid.UUID(stateID.Bytes))
 		h.activityService.LogActivity(ctx, activity.LogActivityParams{
 			TaskID:       task.ID,
 			ActivityType: activity.StateChanged,
 			ActorID:      userID,
-			FieldName:    activity.StringPtr("state"),
-			OldValue:     oldTask.StateID.String(),
-			NewValue:     uuid.UUID(stateID.Bytes).String(),
+			OldValue: map[string]interface{}{
+				"state_id": oldTask.StateID.String(),
+				"name":     oldState.Name,
+			},
+			NewValue: map[string]interface{}{
+				"state_id": uuid.UUID(stateID.Bytes).String(),
+				"name":     newState.Name,
+			},
 		})
 	}
 	if req.Priority != nil && int32(*req.Priority) != oldTask.Priority {
