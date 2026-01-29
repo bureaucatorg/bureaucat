@@ -59,6 +59,43 @@ type FeedItem =
   | { type: "activity"; data: ActivityLogEntry; timestamp: Date }
   | { type: "comment"; data: Comment; timestamp: Date };
 
+// Extract comment edit history from activity logs
+interface CommentVersion {
+  content: string;
+  version: number;
+  editedAt: string;
+  editedBy: string;
+}
+
+const commentEditHistory = computed<Map<string, CommentVersion[]>>(() => {
+  const history = new Map<string, CommentVersion[]>();
+
+  for (const activity of props.activities) {
+    if (activity.activity_type === "comment_updated") {
+      const oldData = parseActivityValue(activity.old_value);
+      if (oldData?.comment_id && oldData?.content) {
+        const commentId = oldData.comment_id as string;
+        if (!history.has(commentId)) {
+          history.set(commentId, []);
+        }
+        history.get(commentId)!.push({
+          content: oldData.content as string,
+          version: oldData.version as number,
+          editedAt: activity.created_at,
+          editedBy: `${activity.first_name} ${activity.last_name}`,
+        });
+      }
+    }
+  }
+
+  // Sort each comment's history by version descending (newest first)
+  for (const [, versions] of history) {
+    versions.sort((a, b) => b.version - a.version);
+  }
+
+  return history;
+});
+
 // Merge and sort activities and comments by timestamp
 const feedItems = computed<FeedItem[]>(() => {
   const items: FeedItem[] = [];
@@ -94,6 +131,10 @@ const feedItems = computed<FeedItem[]>(() => {
 
   return items;
 });
+
+function getCommentHistory(commentId: string): CommentVersion[] {
+  return commentEditHistory.value.get(commentId) || [];
+}
 
 const loading = computed(
   () => props.activitiesLoading || props.commentsLoading
@@ -340,6 +381,7 @@ function getStateChangeDetail(activity: ActivityLogEntry): { from: string; to: s
               :project-key="projectKey"
               :task-num="taskNum"
               :can-edit="canEditComment(item.data)"
+              :edit-history="getCommentHistory(item.data.id)"
               compact
               @deleted="emit('refreshComments')"
               @updated="emit('refreshComments')"

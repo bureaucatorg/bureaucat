@@ -1,7 +1,14 @@
 <script setup lang="ts">
-import { MoreHorizontal, Pencil, Trash2, Loader2, Check, X } from "lucide-vue-next";
+import { MoreHorizontal, Pencil, Trash2, Loader2, Check, X, ChevronDown, ChevronUp, History } from "lucide-vue-next";
 import { toast } from "vue-sonner";
 import type { Comment } from "~/types";
+
+interface CommentVersion {
+  content: string;
+  version: number;
+  editedAt: string;
+  editedBy: string;
+}
 
 const props = withDefaults(
   defineProps<{
@@ -10,9 +17,11 @@ const props = withDefaults(
     taskNum: number;
     canEdit: boolean;
     compact?: boolean;
+    editHistory?: CommentVersion[];
   }>(),
   {
     compact: false,
+    editHistory: () => [],
   }
 );
 
@@ -26,6 +35,7 @@ const { updateComment, deleteComment } = useComments();
 const editing = ref(false);
 const editContent = ref("");
 const loading = ref(false);
+const showHistory = ref(false);
 
 function startEdit() {
   editing.value = true;
@@ -139,6 +149,36 @@ function formatDate(dateStr: string): string {
       <!-- Display -->
       <template v-else>
         <p class="whitespace-pre-wrap text-sm">{{ comment.content }}</p>
+
+        <!-- Edit history toggle -->
+        <button
+          v-if="editHistory.length > 0"
+          type="button"
+          class="mt-1 flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+          @click="showHistory = !showHistory"
+        >
+          <History class="size-3" />
+          <span>{{ editHistory.length }} previous version{{ editHistory.length > 1 ? 's' : '' }}</span>
+          <ChevronDown v-if="!showHistory" class="size-3" />
+          <ChevronUp v-else class="size-3" />
+        </button>
+
+        <!-- Edit history -->
+        <div
+          v-if="showHistory && editHistory.length > 0"
+          class="mt-2 space-y-2 border-l-2 border-muted pl-3"
+        >
+          <div
+            v-for="version in editHistory"
+            :key="version.version"
+            class="text-sm"
+          >
+            <p class="text-xs text-muted-foreground">
+              v{{ version.version }} - {{ formatDate(version.editedAt) }}
+            </p>
+            <p class="whitespace-pre-wrap text-muted-foreground">{{ version.content }}</p>
+          </div>
+        </div>
 
         <!-- Actions -->
         <div
