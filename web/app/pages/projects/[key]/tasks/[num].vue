@@ -406,7 +406,7 @@ onMounted(() => {
             </div>
 
             <!-- Sidebar -->
-            <div class="w-full border-border pl-8 md:w-64 md:shrink-0 md:border-l">
+            <div class="w-full border-border pl-8 md:sticky md:top-24 md:w-64 md:shrink-0 md:self-start md:border-l">
               <div class="divide-y divide-border">
                 <!-- State -->
                 <div class="flex items-center justify-between py-3">
