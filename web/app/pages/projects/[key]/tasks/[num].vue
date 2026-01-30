@@ -330,7 +330,7 @@ onMounted(() => {
                 <div v-if="editingDescription" class="space-y-2">
                   <Textarea
                     v-model="editDescription"
-                    rows="4"
+                    rows="20"
                     :disabled="updating"
                     placeholder="Add a description..."
                   />
