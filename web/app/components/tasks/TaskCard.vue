@@ -39,8 +39,8 @@ const priorityInfo = computed(() => PRIORITY_LABELS[props.task.priority] || PRIO
         :style="{ color: task.state_color }"
       />
       <div class="min-w-0 flex-1">
-        <div class="flex items-center gap-2">
-          <span class="font-mono text-xs text-muted-foreground">{{ task.task_id }}</span>
+        <div class="flex items-baseline gap-6">
+          <span class="shrink-0 font-mono text-sm text-muted-foreground">{{ task.task_id }}</span>
           <span class="truncate text-sm font-medium">{{ task.title }}</span>
         </div>
         <div class="mt-1 flex items-center gap-2">
