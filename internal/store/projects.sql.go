@@ -422,6 +422,44 @@ func (q *Queries) CreateTask(ctx context.Context, arg CreateTaskParams) (Task, e
 	return i, err
 }
 
+const createTaskTemplate = `-- name: CreateTaskTemplate :one
+
+INSERT INTO task_templates (project_id, name, title, description, created_by)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING id, project_id, name, title, description, created_by, created_at, updated_at
+`
+
+type CreateTaskTemplateParams struct {
+	ProjectID   uuid.UUID `json:"project_id"`
+	Name        string    `json:"name"`
+	Title       string    `json:"title"`
+	Description string    `json:"description"`
+	CreatedBy   uuid.UUID `json:"created_by"`
+}
+
+// ==================== TASK TEMPLATES ====================
+func (q *Queries) CreateTaskTemplate(ctx context.Context, arg CreateTaskTemplateParams) (TaskTemplate, error) {
+	row := q.db.QueryRow(ctx, createTaskTemplate,
+		arg.ProjectID,
+		arg.Name,
+		arg.Title,
+		arg.Description,
+		arg.CreatedBy,
+	)
+	var i TaskTemplate
+	err := row.Scan(
+		&i.ID,
+		&i.ProjectID,
+		&i.Name,
+		&i.Title,
+		&i.Description,
+		&i.CreatedBy,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const deleteProjectLabel = `-- name: DeleteProjectLabel :exec
 DELETE FROM project_labels WHERE id = $1
 `
@@ -437,6 +475,15 @@ DELETE FROM project_states WHERE id = $1
 
 func (q *Queries) DeleteProjectState(ctx context.Context, id uuid.UUID) error {
 	_, err := q.db.Exec(ctx, deleteProjectState, id)
+	return err
+}
+
+const deleteTaskTemplate = `-- name: DeleteTaskTemplate :exec
+DELETE FROM task_templates WHERE id = $1
+`
+
+func (q *Queries) DeleteTaskTemplate(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, deleteTaskTemplate, id)
 	return err
 }
 
@@ -799,6 +846,26 @@ func (q *Queries) GetTaskByProjectAndNumber(ctx context.Context, arg GetTaskByPr
 		&i.CreatorUsername,
 		&i.CreatorFirstName,
 		&i.CreatorLastName,
+	)
+	return i, err
+}
+
+const getTaskTemplateByID = `-- name: GetTaskTemplateByID :one
+SELECT id, project_id, name, title, description, created_by, created_at, updated_at FROM task_templates WHERE id = $1
+`
+
+func (q *Queries) GetTaskTemplateByID(ctx context.Context, id uuid.UUID) (TaskTemplate, error) {
+	row := q.db.QueryRow(ctx, getTaskTemplateByID, id)
+	var i TaskTemplate
+	err := row.Scan(
+		&i.ID,
+		&i.ProjectID,
+		&i.Name,
+		&i.Title,
+		&i.Description,
+		&i.CreatedBy,
+		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return i, err
 }
@@ -1419,6 +1486,39 @@ func (q *Queries) ListTaskLabels(ctx context.Context, taskID uuid.UUID) ([]ListT
 	return items, nil
 }
 
+const listTaskTemplates = `-- name: ListTaskTemplates :many
+SELECT id, project_id, name, title, description, created_by, created_at, updated_at FROM task_templates WHERE project_id = $1 ORDER BY name ASC
+`
+
+func (q *Queries) ListTaskTemplates(ctx context.Context, projectID uuid.UUID) ([]TaskTemplate, error) {
+	rows, err := q.db.Query(ctx, listTaskTemplates, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []TaskTemplate{}
+	for rows.Next() {
+		var i TaskTemplate
+		if err := rows.Scan(
+			&i.ID,
+			&i.ProjectID,
+			&i.Name,
+			&i.Title,
+			&i.Description,
+			&i.CreatedBy,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listTasksByAssignee = `-- name: ListTasksByAssignee :many
 SELECT t.id, t.project_id, t.task_number, t.title, t.state_id, t.priority,
        p.project_key, ps.name as state_name, ps.state_type
@@ -1826,6 +1926,44 @@ func (q *Queries) UpdateTask(ctx context.Context, arg UpdateTaskParams) (Task, e
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+	)
+	return i, err
+}
+
+const updateTaskTemplate = `-- name: UpdateTaskTemplate :one
+UPDATE task_templates
+SET name = COALESCE($2, name),
+    title = COALESCE($3, title),
+    description = COALESCE($4, description),
+    updated_at = NOW()
+WHERE id = $1
+RETURNING id, project_id, name, title, description, created_by, created_at, updated_at
+`
+
+type UpdateTaskTemplateParams struct {
+	ID          uuid.UUID   `json:"id"`
+	Name        pgtype.Text `json:"name"`
+	Title       pgtype.Text `json:"title"`
+	Description pgtype.Text `json:"description"`
+}
+
+func (q *Queries) UpdateTaskTemplate(ctx context.Context, arg UpdateTaskTemplateParams) (TaskTemplate, error) {
+	row := q.db.QueryRow(ctx, updateTaskTemplate,
+		arg.ID,
+		arg.Name,
+		arg.Title,
+		arg.Description,
+	)
+	var i TaskTemplate
+	err := row.Scan(
+		&i.ID,
+		&i.ProjectID,
+		&i.Name,
+		&i.Title,
+		&i.Description,
+		&i.CreatedBy,
+		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return i, err
 }

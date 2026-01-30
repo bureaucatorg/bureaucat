@@ -300,6 +300,17 @@ type TaskLabel struct {
 	AddedBy uuid.UUID          `json:"added_by"`
 }
 
+type TaskTemplate struct {
+	ID          uuid.UUID          `json:"id"`
+	ProjectID   uuid.UUID          `json:"project_id"`
+	Name        string             `json:"name"`
+	Title       string             `json:"title"`
+	Description string             `json:"description"`
+	CreatedBy   uuid.UUID          `json:"created_by"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+}
+
 type Upload struct {
 	ID         uuid.UUID          `json:"id"`
 	Filename   string             `json:"filename"`

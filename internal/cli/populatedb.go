@@ -425,7 +425,53 @@ func PopulateDBCommand() *cli.Command {
 			}
 
 			// -----------------------------------------------------------------
-			// 8. Helper: sign in as a specific user and return the token.
+			// 8. Create task templates for each project.
+			// -----------------------------------------------------------------
+			fmt.Println("Creating task templates...")
+
+			type templateSpec struct {
+				name string
+				title string
+				desc string
+			}
+
+			projectTemplates := map[string][]templateSpec{
+				"INFRA": {
+					{"Cloud Access Request", "Requesting access to [service/resource]", "## Details\n- **Cloud Provider:** AWS / Azure / GCP\n- **Resource:** \n- **Role/Permission:** \n- **Justification:** \n\n## Duration\n- [ ] Permanent\n- [ ] Temporary (specify end date): "},
+					{"SSH Key Rotation", "Rotate SSH keys for [host/service]", "## Details\n- **Target hosts:** \n- **Reason for rotation:** \n- **Maintenance window:** \n\n## Checklist\n- [ ] Identify all affected keys\n- [ ] Schedule maintenance window\n- [ ] Rotate keys\n- [ ] Verify access\n- [ ] Remove old keys"},
+				},
+				"DATA": {
+					{"Database Access Request", "Requesting access to [database/schema]", "## Details\n- **Database:** \n- **Schema/Table:** \n- **Permission level:** READ / WRITE / ADMIN\n- **Justification:** \n\n## Compliance\n- [ ] Security training completed\n- [ ] DPA signed (if PII involved)"},
+					{"Analytics Tool License", "Requesting [tool] license for [team/purpose]", "## Details\n- **Tool:** \n- **License type:** \n- **Number of seats:** \n- **Business justification:** \n\n## Cost\n- Estimated cost per seat: \n- Budget code: "},
+				},
+				"SEC": {
+					{"Security Tool Access", "Requesting access to [security tool]", "## Details\n- **Tool:** \n- **Access level:** \n- **Justification:** \n\n## Context\n- Related incident (if any): \n- Time sensitivity: Normal / Urgent"},
+					{"Penetration Test Request", "Q[N] penetration test for [target]", "## Scope\n- **Target systems:** \n- **Testing type:** Black box / Grey box / White box\n- **Environment:** Staging / Production (read-only)\n\n## Prerequisites\n- [ ] Rules of engagement signed\n- [ ] Scope document approved\n- [ ] Notification sent to affected teams"},
+				},
+			}
+
+			for projKey, templates := range projectTemplates {
+				for _, t := range templates {
+					resp, err := client.post(
+						fmt.Sprintf("/api/v1/projects/%s/templates", projKey),
+						map[string]string{
+							"name":        t.name,
+							"title":       t.title,
+							"description": t.desc,
+						},
+					)
+					if err != nil {
+						return fmt.Errorf("failed to create template %s for %s: %w", t.name, projKey, err)
+					}
+					if err := discardBody(resp); err != nil {
+						return fmt.Errorf("failed to create template %s for %s: %w", t.name, projKey, err)
+					}
+					fmt.Printf("  [%s] %s\n", projKey, t.name)
+				}
+			}
+
+			// -----------------------------------------------------------------
+			// 9. Helper: sign in as a specific user and return the token.
 			// -----------------------------------------------------------------
 			tokenCache := map[string]string{
 				"admin": client.token,
@@ -451,8 +497,8 @@ func PopulateDBCommand() *cli.Command {
 			}
 
 			// -----------------------------------------------------------------
-			// 9. Create tasks via handler (handler logs activity for creation,
-			//    assignees, and labels automatically).
+			// 10. Create tasks via handler (handler logs activity for creation,
+			//     assignees, and labels automatically).
 			// -----------------------------------------------------------------
 			fmt.Println("Creating tasks...")
 
@@ -600,7 +646,7 @@ func PopulateDBCommand() *cli.Command {
 			}
 
 			// -----------------------------------------------------------------
-			// 10. Create comments (handler logs comment_created activity).
+			// 11. Create comments (handler logs comment_created activity).
 			// -----------------------------------------------------------------
 			fmt.Println("Creating comments...")
 
@@ -707,7 +753,7 @@ func PopulateDBCommand() *cli.Command {
 			}
 
 			// -----------------------------------------------------------------
-			// 11. Backdate timestamps to simulate realistic timing.
+			// 12. Backdate timestamps to simulate realistic timing.
 			//
 			// Tasks, comments, and activity logs all got created_at = NOW().
 			// We shift them backward so the demo data looks like it accumulated

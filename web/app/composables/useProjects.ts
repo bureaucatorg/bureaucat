@@ -4,6 +4,7 @@ import type {
   ProjectMember,
   ProjectState,
   ProjectLabel,
+  TaskTemplate,
   CreateProjectRequest,
   UpdateProjectRequest,
   AddMemberRequest,
@@ -12,6 +13,8 @@ import type {
   UpdateStateRequest,
   CreateLabelRequest,
   UpdateLabelRequest,
+  CreateTemplateRequest,
+  UpdateTemplateRequest,
 } from "~/types";
 
 interface ProjectsState {
@@ -20,6 +23,7 @@ interface ProjectsState {
   members: ProjectMember[];
   states: ProjectState[];
   labels: ProjectLabel[];
+  templates: TaskTemplate[];
   loading: boolean;
   total: number;
   page: number;
@@ -33,6 +37,7 @@ const state = reactive<ProjectsState>({
   members: [],
   states: [],
   labels: [],
+  templates: [],
   loading: false,
   total: 0,
   page: 1,
@@ -454,11 +459,108 @@ export function useProjects() {
     }
   }
 
+  // Templates
+  async function listTemplates(
+    projectKey: string
+  ): Promise<{ success: boolean; data?: TaskTemplate[]; error?: string }> {
+    try {
+      const response = await fetch(`/api/v1/projects/${projectKey}/templates`, {
+        headers: getAuthHeader(),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        return { success: false, error: error.message || "Failed to fetch templates" };
+      }
+
+      const templates: TaskTemplate[] = await response.json();
+      state.templates = templates;
+      return { success: true, data: templates };
+    } catch {
+      return { success: false, error: "Network error" };
+    }
+  }
+
+  async function createTemplate(
+    projectKey: string,
+    data: CreateTemplateRequest
+  ): Promise<{ success: boolean; data?: TaskTemplate; error?: string }> {
+    try {
+      const response = await fetch(`/api/v1/projects/${projectKey}/templates`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...getAuthHeader(),
+        },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        return { success: false, error: error.message || "Failed to create template" };
+      }
+
+      const template: TaskTemplate = await response.json();
+      return { success: true, data: template };
+    } catch {
+      return { success: false, error: "Network error" };
+    }
+  }
+
+  async function updateTemplate(
+    projectKey: string,
+    templateId: string,
+    data: UpdateTemplateRequest
+  ): Promise<{ success: boolean; data?: TaskTemplate; error?: string }> {
+    try {
+      const response = await fetch(`/api/v1/projects/${projectKey}/templates/${templateId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          ...getAuthHeader(),
+        },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        return { success: false, error: error.message || "Failed to update template" };
+      }
+
+      const template: TaskTemplate = await response.json();
+      return { success: true, data: template };
+    } catch {
+      return { success: false, error: "Network error" };
+    }
+  }
+
+  async function deleteTemplate(
+    projectKey: string,
+    templateId: string
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      const response = await fetch(`/api/v1/projects/${projectKey}/templates/${templateId}`, {
+        method: "DELETE",
+        headers: getAuthHeader(),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        return { success: false, error: error.message || "Failed to delete template" };
+      }
+
+      return { success: true };
+    } catch {
+      return { success: false, error: "Network error" };
+    }
+  }
+
   function clearCurrentProject() {
     state.currentProject = null;
     state.members = [];
     state.states = [];
     state.labels = [];
+    state.templates = [];
   }
 
   return {
@@ -468,6 +570,7 @@ export function useProjects() {
     members: computed(() => state.members),
     states: computed(() => state.states),
     labels: computed(() => state.labels),
+    templates: computed(() => state.templates),
     loading: computed(() => state.loading),
     total: computed(() => state.total),
     page: computed(() => state.page),
@@ -498,6 +601,12 @@ export function useProjects() {
     createLabel,
     updateLabel,
     deleteLabel,
+
+    // Templates
+    listTemplates,
+    createTemplate,
+    updateTemplate,
+    deleteTemplate,
 
     // Utils
     clearCurrentProject,

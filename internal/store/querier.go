@@ -39,11 +39,14 @@ type Querier interface {
 	CreateRefreshToken(ctx context.Context, arg CreateRefreshTokenParams) (RefreshToken, error)
 	// ==================== TASKS ====================
 	CreateTask(ctx context.Context, arg CreateTaskParams) (Task, error)
+	// ==================== TASK TEMPLATES ====================
+	CreateTaskTemplate(ctx context.Context, arg CreateTaskTemplateParams) (TaskTemplate, error)
 	CreateUpload(ctx context.Context, arg CreateUploadParams) (Upload, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (CreateUserRow, error)
 	DeleteExpiredRefreshTokens(ctx context.Context) (int64, error)
 	DeleteProjectLabel(ctx context.Context, id uuid.UUID) error
 	DeleteProjectState(ctx context.Context, id uuid.UUID) error
+	DeleteTaskTemplate(ctx context.Context, id uuid.UUID) error
 	DeleteUpload(ctx context.Context, id uuid.UUID) error
 	DeleteUserByID(ctx context.Context, id uuid.UUID) error
 	GetCommentByID(ctx context.Context, id uuid.UUID) (GetCommentByIDRow, error)
@@ -61,6 +64,7 @@ type Querier interface {
 	GetSetting(ctx context.Context, key string) (Setting, error)
 	GetTaskByID(ctx context.Context, id uuid.UUID) (GetTaskByIDRow, error)
 	GetTaskByProjectAndNumber(ctx context.Context, arg GetTaskByProjectAndNumberParams) (GetTaskByProjectAndNumberRow, error)
+	GetTaskTemplateByID(ctx context.Context, id uuid.UUID) (TaskTemplate, error)
 	GetUploadByID(ctx context.Context, id uuid.UUID) (Upload, error)
 	GetUserByEmailOrUsername(ctx context.Context, email string) (User, error)
 	GetUserByID(ctx context.Context, id uuid.UUID) (GetUserByIDRow, error)
@@ -79,6 +83,7 @@ type Querier interface {
 	ListTaskAssignees(ctx context.Context, taskID uuid.UUID) ([]ListTaskAssigneesRow, error)
 	ListTaskComments(ctx context.Context, taskID uuid.UUID) ([]ListTaskCommentsRow, error)
 	ListTaskLabels(ctx context.Context, taskID uuid.UUID) ([]ListTaskLabelsRow, error)
+	ListTaskTemplates(ctx context.Context, projectID uuid.UUID) ([]TaskTemplate, error)
 	ListTasksByAssignee(ctx context.Context, arg ListTasksByAssigneeParams) ([]ListTasksByAssigneeRow, error)
 	ListUploadsByUser(ctx context.Context, arg ListUploadsByUserParams) ([]Upload, error)
 	ListUserProjects(ctx context.Context, arg ListUserProjectsParams) ([]ListUserProjectsRow, error)
@@ -98,6 +103,7 @@ type Querier interface {
 	UpdateProjectMemberRole(ctx context.Context, arg UpdateProjectMemberRoleParams) error
 	UpdateProjectState(ctx context.Context, arg UpdateProjectStateParams) (ProjectState, error)
 	UpdateTask(ctx context.Context, arg UpdateTaskParams) (Task, error)
+	UpdateTaskTemplate(ctx context.Context, arg UpdateTaskTemplateParams) (TaskTemplate, error)
 	UpsertSetting(ctx context.Context, arg UpsertSettingParams) (Setting, error)
 	UserExistsByEmailOrUsername(ctx context.Context, arg UserExistsByEmailOrUsernameParams) (bool, error)
 	VerifyActivityChain(ctx context.Context, taskID uuid.UUID) ([]ActivityLog, error)

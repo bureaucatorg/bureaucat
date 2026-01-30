@@ -895,6 +895,163 @@ func (h *ProjectHandler) DeleteLabel(c *echo.Context) error {
 	return c.JSON(http.StatusOK, map[string]string{"message": "label deleted"})
 }
 
+// TemplateResponse represents a task template in API responses.
+type TemplateResponse struct {
+	ID          uuid.UUID `json:"id"`
+	Name        string    `json:"name"`
+	Title       string    `json:"title"`
+	Description string    `json:"description"`
+	CreatedBy   uuid.UUID `json:"created_by"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+}
+
+// CreateTemplateRequest represents the request to create a template.
+type CreateTemplateRequest struct {
+	Name        string `json:"name"`
+	Title       string `json:"title"`
+	Description string `json:"description"`
+}
+
+// UpdateTemplateRequest represents the request to update a template.
+type UpdateTemplateRequest struct {
+	Name        *string `json:"name"`
+	Title       *string `json:"title"`
+	Description *string `json:"description"`
+}
+
+// ListTemplates returns project task templates.
+func (h *ProjectHandler) ListTemplates(c *echo.Context) error {
+	projectIDStr := c.Request().Header.Get(auth.HeaderProjectID)
+	projectID, err := uuid.Parse(projectIDStr)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "invalid project ID in context")
+	}
+
+	ctx := c.Request().Context()
+
+	templates, err := h.store.ListTaskTemplates(ctx, projectID)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to list templates")
+	}
+
+	templateResponses := make([]TemplateResponse, len(templates))
+	for i, t := range templates {
+		templateResponses[i] = TemplateResponse{
+			ID:          t.ID,
+			Name:        t.Name,
+			Title:       t.Title,
+			Description: t.Description,
+			CreatedBy:   t.CreatedBy,
+			CreatedAt:   t.CreatedAt.Time,
+			UpdatedAt:   t.UpdatedAt.Time,
+		}
+	}
+
+	return c.JSON(http.StatusOK, templateResponses)
+}
+
+// CreateTemplate creates a new task template.
+func (h *ProjectHandler) CreateTemplate(c *echo.Context) error {
+	projectIDStr := c.Request().Header.Get(auth.HeaderProjectID)
+	projectID, err := uuid.Parse(projectIDStr)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "invalid project ID in context")
+	}
+
+	userIDStr := c.Request().Header.Get(auth.HeaderUserID)
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusUnauthorized, "invalid user ID")
+	}
+
+	var req CreateTemplateRequest
+	if err := c.Bind(&req); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid request body")
+	}
+
+	if req.Name == "" {
+		return echo.NewHTTPError(http.StatusBadRequest, "name is required")
+	}
+
+	ctx := c.Request().Context()
+
+	template, err := h.store.CreateTaskTemplate(ctx, store.CreateTaskTemplateParams{
+		ProjectID:   projectID,
+		Name:        req.Name,
+		Title:       req.Title,
+		Description: req.Description,
+		CreatedBy:   userID,
+	})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to create template")
+	}
+
+	return c.JSON(http.StatusCreated, TemplateResponse{
+		ID:          template.ID,
+		Name:        template.Name,
+		Title:       template.Title,
+		Description: template.Description,
+		CreatedBy:   template.CreatedBy,
+		CreatedAt:   template.CreatedAt.Time,
+		UpdatedAt:   template.UpdatedAt.Time,
+	})
+}
+
+// UpdateTemplate updates a task template.
+func (h *ProjectHandler) UpdateTemplate(c *echo.Context) error {
+	templateIDStr := c.Param("templateId")
+	templateID, err := uuid.Parse(templateIDStr)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid template ID")
+	}
+
+	var req UpdateTemplateRequest
+	if err := c.Bind(&req); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid request body")
+	}
+
+	ctx := c.Request().Context()
+
+	template, err := h.store.UpdateTaskTemplate(ctx, store.UpdateTaskTemplateParams{
+		ID:          templateID,
+		Name:        stringToPgtypeText(req.Name),
+		Title:       stringToPgtypeText(req.Title),
+		Description: stringToPgtypeText(req.Description),
+	})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to update template")
+	}
+
+	return c.JSON(http.StatusOK, TemplateResponse{
+		ID:          template.ID,
+		Name:        template.Name,
+		Title:       template.Title,
+		Description: template.Description,
+		CreatedBy:   template.CreatedBy,
+		CreatedAt:   template.CreatedAt.Time,
+		UpdatedAt:   template.UpdatedAt.Time,
+	})
+}
+
+// DeleteTemplate deletes a task template.
+func (h *ProjectHandler) DeleteTemplate(c *echo.Context) error {
+	templateIDStr := c.Param("templateId")
+	templateID, err := uuid.Parse(templateIDStr)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid template ID")
+	}
+
+	ctx := c.Request().Context()
+
+	err = h.store.DeleteTaskTemplate(ctx, templateID)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to delete template")
+	}
+
+	return c.JSON(http.StatusOK, map[string]string{"message": "template deleted"})
+}
+
 // Helper functions for pgtype conversions
 
 func textToStringPtr(t pgtype.Text) *string {

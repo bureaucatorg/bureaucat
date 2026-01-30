@@ -95,3 +95,25 @@ export interface UpdateLabelRequest {
   name?: string;
   color?: string;
 }
+
+export interface TaskTemplate {
+  id: string;
+  name: string;
+  title: string;
+  description: string;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateTemplateRequest {
+  name: string;
+  title: string;
+  description: string;
+}
+
+export interface UpdateTemplateRequest {
+  name?: string;
+  title?: string;
+  description?: string;
+}

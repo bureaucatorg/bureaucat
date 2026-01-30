@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import { Loader2 } from "lucide-vue-next";
 import { toast } from "vue-sonner";
-import type { ProjectState, ProjectLabel, ProjectMember } from "~/types";
+import type { ProjectState, ProjectLabel, ProjectMember, TaskTemplate } from "~/types";
 
 const props = defineProps<{
   projectKey: string;
   states: ProjectState[];
   labels: ProjectLabel[];
   members: ProjectMember[];
+  templates: TaskTemplate[];
 }>();
 
 const open = defineModel<boolean>("open", { default: false });
@@ -20,6 +21,7 @@ const { createTask } = useTasks();
 
 const loading = ref(false);
 const error = ref<string | null>(null);
+const selectedTemplateId = ref("");
 const form = ref({
   title: "",
   description: "",
@@ -40,8 +42,18 @@ function resetForm() {
     assignees: [],
     labels: [],
   };
+  selectedTemplateId.value = "";
   error.value = null;
 }
+
+watch(selectedTemplateId, (id) => {
+  if (!id) return;
+  const tmpl = props.templates.find((t) => t.id === id);
+  if (tmpl) {
+    form.value.title = tmpl.title;
+    form.value.description = tmpl.description;
+  }
+});
 
 watch(open, (isOpen) => {
   if (isOpen) {
@@ -115,6 +127,16 @@ function toggleLabel(labelId: string) {
           class="rounded-md bg-destructive/10 p-3 text-sm text-destructive"
         >
           {{ error }}
+        </div>
+
+        <div v-if="templates.length > 0" class="space-y-2">
+          <Label for="template">Template</Label>
+          <NativeSelect id="template" v-model="selectedTemplateId" :disabled="loading">
+            <option value="">No template</option>
+            <option v-for="tmpl in templates" :key="tmpl.id" :value="tmpl.id">
+              {{ tmpl.name }}
+            </option>
+          </NativeSelect>
         </div>
 
         <div class="space-y-2">

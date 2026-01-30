@@ -41,10 +41,12 @@ const {
   members,
   states,
   labels,
+  templates,
   getProject,
   listMembers,
   listStates,
   listLabels,
+  listTemplates,
 } = useProjects();
 
 const {
@@ -83,6 +85,7 @@ async function loadProject() {
     listMembers(projectKey.value),
     listStates(projectKey.value),
     listLabels(projectKey.value),
+    listTemplates(projectKey.value),
     loadTasks(),
   ]);
 
@@ -111,6 +114,7 @@ async function handleSettingsRefresh() {
     getProject(projectKey.value),
     listStates(projectKey.value),
     listLabels(projectKey.value),
+    listTemplates(projectKey.value),
   ]);
 }
 
@@ -329,6 +333,15 @@ onMounted(() => {
 
               <Separator />
 
+              <TemplatesManager
+                :templates="templates"
+                :project-key="projectKey"
+                :is-admin="isAdmin"
+                @refresh="listTemplates(projectKey)"
+              />
+
+              <Separator />
+
               <ProjectDangerZone :project="currentProject" />
             </TabsContent>
           </Tabs>
@@ -341,6 +354,7 @@ onMounted(() => {
           :states="states"
           :labels="labels"
           :members="members"
+          :templates="templates"
           @created="handleTaskCreated"
         />
 

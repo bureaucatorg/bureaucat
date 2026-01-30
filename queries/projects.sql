@@ -395,3 +395,28 @@ SELECT id, task_id, activity_type, actor_id, field_name, old_value, new_value, c
 FROM activity_log
 WHERE task_id = $1
 ORDER BY created_at ASC;
+
+-- ==================== TASK TEMPLATES ====================
+
+-- name: CreateTaskTemplate :one
+INSERT INTO task_templates (project_id, name, title, description, created_by)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING *;
+
+-- name: GetTaskTemplateByID :one
+SELECT * FROM task_templates WHERE id = $1;
+
+-- name: ListTaskTemplates :many
+SELECT * FROM task_templates WHERE project_id = $1 ORDER BY name ASC;
+
+-- name: UpdateTaskTemplate :one
+UPDATE task_templates
+SET name = COALESCE(sqlc.narg('name'), name),
+    title = COALESCE(sqlc.narg('title'), title),
+    description = COALESCE(sqlc.narg('description'), description),
+    updated_at = NOW()
+WHERE id = $1
+RETURNING *;
+
+-- name: DeleteTaskTemplate :exec
+DELETE FROM task_templates WHERE id = $1;

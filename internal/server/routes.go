@@ -81,6 +81,12 @@ func (s *Server) registerRoutes() {
 			projectGroup.PATCH("/labels/:labelId", s.projectHandler.UpdateLabel, auth.ProjectRoleMiddleware("admin"))
 			projectGroup.DELETE("/labels/:labelId", s.projectHandler.DeleteLabel, auth.ProjectRoleMiddleware("admin"))
 
+			// Task templates
+			projectGroup.GET("/templates", s.projectHandler.ListTemplates)
+			projectGroup.POST("/templates", s.projectHandler.CreateTemplate, auth.ProjectRoleMiddleware("admin"))
+			projectGroup.PATCH("/templates/:templateId", s.projectHandler.UpdateTemplate, auth.ProjectRoleMiddleware("admin"))
+			projectGroup.DELETE("/templates/:templateId", s.projectHandler.DeleteTemplate, auth.ProjectRoleMiddleware("admin"))
+
 			// Tasks
 			if s.taskHandler != nil {
 				projectGroup.GET("/tasks", s.taskHandler.ListTasks)
