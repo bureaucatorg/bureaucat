@@ -24,6 +24,11 @@ func (s *Server) registerRoutes() {
 	api.GET("/health", healthCheck)
 	api.GET("/ht/", s.healthCheckDetailed)
 
+	// Public settings routes
+	if s.settingsHandler != nil {
+		api.GET("/settings/branding", s.settingsHandler.GetBranding)
+	}
+
 	// Auth routes (public)
 	if s.authHandler != nil {
 		api.POST("/signup", s.authHandler.Signup)
@@ -114,6 +119,11 @@ func (s *Server) registerRoutes() {
 		admin.GET("/tokens", s.adminHandler.ListTokens)
 		admin.DELETE("/tokens/:id", s.adminHandler.RevokeToken)
 		admin.DELETE("/tokens/expired", s.adminHandler.CleanupExpiredTokens)
+
+		// Admin settings
+		if s.settingsHandler != nil {
+			admin.PUT("/settings/branding", s.settingsHandler.UpdateBranding)
+		}
 	}
 }
 

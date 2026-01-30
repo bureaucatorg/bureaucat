@@ -265,6 +265,12 @@ type RefreshToken struct {
 	RevokedAt pgtype.Timestamptz `json:"revoked_at"`
 }
 
+type Setting struct {
+	Key       string             `json:"key"`
+	Value     []byte             `json:"value"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+}
+
 type Task struct {
 	ID          uuid.UUID          `json:"id"`
 	ProjectID   uuid.UUID          `json:"project_id"`

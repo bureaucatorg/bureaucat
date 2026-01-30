@@ -1,9 +1,40 @@
 <script setup lang="ts">
-import { Users, Key, Shield, ArrowRight } from "lucide-vue-next";
+import { Users, Key, Shield, ArrowRight, Loader2 } from "lucide-vue-next";
+import { toast } from "vue-sonner";
 
 definePageMeta({
   middleware: ["admin"],
 });
+
+const { branding, updateBranding } = useSettings();
+
+const brandingForm = ref({
+  enabled: branding.value.enabled,
+  app_name: branding.value.app_name,
+});
+
+const savingBranding = ref(false);
+
+// Sync form with branding when it changes
+watch(branding, (newBranding) => {
+  brandingForm.value.enabled = newBranding.enabled;
+  brandingForm.value.app_name = newBranding.app_name;
+}, { immediate: true });
+
+async function handleSaveBranding() {
+  savingBranding.value = true;
+  const result = await updateBranding({
+    enabled: brandingForm.value.enabled,
+    app_name: brandingForm.value.app_name || "Bureaucat",
+  });
+  savingBranding.value = false;
+
+  if (result.success) {
+    toast.success("Branding settings saved");
+  } else {
+    toast.error(result.error || "Failed to save branding settings");
+  }
+}
 
 const adminModels = [
   {
@@ -63,6 +94,55 @@ const adminModels = [
               </CardHeader>
             </Card>
           </NuxtLink>
+        </div>
+
+        <!-- Branding Settings -->
+        <div class="mt-12">
+          <div class="mb-4">
+            <h2 class="text-xl font-semibold">Branding</h2>
+            <p class="text-sm text-muted-foreground">
+              Customize the application name and appearance
+            </p>
+          </div>
+
+          <Card>
+            <CardContent class="pt-6">
+              <div class="space-y-6">
+                <!-- Toggle -->
+                <div class="flex items-center justify-between">
+                  <div>
+                    <p class="font-medium">Hide from the bureaucrats 😾</p>
+                    <p class="text-sm text-muted-foreground">
+                      Replace "Bureaucat" with a custom name
+                    </p>
+                  </div>
+                  <Switch
+                    :checked="brandingForm.enabled"
+                    @update:checked="brandingForm.enabled = $event"
+                  />
+                </div>
+
+                <!-- Custom name input - always visible when toggle is on -->
+                <div v-if="brandingForm.enabled" class="space-y-2">
+                  <Label for="app-name">Custom Application Name</Label>
+                  <Input
+                    id="app-name"
+                    v-model="brandingForm.app_name"
+                    placeholder="Enter a custom name"
+                    :disabled="savingBranding"
+                  />
+                </div>
+
+                <!-- Save button -->
+                <div class="flex justify-end pt-2">
+                  <Button @click="handleSaveBranding">
+                    <Loader2 v-if="savingBranding" class="mr-2 size-4 animate-spin" />
+                    Save Changes
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </main>

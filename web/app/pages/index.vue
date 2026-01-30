@@ -14,6 +14,9 @@ import {
   Bell
 } from "lucide-vue-next";
 
+const { appName } = useSettings();
+const logoLetter = computed(() => appName.value.charAt(0).toUpperCase());
+
 const features = [
   {
     icon: Clock,
@@ -140,7 +143,7 @@ const steps = [
               </div>
               <div class="text-sm">
                 <span class="font-semibold">500+</span>
-                <span class="text-muted-foreground"> teams ship faster with Bureaucat</span>
+                <span class="text-muted-foreground"> teams ship faster with {{ appName }}</span>
               </div>
             </div>
           </div>
@@ -268,9 +271,9 @@ const steps = [
         <div class="flex flex-col items-center justify-between gap-4 md:flex-row">
           <div class="flex items-center gap-3">
             <div class="flex size-6 items-center justify-center rounded bg-foreground">
-              <span class="font-mono text-xs font-bold text-background">B</span>
+              <span class="font-mono text-xs font-bold text-background">{{ logoLetter }}</span>
             </div>
-            <span class="text-sm text-muted-foreground">Bureaucat</span>
+            <span class="text-sm text-muted-foreground">{{ appName }}</span>
           </div>
           <p class="text-center text-sm text-muted-foreground">
             Built with &lt;3

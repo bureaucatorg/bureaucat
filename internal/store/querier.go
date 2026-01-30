@@ -57,6 +57,7 @@ type Querier interface {
 	GetProjectStateByID(ctx context.Context, id uuid.UUID) (ProjectState, error)
 	GetRefreshTokenByHash(ctx context.Context, tokenHash string) (RefreshToken, error)
 	GetRefreshTokenByID(ctx context.Context, id uuid.UUID) (RefreshToken, error)
+	GetSetting(ctx context.Context, key string) (Setting, error)
 	GetTaskByID(ctx context.Context, id uuid.UUID) (GetTaskByIDRow, error)
 	GetTaskByProjectAndNumber(ctx context.Context, arg GetTaskByProjectAndNumberParams) (GetTaskByProjectAndNumberRow, error)
 	GetUploadByID(ctx context.Context, id uuid.UUID) (Upload, error)
@@ -71,6 +72,7 @@ type Querier interface {
 	ListProjectStates(ctx context.Context, projectID uuid.UUID) ([]ProjectState, error)
 	ListProjectTasks(ctx context.Context, arg ListProjectTasksParams) ([]ListProjectTasksRow, error)
 	ListProjectTasksFiltered(ctx context.Context, arg ListProjectTasksFilteredParams) ([]ListProjectTasksFilteredRow, error)
+	ListSettings(ctx context.Context) ([]Setting, error)
 	ListTaskActivity(ctx context.Context, taskID uuid.UUID) ([]ListTaskActivityRow, error)
 	ListTaskAssignees(ctx context.Context, taskID uuid.UUID) ([]ListTaskAssigneesRow, error)
 	ListTaskComments(ctx context.Context, taskID uuid.UUID) ([]ListTaskCommentsRow, error)
@@ -94,6 +96,7 @@ type Querier interface {
 	UpdateProjectMemberRole(ctx context.Context, arg UpdateProjectMemberRoleParams) error
 	UpdateProjectState(ctx context.Context, arg UpdateProjectStateParams) (ProjectState, error)
 	UpdateTask(ctx context.Context, arg UpdateTaskParams) (Task, error)
+	UpsertSetting(ctx context.Context, arg UpsertSettingParams) (Setting, error)
 	UserExistsByEmailOrUsername(ctx context.Context, arg UserExistsByEmailOrUsernameParams) (bool, error)
 	VerifyActivityChain(ctx context.Context, taskID uuid.UUID) ([]ActivityLog, error)
 }

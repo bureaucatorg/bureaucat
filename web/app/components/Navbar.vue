@@ -2,11 +2,15 @@
 import { User, LogOut, LayoutDashboard, FolderKanban, Shield } from "lucide-vue-next";
 
 const { user, isAuthenticated, logout } = useAuth();
+const { appName } = useSettings();
 
 async function handleLogout() {
   await logout();
   await navigateTo("/");
 }
+
+// First letter of app name for logo
+const logoLetter = computed(() => appName.value.charAt(0).toUpperCase());
 </script>
 
 <template>
@@ -14,9 +18,9 @@ async function handleLogout() {
     <div class="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
       <NuxtLink to="/" class="flex items-center gap-3">
         <div class="flex size-8 items-center justify-center rounded-md bg-foreground">
-          <span class="font-mono text-sm font-bold text-background">B</span>
+          <span class="font-mono text-sm font-bold text-background">{{ logoLetter }}</span>
         </div>
-        <span class="font-display text-lg font-semibold tracking-tight">Bureaucat</span>
+        <span class="font-display text-lg font-semibold tracking-tight">{{ appName }}</span>
       </NuxtLink>
 
       <div class="flex items-center gap-4">
