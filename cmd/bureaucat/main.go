@@ -34,6 +34,7 @@ func main() {
 			cli.ServeCommand(),
 			cli.MigrateCommand(),
 			cli.NuxtCommand(),
+			cli.PopulateDBCommand(),
 		},
 	}
 

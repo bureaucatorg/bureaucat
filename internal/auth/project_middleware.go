@@ -43,13 +43,20 @@ func ProjectMiddleware(queryer store.Querier) echo.MiddlewareFunc {
 				return echo.NewHTTPError(http.StatusNotFound, "project not found")
 			}
 
-			// Check if user is a member of the project
-			role, err := queryer.GetProjectMemberRole(ctx, store.GetProjectMemberRoleParams{
-				ProjectID: project.ID,
-				UserID:    userID,
-			})
-			if err != nil {
-				return echo.NewHTTPError(http.StatusForbidden, "access denied: not a project member")
+			// Admin users can access all projects with admin role
+			userType := c.Request().Header.Get(HeaderUserType)
+			var role string
+			if userType == "admin" {
+				role = "admin"
+			} else {
+				// Check if user is a member of the project
+				role, err = queryer.GetProjectMemberRole(ctx, store.GetProjectMemberRoleParams{
+					ProjectID: project.ID,
+					UserID:    userID,
+				})
+				if err != nil {
+					return echo.NewHTTPError(http.StatusForbidden, "access denied: not a project member")
+				}
 			}
 
 			// Set project info in headers for downstream handlers

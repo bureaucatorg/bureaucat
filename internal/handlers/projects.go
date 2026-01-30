@@ -103,37 +103,66 @@ func (h *ProjectHandler) ListProjects(c *echo.Context) error {
 	offset := (page - 1) * perPage
 
 	ctx := c.Request().Context()
+	userType := c.Request().Header.Get(auth.HeaderUserType)
 
-	// Get total count
-	total, err := h.store.CountUserProjects(ctx, userID)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, "failed to count projects")
-	}
+	var total int64
+	var projectResponses []ProjectResponse
 
-	// Get paginated projects
-	projects, err := h.store.ListUserProjects(ctx, store.ListUserProjectsParams{
-		UserID: userID,
-		Limit:  int32(perPage),
-		Offset: int32(offset),
-	})
-	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, "failed to list projects")
-	}
-
-	// Convert to response format
-	projectResponses := make([]ProjectResponse, len(projects))
-	for i, p := range projects {
-		projectResponses[i] = ProjectResponse{
-			ID:          p.ID,
-			ProjectKey:  p.ProjectKey,
-			Name:        p.Name,
-			Description: textToStringPtr(p.Description),
-			IconURL:     pgtypeUUIDToURL(p.IconID),
-			CoverURL:    pgtypeUUIDToURL(p.CoverID),
-			Role:        p.Role,
-			CreatedBy:   p.CreatedBy,
-			CreatedAt:   p.CreatedAt.Time,
-			UpdatedAt:   p.UpdatedAt.Time,
+	if userType == "admin" {
+		// Admin users can see all projects
+		total, err = h.store.CountAllProjects(ctx)
+		if err != nil {
+			return echo.NewHTTPError(http.StatusInternalServerError, "failed to count projects")
+		}
+		projects, err := h.store.ListAllProjects(ctx, store.ListAllProjectsParams{
+			Limit:  int32(perPage),
+			Offset: int32(offset),
+		})
+		if err != nil {
+			return echo.NewHTTPError(http.StatusInternalServerError, "failed to list projects")
+		}
+		projectResponses = make([]ProjectResponse, len(projects))
+		for i, p := range projects {
+			projectResponses[i] = ProjectResponse{
+				ID:          p.ID,
+				ProjectKey:  p.ProjectKey,
+				Name:        p.Name,
+				Description: textToStringPtr(p.Description),
+				IconURL:     pgtypeUUIDToURL(p.IconID),
+				CoverURL:    pgtypeUUIDToURL(p.CoverID),
+				Role:        p.Role,
+				CreatedBy:   p.CreatedBy,
+				CreatedAt:   p.CreatedAt.Time,
+				UpdatedAt:   p.UpdatedAt.Time,
+			}
+		}
+	} else {
+		total, err = h.store.CountUserProjects(ctx, userID)
+		if err != nil {
+			return echo.NewHTTPError(http.StatusInternalServerError, "failed to count projects")
+		}
+		projects, err := h.store.ListUserProjects(ctx, store.ListUserProjectsParams{
+			UserID: userID,
+			Limit:  int32(perPage),
+			Offset: int32(offset),
+		})
+		if err != nil {
+			return echo.NewHTTPError(http.StatusInternalServerError, "failed to list projects")
+		}
+		projectResponses = make([]ProjectResponse, len(projects))
+		for i, p := range projects {
+			projectResponses[i] = ProjectResponse{
+				ID:          p.ID,
+				ProjectKey:  p.ProjectKey,
+				Name:        p.Name,
+				Description: textToStringPtr(p.Description),
+				IconURL:     pgtypeUUIDToURL(p.IconID),
+				CoverURL:    pgtypeUUIDToURL(p.CoverID),
+				Role:        p.Role,
+				CreatedBy:   p.CreatedBy,
+				CreatedAt:   p.CreatedAt.Time,
+				UpdatedAt:   p.UpdatedAt.Time,
+			}
 		}
 	}
 

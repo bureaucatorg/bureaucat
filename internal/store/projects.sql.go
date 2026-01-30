@@ -84,6 +84,19 @@ func (q *Queries) AddTaskLabel(ctx context.Context, arg AddTaskLabelParams) erro
 	return err
 }
 
+const countAllProjects = `-- name: CountAllProjects :one
+SELECT COUNT(*)
+FROM projects p
+WHERE p.deleted_at IS NULL
+`
+
+func (q *Queries) CountAllProjects(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, countAllProjects)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const countProjectMembers = `-- name: CountProjectMembers :one
 SELECT COUNT(*) FROM project_members WHERE project_id = $1
 `
@@ -845,6 +858,65 @@ func (q *Queries) IsTaskAssignee(ctx context.Context, arg IsTaskAssigneeParams) 
 	var is_assignee bool
 	err := row.Scan(&is_assignee)
 	return is_assignee, err
+}
+
+const listAllProjects = `-- name: ListAllProjects :many
+SELECT p.id, p.project_key, p.name, p.description, p.icon_id, p.cover_id, p.created_by, p.created_at, p.updated_at, p.deleted_at, 'admin' AS role
+FROM projects p
+WHERE p.deleted_at IS NULL
+ORDER BY p.name ASC
+LIMIT $1 OFFSET $2
+`
+
+type ListAllProjectsParams struct {
+	Limit  int32 `json:"limit"`
+	Offset int32 `json:"offset"`
+}
+
+type ListAllProjectsRow struct {
+	ID          uuid.UUID          `json:"id"`
+	ProjectKey  string             `json:"project_key"`
+	Name        string             `json:"name"`
+	Description pgtype.Text        `json:"description"`
+	IconID      pgtype.UUID        `json:"icon_id"`
+	CoverID     pgtype.UUID        `json:"cover_id"`
+	CreatedBy   uuid.UUID          `json:"created_by"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+	DeletedAt   pgtype.Timestamptz `json:"deleted_at"`
+	Role        string             `json:"role"`
+}
+
+func (q *Queries) ListAllProjects(ctx context.Context, arg ListAllProjectsParams) ([]ListAllProjectsRow, error) {
+	rows, err := q.db.Query(ctx, listAllProjects, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListAllProjectsRow{}
+	for rows.Next() {
+		var i ListAllProjectsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.ProjectKey,
+			&i.Name,
+			&i.Description,
+			&i.IconID,
+			&i.CoverID,
+			&i.CreatedBy,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.DeletedAt,
+			&i.Role,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listProjectLabels = `-- name: ListProjectLabels :many

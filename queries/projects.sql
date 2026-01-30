@@ -44,6 +44,18 @@ FROM projects p
 JOIN project_members pm ON p.id = pm.project_id
 WHERE pm.user_id = $1 AND p.deleted_at IS NULL;
 
+-- name: ListAllProjects :many
+SELECT p.id, p.project_key, p.name, p.description, p.icon_id, p.cover_id, p.created_by, p.created_at, p.updated_at, p.deleted_at, 'admin' AS role
+FROM projects p
+WHERE p.deleted_at IS NULL
+ORDER BY p.name ASC
+LIMIT $1 OFFSET $2;
+
+-- name: CountAllProjects :one
+SELECT COUNT(*)
+FROM projects p
+WHERE p.deleted_at IS NULL;
+
 -- name: ProjectKeyExists :one
 SELECT EXISTS (
     SELECT 1 FROM projects

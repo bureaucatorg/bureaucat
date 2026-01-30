@@ -18,6 +18,7 @@ type Querier interface {
 	// ==================== TASK LABELS ====================
 	AddTaskLabel(ctx context.Context, arg AddTaskLabelParams) error
 	CountActiveRefreshTokens(ctx context.Context) (int64, error)
+	CountAllProjects(ctx context.Context) (int64, error)
 	CountProjectMembers(ctx context.Context, projectID uuid.UUID) (int64, error)
 	CountProjectTasks(ctx context.Context, projectID uuid.UUID) (int64, error)
 	CountProjectTasksFiltered(ctx context.Context, arg CountProjectTasksFilteredParams) (int64, error)
@@ -67,6 +68,7 @@ type Querier interface {
 	IsProjectMember(ctx context.Context, arg IsProjectMemberParams) (bool, error)
 	IsTaskAssignee(ctx context.Context, arg IsTaskAssigneeParams) (bool, error)
 	ListActiveRefreshTokens(ctx context.Context, arg ListActiveRefreshTokensParams) ([]ListActiveRefreshTokensRow, error)
+	ListAllProjects(ctx context.Context, arg ListAllProjectsParams) ([]ListAllProjectsRow, error)
 	ListProjectLabels(ctx context.Context, projectID uuid.UUID) ([]ProjectLabel, error)
 	ListProjectMembers(ctx context.Context, projectID uuid.UUID) ([]ListProjectMembersRow, error)
 	ListProjectStates(ctx context.Context, projectID uuid.UUID) ([]ProjectState, error)
