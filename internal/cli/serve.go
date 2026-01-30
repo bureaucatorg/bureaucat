@@ -31,14 +31,16 @@ func ServeCommand() *cli.Command {
 		Usage: "Start the HTTP server",
 		Flags: []cli.Flag{
 			&cli.IntFlag{
-				Name:  "api-port",
-				Value: 1323,
-				Usage: "Port for the API server",
+				Name:    "api-port",
+				Sources: cli.EnvVars("API_PORT", "PORT"),
+				Value:   1323,
+				Usage:   "Port for the API server",
 			},
 			&cli.StringFlag{
-				Name:  "api-host",
-				Value: "0.0.0.0",
-				Usage: "Host for the API server",
+				Name:    "api-host",
+				Sources: cli.EnvVars("API_HOST"),
+				Value:   "0.0.0.0",
+				Usage:   "Host for the API server",
 			},
 			&cli.BoolFlag{
 				Name:  "dev",
