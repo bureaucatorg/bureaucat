@@ -7,6 +7,8 @@ interface HealthResponse {
   api: boolean;
 }
 
+useSeoMeta({ title: "System Health" });
+
 const health = ref<HealthResponse | null>(null);
 const loading = ref(true);
 const error = ref<string | null>(null);

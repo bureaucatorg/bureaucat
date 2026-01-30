@@ -13,6 +13,8 @@ definePageMeta({
   middleware: ["auth"],
 });
 
+useSeoMeta({ title: "Dashboard" });
+
 const { user } = useAuth();
 const { projects, loading: projectsLoading, listProjects, total: totalProjects } = useProjects();
 

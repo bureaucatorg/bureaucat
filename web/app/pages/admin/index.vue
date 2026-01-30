@@ -6,6 +6,8 @@ definePageMeta({
   middleware: ["admin"],
 });
 
+useSeoMeta({ title: "Admin" });
+
 const { branding, updateBranding } = useSettings();
 
 const brandingForm = ref({

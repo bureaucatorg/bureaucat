@@ -49,6 +49,10 @@ const {
   listTemplates,
 } = useProjects();
 
+useHead({
+  title: computed(() => currentProject.value?.name ?? projectKey.value),
+});
+
 const {
   tasks,
   loading: tasksLoading,

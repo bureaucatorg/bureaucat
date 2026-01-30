@@ -5,6 +5,8 @@ definePageMeta({
   middleware: ["guest"],
 });
 
+useSeoMeta({ title: "Sign In" });
+
 const { signin } = useAuth();
 
 const identifier = ref("");

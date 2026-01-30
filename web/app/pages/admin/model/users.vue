@@ -5,6 +5,8 @@ definePageMeta({
   middleware: ["admin"],
 });
 
+useSeoMeta({ title: "Manage Users" });
+
 const { listUsers, createUser, deleteUser } = useAdmin();
 
 interface User {

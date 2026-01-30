@@ -5,6 +5,8 @@ definePageMeta({
   middleware: ["auth"],
 });
 
+useSeoMeta({ title: "Projects" });
+
 const { projects, loading, listProjects, total } = useProjects();
 
 const showCreateDialog = ref(false);

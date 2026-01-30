@@ -6,6 +6,8 @@ definePageMeta({
   middleware: ["guest"],
 });
 
+useSeoMeta({ title: "Sign Up" });
+
 const { signup } = useAuth();
 const runtimeConfig = useRuntimeConfig();
 

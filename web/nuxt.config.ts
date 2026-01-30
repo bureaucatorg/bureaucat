@@ -6,6 +6,21 @@ export default defineNuxtConfig({
   devtools: { enabled: true },
   css: ["~/assets/css/tailwind.css"],
 
+  app: {
+    head: {
+      titleTemplate: "%s",
+      meta: [
+        { name: "description", content: "Bureaucracy That Actually Moves" },
+        { property: "og:type", content: "website" },
+        { property: "og:image", content: "/og.svg" },
+        { name: "twitter:card", content: "summary_large_image" },
+        { name: "twitter:image", content: "/og.svg" },
+      ],
+      htmlAttrs: { lang: "en" },
+      link: [{ rel: "icon", href: "/favicon.ico" }],
+    },
+  },
+
   components: [
     {
       path: "~/components",

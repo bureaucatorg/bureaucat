@@ -5,6 +5,8 @@ definePageMeta({
   middleware: ["admin"],
 });
 
+useSeoMeta({ title: "Manage Tokens" });
+
 const { listTokens, revokeToken, cleanupExpiredTokens } = useAdmin();
 
 interface TokenInfo {

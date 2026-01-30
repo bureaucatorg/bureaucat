@@ -44,6 +44,14 @@ const { currentTask, getTask, updateTask, deleteTask } = useTasks();
 const { comments, loading: commentsLoading, listComments } = useComments();
 const { activities, loading: activitiesLoading, listActivity } = useActivity();
 
+useHead({
+  title: computed(() => {
+    const task = currentTask.value;
+    if (task) return `${task.task_id} · ${task.title}`;
+    return `${projectKey.value}-${taskNum.value}`;
+  }),
+});
+
 const loading = ref(true);
 const error = ref<string | null>(null);
 const editingTitle = ref(false);
