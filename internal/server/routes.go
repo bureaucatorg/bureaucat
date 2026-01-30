@@ -29,6 +29,11 @@ func (s *Server) registerRoutes() {
 		api.GET("/settings/branding", s.settingsHandler.GetBranding)
 	}
 
+	// Dynamic OG image
+	if s.ogHandler != nil {
+		api.GET("/og-image", s.ogHandler.OGImage)
+	}
+
 	// Auth routes (public)
 	if s.authHandler != nil {
 		api.POST("/signup", s.authHandler.Signup)

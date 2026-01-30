@@ -42,6 +42,7 @@ type Server struct {
 	taskHandler     *handlers.TaskHandler
 	commentHandler  *handlers.CommentHandler
 	settingsHandler *handlers.SettingsHandler
+	ogHandler       *handlers.OGHandler
 	activityService *activity.Service
 	uploadService   *uploads.Service
 	distFS          fs.FS
@@ -121,6 +122,7 @@ func New(devMode bool, dbURL string, authConfig AuthConfig, distFS fs.FS) (*Serv
 		srv.taskHandler = handlers.NewTaskHandler(srv.store, srv.activityService)
 		srv.commentHandler = handlers.NewCommentHandler(srv.store, srv.activityService)
 		srv.settingsHandler = handlers.NewSettingsHandler(srv.store)
+		srv.ogHandler = handlers.NewOGHandler(srv.store)
 	}
 
 	// Register routes

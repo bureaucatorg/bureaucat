@@ -10,11 +10,12 @@ export default defineNuxtConfig({
     head: {
       titleTemplate: "%s",
       meta: [
-        { name: "description", content: "Bureaucracy That Actually Moves" },
+        { name: "description", content: "Where red tape meets its match and forms fill themselves out of sheer respect." },
         { property: "og:type", content: "website" },
-        { property: "og:image", content: "/og.svg" },
+        { property: "og:description", content: "Where red tape meets its match and forms fill themselves out of sheer respect." },
+        { property: "og:image", content: "/api/v1/og-image" },
         { name: "twitter:card", content: "summary_large_image" },
-        { name: "twitter:image", content: "/og.svg" },
+        { name: "twitter:image", content: "/api/v1/og-image" },
       ],
       htmlAttrs: { lang: "en" },
       link: [{ rel: "icon", href: "/favicon.ico" }],
