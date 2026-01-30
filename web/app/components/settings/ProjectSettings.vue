@@ -72,11 +72,11 @@ const hasChanges = computed(() => {
           <form class="space-y-4" @submit.prevent="handleSave">
             <div class="space-y-2">
               <Label for="project-key">Project Key</Label>
-              <Input
+              <input
                 id="project-key"
                 :value="project.project_key"
                 disabled
-                class="font-mono"
+                class="border-input dark:bg-input/30 h-9 w-full rounded-md border bg-transparent px-3 py-1 font-mono text-base shadow-xs disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
               />
               <p class="text-xs text-muted-foreground">
                 Cannot be changed after creation
