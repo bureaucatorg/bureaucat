@@ -1,0 +1,24 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="630" fill="#09090B"/>
+  <!-- Subtle grid -->
+  <defs>
+    <pattern id="grid" width="80" height="80" patternUnits="userSpaceOnUse">
+      <path d="M 80 0 L 0 0 0 80" fill="none" stroke="#ffffff" stroke-opacity="0.04" stroke-width="1"/>
+    </pattern>
+  </defs>
+  <rect width="1200" height="630" fill="url(#grid)"/>
+  <!-- Amber glow top-right -->
+  <circle cx="1050" cy="150" r="350" fill="#F59E0B" fill-opacity="0.06"/>
+  <!-- Amber glow bottom-left -->
+  <circle cx="200" cy="550" r="250" fill="#F59E0B" fill-opacity="0.06"/>
+  <!-- Logo box -->
+  <rect x="80" y="140" width="56" height="56" rx="12" fill="#FAFAFA"/>
+  <text x="108" y="168" font-family="ui-monospace, monospace" font-size="28" font-weight="700" fill="#09090B" text-anchor="middle" dominant-baseline="central">B</text>
+  <!-- App name -->
+  <text x="152" y="168" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="600" fill="#FAFAFA" dominant-baseline="central">Bureaucat</text>
+  <!-- Main headline -->
+  <text x="80" y="300" font-family="system-ui, -apple-system, sans-serif" font-size="72" font-weight="700" fill="#FAFAFA">Bureaucracy</text>
+  <text x="80" y="390" font-family="system-ui, -apple-system, sans-serif" font-size="72" font-weight="700" fill="#FAFAFA">That Actually <tspan fill="#F59E0B">Moves</tspan></text>
+  <!-- Subtitle -->
+  <text x="80" y="470" font-family="system-ui, -apple-system, sans-serif" font-size="26" fill="#A1A1AA">A no-nonsense task manager for approval workflows.</text>
+</svg>

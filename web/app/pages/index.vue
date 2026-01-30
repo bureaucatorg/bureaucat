@@ -3,41 +3,46 @@ import {
   Clock,
   Shield,
   Eye,
-  ArrowRight,
   Zap,
-  Users,
-  GitBranch,
-  CheckCircle2,
-  BarChart3,
-  Lock,
-  Workflow,
-  Bell
+  Sparkles,
 } from "lucide-vue-next";
+
+useSeoMeta({
+  title: "Bureaucat",
+  description: "Bureaucracy That Actually Moves",
+  ogTitle: "Bureaucat",
+  ogDescription: "Bureaucracy That Actually Moves. A no-nonsense task manager for approval workflows.",
+  ogImage: "/og.svg",
+  ogType: "website",
+  twitterCard: "summary_large_image",
+  twitterTitle: "Bureaucat",
+  twitterDescription: "Bureaucracy That Actually Moves. A no-nonsense task manager for approval workflows.",
+  twitterImage: "/og.svg",
+});
+
+useHead({
+  htmlAttrs: { lang: "en" },
+  link: [{ rel: "icon", href: "/favicon.ico" }],
+});
 
 const { appName } = useSettings();
 const logoLetter = computed(() => appName.value.charAt(0).toUpperCase());
 
-const features = [
-  {
-    icon: Clock,
-    stat: "60%",
-    title: "Less time chasing",
-    description: "Automated routing gets requests to the right people instantly. No more email chains.",
-  },
-  {
-    icon: Shield,
-    stat: "100%",
-    title: "Audit coverage",
-    description: "Every action logged, every decision tracked. Complete compliance without overhead.",
-  },
-  {
-    icon: Eye,
-    stat: "0",
-    title: "Requests lost",
-    description: "Real-time visibility into every request. Nothing falls through the cracks.",
-  },
-];
+const noBS = ref(false);
 
+const features = computed(() =>
+  noBS.value
+    ? [
+        { icon: Clock, stat: "60%", title: "Less waiting", description: "Tasks go to the right person. No email chains." },
+        { icon: Shield, stat: "100%", title: "Everything logged", description: "Full audit trail. Zero effort." },
+        { icon: Eye, stat: "0", title: "Nothing lost", description: "Every request tracked. Nothing slips." },
+      ]
+    : [
+        { icon: Clock, stat: "60%", title: "Less time chasing", description: "Automated routing gets requests to the right people instantly. No more email chains." },
+        { icon: Shield, stat: "100%", title: "Audit coverage", description: "Every action logged, every decision tracked. Complete compliance without overhead." },
+        { icon: Eye, stat: "0", title: "Requests lost", description: "Real-time visibility into every request. Nothing falls through the cracks." },
+      ]
+);
 </script>
 
 <template>
@@ -66,25 +71,54 @@ const features = [
             <!-- Badge -->
             <div class="animate-fade-in mb-8 inline-flex items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/10 px-4 py-1.5 text-sm text-amber-700 dark:text-amber-400">
               <Zap class="size-3.5" />
-              <span>Workflow automation for modern teams</span>
+              <span v-if="!noBS">Workflow automation for modern teams</span>
+              <span v-else>It's a task manager</span>
             </div>
 
             <!-- Main headline -->
             <h1 class="animate-fade-in-up font-display text-5xl font-bold leading-[1.1] tracking-tight md:text-6xl lg:text-7xl" style="animation-delay: 100ms">
-              Bureaucracy<br />
-              <span class="relative">
-                That Actually
-                <span class="relative z-10 text-amber-600 dark:text-amber-500"> Moves</span>
-                <svg class="absolute -bottom-2 left-0 w-full" viewBox="0 0 300 12" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M2 10C50 2 150 2 298 10" stroke="currentColor" stroke-width="3" stroke-linecap="round" class="text-amber-500/40"/>
-                </svg>
-              </span>
+              <template v-if="!noBS">
+                Bureaucracy<br />
+                <span class="relative">
+                  That Actually
+                  <span class="relative z-10 text-amber-600 dark:text-amber-500"> Moves</span>
+                  <svg class="absolute -bottom-2 left-0 w-full" viewBox="0 0 300 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M2 10C50 2 150 2 298 10" stroke="currentColor" stroke-width="3" stroke-linecap="round" class="text-amber-500/40"/>
+                  </svg>
+                </span>
+              </template>
+              <template v-else>
+                A No-Nonsense<br />
+                <span class="relative">
+                  <span class="relative z-10 text-amber-600 dark:text-amber-500">Task Manager</span>
+                  <svg class="absolute -bottom-2 left-0 w-full" viewBox="0 0 300 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M2 10C50 2 150 2 298 10" stroke="currentColor" stroke-width="3" stroke-linecap="round" class="text-amber-500/40"/>
+                  </svg>
+                </span>
+              </template>
             </h1>
 
             <p class="animate-fade-in-up mt-8 max-w-xl text-lg leading-relaxed text-muted-foreground md:text-xl" style="animation-delay: 200ms">
-              Route approvals intelligently. Track everything automatically.
-              Ship faster without sacrificing compliance.
+              <template v-if="!noBS">
+                Route approvals intelligently. Track everything automatically.
+                Ship faster without sacrificing compliance.
+              </template>
+              <template v-else>
+                Create tasks. Assign people. Track progress. That's it.
+              </template>
             </p>
+
+            <!-- No BS button -->
+            <Button
+              variant="outline"
+              size="sm"
+              class="animate-fade-in-up mt-6 gap-2 border-amber-500/30 text-amber-700 hover:bg-amber-500/10 hover:text-amber-800 dark:text-amber-400 dark:hover:text-amber-300"
+              style="animation-delay: 300ms"
+              @click="noBS = !noBS"
+            >
+              <Sparkles class="size-3.5" />
+              {{ noBS ? 'Add the BS back' : 'Cut the BS' }}
+            </Button>
           </div>
         </div>
       </section>
@@ -122,10 +156,20 @@ const features = [
         <div class="mx-auto max-w-6xl px-6">
           <div class="mx-auto max-w-2xl text-center">
             <h2 class="font-display text-3xl font-bold tracking-tight md:text-4xl">
-              Ready to make bureaucracy<br />work for you?
+              <template v-if="!noBS">
+                Ready to make bureaucracy<br />work for you?
+              </template>
+              <template v-else>
+                Ready to get things done?
+              </template>
             </h2>
             <p class="mt-6 text-lg text-muted-foreground">
-              Join hundreds of teams that have transformed their approval workflows.
+              <template v-if="!noBS">
+                Join hundreds of teams that have transformed their approval workflows.
+              </template>
+              <template v-else>
+                Sign up. Create a project. Start tracking.
+              </template>
             </p>
           </div>
         </div>

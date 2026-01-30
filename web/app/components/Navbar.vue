@@ -25,11 +25,7 @@ const logoLetter = computed(() => appName.value.charAt(0).toUpperCase());
 
       <div class="flex items-center gap-4">
         <nav class="hidden items-center gap-6 md:flex">
-          <template v-if="!isAuthenticated">
-            <a href="#features" class="text-sm text-muted-foreground transition-colors hover:text-foreground">Features</a>
-            <a href="#how-it-works" class="text-sm text-muted-foreground transition-colors hover:text-foreground">How it works</a>
-          </template>
-          <template v-else>
+          <template v-if="isAuthenticated">
             <NuxtLink to="/dashboard" class="text-sm text-muted-foreground transition-colors hover:text-foreground">Dashboard</NuxtLink>
             <NuxtLink to="/projects" class="text-sm text-muted-foreground transition-colors hover:text-foreground">Projects</NuxtLink>
             <template v-if="user?.user_type === 'admin'">
