@@ -38,44 +38,6 @@ const features = [
   },
 ];
 
-const capabilities = [
-  {
-    icon: Workflow,
-    title: "Visual Workflow Builder",
-    description: "Design approval chains with drag-and-drop simplicity. No code required.",
-  },
-  {
-    icon: GitBranch,
-    title: "Conditional Routing",
-    description: "Smart rules that route requests based on amount, department, or custom criteria.",
-  },
-  {
-    icon: Users,
-    title: "Delegation & Escalation",
-    description: "Automatic escalation when approvers are away. Delegation with full audit trails.",
-  },
-  {
-    icon: Bell,
-    title: "Smart Notifications",
-    description: "Right message, right channel, right time. Slack, email, or in-app.",
-  },
-  {
-    icon: BarChart3,
-    title: "Analytics Dashboard",
-    description: "Bottleneck detection, approval times, and team performance at a glance.",
-  },
-  {
-    icon: Lock,
-    title: "Enterprise Security",
-    description: "SSO, role-based access, and encryption at rest. SOC 2 compliant.",
-  },
-];
-
-const steps = [
-  { number: "01", title: "Define", description: "Map your approval process" },
-  { number: "02", title: "Connect", description: "Integrate with existing tools" },
-  { number: "03", title: "Launch", description: "Go live in minutes" },
-];
 </script>
 
 <template>
@@ -123,29 +85,6 @@ const steps = [
               Route approvals intelligently. Track everything automatically.
               Ship faster without sacrificing compliance.
             </p>
-
-            <div class="animate-fade-in-up mt-10 flex flex-col gap-4 sm:flex-row" style="animation-delay: 300ms">
-              <Button size="lg" class="group gap-2 bg-foreground px-6 text-background hover:bg-foreground/90">
-                Start Free Trial
-                <ArrowRight class="size-4 transition-transform group-hover:translate-x-1" />
-              </Button>
-              <Button variant="outline" size="lg" class="px-6">
-                Watch Demo
-              </Button>
-            </div>
-
-            <!-- Social proof -->
-            <div class="animate-fade-in-up mt-16 flex items-center gap-6 border-t border-border/50 pt-8" style="animation-delay: 400ms">
-              <div class="flex -space-x-2">
-                <div v-for="i in 4" :key="i" class="flex size-10 items-center justify-center rounded-full border-2 border-background bg-muted text-xs font-medium">
-                  {{ ['JD', 'AK', 'MR', 'SL'][i-1] }}
-                </div>
-              </div>
-              <div class="text-sm">
-                <span class="font-semibold">500+</span>
-                <span class="text-muted-foreground"> teams ship faster with {{ appName }}</span>
-              </div>
-            </div>
           </div>
         </div>
       </section>
@@ -172,64 +111,6 @@ const steps = [
         </div>
       </section>
 
-      <!-- How it works -->
-      <section id="how-it-works" class="relative py-24 md:py-32">
-        <div class="mx-auto max-w-6xl px-6">
-          <div class="mb-16 max-w-2xl">
-            <span class="mb-4 inline-block font-mono text-sm uppercase tracking-widest text-amber-600 dark:text-amber-500">How it works</span>
-            <h2 class="font-display text-3xl font-bold tracking-tight md:text-4xl">
-              Three steps to workflow freedom
-            </h2>
-          </div>
-
-          <div class="relative grid gap-8 md:grid-cols-3">
-            <!-- Connecting line -->
-            <div class="absolute left-0 right-0 top-12 hidden h-px bg-gradient-to-r from-transparent via-border to-transparent md:block" />
-
-            <div v-for="(step, index) in steps" :key="step.number" class="relative">
-              <div class="mb-6 flex items-center gap-4">
-                <div class="relative flex size-12 items-center justify-center rounded-full border-2 border-amber-500/30 bg-background font-mono text-lg font-bold text-amber-600 dark:text-amber-500">
-                  {{ step.number }}
-                  <div class="absolute -inset-1 rounded-full bg-amber-500/10" />
-                </div>
-                <div v-if="index < steps.length - 1" class="h-px flex-1 bg-border md:hidden" />
-              </div>
-              <h3 class="text-xl font-semibold">{{ step.title }}</h3>
-              <p class="mt-2 text-muted-foreground">{{ step.description }}</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- Capabilities Grid -->
-      <section class="border-t border-border/50 bg-muted/20 py-24 md:py-32">
-        <div class="mx-auto max-w-6xl px-6">
-          <div class="mb-16 flex flex-col items-start justify-between gap-6 md:flex-row md:items-end">
-            <div class="max-w-2xl">
-              <span class="mb-4 inline-block font-mono text-sm uppercase tracking-widest text-amber-600 dark:text-amber-500">Capabilities</span>
-              <h2 class="font-display text-3xl font-bold tracking-tight md:text-4xl">
-                Everything you need to tame the chaos
-              </h2>
-            </div>
-          </div>
-
-          <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <Card v-for="capability in capabilities" :key="capability.title"
-                  class="group border-border/50 bg-background/50 transition-all hover:border-amber-500/30 hover:shadow-lg hover:shadow-amber-500/5">
-              <CardHeader class="pb-4">
-                <div class="mb-4 flex size-11 items-center justify-center rounded-lg bg-muted transition-colors group-hover:bg-amber-500/10">
-                  <component :is="capability.icon" class="size-5 text-muted-foreground transition-colors group-hover:text-amber-600 dark:group-hover:text-amber-500" />
-                </div>
-                <CardTitle class="text-base font-semibold">{{ capability.title }}</CardTitle>
-              </CardHeader>
-              <CardContent class="pt-0">
-                <CardDescription class="text-sm leading-relaxed">{{ capability.description }}</CardDescription>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </section>
-
       <!-- CTA Section -->
       <section class="relative overflow-hidden border-t border-border/50 py-24 md:py-32">
         <!-- Background -->
@@ -245,20 +126,6 @@ const steps = [
             </h2>
             <p class="mt-6 text-lg text-muted-foreground">
               Join hundreds of teams that have transformed their approval workflows.
-              Start free, no credit card required.
-            </p>
-            <div class="mt-10 flex flex-col justify-center gap-4 sm:flex-row">
-              <Button size="lg" class="group gap-2 bg-foreground px-8 text-background hover:bg-foreground/90">
-                Get Started Free
-                <ArrowRight class="size-4 transition-transform group-hover:translate-x-1" />
-              </Button>
-              <Button variant="outline" size="lg" class="px-8">
-                Talk to Sales
-              </Button>
-            </div>
-            <p class="mt-6 flex items-center justify-center gap-2 text-sm text-muted-foreground">
-              <CheckCircle2 class="size-4 text-green-500" />
-              14-day free trial, cancel anytime
             </p>
           </div>
         </div>
