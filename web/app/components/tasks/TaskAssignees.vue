@@ -56,13 +56,13 @@ async function handleRemove(userId: string) {
 
 <template>
   <div class="space-y-2">
-    <p class="text-sm font-medium text-muted-foreground">Assignees</p>
+    <p class="text-xs text-muted-foreground">Assignees</p>
 
     <div class="flex flex-wrap items-center gap-2">
       <div
         v-for="assignee in assignees"
         :key="assignee.id"
-        class="group flex items-center gap-2 rounded-full border bg-muted/50 py-1 pl-1 pr-2"
+        class="group relative flex items-center gap-1.5 rounded-md border bg-muted/50 py-1 pl-1 pr-2.5"
       >
         <Avatar class="size-6">
           <AvatarFallback class="text-xs">
@@ -75,15 +75,15 @@ async function handleRemove(userId: string) {
         <button
           v-if="isMember"
           type="button"
-          class="rounded-full p-0.5 opacity-0 transition-opacity hover:bg-destructive/10 group-hover:opacity-100"
+          class="absolute -top-1.5 -right-1.5 flex size-4 items-center justify-center rounded-full bg-foreground text-background opacity-0 shadow-sm transition-opacity group-hover:opacity-100"
           :disabled="loading === assignee.user_id"
           @click="handleRemove(assignee.user_id)"
         >
           <Loader2
             v-if="loading === assignee.user_id"
-            class="size-3 animate-spin"
+            class="size-2.5 animate-spin"
           />
-          <X v-else class="size-3 text-destructive" />
+          <X v-else class="size-2.5" />
         </button>
       </div>
 

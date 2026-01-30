@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import {
   ChevronLeft,
+  ChevronDown,
   Loader2,
   Pencil,
   Trash2,
@@ -10,7 +11,13 @@ import {
   Clock,
 } from "lucide-vue-next";
 import { toast } from "vue-sonner";
+import { marked } from "marked";
 import { PRIORITY_LABELS } from "~/types";
+
+marked.setOptions({
+  breaks: true,
+  gfm: true,
+});
 
 definePageMeta({
   middleware: ["auth"],
@@ -57,6 +64,11 @@ const priorityOptions = Object.entries(PRIORITY_LABELS).map(([value, info]) => (
   label: info.label,
   color: info.color,
 }));
+
+const currentPriority = computed(() => {
+  const p = currentTask.value?.priority ?? 0;
+  return PRIORITY_LABELS[p] || PRIORITY_LABELS[0];
+});
 
 async function loadData() {
   loading.value = true;
@@ -207,6 +219,11 @@ async function refreshComments() {
   await listActivity(projectKey.value, taskNum.value);
 }
 
+const renderedDescription = computed(() => {
+  if (!currentTask.value?.description) return "";
+  return marked(currentTask.value.description) as string;
+});
+
 function formatDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString("en-US", {
     year: "numeric",
@@ -247,7 +264,7 @@ onMounted(() => {
         <!-- Task content -->
         <template v-else-if="currentTask">
           <!-- Breadcrumb -->
-          <div class="mb-6 flex items-center gap-2 text-sm text-muted-foreground">
+          <nav class="mb-6 flex items-center gap-2 text-sm text-muted-foreground">
             <NuxtLink
               :to="`/projects/${projectKey}`"
               class="flex items-center gap-1 hover:text-foreground"
@@ -256,12 +273,10 @@ onMounted(() => {
               {{ currentProject?.name }}
             </NuxtLink>
             <span>/</span>
-            <span>Tasks</span>
-            <span>/</span>
-            <span class="font-mono text-amber-600 dark:text-amber-500">
+            <span class="font-semibold text-amber-600 dark:text-amber-500">
               {{ currentTask.task_id }}
             </span>
-          </div>
+          </nav>
 
           <div class="flex flex-col gap-8 md:flex-row">
             <!-- Main content -->
@@ -336,19 +351,17 @@ onMounted(() => {
                     </Button>
                   </div>
                 </div>
-                <div v-else class="group">
-                  <div
-                    v-if="currentTask.description"
-                    class="flex items-start gap-2"
-                  >
-                    <p class="whitespace-pre-wrap text-sm">
-                      {{ currentTask.description }}
-                    </p>
+                <div v-else class="group relative">
+                  <div v-if="currentTask.description">
+                    <div
+                      class="prose prose-sm max-w-none dark:prose-invert"
+                      v-html="renderedDescription"
+                    />
                     <Button
                       v-if="isMember"
                       variant="ghost"
                       size="icon"
-                      class="size-7 shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
+                      class="absolute top-0 right-0 size-7 opacity-0 transition-opacity group-hover:opacity-100"
                       @click="startEditDescription"
                     >
                       <Pencil class="size-3.5" />
@@ -393,39 +406,56 @@ onMounted(() => {
             </div>
 
             <!-- Sidebar -->
-            <div class="w-full space-y-6 md:w-72 md:shrink-0">
-              <Card>
-                <CardContent class="space-y-6 pt-6">
-                  <!-- State -->
-                  <div class="space-y-2">
-                    <p class="text-sm font-medium text-muted-foreground">State</p>
-                    <TaskStateSelector
-                      :states="states"
-                      :model-value="currentTask.state_id"
-                      :disabled="!isMember || updating"
-                      @update:model-value="handleStateChange"
-                    />
-                  </div>
+            <div class="w-full border-border pl-8 md:w-64 md:shrink-0 md:border-l">
+              <div class="divide-y divide-border">
+                <!-- State -->
+                <div class="flex items-center justify-between py-3">
+                  <p class="text-xs text-muted-foreground">State</p>
+                  <TaskStateSelector
+                    :states="states"
+                    :model-value="currentTask.state_id"
+                    :disabled="!isMember || updating"
+                    compact
+                    @update:model-value="handleStateChange"
+                  />
+                </div>
 
-                  <!-- Priority -->
-                  <div class="space-y-2">
-                    <p class="text-sm font-medium text-muted-foreground">Priority</p>
-                    <NativeSelect
-                      :model-value="currentTask.priority"
-                      :disabled="!isMember || updating"
-                      @update:model-value="handlePriorityChange(parseInt($event.target.value))"
-                    >
-                      <option
+                <!-- Priority -->
+                <div class="flex items-center justify-between py-3">
+                  <p class="text-xs text-muted-foreground">Priority</p>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger as-child>
+                      <Button
+                        variant="ghost"
+                        class="h-auto gap-1.5 px-0 py-0 font-medium hover:bg-transparent"
+                        :disabled="!isMember || updating"
+                      >
+                        <span
+                          class="size-2 rounded-full"
+                          :style="{ backgroundColor: currentPriority.color }"
+                        />
+                        {{ currentPriority.label }}
+                        <ChevronDown class="size-3.5 opacity-50" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" class="w-40">
+                      <DropdownMenuItem
                         v-for="p in priorityOptions"
                         :key="p.value"
-                        :value="p.value"
+                        @click="handlePriorityChange(p.value)"
                       >
+                        <span
+                          class="mr-2 size-2 rounded-full"
+                          :style="{ backgroundColor: p.color }"
+                        />
                         {{ p.label }}
-                      </option>
-                    </NativeSelect>
-                  </div>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
 
-                  <!-- Assignees -->
+                <!-- Assignees -->
+                <div class="py-3">
                   <TaskAssignees
                     :assignees="currentTask.assignees || []"
                     :project-key="projectKey"
@@ -434,8 +464,10 @@ onMounted(() => {
                     :is-member="isMember"
                     @refresh="refreshTask"
                   />
+                </div>
 
-                  <!-- Labels -->
+                <!-- Labels -->
+                <div class="py-3">
                   <TaskLabels
                     :task-labels="currentTask.labels || []"
                     :project-key="projectKey"
@@ -444,36 +476,33 @@ onMounted(() => {
                     :is-member="isMember"
                     @refresh="refreshTask"
                   />
+                </div>
 
-                  <Separator />
-
-                  <!-- Dates -->
-                  <div class="space-y-3 text-sm">
-                    <div class="flex items-center gap-2 text-muted-foreground">
-                      <Calendar class="size-4" />
-                      <span>Created {{ formatDate(currentTask.created_at) }}</span>
-                    </div>
-                    <div class="flex items-center gap-2 text-muted-foreground">
-                      <Clock class="size-4" />
-                      <span>Updated {{ formatDate(currentTask.updated_at) }}</span>
-                    </div>
+                <!-- Dates -->
+                <div class="space-y-1.5 py-3 text-xs text-muted-foreground">
+                  <div class="flex items-center gap-2">
+                    <Calendar class="size-3.5" />
+                    <span>Created {{ formatDate(currentTask.created_at) }}</span>
                   </div>
-
-                  <!-- Delete -->
-                  <div v-if="isAdmin">
-                    <Separator class="mb-4" />
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      class="w-full"
-                      @click="showDeleteConfirm = true"
-                    >
-                      <Trash2 class="mr-2 size-4" />
-                      Delete Task
-                    </Button>
+                  <div class="flex items-center gap-2">
+                    <Clock class="size-3.5" />
+                    <span>Updated {{ formatDate(currentTask.updated_at) }}</span>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
+
+              <!-- Delete -->
+              <div v-if="isAdmin" class="mt-2 border-t border-border pt-3">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  class="w-full justify-start gap-2 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                  @click="showDeleteConfirm = true"
+                >
+                  <Trash2 class="size-3.5" />
+                  Delete task
+                </Button>
+              </div>
             </div>
           </div>
         </template>

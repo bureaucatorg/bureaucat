@@ -124,6 +124,31 @@ function formatDate(dateStr: string): string {
         >
           (edited)
         </span>
+        <span class="flex-1" />
+        <DropdownMenu v-if="canEdit && !editing">
+          <DropdownMenuTrigger as-child>
+            <Button
+              variant="ghost"
+              size="sm"
+              class="h-6 w-6 p-0 opacity-0 transition-opacity group-hover:opacity-100"
+            >
+              <MoreHorizontal class="size-3.5" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem @click="startEdit">
+              <Pencil class="mr-2 size-3.5" />
+              Edit
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              class="text-destructive focus:text-destructive"
+              @click="handleDelete"
+            >
+              <Trash2 class="mr-2 size-3.5" />
+              Delete
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       <!-- Editing -->
@@ -180,32 +205,6 @@ function formatDate(dateStr: string): string {
           </div>
         </div>
 
-        <!-- Actions -->
-        <div
-          v-if="canEdit"
-          class="opacity-0 transition-opacity group-hover:opacity-100"
-        >
-          <DropdownMenu>
-            <DropdownMenuTrigger as-child>
-              <Button variant="ghost" size="sm" class="h-7 px-2">
-                <MoreHorizontal class="size-3.5" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start">
-              <DropdownMenuItem @click="startEdit">
-                <Pencil class="mr-2 size-3.5" />
-                Edit
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                class="text-destructive focus:text-destructive"
-                @click="handleDelete"
-              >
-                <Trash2 class="mr-2 size-3.5" />
-                Delete
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
       </template>
     </div>
   </div>

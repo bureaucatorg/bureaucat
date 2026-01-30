@@ -56,13 +56,13 @@ async function handleRemove(labelId: string) {
 
 <template>
   <div class="space-y-2">
-    <p class="text-sm font-medium text-muted-foreground">Labels</p>
+    <p class="text-xs text-muted-foreground">Labels</p>
 
     <div class="flex flex-wrap items-center gap-2">
       <div
         v-for="label in taskLabels"
         :key="label.id"
-        class="group flex items-center gap-1.5 rounded-full px-2.5 py-1"
+        class="group relative rounded-md px-2.5 py-1"
         :style="{
           backgroundColor: label.color + '20',
           color: label.color,
@@ -72,15 +72,15 @@ async function handleRemove(labelId: string) {
         <button
           v-if="isMember"
           type="button"
-          class="rounded-full p-0.5 opacity-0 transition-opacity hover:bg-black/10 group-hover:opacity-100"
+          class="absolute -top-1.5 -right-1.5 flex size-4 items-center justify-center rounded-full bg-foreground text-background opacity-0 shadow-sm transition-opacity group-hover:opacity-100"
           :disabled="loading === label.id"
           @click="handleRemove(label.id)"
         >
           <Loader2
             v-if="loading === label.id"
-            class="size-3 animate-spin"
+            class="size-2.5 animate-spin"
           />
-          <X v-else class="size-3" />
+          <X v-else class="size-2.5" />
         </button>
       </div>
 

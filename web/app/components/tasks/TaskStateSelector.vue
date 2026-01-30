@@ -2,11 +2,15 @@
 import { Circle, CircleDot, CheckCircle2, XCircle, Clock, ChevronDown } from "lucide-vue-next";
 import type { ProjectState } from "~/types";
 
-const props = defineProps<{
-  states: ProjectState[];
-  modelValue: string;
-  disabled?: boolean;
-}>();
+const props = withDefaults(
+  defineProps<{
+    states: ProjectState[];
+    modelValue: string;
+    disabled?: boolean;
+    compact?: boolean;
+  }>(),
+  { compact: false }
+);
 
 const emit = defineEmits<{
   "update:modelValue": [value: string];
@@ -53,11 +57,11 @@ const groupedStates = computed(() => {
   <DropdownMenu>
     <DropdownMenuTrigger as-child>
       <Button
-        variant="outline"
-        class="justify-between"
+        :variant="compact ? 'ghost' : 'outline'"
+        :class="compact ? 'h-auto gap-1.5 px-0 py-0 font-medium hover:bg-transparent' : 'justify-between'"
         :disabled="disabled"
       >
-        <span class="flex items-center gap-2">
+        <span class="flex items-center gap-1.5">
           <component
             :is="getStateIcon(currentState?.state_type || 'backlog')"
             class="size-4"
@@ -65,7 +69,7 @@ const groupedStates = computed(() => {
           />
           {{ currentState?.name || "Select state" }}
         </span>
-        <ChevronDown class="size-4 opacity-50" />
+        <ChevronDown class="size-3.5 opacity-50" />
       </Button>
     </DropdownMenuTrigger>
     <DropdownMenuContent class="w-56">
