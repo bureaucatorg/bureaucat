@@ -3,8 +3,7 @@ import { Clock, Shield, Eye, Zap, Sparkles } from "lucide-vue-next";
 
 const { appName } = useSettings();
 
-const quirkyDesc =
-  "Where red tape meets its match and forms fill themselves out of sheer respect.";
+const quirkyDesc = "Bureaucracy That Actually Moves.";
 
 useSeoMeta({
   title: () => appName.value,
