@@ -276,7 +276,7 @@ const steps = [
             <span class="text-sm text-muted-foreground">{{ appName }}</span>
           </div>
           <p class="text-center text-sm text-muted-foreground">
-            Built with ❤️ by codingcoffee
+            Crafted by <a href="https://codingcoffee.dev" target="_blank" rel="noopener noreferrer" class="underline underline-offset-4 hover:text-foreground transition-colors">codingcoffee</a>
           </p>
         </div>
       </div>
