@@ -1,6 +1,6 @@
 services:
   app:
-    image: bureaucat
+    image: forgejo.codingcoffee.me/bureaucat/bureaucat
     build:
       context: ./
       dockerfile: Dockerfile

@@ -16,6 +16,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-vue-next": "^0.563.0",
+    "marked": "^17.0.1",
     "nuxt": "^4.3.0",
     "reka-ui": "^2.7.0",
     "shadcn-nuxt": "2.4.3",
