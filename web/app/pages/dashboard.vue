@@ -20,33 +20,6 @@ const { projects, loading: projectsLoading, listProjects, total: totalProjects }
 
 const showCreateDialog = ref(false);
 
-// Stats - computed from projects
-const stats = computed(() => {
-  return [
-    {
-      label: "Total Projects",
-      value: totalProjects.value,
-      icon: FolderKanban,
-      color: "text-amber-600 dark:text-amber-500",
-      bgColor: "bg-amber-500/10",
-    },
-    {
-      label: "Active Tasks",
-      value: "—",
-      icon: ListTodo,
-      color: "text-blue-600 dark:text-blue-500",
-      bgColor: "bg-blue-500/10",
-    },
-    {
-      label: "Completed",
-      value: "—",
-      icon: CheckCircle2,
-      color: "text-green-600 dark:text-green-500",
-      bgColor: "bg-green-500/10",
-    },
-  ];
-});
-
 // Recent projects (max 6)
 const recentProjects = computed(() => {
   return projects.value.slice(0, 6);
@@ -75,32 +48,6 @@ onMounted(() => {
           <p class="mt-2 text-muted-foreground">
             Here's an overview of your projects and tasks
           </p>
-        </div>
-
-        <!-- Stats Cards -->
-        <div class="mb-8 grid gap-4 sm:grid-cols-3">
-          <Card
-            v-for="stat in stats"
-            :key="stat.label"
-            class="group border-border/50 bg-background/50 transition-all hover:border-amber-500/30 hover:shadow-lg hover:shadow-amber-500/5"
-          >
-            <CardContent class="flex items-center gap-4 p-6">
-              <div
-                :class="[
-                  'flex size-12 items-center justify-center rounded-xl transition-colors',
-                  stat.bgColor,
-                ]"
-              >
-                <component :is="stat.icon" :class="['size-6', stat.color]" />
-              </div>
-              <div>
-                <p class="text-2xl font-bold tabular-nums">
-                  {{ stat.value }}
-                </p>
-                <p class="text-sm text-muted-foreground">{{ stat.label }}</p>
-              </div>
-            </CardContent>
-          </Card>
         </div>
 
         <!-- Your Projects Section -->
