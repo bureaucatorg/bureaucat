@@ -8,8 +8,8 @@ services:
       - ./:/app
     working_dir: /app
     ports:
-      - 1323:1323
-      - 3000:3000
+      - 1341:1341
+      - 3041:3041
     depends_on:
       postgres:
         condition: service_healthy

@@ -9,7 +9,7 @@ import (
 	"github.com/labstack/echo/v5"
 )
 
-const nuxtDevServer = "http://localhost:3000"
+const nuxtDevServer = "http://localhost:3041"
 
 func (s *Server) setupProxy() {
 	target, _ := url.Parse(nuxtDevServer)

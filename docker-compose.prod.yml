@@ -6,7 +6,7 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     ports:
-      - 1323:1323
+      - 1341:1341
     depends_on:
       postgres:
         condition: service_healthy

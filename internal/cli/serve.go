@@ -33,7 +33,7 @@ func ServeCommand() *cli.Command {
 			&cli.IntFlag{
 				Name:    "api-port",
 				Sources: cli.EnvVars("API_PORT", "PORT"),
-				Value:   1323,
+				Value:   1341,
 				Usage:   "Port for the API server",
 			},
 			&cli.StringFlag{
@@ -104,7 +104,7 @@ func ServeCommand() *cli.Command {
 				}
 
 				// Start new Nuxt dev server
-				nuxtCmd = exec.Command("bun", "run", "dev")
+				nuxtCmd = exec.Command("bun", "run", "dev", "--", "--port", "3041")
 				nuxtCmd.Dir = "web"
 				nuxtCmd.Stdout = os.Stdout
 				nuxtCmd.Stderr = os.Stderr

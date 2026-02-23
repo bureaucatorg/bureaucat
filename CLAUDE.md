@@ -157,8 +157,8 @@ make dev
 docker-compose up
 ```
 
-- Go API: http://localhost:1323
-- Nuxt dev server: http://localhost:3000
+- Go API: http://localhost:1341
+- Nuxt dev server: http://localhost:3041
 - Hot reload enabled for both
 
 ## Production Build
