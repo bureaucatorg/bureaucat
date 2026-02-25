@@ -9,6 +9,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -630,13 +631,25 @@ func bulkImportTasks(ctx context.Context, tx pgx.Tx, planeIssues []map[string]st
 		if len(title) > 500 {
 			title = title[:500]
 		}
-		description := pi["description_stripped"]
+
+		// Convert description HTML to Markdown, fall back to stripped text.
+		description := ""
+		if pi["description_html"] != "" {
+			description = htmlToMarkdown(pi["description_html"])
+		}
+		if description == "" {
+			description = pi["description_stripped"]
+		}
 
 		// Use Plane's original sequence_id as task_number to preserve issue numbers.
 		taskNum, _ := strconv.Atoi(pi["sequence_id"])
 		if taskNum < 1 {
 			taskNum = 1
 		}
+
+		// Preserve original timestamps.
+		createdAt := parseTimestamp(pi["created_at"])
+		updatedAt := parseTimestamp(pi["updated_at"])
 
 		id := uuid.New()
 		taskMap[pi["id"]] = id
@@ -645,7 +658,7 @@ func bulkImportTasks(ctx context.Context, tx pgx.Tx, planeIssues []map[string]st
 		if description != "" {
 			descPtr = &description
 		}
-		rows = append(rows, []interface{}{id, projectID, int32(taskNum), title, descPtr, stateID, priority, createdBy})
+		rows = append(rows, []interface{}{id, projectID, int32(taskNum), title, descPtr, stateID, priority, createdBy, createdAt, updatedAt})
 	}
 
 	if len(rows) == 0 {
@@ -654,7 +667,7 @@ func bulkImportTasks(ctx context.Context, tx pgx.Tx, planeIssues []map[string]st
 
 	_, err := tx.CopyFrom(ctx,
 		pgx.Identifier{"tasks"},
-		[]string{"id", "project_id", "task_number", "title", "description", "state_id", "priority", "created_by"},
+		[]string{"id", "project_id", "task_number", "title", "description", "state_id", "priority", "created_by", "created_at", "updated_at"},
 		pgx.CopyFromRows(rows),
 	)
 	if err != nil {
@@ -826,7 +839,11 @@ func bulkImportComments(ctx context.Context, tx pgx.Tx, planeComments []map[stri
 			createdBy = adminUserID
 		}
 
-		rows = append(rows, []interface{}{taskID, content, createdBy})
+		// Preserve original timestamps.
+		createdAt := parseTimestamp(pc["created_at"])
+		updatedAt := parseTimestamp(pc["updated_at"])
+
+		rows = append(rows, []interface{}{taskID, content, createdBy, createdAt, updatedAt})
 	}
 
 	if len(rows) == 0 {
@@ -835,7 +852,7 @@ func bulkImportComments(ctx context.Context, tx pgx.Tx, planeComments []map[stri
 
 	_, err := tx.CopyFrom(ctx,
 		pgx.Identifier{"comments"},
-		[]string{"task_id", "content", "created_by"},
+		[]string{"task_id", "content", "created_by", "created_at", "updated_at"},
 		pgx.CopyFromRows(rows),
 	)
 	if err != nil {
@@ -879,4 +896,29 @@ func generateRandomPassword() (string, error) {
 		return "", err
 	}
 	return hex.EncodeToString(b), nil
+}
+
+// parseTimestamp parses a PostgreSQL timestamp string into time.Time.
+// Falls back to current time if parsing fails.
+func parseTimestamp(s string) time.Time {
+	if s == "" {
+		return time.Now()
+	}
+	// PostgreSQL COPY format: "2023-07-18 04:19:51.616628+00"
+	// Go's -07 reference matches numeric timezone offsets like +00, +05, -03.
+	formats := []string{
+		"2006-01-02 15:04:05.999999-07",
+		"2006-01-02 15:04:05.999999-07:00",
+		"2006-01-02 15:04:05-07",
+		"2006-01-02 15:04:05-07:00",
+		time.RFC3339Nano,
+		time.RFC3339,
+	}
+	for _, f := range formats {
+		if t, err := time.Parse(f, s); err == nil {
+			return t
+		}
+	}
+	log.Printf("Warning: could not parse timestamp %q, using current time", s)
+	return time.Now()
 }
