@@ -18,18 +18,23 @@ const { user } = useAuth();
 
 const content = ref("");
 const loading = ref(false);
+const mentionTextareaRef = ref<InstanceType<typeof MentionTextarea> | null>(null);
 
 async function handleSubmit() {
   if (!content.value.trim()) return;
 
+  // Convert @Name display text to markdown links before sending
+  const markdownContent = mentionTextareaRef.value?.getMarkdownContent() ?? content.value;
+
   loading.value = true;
   const result = await createComment(props.projectKey, props.taskNum, {
-    content: content.value,
+    content: markdownContent,
   });
   loading.value = false;
 
   if (result.success) {
     content.value = "";
+    mentionTextareaRef.value?.clearMentions();
     emit("created");
   } else {
     toast.error(result.error || "Failed to add comment");
@@ -54,6 +59,7 @@ function handleKeyDown(event: KeyboardEvent) {
 
     <form class="flex-1 space-y-2" @submit.prevent="handleSubmit">
       <MentionTextarea
+        ref="mentionTextareaRef"
         v-model="content"
         placeholder="Add a comment..."
         :rows="2"

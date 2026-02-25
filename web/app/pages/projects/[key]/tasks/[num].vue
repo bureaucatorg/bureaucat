@@ -58,6 +58,7 @@ const editingTitle = ref(false);
 const editingDescription = ref(false);
 const editTitle = ref("");
 const editDescription = ref("");
+const descriptionMentionRef = ref<InstanceType<typeof MentionTextarea> | null>(null);
 const updating = ref(false);
 const deleting = ref(false);
 const showDeleteConfirm = ref(false);
@@ -158,14 +159,17 @@ async function saveDescription() {
     return;
   }
 
+  const markdownDescription = descriptionMentionRef.value?.getMarkdownContent() ?? editDescription.value;
+
   updating.value = true;
   const result = await updateTask(projectKey.value, taskNum.value, {
-    description: editDescription.value || undefined,
+    description: markdownDescription || undefined,
   });
   updating.value = false;
 
   if (result.success) {
     toast.success("Description updated");
+    descriptionMentionRef.value?.clearMentions();
     cancelEditDescription();
   } else {
     toast.error(result.error || "Failed to update description");
@@ -344,6 +348,7 @@ onMounted(() => {
                 </h3>
                 <div v-if="editingDescription" class="space-y-2">
                   <MentionTextarea
+                    ref="descriptionMentionRef"
                     v-model="editDescription"
                     :rows="20"
                     :disabled="updating"

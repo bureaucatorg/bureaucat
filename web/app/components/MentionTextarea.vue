@@ -2,6 +2,11 @@
 import { Search } from "lucide-vue-next";
 import type { ProjectMember } from "~/types";
 
+interface MentionEntry {
+  displayText: string;
+  userId: string;
+}
+
 const props = defineProps<{
   modelValue: string;
   placeholder?: string;
@@ -19,7 +24,7 @@ const textareaRef = ref<{ $el?: HTMLTextAreaElement } | null>(null);
 const showMentions = ref(false);
 const mentionQuery = ref("");
 const mentionStartPos = ref(0);
-const popoverPos = ref({ top: 0, left: 0 });
+const mentions = ref<MentionEntry[]>([]);
 
 const filteredMembers = computed(() => {
   const q = mentionQuery.value.toLowerCase();
@@ -35,7 +40,6 @@ const filteredMembers = computed(() => {
 function getTextarea(): HTMLTextAreaElement | null {
   const el = textareaRef.value;
   if (!el) return null;
-  // shadcn Textarea wraps a native textarea
   if (el.$el && el.$el.tagName === "TEXTAREA") return el.$el;
   const native = (el as any)?.$el?.querySelector?.("textarea");
   if (native) return native;
@@ -48,16 +52,13 @@ function handleInput(event: Event) {
   emit("update:modelValue", value);
 
   const cursorPos = target.selectionStart;
-  // Check if we just typed '@' or are mid-mention
   const textBefore = value.slice(0, cursorPos);
   const atIdx = textBefore.lastIndexOf("@");
 
   if (atIdx >= 0) {
-    // Check char before @ is whitespace or start of string
     const charBefore = atIdx > 0 ? textBefore[atIdx - 1] : " ";
     if (charBefore === " " || charBefore === "\n" || atIdx === 0) {
       const query = textBefore.slice(atIdx + 1);
-      // Only show if no space in query (still typing a mention)
       if (!query.includes(" ") && query.length <= 30) {
         mentionQuery.value = query;
         mentionStartPos.value = atIdx;
@@ -74,23 +75,47 @@ function selectMember(member: ProjectMember) {
   if (!textarea) return;
 
   const value = props.modelValue;
-  const name = `${member.first_name} ${member.last_name}`;
-  const link = `[@${name}](/profile/${member.user_id})`;
-  // Replace @query with the link
+  const displayName = `${member.first_name} ${member.last_name}`;
+  const displayText = `@${displayName}`;
+
+  // Track this mention for markdown conversion later
+  const existing = mentions.value.find((m) => m.userId === member.user_id);
+  if (!existing) {
+    mentions.value.push({ displayText: displayName, userId: member.user_id });
+  }
+
+  // Replace @query with readable @Name
   const before = value.slice(0, mentionStartPos.value);
   const after = value.slice(mentionStartPos.value + 1 + mentionQuery.value.length);
-  const newValue = before + link + " " + after;
+  const newValue = before + displayText + " " + after;
 
   emit("update:modelValue", newValue);
   showMentions.value = false;
 
-  // Restore focus and cursor position
   nextTick(() => {
     textarea.focus();
-    const newPos = before.length + link.length + 1;
+    const newPos = before.length + displayText.length + 1;
     textarea.setSelectionRange(newPos, newPos);
   });
 }
+
+/** Convert display text to markdown with mention links */
+function getMarkdownContent(): string {
+  let content = props.modelValue;
+  for (const mention of mentions.value) {
+    const displayText = `@${mention.displayText}`;
+    const markdownLink = `[@${mention.displayText}](/profile/${mention.userId})`;
+    content = content.replaceAll(displayText, markdownLink);
+  }
+  return content;
+}
+
+/** Clear tracked mentions (call after successful submit) */
+function clearMentions() {
+  mentions.value = [];
+}
+
+defineExpose({ getMarkdownContent, clearMentions });
 
 function handleKeydown(event: KeyboardEvent) {
   if (showMentions.value && event.key === "Escape") {
