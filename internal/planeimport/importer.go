@@ -55,6 +55,29 @@ func Import(ctx context.Context, pool *pgxpool.Pool, adminUserID uuid.UUID, dump
 	}
 	log.Printf("Users phase complete: %d created, %d skipped", result.UsersCreated, result.UsersSkipped)
 
+	// Build Plane user ID → full name map for mention resolution.
+	planeUserNames := make(map[string]string, len(dump.Users))
+	for _, pu := range dump.Users {
+		planeID := pu["id"]
+		first := pu["first_name"]
+		last := pu["last_name"]
+		if first == "" && pu["display_name"] != "" {
+			parts := strings.SplitN(pu["display_name"], " ", 2)
+			first = parts[0]
+			if len(parts) > 1 {
+				last = parts[1]
+			}
+		}
+		name := strings.TrimSpace(first + " " + last)
+		if name == "" {
+			name = pu["display_name"]
+		}
+		if name == "" {
+			name = pu["username"]
+		}
+		planeUserNames[planeID] = name
+	}
+
 	// Phase 2: Bulk import projects.
 	existingKeys, err := loadExistingProjectKeys(ctx, tx)
 	if err != nil {
@@ -94,7 +117,7 @@ func Import(ctx context.Context, pool *pgxpool.Pool, adminUserID uuid.UUID, dump
 	}
 
 	// Phase 6: Bulk import tasks.
-	taskMap, err := bulkImportTasks(ctx, tx, dump.Issues, projectMap, stateMap, userMap, defaultStates, adminUserID, result)
+	taskMap, err := bulkImportTasks(ctx, tx, dump.Issues, projectMap, stateMap, userMap, defaultStates, adminUserID, planeUserNames, result)
 	if err != nil {
 		return nil, fmt.Errorf("importing tasks: %w", err)
 	}
@@ -113,7 +136,7 @@ func Import(ctx context.Context, pool *pgxpool.Pool, adminUserID uuid.UUID, dump
 	log.Printf("Task labels phase complete: %d assigned", result.LabelsAssigned)
 
 	// Phase 9: Bulk import comments.
-	if err := bulkImportComments(ctx, tx, dump.IssueComments, taskMap, userMap, adminUserID, result); err != nil {
+	if err := bulkImportComments(ctx, tx, dump.IssueComments, taskMap, userMap, adminUserID, planeUserNames, result); err != nil {
 		return nil, fmt.Errorf("importing comments: %w", err)
 	}
 	log.Printf("Comments phase complete: %d created", result.CommentsCreated)
@@ -591,7 +614,7 @@ func bulkImportLabels(ctx context.Context, tx pgx.Tx, planeLabels []map[string]s
 }
 
 // bulkImportTasks creates all tasks in bulk.
-func bulkImportTasks(ctx context.Context, tx pgx.Tx, planeIssues []map[string]string, projectMap, stateMap, userMap map[string]uuid.UUID, defaultStates map[uuid.UUID]uuid.UUID, adminUserID uuid.UUID, result *ImportResult) (map[string]uuid.UUID, error) {
+func bulkImportTasks(ctx context.Context, tx pgx.Tx, planeIssues []map[string]string, projectMap, stateMap, userMap map[string]uuid.UUID, defaultStates map[uuid.UUID]uuid.UUID, adminUserID uuid.UUID, planeUserNames map[string]string, result *ImportResult) (map[string]uuid.UUID, error) {
 	taskMap := make(map[string]uuid.UUID, len(planeIssues))
 
 	// Sort by sequence_id for consistent ordering.
@@ -635,7 +658,7 @@ func bulkImportTasks(ctx context.Context, tx pgx.Tx, planeIssues []map[string]st
 		// Convert description HTML to Markdown, fall back to stripped text.
 		description := ""
 		if pi["description_html"] != "" {
-			description = htmlToMarkdown(pi["description_html"])
+			description = htmlToMarkdown(pi["description_html"], planeUserNames)
 		}
 		if description == "" {
 			description = pi["description_stripped"]
@@ -809,7 +832,7 @@ func bulkImportTaskLabels(ctx context.Context, tx pgx.Tx, planeIssueLabels []map
 }
 
 // bulkImportComments creates all comments in bulk.
-func bulkImportComments(ctx context.Context, tx pgx.Tx, planeComments []map[string]string, taskMap, userMap map[string]uuid.UUID, adminUserID uuid.UUID, result *ImportResult) error {
+func bulkImportComments(ctx context.Context, tx pgx.Tx, planeComments []map[string]string, taskMap, userMap map[string]uuid.UUID, adminUserID uuid.UUID, planeUserNames map[string]string, result *ImportResult) error {
 	var rows [][]interface{}
 
 	for _, pc := range planeComments {
@@ -825,7 +848,7 @@ func bulkImportComments(ctx context.Context, tx pgx.Tx, planeComments []map[stri
 		// Convert HTML comments to Markdown, fall back to plain text.
 		content := ""
 		if pc["comment_html"] != "" {
-			content = htmlToMarkdown(pc["comment_html"])
+			content = htmlToMarkdown(pc["comment_html"], planeUserNames)
 		}
 		if content == "" {
 			content = pc["comment_stripped"]

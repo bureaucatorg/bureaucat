@@ -9,21 +9,39 @@ import (
 // htmlToMarkdown converts Plane's ProseMirror HTML output to Markdown.
 // Handles: p, a, strong/b, em/i, u, code, pre>code, ul/ol/li,
 // blockquote, h1-h6, br, img, mention-component, tables.
-func htmlToMarkdown(html string) string {
+// userNames maps Plane user UUIDs to full names for mention resolution.
+func htmlToMarkdown(html string, userNames map[string]string) string {
 	if html == "" {
 		return ""
 	}
 
 	s := html
 
-	// Normalize escaped newlines from pg_dump (literal \n in COPY data).
+	// Normalize pg_dump COPY escapes: literal \n → newline, literal \" → "
+	s = strings.ReplaceAll(s, `\"`, `"`)
 	s = strings.ReplaceAll(s, "\\n", "\n")
 
 	// Pre-process: protect code blocks by extracting them first.
 	s = convertCodeBlocks(s)
 
-	// Mentions: <mention-component ... label="name" ...>text</mention-component> → @name
-	s = regReplace(s, `<mention-component[^>]*\blabel="([^"]*)"[^>]*>.*?</mention-component>`, "@$1")
+	// Mentions: resolve Plane user IDs to full names.
+	// Plane uses entity_identifier for the actual user UUID, id is just the component UUID.
+	mentionRe := regexp.MustCompile(`<mention-component[^>]*>.*?</mention-component>`)
+	mentionEntityRe := regexp.MustCompile(`\bentity_identifier="([^"]*)"`)
+	mentionLabelRe := regexp.MustCompile(`\blabel="([^"]*)"`)
+	s = mentionRe.ReplaceAllStringFunc(s, func(match string) string {
+		// Try to resolve by entity_identifier (the actual Plane user UUID).
+		if entityMatch := mentionEntityRe.FindStringSubmatch(match); entityMatch != nil {
+			if name, ok := userNames[entityMatch[1]]; ok {
+				return "**@" + name + "**"
+			}
+		}
+		// Fall back to label attribute.
+		if labelMatch := mentionLabelRe.FindStringSubmatch(match); labelMatch != nil {
+			return "**@" + labelMatch[1] + "**"
+		}
+		return match
+	})
 
 	// Images: <img ... src="url" ... alt="text" /> → ![text](url)
 	s = regReplace(s, `<img[^>]*\bsrc="([^"]*)"[^>]*\balt="([^"]*)"[^>]*\/?>`, "![$2]($1)")
