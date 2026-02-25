@@ -117,7 +117,7 @@ function formatDate(dateStr: string): string {
       </AvatarFallback>
     </Avatar>
 
-    <div class="flex-1 space-y-1">
+    <div class="min-w-0 flex-1 space-y-1">
       <div class="flex items-center gap-2">
         <span class="text-sm font-medium">
           {{ comment.first_name }} {{ comment.last_name }}
@@ -181,7 +181,7 @@ function formatDate(dateStr: string): string {
       <!-- Display -->
       <template v-else>
         <div
-          class="prose prose-sm max-w-none break-words dark:prose-invert"
+          class="prose prose-sm max-w-none overflow-hidden break-words dark:prose-invert"
           v-html="renderedContent"
         />
 
