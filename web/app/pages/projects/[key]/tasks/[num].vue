@@ -274,14 +274,21 @@ onMounted(() => {
           <!-- Breadcrumb -->
           <nav class="mb-6 flex items-center gap-2 text-sm text-muted-foreground">
             <NuxtLink
-              :to="`/projects/${projectKey}`"
+              to="/projects"
               class="flex items-center gap-1 hover:text-foreground"
             >
               <ChevronLeft class="size-4" />
+              Projects
+            </NuxtLink>
+            <span>/</span>
+            <NuxtLink
+              :to="`/projects/${projectKey}`"
+              class="hover:text-foreground"
+            >
               {{ currentProject?.name }}
             </NuxtLink>
             <span>/</span>
-            <span class="font-semibold text-amber-600 dark:text-amber-500">
+            <span class="font-medium text-foreground">
               {{ currentTask.task_id }}
             </span>
           </nav>

@@ -45,7 +45,14 @@ onMounted(() => {
     <Navbar />
 
     <main class="flex-1">
-      <div class="mx-auto max-w-6xl px-6 py-12">
+      <div class="mx-auto max-w-6xl px-6 py-8">
+        <nav class="mb-4 flex items-center gap-2 text-sm text-muted-foreground">
+          <NuxtLink to="/projects" class="flex items-center gap-1 hover:text-foreground">
+            <ChevronLeft class="size-4" />
+            Projects
+          </NuxtLink>
+        </nav>
+
         <div class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 class="flex items-center gap-3 text-3xl font-bold tracking-tight">

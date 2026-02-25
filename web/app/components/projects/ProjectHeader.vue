@@ -12,16 +12,16 @@ const isAdmin = computed(() => props.project.role === "admin");
 
 <template>
   <div class="space-y-4">
-    <div class="flex items-center gap-2 text-sm text-muted-foreground">
+    <nav class="flex items-center gap-2 text-sm text-muted-foreground">
       <NuxtLink to="/projects" class="flex items-center gap-1 hover:text-foreground">
         <ChevronLeft class="size-4" />
         Projects
       </NuxtLink>
       <span>/</span>
-      <span class="font-mono text-amber-600 dark:text-amber-500">
-        {{ project.project_key }}
+      <span class="font-medium text-foreground">
+        {{ project.name }}
       </span>
-    </div>
+    </nav>
 
     <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
       <div class="flex items-start gap-4">
