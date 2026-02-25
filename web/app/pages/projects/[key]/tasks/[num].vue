@@ -273,24 +273,24 @@ onMounted(() => {
         <template v-else-if="currentTask">
           <!-- Breadcrumb -->
           <nav class="mb-6 flex items-center gap-2 text-sm text-muted-foreground">
-            <NuxtLink
-              to="/projects"
-              class="flex items-center gap-1 hover:text-foreground"
-            >
-              <ChevronLeft class="size-4" />
+            <ChevronLeft class="size-4" />
+            <NuxtLink to="/projects" class="hover:text-foreground">
               Projects
             </NuxtLink>
             <span>/</span>
             <NuxtLink
               :to="`/projects/${projectKey}`"
-              class="hover:text-foreground"
+              class="font-semibold text-amber-600 hover:text-amber-700 dark:text-amber-500 dark:hover:text-amber-400"
             >
-              {{ currentProject?.name }}
+              {{ projectKey }}
             </NuxtLink>
             <span>/</span>
-            <span class="font-medium text-foreground">
-              {{ currentTask.task_id }}
-            </span>
+            <NuxtLink
+              :to="`/projects/${projectKey}/tasks/${taskNum}`"
+              class="font-semibold text-amber-600 hover:text-amber-700 dark:text-amber-500 dark:hover:text-amber-400"
+            >
+              {{ taskNum }}
+            </NuxtLink>
           </nav>
 
           <div class="flex flex-col gap-8 md:flex-row">

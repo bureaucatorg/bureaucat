@@ -47,10 +47,8 @@ onMounted(() => {
     <main class="flex-1">
       <div class="mx-auto max-w-6xl px-6 py-8">
         <nav class="mb-4 flex items-center gap-2 text-sm text-muted-foreground">
-          <NuxtLink to="/projects" class="flex items-center gap-1 hover:text-foreground">
-            <ChevronLeft class="size-4" />
-            Projects
-          </NuxtLink>
+          <ChevronLeft class="size-4" />
+          <span class="font-semibold text-amber-600 dark:text-amber-500">Projects</span>
         </nav>
 
         <div class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
