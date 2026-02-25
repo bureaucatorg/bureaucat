@@ -242,11 +242,14 @@ func bulkImportUsers(ctx context.Context, tx pgx.Tx, planeUsers []map[string]str
 
 		planeID := pu["id"]
 		email := pu["email"]
-		username := pu["username"]
 
 		if email == "" {
 			continue
 		}
+
+		// Derive username from email prefix (Plane uses random hex usernames).
+		username := strings.SplitN(email, "@", 2)[0]
+		username = strings.ToLower(username)
 
 		// Check existing by email or username.
 		if eu, ok := existing[email]; ok {
@@ -658,7 +661,7 @@ func bulkImportTasks(ctx context.Context, tx pgx.Tx, planeIssues []map[string]st
 		// Convert description HTML to Markdown, fall back to stripped text.
 		description := ""
 		if pi["description_html"] != "" {
-			description = htmlToMarkdown(pi["description_html"], planeUserNames)
+			description = htmlToMarkdown(pi["description_html"], planeUserNames, userMap)
 		}
 		if description == "" {
 			description = pi["description_stripped"]
@@ -848,7 +851,7 @@ func bulkImportComments(ctx context.Context, tx pgx.Tx, planeComments []map[stri
 		// Convert HTML comments to Markdown, fall back to plain text.
 		content := ""
 		if pc["comment_html"] != "" {
-			content = htmlToMarkdown(pc["comment_html"], planeUserNames)
+			content = htmlToMarkdown(pc["comment_html"], planeUserNames, userMap)
 		}
 		if content == "" {
 			content = pc["comment_stripped"]

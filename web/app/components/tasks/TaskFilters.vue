@@ -13,17 +13,8 @@ const emit = defineEmits<{
 }>();
 
 const searchQuery = ref(props.filters.q || "");
-const selectedStateType = ref(props.filters.state_type || "");
+const selectedStateId = ref(props.filters.state_id || "");
 const selectedPriority = ref(props.filters.priority?.toString() || "");
-
-const stateTypes = [
-  { value: "", label: "All states" },
-  { value: "backlog", label: "Backlog" },
-  { value: "unstarted", label: "Unstarted" },
-  { value: "started", label: "In Progress" },
-  { value: "completed", label: "Completed" },
-  { value: "cancelled", label: "Cancelled" },
-];
 
 const priorities = [
   { value: "", label: "All priorities" },
@@ -37,23 +28,23 @@ const priorities = [
 function updateFilters() {
   const filters: TaskFilters = {};
   if (searchQuery.value) filters.q = searchQuery.value;
-  if (selectedStateType.value) filters.state_type = selectedStateType.value;
+  if (selectedStateId.value) filters.state_id = selectedStateId.value;
   if (selectedPriority.value) filters.priority = parseInt(selectedPriority.value);
   emit("update:filters", filters);
 }
 
 function clearFilters() {
   searchQuery.value = "";
-  selectedStateType.value = "";
+  selectedStateId.value = "";
   selectedPriority.value = "";
   emit("update:filters", {});
 }
 
 const hasActiveFilters = computed(() => {
-  return searchQuery.value || selectedStateType.value || selectedPriority.value;
+  return searchQuery.value || selectedStateId.value || selectedPriority.value;
 });
 
-watch([searchQuery, selectedStateType, selectedPriority], () => {
+watch([searchQuery, selectedStateId, selectedPriority], () => {
   updateFilters();
 });
 </script>
@@ -69,9 +60,10 @@ watch([searchQuery, selectedStateType, selectedPriority], () => {
       />
     </div>
 
-    <NativeSelect v-model="selectedStateType" class="w-auto">
-      <option v-for="type in stateTypes" :key="type.value" :value="type.value">
-        {{ type.label }}
+    <NativeSelect v-model="selectedStateId" class="w-auto">
+      <option value="">All states</option>
+      <option v-for="state in states" :key="state.id" :value="state.id">
+        {{ state.name }}
       </option>
     </NativeSelect>
 

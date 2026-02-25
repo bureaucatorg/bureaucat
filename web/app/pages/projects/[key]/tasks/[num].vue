@@ -343,11 +343,12 @@ onMounted(() => {
                   Description
                 </h3>
                 <div v-if="editingDescription" class="space-y-2">
-                  <Textarea
+                  <MentionTextarea
                     v-model="editDescription"
-                    rows="20"
+                    :rows="20"
                     :disabled="updating"
                     placeholder="Add a description..."
+                    :members="members"
                   />
                   <div class="flex gap-2">
                     <Button size="sm" :disabled="updating" @click="saveDescription">
@@ -416,6 +417,7 @@ onMounted(() => {
                 v-if="isMember"
                 :project-key="projectKey"
                 :task-num="taskNum"
+                :members="members"
                 @created="refreshComments"
               />
             </div>

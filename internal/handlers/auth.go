@@ -255,6 +255,30 @@ func (h *AuthHandler) Me(c *echo.Context) error {
 	})
 }
 
+// GetUserProfile returns a user's public profile by ID.
+func (h *AuthHandler) GetUserProfile(c *echo.Context) error {
+	userIDStr := c.Param("id")
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid user ID")
+	}
+
+	user, err := h.store.GetUserByID(c.Request().Context(), userID)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusNotFound, "user not found")
+	}
+
+	return c.JSON(http.StatusOK, UserResponse{
+		ID:        user.ID,
+		Username:  user.Username,
+		Email:     user.Email,
+		FirstName: user.FirstName,
+		LastName:  user.LastName,
+		UserType:  user.UserType,
+		CreatedAt: user.CreatedAt.Time,
+	})
+}
+
 // userInfo holds common user fields for token generation.
 type userInfo struct {
 	ID        uuid.UUID

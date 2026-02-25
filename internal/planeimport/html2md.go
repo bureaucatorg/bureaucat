@@ -4,13 +4,16 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+
+	"github.com/google/uuid"
 )
 
 // htmlToMarkdown converts Plane's ProseMirror HTML output to Markdown.
 // Handles: p, a, strong/b, em/i, u, code, pre>code, ul/ol/li,
 // blockquote, h1-h6, br, img, mention-component, tables.
 // userNames maps Plane user UUIDs to full names for mention resolution.
-func htmlToMarkdown(html string, userNames map[string]string) string {
+// userIDs maps Plane user UUIDs to Bureaucat user UUIDs for profile links.
+func htmlToMarkdown(html string, userNames map[string]string, userIDs map[string]uuid.UUID) string {
 	if html == "" {
 		return ""
 	}
@@ -32,7 +35,12 @@ func htmlToMarkdown(html string, userNames map[string]string) string {
 	s = mentionRe.ReplaceAllStringFunc(s, func(match string) string {
 		// Try to resolve by entity_identifier (the actual Plane user UUID).
 		if entityMatch := mentionEntityRe.FindStringSubmatch(match); entityMatch != nil {
-			if name, ok := userNames[entityMatch[1]]; ok {
+			planeUID := entityMatch[1]
+			if name, ok := userNames[planeUID]; ok {
+				// Generate clickable profile link if we have the Bureaucat user ID.
+				if bcUID, ok2 := userIDs[planeUID]; ok2 {
+					return "[@" + name + "](/profile/" + bcUID.String() + ")"
+				}
 				return "**@" + name + "**"
 			}
 		}
@@ -63,8 +71,8 @@ func htmlToMarkdown(html string, userNames map[string]string) string {
 	// Underline: not standard markdown, use emphasis
 	s = regReplace(s, `<u>(.*?)</u>`, "_${1}_")
 
-	// Inline code: <code>text</code> (not inside pre)
-	s = regReplace(s, `<code>(.*?)</code>`, "`$1`")
+	// Inline code: <code>text</code> (not inside pre, may have attributes)
+	s = regReplace(s, `<code[^>]*>(.*?)</code>`, "`$1`")
 
 	// Headings
 	s = regReplace(s, `<h1[^>]*>(.*?)</h1>`, "\n# $1\n")
@@ -89,6 +97,9 @@ func htmlToMarkdown(html string, userNames map[string]string) string {
 
 	// Line breaks
 	s = regReplace(s, `<br\s*/?>`, "\n")
+
+	// Ensure paragraph boundaries produce newlines (</p><p> with no space between).
+	s = strings.ReplaceAll(s, "</p><p", "</p>\n\n<p")
 
 	// Paragraphs: <p>text</p> → text + double newline
 	s = regReplace(s, `<p[^>]*>(.*?)</p>`, "$1\n\n")

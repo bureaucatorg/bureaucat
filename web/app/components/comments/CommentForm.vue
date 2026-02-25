@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { Send, Loader2 } from "lucide-vue-next";
 import { toast } from "vue-sonner";
+import type { ProjectMember } from "~/types";
 
 const props = defineProps<{
   projectKey: string;
   taskNum: number;
+  members: ProjectMember[];
 }>();
 
 const emit = defineEmits<{
@@ -51,11 +53,12 @@ function handleKeyDown(event: KeyboardEvent) {
     </Avatar>
 
     <form class="flex-1 space-y-2" @submit.prevent="handleSubmit">
-      <Textarea
+      <MentionTextarea
         v-model="content"
         placeholder="Add a comment..."
-        rows="2"
+        :rows="2"
         :disabled="loading"
+        :members="members"
         @keydown="handleKeyDown"
       />
       <div class="flex items-center justify-between">

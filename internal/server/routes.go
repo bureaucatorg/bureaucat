@@ -49,6 +49,7 @@ func (s *Server) registerRoutes() {
 		// Protected routes
 		protected := api.Group("", auth.Middleware(s.authManager))
 		protected.GET("/me", s.authHandler.Me)
+		protected.GET("/users/:id", s.authHandler.GetUserProfile)
 
 		// File uploads (authenticated)
 		if s.uploadHandler != nil {
