@@ -600,22 +600,6 @@ func bulkImportTasks(ctx context.Context, tx pgx.Tx, planeIssues []map[string]st
 		return si < sj
 	})
 
-	// Get next task numbers for existing projects.
-	nextTaskNum := make(map[uuid.UUID]int32)
-	for _, projectID := range projectMap {
-		var maxNum *int32
-		err := tx.QueryRow(ctx,
-			"SELECT MAX(task_number) FROM tasks WHERE project_id = $1", projectID).Scan(&maxNum)
-		if err != nil {
-			return nil, fmt.Errorf("getting max task number: %w", err)
-		}
-		if maxNum != nil {
-			nextTaskNum[projectID] = *maxNum + 1
-		} else {
-			nextTaskNum[projectID] = 1
-		}
-	}
-
 	var rows [][]interface{}
 
 	for _, pi := range planeIssues {
@@ -648,8 +632,11 @@ func bulkImportTasks(ctx context.Context, tx pgx.Tx, planeIssues []map[string]st
 		}
 		description := pi["description_stripped"]
 
-		taskNum := nextTaskNum[projectID]
-		nextTaskNum[projectID] = taskNum + 1
+		// Use Plane's original sequence_id as task_number to preserve issue numbers.
+		taskNum, _ := strconv.Atoi(pi["sequence_id"])
+		if taskNum < 1 {
+			taskNum = 1
+		}
 
 		id := uuid.New()
 		taskMap[pi["id"]] = id
@@ -658,7 +645,7 @@ func bulkImportTasks(ctx context.Context, tx pgx.Tx, planeIssues []map[string]st
 		if description != "" {
 			descPtr = &description
 		}
-		rows = append(rows, []interface{}{id, projectID, taskNum, title, descPtr, stateID, priority, createdBy})
+		rows = append(rows, []interface{}{id, projectID, int32(taskNum), title, descPtr, stateID, priority, createdBy})
 	}
 
 	if len(rows) == 0 {
@@ -822,7 +809,14 @@ func bulkImportComments(ctx context.Context, tx pgx.Tx, planeComments []map[stri
 			continue
 		}
 
-		content := pc["comment_stripped"]
+		// Convert HTML comments to Markdown, fall back to plain text.
+		content := ""
+		if pc["comment_html"] != "" {
+			content = htmlToMarkdown(pc["comment_html"])
+		}
+		if content == "" {
+			content = pc["comment_stripped"]
+		}
 		if content == "" {
 			continue
 		}
