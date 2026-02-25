@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { MoreHorizontal, Pencil, Trash2, Loader2, Check, X, ChevronDown, ChevronUp, History } from "lucide-vue-next";
+import { marked } from "marked";
 import { toast } from "vue-sonner";
 import type { Comment } from "~/types";
+
+marked.setOptions({ breaks: true, gfm: true });
 
 interface CommentVersion {
   content: string;
@@ -36,6 +39,10 @@ const editing = ref(false);
 const editContent = ref("");
 const loading = ref(false);
 const showHistory = ref(false);
+
+const renderedContent = computed(() => {
+  return marked(props.comment.content) as string;
+});
 
 function startEdit() {
   editing.value = true;
@@ -173,7 +180,10 @@ function formatDate(dateStr: string): string {
 
       <!-- Display -->
       <template v-else>
-        <p class="whitespace-pre-wrap text-sm">{{ comment.content }}</p>
+        <div
+          class="prose prose-sm max-w-none break-words dark:prose-invert"
+          v-html="renderedContent"
+        />
 
         <!-- Edit history toggle -->
         <button
@@ -201,7 +211,10 @@ function formatDate(dateStr: string): string {
             <p class="text-xs text-muted-foreground">
               v{{ version.version }} - {{ formatDate(version.editedAt) }}
             </p>
-            <p class="whitespace-pre-wrap text-muted-foreground">{{ version.content }}</p>
+            <div
+              class="prose prose-sm max-w-none break-words text-muted-foreground dark:prose-invert"
+              v-html="marked(version.content) as string"
+            />
           </div>
         </div>
 
