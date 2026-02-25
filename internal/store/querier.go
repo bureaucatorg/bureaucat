@@ -56,9 +56,12 @@ type Querier interface {
 	GetProjectByID(ctx context.Context, id uuid.UUID) (Project, error)
 	GetProjectByKey(ctx context.Context, projectKey string) (Project, error)
 	GetProjectLabelByID(ctx context.Context, id uuid.UUID) (ProjectLabel, error)
+	GetProjectLabelByProjectAndName(ctx context.Context, arg GetProjectLabelByProjectAndNameParams) (ProjectLabel, error)
 	GetProjectMember(ctx context.Context, arg GetProjectMemberParams) (GetProjectMemberRow, error)
 	GetProjectMemberRole(ctx context.Context, arg GetProjectMemberRoleParams) (string, error)
 	GetProjectStateByID(ctx context.Context, id uuid.UUID) (ProjectState, error)
+	// ==================== IMPORT HELPERS ====================
+	GetProjectStateByProjectAndName(ctx context.Context, arg GetProjectStateByProjectAndNameParams) (ProjectState, error)
 	GetRefreshTokenByHash(ctx context.Context, tokenHash string) (RefreshToken, error)
 	GetRefreshTokenByID(ctx context.Context, id uuid.UUID) (RefreshToken, error)
 	GetSetting(ctx context.Context, key string) (Setting, error)

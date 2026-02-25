@@ -24,11 +24,11 @@ const filteredProjects = computed(() => {
 });
 
 async function handleCreated() {
-  await listProjects();
+  await listProjects(1, 100);
 }
 
 onMounted(() => {
-  listProjects();
+  listProjects(1, 100);
 });
 </script>
 

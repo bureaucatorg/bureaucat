@@ -646,6 +646,31 @@ func (q *Queries) GetProjectLabelByID(ctx context.Context, id uuid.UUID) (Projec
 	return i, err
 }
 
+const getProjectLabelByProjectAndName = `-- name: GetProjectLabelByProjectAndName :one
+SELECT id, project_id, name, color, created_at
+FROM project_labels
+WHERE project_id = $1 AND name = $2
+LIMIT 1
+`
+
+type GetProjectLabelByProjectAndNameParams struct {
+	ProjectID uuid.UUID `json:"project_id"`
+	Name      string    `json:"name"`
+}
+
+func (q *Queries) GetProjectLabelByProjectAndName(ctx context.Context, arg GetProjectLabelByProjectAndNameParams) (ProjectLabel, error) {
+	row := q.db.QueryRow(ctx, getProjectLabelByProjectAndName, arg.ProjectID, arg.Name)
+	var i ProjectLabel
+	err := row.Scan(
+		&i.ID,
+		&i.ProjectID,
+		&i.Name,
+		&i.Color,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const getProjectMember = `-- name: GetProjectMember :one
 SELECT pm.id, pm.project_id, pm.user_id, pm.role, pm.joined_at,
        u.username, u.email, u.first_name, u.last_name
@@ -713,6 +738,36 @@ WHERE id = $1
 
 func (q *Queries) GetProjectStateByID(ctx context.Context, id uuid.UUID) (ProjectState, error) {
 	row := q.db.QueryRow(ctx, getProjectStateByID, id)
+	var i ProjectState
+	err := row.Scan(
+		&i.ID,
+		&i.ProjectID,
+		&i.StateType,
+		&i.Name,
+		&i.Color,
+		&i.Position,
+		&i.IsDefault,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getProjectStateByProjectAndName = `-- name: GetProjectStateByProjectAndName :one
+
+SELECT id, project_id, state_type, name, color, position, is_default, created_at
+FROM project_states
+WHERE project_id = $1 AND name = $2
+LIMIT 1
+`
+
+type GetProjectStateByProjectAndNameParams struct {
+	ProjectID uuid.UUID `json:"project_id"`
+	Name      string    `json:"name"`
+}
+
+// ==================== IMPORT HELPERS ====================
+func (q *Queries) GetProjectStateByProjectAndName(ctx context.Context, arg GetProjectStateByProjectAndNameParams) (ProjectState, error) {
+	row := q.db.QueryRow(ctx, getProjectStateByProjectAndName, arg.ProjectID, arg.Name)
 	var i ProjectState
 	err := row.Scan(
 		&i.ID,

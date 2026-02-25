@@ -135,6 +135,11 @@ func (s *Server) registerRoutes() {
 		if s.settingsHandler != nil {
 			admin.PUT("/settings/branding", s.settingsHandler.UpdateBranding)
 		}
+
+		// Admin data import
+		if s.importHandler != nil {
+			admin.POST("/import/plane", s.importHandler.ImportPlane)
+		}
 	}
 }
 

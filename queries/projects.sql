@@ -420,3 +420,17 @@ RETURNING *;
 
 -- name: DeleteTaskTemplate :exec
 DELETE FROM task_templates WHERE id = $1;
+
+-- ==================== IMPORT HELPERS ====================
+
+-- name: GetProjectStateByProjectAndName :one
+SELECT id, project_id, state_type, name, color, position, is_default, created_at
+FROM project_states
+WHERE project_id = $1 AND name = $2
+LIMIT 1;
+
+-- name: GetProjectLabelByProjectAndName :one
+SELECT id, project_id, name, color, created_at
+FROM project_labels
+WHERE project_id = $1 AND name = $2
+LIMIT 1;

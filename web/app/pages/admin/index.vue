@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Users, Key, Shield, ArrowRight, Loader2 } from "lucide-vue-next";
+import { Users, Key, Shield, ArrowRight, Loader2, Upload, CheckCircle2 } from "lucide-vue-next";
 import { toast } from "vue-sonner";
 
 definePageMeta({
@@ -9,6 +9,7 @@ definePageMeta({
 useSeoMeta({ title: "Admin" });
 
 const { branding, updateBranding } = useSettings();
+const { getAuthHeader } = useAuth();
 
 const brandingForm = ref({
   enabled: branding.value.enabled,
@@ -35,6 +36,64 @@ async function handleSaveBranding() {
     toast.success("Branding settings saved");
   } else {
     toast.error(result.error || "Failed to save branding settings");
+  }
+}
+
+// Plane import state
+interface ImportSummary {
+  users_created: number;
+  users_skipped: number;
+  projects_created: number;
+  states_created: number;
+  labels_created: number;
+  tasks_created: number;
+  assignees_linked: number;
+  labels_assigned: number;
+  comments_created: number;
+}
+
+const selectedFile = ref<File | null>(null);
+const importing = ref(false);
+const importResult = ref<ImportSummary | null>(null);
+const fileInputRef = ref<HTMLInputElement | null>(null);
+
+function handleFileSelect(event: Event) {
+  const target = event.target as HTMLInputElement;
+  selectedFile.value = target.files?.[0] ?? null;
+  importResult.value = null;
+}
+
+async function handlePlaneImport() {
+  if (!selectedFile.value) return;
+  importing.value = true;
+  importResult.value = null;
+
+  const formData = new FormData();
+  formData.append("file", selectedFile.value);
+
+  try {
+    const response = await fetch("/api/v1/admin/import/plane", {
+      method: "POST",
+      headers: {
+        ...getAuthHeader(),
+      },
+      credentials: "include",
+      body: formData,
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      toast.error(data.message || "Import failed");
+      return;
+    }
+
+    importResult.value = data.summary;
+    toast.success(data.message || "Import completed");
+  } catch {
+    toast.error("Network error during import");
+  } finally {
+    importing.value = false;
   }
 }
 
@@ -96,6 +155,104 @@ const adminModels = [
               </CardHeader>
             </Card>
           </NuxtLink>
+        </div>
+
+        <!-- Data Import -->
+        <div class="mt-12">
+          <div class="mb-4">
+            <h2 class="text-xl font-semibold">Data Import</h2>
+            <p class="text-sm text-muted-foreground">
+              Import data from external project management tools
+            </p>
+          </div>
+
+          <Card>
+            <CardHeader>
+              <div class="flex items-center gap-3">
+                <div class="flex size-10 items-center justify-center rounded-lg bg-emerald-500/10">
+                  <Upload class="size-5 text-emerald-500" />
+                </div>
+                <div>
+                  <CardTitle>Import from Plane.so</CardTitle>
+                  <CardDescription>
+                    Upload a PostgreSQL dump file to import projects, tasks, users, and comments
+                  </CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div class="space-y-4">
+                <div class="flex items-center gap-4">
+                  <input
+                    ref="fileInputRef"
+                    type="file"
+                    accept=".sql"
+                    class="block w-full text-sm text-muted-foreground file:mr-4 file:rounded-md file:border-0 file:bg-primary file:px-4 file:py-2 file:text-sm file:font-medium file:text-primary-foreground hover:file:bg-primary/90 file:cursor-pointer"
+                    @change="handleFileSelect"
+                  />
+                </div>
+
+                <div v-if="selectedFile" class="text-sm text-muted-foreground">
+                  Selected: {{ selectedFile.name }} ({{ (selectedFile.size / 1024 / 1024).toFixed(1) }} MB)
+                </div>
+
+                <Button
+                  @click="handlePlaneImport"
+                  :disabled="!selectedFile || importing"
+                >
+                  <Loader2 v-if="importing" class="mr-2 size-4 animate-spin" />
+                  <Upload v-else class="mr-2 size-4" />
+                  {{ importing ? 'Importing...' : 'Start Import' }}
+                </Button>
+
+                <!-- Import Results -->
+                <div v-if="importResult" class="mt-4 rounded-lg border bg-muted/50 p-4">
+                  <div class="flex items-center gap-2 mb-3">
+                    <CheckCircle2 class="size-5 text-emerald-500" />
+                    <p class="font-medium">Import Complete</p>
+                  </div>
+                  <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                    <div class="text-sm">
+                      <span class="text-muted-foreground">Users created:</span>
+                      <span class="ml-1 font-medium">{{ importResult.users_created }}</span>
+                    </div>
+                    <div class="text-sm">
+                      <span class="text-muted-foreground">Users skipped:</span>
+                      <span class="ml-1 font-medium">{{ importResult.users_skipped }}</span>
+                    </div>
+                    <div class="text-sm">
+                      <span class="text-muted-foreground">Projects:</span>
+                      <span class="ml-1 font-medium">{{ importResult.projects_created }}</span>
+                    </div>
+                    <div class="text-sm">
+                      <span class="text-muted-foreground">States:</span>
+                      <span class="ml-1 font-medium">{{ importResult.states_created }}</span>
+                    </div>
+                    <div class="text-sm">
+                      <span class="text-muted-foreground">Labels:</span>
+                      <span class="ml-1 font-medium">{{ importResult.labels_created }}</span>
+                    </div>
+                    <div class="text-sm">
+                      <span class="text-muted-foreground">Tasks:</span>
+                      <span class="ml-1 font-medium">{{ importResult.tasks_created }}</span>
+                    </div>
+                    <div class="text-sm">
+                      <span class="text-muted-foreground">Assignees:</span>
+                      <span class="ml-1 font-medium">{{ importResult.assignees_linked }}</span>
+                    </div>
+                    <div class="text-sm">
+                      <span class="text-muted-foreground">Labels linked:</span>
+                      <span class="ml-1 font-medium">{{ importResult.labels_assigned }}</span>
+                    </div>
+                    <div class="text-sm">
+                      <span class="text-muted-foreground">Comments:</span>
+                      <span class="ml-1 font-medium">{{ importResult.comments_created }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         <!-- Branding Settings -->

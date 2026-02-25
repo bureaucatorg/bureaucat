@@ -37,3 +37,5 @@ cmd/bureaucat/dist/*
 # Embedded migrations (copied during build, but keep .gitkeep)
 cmd/bureaucat/migrations/*
 !cmd/bureaucat/migrations/.gitkeep
+
+*.sql
