@@ -84,7 +84,7 @@ var defaultStates = []struct {
 	{"cancelled", "Cancelled", "#9CA3AF", 7, false},
 }
 
-// ListProjects returns paginated list of projects the user is a member of.
+// ListProjects returns paginated list of projects with optional search.
 func (h *ProjectHandler) ListProjects(c *echo.Context) error {
 	userIDStr := c.Request().Header.Get(auth.HeaderUserID)
 	userID, err := uuid.Parse(userIDStr)
@@ -102,6 +102,12 @@ func (h *ProjectHandler) ListProjects(c *echo.Context) error {
 	}
 	offset := (page - 1) * perPage
 
+	search := strings.TrimSpace(c.QueryParam("search"))
+	searchParam := pgtype.Text{}
+	if search != "" {
+		searchParam = pgtype.Text{String: search, Valid: true}
+	}
+
 	ctx := c.Request().Context()
 	userType := c.Request().Header.Get(auth.HeaderUserType)
 
@@ -109,14 +115,14 @@ func (h *ProjectHandler) ListProjects(c *echo.Context) error {
 	var projectResponses []ProjectResponse
 
 	if userType == "admin" {
-		// Admin users can see all projects
-		total, err = h.store.CountAllProjects(ctx)
+		total, err = h.store.CountAllProjectsFiltered(ctx, searchParam)
 		if err != nil {
 			return echo.NewHTTPError(http.StatusInternalServerError, "failed to count projects")
 		}
-		projects, err := h.store.ListAllProjects(ctx, store.ListAllProjectsParams{
+		projects, err := h.store.ListAllProjectsFiltered(ctx, store.ListAllProjectsFilteredParams{
 			Limit:  int32(perPage),
 			Offset: int32(offset),
+			Search: searchParam,
 		})
 		if err != nil {
 			return echo.NewHTTPError(http.StatusInternalServerError, "failed to list projects")
@@ -137,14 +143,18 @@ func (h *ProjectHandler) ListProjects(c *echo.Context) error {
 			}
 		}
 	} else {
-		total, err = h.store.CountUserProjects(ctx, userID)
+		total, err = h.store.CountUserProjectsFiltered(ctx, store.CountUserProjectsFilteredParams{
+			UserID: userID,
+			Search: searchParam,
+		})
 		if err != nil {
 			return echo.NewHTTPError(http.StatusInternalServerError, "failed to count projects")
 		}
-		projects, err := h.store.ListUserProjects(ctx, store.ListUserProjectsParams{
+		projects, err := h.store.ListUserProjectsFiltered(ctx, store.ListUserProjectsFilteredParams{
 			UserID: userID,
 			Limit:  int32(perPage),
 			Offset: int32(offset),
+			Search: searchParam,
 		})
 		if err != nil {
 			return echo.NewHTTPError(http.StatusInternalServerError, "failed to list projects")

@@ -42,8 +42,10 @@ type TaskResponse struct {
 	StateType       string             `json:"state_type"`
 	StateColor      string             `json:"state_color"`
 	Priority        int                `json:"priority"`
-	CreatedBy       uuid.UUID          `json:"created_by"`
-	CreatorUsername string             `json:"creator_username"`
+	CreatedBy        uuid.UUID          `json:"created_by"`
+	CreatorUsername  string             `json:"creator_username"`
+	CreatorFirstName string            `json:"creator_first_name"`
+	CreatorLastName  string            `json:"creator_last_name"`
 	Assignees       []AssigneeResponse `json:"assignees,omitempty"`
 	Labels          []TaskLabelInfo    `json:"labels,omitempty"`
 	CreatedAt       time.Time          `json:"created_at"`
@@ -370,8 +372,10 @@ func (h *TaskHandler) CreateTask(c *echo.Context) error {
 		StateType:       fullTask.StateType,
 		StateColor:      textToString(fullTask.StateColor, "#6B7280"),
 		Priority:        int(fullTask.Priority),
-		CreatedBy:       fullTask.CreatedBy,
-		CreatorUsername: fullTask.CreatorUsername,
+		CreatedBy:        fullTask.CreatedBy,
+		CreatorUsername:  fullTask.CreatorUsername,
+		CreatorFirstName: fullTask.CreatorFirstName,
+		CreatorLastName:  fullTask.CreatorLastName,
 		Assignees:       assignees,
 		Labels:          labels,
 		CreatedAt:       fullTask.CreatedAt.Time,
@@ -421,8 +425,10 @@ func (h *TaskHandler) GetTask(c *echo.Context) error {
 		StateType:       task.StateType,
 		StateColor:      textToString(task.StateColor, "#6B7280"),
 		Priority:        int(task.Priority),
-		CreatedBy:       task.CreatedBy,
-		CreatorUsername: task.CreatorUsername,
+		CreatedBy:        task.CreatedBy,
+		CreatorUsername:  task.CreatorUsername,
+		CreatorFirstName: task.CreatorFirstName,
+		CreatorLastName:  task.CreatorLastName,
 		Assignees:       assignees,
 		Labels:          labels,
 		CreatedAt:       task.CreatedAt.Time,
@@ -563,8 +569,10 @@ func (h *TaskHandler) UpdateTask(c *echo.Context) error {
 		StateType:       fullTask.StateType,
 		StateColor:      textToString(fullTask.StateColor, "#6B7280"),
 		Priority:        int(fullTask.Priority),
-		CreatedBy:       fullTask.CreatedBy,
-		CreatorUsername: fullTask.CreatorUsername,
+		CreatedBy:        fullTask.CreatedBy,
+		CreatorUsername:  fullTask.CreatorUsername,
+		CreatorFirstName: fullTask.CreatorFirstName,
+		CreatorLastName:  fullTask.CreatorLastName,
 		Assignees:       assignees,
 		Labels:          labels,
 		CreatedAt:       fullTask.CreatedAt.Time,

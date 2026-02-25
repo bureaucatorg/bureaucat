@@ -12,6 +12,8 @@ export interface Task {
   priority: number;
   created_by: string;
   creator_username: string;
+  creator_first_name: string;
+  creator_last_name: string;
   assignees?: TaskAssignee[];
   labels?: TaskLabel[];
   created_at: string;

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Plus, FolderKanban, Search, Loader2 } from "lucide-vue-next";
+import { Plus, FolderKanban, Search, Loader2, ChevronLeft, ChevronRight } from "lucide-vue-next";
 
 definePageMeta({
   middleware: ["auth"],
@@ -7,28 +7,36 @@ definePageMeta({
 
 useSeoMeta({ title: "Projects" });
 
-const { projects, loading, listProjects, total } = useProjects();
+const { projects, loading, listProjects, total, page, totalPages } = useProjects();
 
 const showCreateDialog = ref(false);
 const searchQuery = ref("");
+const perPage = 12;
 
-const filteredProjects = computed(() => {
-  if (!searchQuery.value) return projects.value;
-  const query = searchQuery.value.toLowerCase();
-  return projects.value.filter(
-    (p) =>
-      p.name.toLowerCase().includes(query) ||
-      p.project_key.toLowerCase().includes(query) ||
-      p.description?.toLowerCase().includes(query)
-  );
+let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+function fetchProjects(p = 1) {
+  listProjects(p, perPage, searchQuery.value);
+}
+
+watch(searchQuery, () => {
+  if (debounceTimer) clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(() => {
+    fetchProjects(1);
+  }, 300);
 });
 
 async function handleCreated() {
-  await listProjects(1, 100);
+  fetchProjects(1);
+}
+
+function goToPage(p: number) {
+  if (p < 1 || p > totalPages.value) return;
+  fetchProjects(p);
 }
 
 onMounted(() => {
-  listProjects(1, 100);
+  fetchProjects(1);
 });
 </script>
 
@@ -71,9 +79,9 @@ onMounted(() => {
           <Loader2 class="size-8 animate-spin text-muted-foreground" />
         </div>
 
-        <!-- Empty state -->
+        <!-- Empty state (no projects at all, no search) -->
         <div
-          v-else-if="projects.length === 0"
+          v-else-if="projects.length === 0 && !searchQuery"
           class="flex flex-col items-center justify-center rounded-lg border border-dashed py-16"
         >
           <div class="flex size-16 items-center justify-center rounded-full bg-muted">
@@ -89,21 +97,9 @@ onMounted(() => {
           </Button>
         </div>
 
-        <!-- Projects grid -->
-        <div
-          v-else-if="filteredProjects.length > 0"
-          class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
-        >
-          <ProjectCard
-            v-for="project in filteredProjects"
-            :key="project.id"
-            :project="project"
-          />
-        </div>
-
         <!-- No search results -->
         <div
-          v-else
+          v-else-if="projects.length === 0 && searchQuery"
           class="flex flex-col items-center justify-center rounded-lg border border-dashed py-16"
         >
           <Search class="size-8 text-muted-foreground" />
@@ -112,6 +108,50 @@ onMounted(() => {
             Try a different search term
           </p>
         </div>
+
+        <!-- Projects grid -->
+        <template v-else>
+          <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <ProjectCard
+              v-for="project in projects"
+              :key="project.id"
+              :project="project"
+            />
+          </div>
+
+          <!-- Pagination -->
+          <div
+            v-if="totalPages > 1"
+            class="mt-8 flex items-center justify-between"
+          >
+            <p class="text-sm text-muted-foreground">
+              {{ total }} project{{ total === 1 ? '' : 's' }}
+            </p>
+            <div class="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                :disabled="page <= 1"
+                @click="goToPage(page - 1)"
+              >
+                <ChevronLeft class="mr-1 size-4" />
+                Prev
+              </Button>
+              <span class="text-sm text-muted-foreground">
+                Page {{ page }} of {{ totalPages }}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                :disabled="page >= totalPages"
+                @click="goToPage(page + 1)"
+              >
+                Next
+                <ChevronRight class="ml-1 size-4" />
+              </Button>
+            </div>
+          </div>
+        </template>
 
         <CreateProjectDialog
           v-model:open="showCreateDialog"

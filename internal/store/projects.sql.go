@@ -97,6 +97,20 @@ func (q *Queries) CountAllProjects(ctx context.Context) (int64, error) {
 	return count, err
 }
 
+const countAllProjectsFiltered = `-- name: CountAllProjectsFiltered :one
+SELECT COUNT(*)
+FROM projects p
+WHERE p.deleted_at IS NULL
+  AND ($1::text IS NULL OR p.name ILIKE '%' || $1 || '%' OR p.project_key ILIKE '%' || $1 || '%' OR p.description ILIKE '%' || $1 || '%')
+`
+
+func (q *Queries) CountAllProjectsFiltered(ctx context.Context, search pgtype.Text) (int64, error) {
+	row := q.db.QueryRow(ctx, countAllProjectsFiltered, search)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const countProjectMembers = `-- name: CountProjectMembers :one
 SELECT COUNT(*) FROM project_members WHERE project_id = $1
 `
@@ -188,6 +202,26 @@ WHERE pm.user_id = $1 AND p.deleted_at IS NULL
 
 func (q *Queries) CountUserProjects(ctx context.Context, userID uuid.UUID) (int64, error) {
 	row := q.db.QueryRow(ctx, countUserProjects, userID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countUserProjectsFiltered = `-- name: CountUserProjectsFiltered :one
+SELECT COUNT(*)
+FROM projects p
+JOIN project_members pm ON p.id = pm.project_id
+WHERE pm.user_id = $1 AND p.deleted_at IS NULL
+  AND ($2::text IS NULL OR p.name ILIKE '%' || $2 || '%' OR p.project_key ILIKE '%' || $2 || '%' OR p.description ILIKE '%' || $2 || '%')
+`
+
+type CountUserProjectsFilteredParams struct {
+	UserID uuid.UUID   `json:"user_id"`
+	Search pgtype.Text `json:"search"`
+}
+
+func (q *Queries) CountUserProjectsFiltered(ctx context.Context, arg CountUserProjectsFilteredParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countUserProjectsFiltered, arg.UserID, arg.Search)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -1041,6 +1075,67 @@ func (q *Queries) ListAllProjects(ctx context.Context, arg ListAllProjectsParams
 	return items, nil
 }
 
+const listAllProjectsFiltered = `-- name: ListAllProjectsFiltered :many
+SELECT p.id, p.project_key, p.name, p.description, p.icon_id, p.cover_id, p.created_by, p.created_at, p.updated_at, p.deleted_at, 'admin' AS role
+FROM projects p
+WHERE p.deleted_at IS NULL
+  AND ($3::text IS NULL OR p.name ILIKE '%' || $3 || '%' OR p.project_key ILIKE '%' || $3 || '%' OR p.description ILIKE '%' || $3 || '%')
+ORDER BY p.name ASC
+LIMIT $1 OFFSET $2
+`
+
+type ListAllProjectsFilteredParams struct {
+	Limit  int32       `json:"limit"`
+	Offset int32       `json:"offset"`
+	Search pgtype.Text `json:"search"`
+}
+
+type ListAllProjectsFilteredRow struct {
+	ID          uuid.UUID          `json:"id"`
+	ProjectKey  string             `json:"project_key"`
+	Name        string             `json:"name"`
+	Description pgtype.Text        `json:"description"`
+	IconID      pgtype.UUID        `json:"icon_id"`
+	CoverID     pgtype.UUID        `json:"cover_id"`
+	CreatedBy   uuid.UUID          `json:"created_by"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+	DeletedAt   pgtype.Timestamptz `json:"deleted_at"`
+	Role        string             `json:"role"`
+}
+
+func (q *Queries) ListAllProjectsFiltered(ctx context.Context, arg ListAllProjectsFilteredParams) ([]ListAllProjectsFilteredRow, error) {
+	rows, err := q.db.Query(ctx, listAllProjectsFiltered, arg.Limit, arg.Offset, arg.Search)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListAllProjectsFilteredRow{}
+	for rows.Next() {
+		var i ListAllProjectsFilteredRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.ProjectKey,
+			&i.Name,
+			&i.Description,
+			&i.IconID,
+			&i.CoverID,
+			&i.CreatedBy,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.DeletedAt,
+			&i.Role,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listProjectLabels = `-- name: ListProjectLabels :many
 SELECT id, project_id, name, color, created_at
 FROM project_labels
@@ -1672,6 +1767,74 @@ func (q *Queries) ListUserProjects(ctx context.Context, arg ListUserProjectsPara
 	items := []ListUserProjectsRow{}
 	for rows.Next() {
 		var i ListUserProjectsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.ProjectKey,
+			&i.Name,
+			&i.Description,
+			&i.IconID,
+			&i.CoverID,
+			&i.CreatedBy,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.DeletedAt,
+			&i.Role,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listUserProjectsFiltered = `-- name: ListUserProjectsFiltered :many
+SELECT p.id, p.project_key, p.name, p.description, p.icon_id, p.cover_id, p.created_by, p.created_at, p.updated_at, p.deleted_at, pm.role
+FROM projects p
+JOIN project_members pm ON p.id = pm.project_id
+WHERE pm.user_id = $1 AND p.deleted_at IS NULL
+  AND ($4::text IS NULL OR p.name ILIKE '%' || $4 || '%' OR p.project_key ILIKE '%' || $4 || '%' OR p.description ILIKE '%' || $4 || '%')
+ORDER BY p.name ASC
+LIMIT $2 OFFSET $3
+`
+
+type ListUserProjectsFilteredParams struct {
+	UserID uuid.UUID   `json:"user_id"`
+	Limit  int32       `json:"limit"`
+	Offset int32       `json:"offset"`
+	Search pgtype.Text `json:"search"`
+}
+
+type ListUserProjectsFilteredRow struct {
+	ID          uuid.UUID          `json:"id"`
+	ProjectKey  string             `json:"project_key"`
+	Name        string             `json:"name"`
+	Description pgtype.Text        `json:"description"`
+	IconID      pgtype.UUID        `json:"icon_id"`
+	CoverID     pgtype.UUID        `json:"cover_id"`
+	CreatedBy   uuid.UUID          `json:"created_by"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+	DeletedAt   pgtype.Timestamptz `json:"deleted_at"`
+	Role        string             `json:"role"`
+}
+
+func (q *Queries) ListUserProjectsFiltered(ctx context.Context, arg ListUserProjectsFilteredParams) ([]ListUserProjectsFilteredRow, error) {
+	rows, err := q.db.Query(ctx, listUserProjectsFiltered,
+		arg.UserID,
+		arg.Limit,
+		arg.Offset,
+		arg.Search,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListUserProjectsFilteredRow{}
+	for rows.Next() {
+		var i ListUserProjectsFilteredRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.ProjectKey,

@@ -56,6 +56,36 @@ SELECT COUNT(*)
 FROM projects p
 WHERE p.deleted_at IS NULL;
 
+-- name: ListUserProjectsFiltered :many
+SELECT p.id, p.project_key, p.name, p.description, p.icon_id, p.cover_id, p.created_by, p.created_at, p.updated_at, p.deleted_at, pm.role
+FROM projects p
+JOIN project_members pm ON p.id = pm.project_id
+WHERE pm.user_id = $1 AND p.deleted_at IS NULL
+  AND (sqlc.narg('search')::text IS NULL OR p.name ILIKE '%' || sqlc.narg('search') || '%' OR p.project_key ILIKE '%' || sqlc.narg('search') || '%' OR p.description ILIKE '%' || sqlc.narg('search') || '%')
+ORDER BY p.name ASC
+LIMIT $2 OFFSET $3;
+
+-- name: CountUserProjectsFiltered :one
+SELECT COUNT(*)
+FROM projects p
+JOIN project_members pm ON p.id = pm.project_id
+WHERE pm.user_id = $1 AND p.deleted_at IS NULL
+  AND (sqlc.narg('search')::text IS NULL OR p.name ILIKE '%' || sqlc.narg('search') || '%' OR p.project_key ILIKE '%' || sqlc.narg('search') || '%' OR p.description ILIKE '%' || sqlc.narg('search') || '%');
+
+-- name: ListAllProjectsFiltered :many
+SELECT p.id, p.project_key, p.name, p.description, p.icon_id, p.cover_id, p.created_by, p.created_at, p.updated_at, p.deleted_at, 'admin' AS role
+FROM projects p
+WHERE p.deleted_at IS NULL
+  AND (sqlc.narg('search')::text IS NULL OR p.name ILIKE '%' || sqlc.narg('search') || '%' OR p.project_key ILIKE '%' || sqlc.narg('search') || '%' OR p.description ILIKE '%' || sqlc.narg('search') || '%')
+ORDER BY p.name ASC
+LIMIT $1 OFFSET $2;
+
+-- name: CountAllProjectsFiltered :one
+SELECT COUNT(*)
+FROM projects p
+WHERE p.deleted_at IS NULL
+  AND (sqlc.narg('search')::text IS NULL OR p.name ILIKE '%' || sqlc.narg('search') || '%' OR p.project_key ILIKE '%' || sqlc.narg('search') || '%' OR p.description ILIKE '%' || sqlc.narg('search') || '%');
+
 -- name: ProjectKeyExists :one
 SELECT EXISTS (
     SELECT 1 FROM projects

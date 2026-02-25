@@ -486,6 +486,21 @@ onMounted(() => {
                   />
                 </div>
 
+                <!-- Created By -->
+                <div class="py-3">
+                  <p class="mb-2 text-xs text-muted-foreground">Created by</p>
+                  <div class="flex items-center gap-1.5 rounded-md border bg-muted/50 py-1 pl-1 pr-2.5 w-fit">
+                    <Avatar class="size-6">
+                      <AvatarFallback class="text-xs">
+                        {{ currentTask.creator_first_name?.[0] }}{{ currentTask.creator_last_name?.[0] }}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span class="text-sm">
+                      {{ currentTask.creator_first_name }} {{ currentTask.creator_last_name }}
+                    </span>
+                  </div>
+                </div>
+
                 <!-- Dates -->
                 <div class="space-y-1.5 py-3 text-xs text-muted-foreground">
                   <div class="flex items-center gap-2">

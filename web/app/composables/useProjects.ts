@@ -51,14 +51,16 @@ export function useProjects() {
   // Projects CRUD
   async function listProjects(
     page = 1,
-    perPage = 20
+    perPage = 20,
+    search = ""
   ): Promise<{ success: boolean; data?: PaginatedProjectsResponse; error?: string }> {
     try {
       state.loading = true;
-      const response = await fetch(
-        `/api/v1/projects?page=${page}&per_page=${perPage}`,
-        { headers: getAuthHeader() }
-      );
+      let url = `/api/v1/projects?page=${page}&per_page=${perPage}`;
+      if (search) {
+        url += `&search=${encodeURIComponent(search)}`;
+      }
+      const response = await fetch(url, { headers: getAuthHeader() });
 
       if (!response.ok) {
         const error = await response.json();
