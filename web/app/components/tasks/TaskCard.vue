@@ -38,36 +38,36 @@ const priorityInfo = computed(() => PRIORITY_LABELS[props.task.priority] || PRIO
         class="size-4 shrink-0"
         :style="{ color: task.state_color }"
       />
-      <div class="min-w-0 flex-1">
-        <div class="flex items-baseline gap-6">
-          <span class="shrink-0 font-mono text-sm text-muted-foreground">{{ task.task_id }}</span>
-          <span class="truncate text-sm font-medium">{{ task.title }}</span>
-        </div>
-        <div class="mt-1 flex items-center gap-2">
-          <span class="text-xs text-muted-foreground">{{ task.state_name }}</span>
-          <div
-            v-if="task.labels && task.labels.length > 0"
-            class="flex items-center gap-1"
-          >
-            <span
-              v-for="label in task.labels.slice(0, 2)"
-              :key="label.id"
-              class="rounded px-1.5 py-0.5 text-xs"
-              :style="{
-                backgroundColor: label.color + '20',
-                color: label.color,
-              }"
+      <div class="min-w-0 flex-1 flex items-center gap-8">
+        <div class="w-28 shrink-0">
+          <span class="font-mono text-sm text-muted-foreground">{{ task.task_id }}</span>
+          <div class="mt-1 flex items-center gap-2">
+            <span class="text-xs text-muted-foreground">{{ task.state_name }}</span>
+            <div
+              v-if="task.labels && task.labels.length > 0"
+              class="flex items-center gap-1"
             >
-              {{ label.name }}
-            </span>
-            <span
-              v-if="task.labels.length > 2"
-              class="text-xs text-muted-foreground"
-            >
-              +{{ task.labels.length - 2 }}
-            </span>
+              <span
+                v-for="label in task.labels.slice(0, 2)"
+                :key="label.id"
+                class="rounded px-1.5 py-0.5 text-xs"
+                :style="{
+                  backgroundColor: label.color + '20',
+                  color: label.color,
+                }"
+              >
+                {{ label.name }}
+              </span>
+              <span
+                v-if="task.labels.length > 2"
+                class="text-xs text-muted-foreground"
+              >
+                +{{ task.labels.length - 2 }}
+              </span>
+            </div>
           </div>
         </div>
+        <span class="truncate text-sm font-medium">{{ task.title }}</span>
       </div>
       <div class="flex items-center gap-2">
         <div
