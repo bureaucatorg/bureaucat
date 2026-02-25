@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Loader2 } from "lucide-vue-next";
+import { Loader2, Plus, X, Search } from "lucide-vue-next";
 import { toast } from "vue-sonner";
 import type { ProjectState, ProjectLabel, ProjectMember, TaskTemplate } from "~/types";
 
@@ -93,22 +93,68 @@ const priorities = [
   { value: 4, label: "Urgent" },
 ];
 
-function toggleAssignee(userId: string) {
-  const idx = form.value.assignees.indexOf(userId);
-  if (idx === -1) {
+const assigneeSearch = ref("");
+const labelSearch = ref("");
+const showAssigneePopover = ref(false);
+const showLabelPopover = ref(false);
+
+const selectedAssignees = computed(() =>
+  props.members.filter((m) => form.value.assignees.includes(m.user_id))
+);
+
+const filteredAssigneeOptions = computed(() => {
+  const selected = new Set(form.value.assignees);
+  const available = props.members.filter((m) => !selected.has(m.user_id));
+  const q = assigneeSearch.value.toLowerCase().trim();
+  if (!q) return available;
+  return available.filter(
+    (m) =>
+      m.first_name.toLowerCase().includes(q) ||
+      m.last_name.toLowerCase().includes(q) ||
+      m.username.toLowerCase().includes(q)
+  );
+});
+
+const selectedLabels = computed(() =>
+  props.labels.filter((l) => form.value.labels.includes(l.id))
+);
+
+const filteredLabelOptions = computed(() => {
+  const selected = new Set(form.value.labels);
+  const available = props.labels.filter((l) => !selected.has(l.id));
+  const q = labelSearch.value.toLowerCase().trim();
+  if (!q) return available;
+  return available.filter((l) => l.name.toLowerCase().includes(q));
+});
+
+watch(showAssigneePopover, (open) => {
+  if (!open) assigneeSearch.value = "";
+});
+
+watch(showLabelPopover, (open) => {
+  if (!open) labelSearch.value = "";
+});
+
+function addAssignee(userId: string) {
+  if (!form.value.assignees.includes(userId)) {
     form.value.assignees.push(userId);
-  } else {
-    form.value.assignees.splice(idx, 1);
   }
+  showAssigneePopover.value = false;
 }
 
-function toggleLabel(labelId: string) {
-  const idx = form.value.labels.indexOf(labelId);
-  if (idx === -1) {
+function removeAssignee(userId: string) {
+  form.value.assignees = form.value.assignees.filter((id) => id !== userId);
+}
+
+function addLabel(labelId: string) {
+  if (!form.value.labels.includes(labelId)) {
     form.value.labels.push(labelId);
-  } else {
-    form.value.labels.splice(idx, 1);
   }
+  showLabelPopover.value = false;
+}
+
+function removeLabel(labelId: string) {
+  form.value.labels = form.value.labels.filter((id) => id !== labelId);
 }
 </script>
 
@@ -183,39 +229,139 @@ function toggleLabel(labelId: string) {
 
         <div v-if="members.length > 0" class="space-y-2">
           <Label>Assignees</Label>
-          <div class="flex flex-wrap gap-2">
-            <Button
-              v-for="member in members"
+          <div class="flex flex-wrap items-center gap-2">
+            <div
+              v-for="member in selectedAssignees"
               :key="member.user_id"
-              type="button"
-              size="sm"
-              :variant="form.assignees.includes(member.user_id) ? 'default' : 'outline'"
-              :disabled="loading"
-              @click="toggleAssignee(member.user_id)"
+              class="flex items-center gap-1.5 rounded-md border bg-muted/50 py-1 pl-1 pr-1"
             >
-              {{ member.first_name }} {{ member.last_name }}
-            </Button>
+              <Avatar class="size-5">
+                <AvatarFallback class="text-[10px]">
+                  {{ member.first_name[0] }}{{ member.last_name[0] }}
+                </AvatarFallback>
+              </Avatar>
+              <span class="text-sm">{{ member.first_name }} {{ member.last_name }}</span>
+              <button
+                type="button"
+                class="ml-0.5 flex size-4 items-center justify-center rounded-sm hover:bg-muted"
+                :disabled="loading"
+                @click="removeAssignee(member.user_id)"
+              >
+                <X class="size-3" />
+              </button>
+            </div>
+            <Popover v-model:open="showAssigneePopover">
+              <PopoverTrigger as-child>
+                <Button type="button" variant="outline" size="sm" class="h-7 gap-1.5" :disabled="loading || filteredAssigneeOptions.length === 0 && selectedAssignees.length === members.length">
+                  <Plus class="size-3.5" />
+                  Add
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="start" class="w-56 p-0">
+                <div class="border-b px-3 py-2">
+                  <div class="relative">
+                    <Search class="absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      v-model="assigneeSearch"
+                      placeholder="Search members..."
+                      class="h-8 pl-7 text-sm"
+                    />
+                  </div>
+                </div>
+                <div class="max-h-48 overflow-y-auto">
+                  <div class="py-1">
+                    <button
+                      v-for="member in filteredAssigneeOptions"
+                      :key="member.user_id"
+                      type="button"
+                      class="flex w-full items-center gap-2 px-3 py-1.5 text-sm hover:bg-accent"
+                      @click="addAssignee(member.user_id)"
+                    >
+                      <Avatar class="size-6">
+                        <AvatarFallback class="text-xs">
+                          {{ member.first_name[0] }}{{ member.last_name[0] }}
+                        </AvatarFallback>
+                      </Avatar>
+                      {{ member.first_name }} {{ member.last_name }}
+                    </button>
+                    <p
+                      v-if="filteredAssigneeOptions.length === 0"
+                      class="px-3 py-2 text-center text-sm text-muted-foreground"
+                    >
+                      No members found
+                    </p>
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
           </div>
         </div>
 
         <div v-if="labels.length > 0" class="space-y-2">
           <Label>Labels</Label>
-          <div class="flex flex-wrap gap-2">
-            <Button
-              v-for="label in labels"
+          <div class="flex flex-wrap items-center gap-2">
+            <div
+              v-for="label in selectedLabels"
               :key="label.id"
-              type="button"
-              size="sm"
-              :variant="form.labels.includes(label.id) ? 'default' : 'outline'"
-              :disabled="loading"
+              class="flex items-center gap-1.5 rounded-md px-2 py-1"
               :style="{
-                borderColor: form.labels.includes(label.id) ? label.color : undefined,
-                backgroundColor: form.labels.includes(label.id) ? label.color : undefined,
+                backgroundColor: label.color + '20',
+                color: label.color,
               }"
-              @click="toggleLabel(label.id)"
             >
-              {{ label.name }}
-            </Button>
+              <span class="text-sm font-medium">{{ label.name }}</span>
+              <button
+                type="button"
+                class="flex size-4 items-center justify-center rounded-sm hover:opacity-70"
+                :disabled="loading"
+                @click="removeLabel(label.id)"
+              >
+                <X class="size-3" />
+              </button>
+            </div>
+            <Popover v-model:open="showLabelPopover">
+              <PopoverTrigger as-child>
+                <Button type="button" variant="outline" size="sm" class="h-7 gap-1.5" :disabled="loading || filteredLabelOptions.length === 0 && selectedLabels.length === labels.length">
+                  <Plus class="size-3.5" />
+                  Add
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="start" class="w-48 p-0">
+                <div class="border-b px-3 py-2">
+                  <div class="relative">
+                    <Search class="absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      v-model="labelSearch"
+                      placeholder="Search labels..."
+                      class="h-8 pl-7 text-sm"
+                    />
+                  </div>
+                </div>
+                <div class="max-h-48 overflow-y-auto">
+                  <div class="py-1">
+                    <button
+                      v-for="label in filteredLabelOptions"
+                      :key="label.id"
+                      type="button"
+                      class="flex w-full items-center gap-2 px-3 py-1.5 text-sm hover:bg-accent"
+                      @click="addLabel(label.id)"
+                    >
+                      <div
+                        class="size-3 shrink-0 rounded-full"
+                        :style="{ backgroundColor: label.color }"
+                      />
+                      {{ label.name }}
+                    </button>
+                    <p
+                      v-if="filteredLabelOptions.length === 0"
+                      class="px-3 py-2 text-center text-sm text-muted-foreground"
+                    >
+                      No labels found
+                    </p>
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
           </div>
         </div>
 

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Plus, X, Loader2 } from "lucide-vue-next";
+import { Plus, X, Loader2, Search } from "lucide-vue-next";
 import { toast } from "vue-sonner";
 import type { TaskAssignee, ProjectMember } from "~/types";
 
@@ -18,12 +18,28 @@ const emit = defineEmits<{
 const { addAssignee, removeAssignee } = useTasks();
 
 const loading = ref<string | null>(null);
-const showDropdown = ref(false);
+const showPopover = ref(false);
+const searchQuery = ref("");
 
 // Members not already assigned
 const availableMembers = computed(() => {
   const assignedIds = new Set(props.assignees.map((a) => a.user_id));
   return props.members.filter((m) => !assignedIds.has(m.user_id));
+});
+
+const filteredMembers = computed(() => {
+  const q = searchQuery.value.toLowerCase().trim();
+  if (!q) return availableMembers.value;
+  return availableMembers.value.filter(
+    (m) =>
+      m.first_name.toLowerCase().includes(q) ||
+      m.last_name.toLowerCase().includes(q) ||
+      m.username.toLowerCase().includes(q)
+  );
+});
+
+watch(showPopover, (open) => {
+  if (!open) searchQuery.value = "";
 });
 
 async function handleAdd(userId: string) {
@@ -33,7 +49,7 @@ async function handleAdd(userId: string) {
 
   if (result.success) {
     toast.success("Assignee added");
-    showDropdown.value = false;
+    showPopover.value = false;
     emit("refresh");
   } else {
     toast.error(result.error || "Failed to add assignee");
@@ -88,31 +104,51 @@ async function handleRemove(userId: string) {
       </div>
 
       <!-- Add button -->
-      <DropdownMenu v-if="isMember && availableMembers.length > 0" v-model:open="showDropdown">
-        <DropdownMenuTrigger as-child>
+      <Popover v-if="isMember && availableMembers.length > 0" v-model:open="showPopover">
+        <PopoverTrigger as-child>
           <Button variant="outline" size="sm" class="h-8 gap-1.5">
             <Plus class="size-3.5" />
             Add
           </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" class="w-56">
-          <DropdownMenuLabel>Add assignee</DropdownMenuLabel>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem
-            v-for="member in availableMembers"
-            :key="member.user_id"
-            :disabled="loading === member.user_id"
-            @click="handleAdd(member.user_id)"
-          >
-            <Avatar class="mr-2 size-6">
-              <AvatarFallback class="text-xs">
-                {{ member.first_name[0] }}{{ member.last_name[0] }}
-              </AvatarFallback>
-            </Avatar>
-            {{ member.first_name }} {{ member.last_name }}
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+        </PopoverTrigger>
+        <PopoverContent align="start" class="w-56 p-0">
+          <div class="border-b px-3 py-2">
+            <div class="relative">
+              <Search class="absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                v-model="searchQuery"
+                placeholder="Search members..."
+                class="h-8 pl-7 text-sm"
+              />
+            </div>
+          </div>
+          <div class="max-h-48 overflow-y-auto">
+            <div class="py-1">
+              <button
+                v-for="member in filteredMembers"
+                :key="member.user_id"
+                type="button"
+                class="flex w-full items-center gap-2 px-3 py-1.5 text-sm hover:bg-accent disabled:opacity-50"
+                :disabled="loading === member.user_id"
+                @click="handleAdd(member.user_id)"
+              >
+                <Avatar class="size-6">
+                  <AvatarFallback class="text-xs">
+                    {{ member.first_name[0] }}{{ member.last_name[0] }}
+                  </AvatarFallback>
+                </Avatar>
+                {{ member.first_name }} {{ member.last_name }}
+              </button>
+              <p
+                v-if="filteredMembers.length === 0"
+                class="px-3 py-2 text-center text-sm text-muted-foreground"
+              >
+                No members found
+              </p>
+            </div>
+          </div>
+        </PopoverContent>
+      </Popover>
 
       <!-- Empty state -->
       <span
