@@ -17,7 +17,6 @@ useSeoMeta({
   twitterDescription: quirkyDesc,
   twitterImage: "/api/v1/og-image",
 });
-const logoLetter = computed(() => appName.value.charAt(0).toUpperCase());
 
 const noBS = ref(false);
 
@@ -272,14 +271,8 @@ const features = computed(() =>
         <div
           class="flex flex-col items-center justify-between gap-4 md:flex-row"
         >
-          <div class="flex items-center gap-3">
-            <div
-              class="flex size-6 items-center justify-center rounded bg-foreground"
-            >
-              <span class="font-mono text-xs font-bold text-background">{{
-                logoLetter
-              }}</span>
-            </div>
+          <div class="flex items-center gap-2">
+            <BurecatLogo :size="20" />
             <span class="text-sm text-muted-foreground">{{ appName }}</span>
           </div>
           <p class="text-center text-sm text-muted-foreground">

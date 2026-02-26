@@ -9,17 +9,13 @@ async function handleLogout() {
   await navigateTo("/");
 }
 
-// First letter of app name for logo
-const logoLetter = computed(() => appName.value.charAt(0).toUpperCase());
 </script>
 
 <template>
   <header class="sticky top-0 z-40 border-b border-border/50 bg-background/80 backdrop-blur-xl">
     <div class="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
-      <NuxtLink to="/" class="flex items-center gap-3">
-        <div class="flex size-8 items-center justify-center rounded-md bg-foreground">
-          <span class="font-mono text-sm font-bold text-background">{{ logoLetter }}</span>
-        </div>
+      <NuxtLink to="/" class="flex items-center gap-2.5">
+        <BurecatLogo :size="28" />
         <span class="font-display text-lg font-semibold tracking-tight">{{ appName }}</span>
       </NuxtLink>
 
