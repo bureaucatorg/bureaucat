@@ -46,7 +46,7 @@ export default defineNuxtConfig({
 
   colorMode: {
     classSuffix: "",
-    preference: "system",
+    preference: "light",
     storageKey: "bureaucat-color-mode",
   },
 
