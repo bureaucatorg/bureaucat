@@ -18,7 +18,10 @@ export default defineNuxtConfig({
         { name: "twitter:image", content: "/api/v1/og-image" },
       ],
       htmlAttrs: { lang: "en" },
-      link: [{ rel: "icon", href: "/favicon.ico" }],
+      link: [
+        { rel: "icon", type: "image/svg+xml", href: "/logo.svg" },
+        { rel: "icon", type: "image/x-icon", href: "/favicon.ico" },
+      ],
     },
   },
 
