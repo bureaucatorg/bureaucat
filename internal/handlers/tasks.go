@@ -12,20 +12,23 @@ import (
 
 	"bereaucat/internal/activity"
 	"bereaucat/internal/auth"
+	"bereaucat/internal/notifier"
 	"bereaucat/internal/store"
 )
 
 // TaskHandler handles task-related endpoints.
 type TaskHandler struct {
-	store           store.Querier
-	activityService *activity.Service
+	store               store.Querier
+	activityService     *activity.Service
+	notificationService *notifier.Service
 }
 
 // NewTaskHandler creates a new task handler.
-func NewTaskHandler(store store.Querier, activityService *activity.Service) *TaskHandler {
+func NewTaskHandler(store store.Querier, activityService *activity.Service, notificationService *notifier.Service) *TaskHandler {
 	return &TaskHandler{
-		store:           store,
-		activityService: activityService,
+		store:               store,
+		activityService:     activityService,
+		notificationService: notificationService,
 	}
 }
 
@@ -380,6 +383,50 @@ func (h *TaskHandler) CreateTask(c *echo.Context) error {
 		})
 	}
 
+	// Send notifications for assignees and mentions
+	if h.notificationService != nil {
+		actorUser, _ := h.store.GetUserByID(ctx, userID)
+		actorName := actorUser.FirstName + " " + actorUser.LastName
+		if actorName == " " {
+			actorName = actorUser.Username
+		}
+		taskNum := int(task.TaskNumber)
+
+		// Notify assignees
+		for _, assigneeIDStr := range req.Assignees {
+			assigneeID, err := uuid.Parse(assigneeIDStr)
+			if err != nil || assigneeID == userID {
+				continue
+			}
+			h.notificationService.Notify(ctx, notifier.Notification{
+				Event:       notifier.EventTaskAssigned,
+				RecipientID: assigneeID,
+				ActorName:   actorName,
+				ProjectKey:  projectKey,
+				TaskNumber:  taskNum,
+				TaskTitle:   req.Title,
+			})
+		}
+
+		// Notify mentions in description
+		if req.Description != nil {
+			mentionedIDs := notifier.ParseMentions(*req.Description)
+			for _, mentionedID := range mentionedIDs {
+				if mentionedID == userID {
+					continue
+				}
+				h.notificationService.Notify(ctx, notifier.Notification{
+					Event:       notifier.EventMentioned,
+					RecipientID: mentionedID,
+					ActorName:   actorName,
+					ProjectKey:  projectKey,
+					TaskNumber:  taskNum,
+					TaskTitle:   req.Title,
+				})
+			}
+		}
+	}
+
 	// Get full task with state info
 	fullTask, err := h.store.GetTaskByID(ctx, task.ID)
 	if err != nil {
@@ -604,6 +651,35 @@ func (h *TaskHandler) UpdateTask(c *echo.Context) error {
 		})
 	}
 
+	// Send mention notifications for newly added mentions in description
+	if h.notificationService != nil && req.Description != nil {
+		oldDescStr := ""
+		if oldDesc != nil {
+			oldDescStr = *oldDesc
+		}
+		newMentions := notifier.DiffMentions(oldDescStr, *req.Description)
+		if len(newMentions) > 0 {
+			actorUser, _ := h.store.GetUserByID(ctx, userID)
+			actorName := actorUser.FirstName + " " + actorUser.LastName
+			if actorName == " " {
+				actorName = actorUser.Username
+			}
+			for _, mentionedID := range newMentions {
+				if mentionedID == userID {
+					continue
+				}
+				h.notificationService.Notify(ctx, notifier.Notification{
+					Event:       notifier.EventMentioned,
+					RecipientID: mentionedID,
+					ActorName:   actorName,
+					ProjectKey:  projectKey,
+					TaskNumber:  taskNum,
+					TaskTitle:   oldTask.Title,
+				})
+			}
+		}
+	}
+
 	// Get updated task with state info
 	fullTask, err := h.store.GetTaskByID(ctx, task.ID)
 	if err != nil {
@@ -805,6 +881,25 @@ func (h *TaskHandler) AddAssignee(c *echo.Context) error {
 			"last_name":  assigneeUser.LastName,
 		},
 	})
+
+	// Send notification to assignee (skip if self-assigning)
+	if h.notificationService != nil && assigneeID != userID {
+		username := c.Request().Header.Get(auth.HeaderUsername)
+		actorUser, _ := h.store.GetUserByID(ctx, userID)
+		actorName := actorUser.FirstName + " " + actorUser.LastName
+		if actorName == " " {
+			actorName = username
+		}
+		projectKey := c.Request().Header.Get(auth.HeaderProjectKey)
+		h.notificationService.Notify(ctx, notifier.Notification{
+			Event:       notifier.EventTaskAssigned,
+			RecipientID: assigneeID,
+			ActorName:   actorName,
+			ProjectKey:  projectKey,
+			TaskNumber:  taskNum,
+			TaskTitle:   task.Title,
+		})
+	}
 
 	return c.JSON(http.StatusCreated, map[string]string{"message": "assignee added"})
 }

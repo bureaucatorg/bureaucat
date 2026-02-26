@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { Users, Key, Shield, ArrowRight, Loader2, Upload, CheckCircle2, Copy, Check } from "lucide-vue-next";
+import { Users, Key, Shield, ArrowRight, Loader2, Upload, CheckCircle2, Copy, Check, MessageSquare } from "lucide-vue-next";
 import { toast } from "vue-sonner";
-import type { SSOSettings } from "~/composables/useSettings";
+import type { SSOSettings, MattermostSettings } from "~/composables/useSettings";
 
 definePageMeta({
   middleware: ["admin"],
@@ -9,7 +9,7 @@ definePageMeta({
 
 useSeoMeta({ title: "Admin" });
 
-const { branding, updateBranding, fetchSSOSettings, updateSSOSettings } = useSettings();
+const { branding, updateBranding, fetchSSOSettings, updateSSOSettings, fetchMattermostSettings, updateMattermostSettings, testMattermostConnection } = useSettings();
 const { getAuthHeader } = useAuth();
 
 const brandingForm = ref({
@@ -175,8 +175,62 @@ async function copyToClipboard(text: string, field: string) {
   }
 }
 
+// Mattermost Settings
+const mattermostForm = ref<MattermostSettings>({
+  enabled: false,
+  server_url: "",
+  bot_token: "",
+});
+const savingMattermost = ref(false);
+const testingMattermost = ref(false);
+const mattermostLoaded = ref(false);
+
+async function loadMattermostSettings() {
+  const result = await fetchMattermostSettings();
+  if (result.success && result.data) {
+    mattermostForm.value = {
+      enabled: result.data.enabled || false,
+      server_url: result.data.server_url || "",
+      bot_token: result.data.bot_token || "",
+    };
+  }
+  mattermostLoaded.value = true;
+}
+
+async function handleSaveMattermost() {
+  savingMattermost.value = true;
+  const result = await updateMattermostSettings(mattermostForm.value);
+  savingMattermost.value = false;
+
+  if (result.success) {
+    if (result.data) {
+      mattermostForm.value = {
+        enabled: result.data.enabled || false,
+        server_url: result.data.server_url || "",
+        bot_token: result.data.bot_token || "",
+      };
+    }
+    toast.success("Mattermost settings saved");
+  } else {
+    toast.error(result.error || "Failed to save Mattermost settings");
+  }
+}
+
+async function handleTestMattermost() {
+  testingMattermost.value = true;
+  const result = await testMattermostConnection();
+  testingMattermost.value = false;
+
+  if (result.success) {
+    toast.success("Mattermost connection successful");
+  } else {
+    toast.error(result.error || "Connection test failed");
+  }
+}
+
 onMounted(() => {
   loadSSOSettings();
+  loadMattermostSettings();
 });
 
 const adminModels = [
@@ -539,6 +593,83 @@ const adminModels = [
               </Button>
             </div>
           </div>
+        </div>
+
+        <!-- Integrations / Mattermost Settings -->
+        <div class="mt-12">
+          <div class="mb-4">
+            <h2 class="text-xl font-semibold">Integrations</h2>
+            <p class="text-sm text-muted-foreground">
+              Configure external service integrations for notifications
+            </p>
+          </div>
+
+          <Card>
+            <CardContent class="pt-6">
+              <div class="space-y-6">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-3">
+                    <MessageSquare class="size-5 text-muted-foreground" />
+                    <div>
+                      <p class="font-medium">Mattermost</p>
+                      <p class="text-sm text-muted-foreground">
+                        Send DM notifications when users are assigned tasks or mentioned
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    :checked="mattermostForm.enabled"
+                    @update:checked="mattermostForm.enabled = $event"
+                  />
+                </div>
+
+                <div v-if="mattermostForm.enabled" class="space-y-4">
+                  <div class="space-y-2">
+                    <Label for="mm-server-url">Server URL</Label>
+                    <Input
+                      id="mm-server-url"
+                      v-model="mattermostForm.server_url"
+                      placeholder="https://mattermost.example.com"
+                      :disabled="savingMattermost"
+                    />
+                    <p class="text-xs text-muted-foreground">
+                      The base URL of your Mattermost instance
+                    </p>
+                  </div>
+                  <div class="space-y-2">
+                    <Label for="mm-bot-token">Bot Token</Label>
+                    <Input
+                      id="mm-bot-token"
+                      v-model="mattermostForm.bot_token"
+                      type="password"
+                      placeholder="Enter bot access token"
+                      :disabled="savingMattermost"
+                    />
+                    <p class="text-xs text-muted-foreground">
+                      Create a bot account in Mattermost and use its access token
+                    </p>
+                  </div>
+                </div>
+
+                <!-- Action buttons -->
+                <div class="flex items-center justify-end gap-2 pt-2">
+                  <Button
+                    v-if="mattermostForm.enabled && mattermostLoaded"
+                    variant="outline"
+                    @click="handleTestMattermost"
+                    :disabled="testingMattermost || savingMattermost"
+                  >
+                    <Loader2 v-if="testingMattermost" class="mr-2 size-4 animate-spin" />
+                    Test Connection
+                  </Button>
+                  <Button @click="handleSaveMattermost" :disabled="savingMattermost">
+                    <Loader2 v-if="savingMattermost" class="mr-2 size-4 animate-spin" />
+                    Save Changes
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </main>

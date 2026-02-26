@@ -11,20 +11,23 @@ import (
 
 	"bereaucat/internal/activity"
 	"bereaucat/internal/auth"
+	"bereaucat/internal/notifier"
 	"bereaucat/internal/store"
 )
 
 // CommentHandler handles comment and activity log endpoints.
 type CommentHandler struct {
-	store           store.Querier
-	activityService *activity.Service
+	store               store.Querier
+	activityService     *activity.Service
+	notificationService *notifier.Service
 }
 
 // NewCommentHandler creates a new comment handler.
-func NewCommentHandler(store store.Querier, activityService *activity.Service) *CommentHandler {
+func NewCommentHandler(store store.Querier, activityService *activity.Service, notificationService *notifier.Service) *CommentHandler {
 	return &CommentHandler{
-		store:           store,
-		activityService: activityService,
+		store:               store,
+		activityService:     activityService,
+		notificationService: notificationService,
 	}
 }
 
@@ -205,6 +208,32 @@ func (h *CommentHandler) CreateComment(c *echo.Context) error {
 			"content":    comment.Content,
 		},
 	})
+
+	// Send mention notifications
+	if h.notificationService != nil {
+		mentionedIDs := notifier.ParseMentions(req.Content)
+		if len(mentionedIDs) > 0 {
+			actorUser, _ := h.store.GetUserByID(ctx, userID)
+			actorName := actorUser.FirstName + " " + actorUser.LastName
+			if actorName == " " {
+				actorName = actorUser.Username
+			}
+			projectKey := c.Request().Header.Get(auth.HeaderProjectKey)
+			for _, mentionedID := range mentionedIDs {
+				if mentionedID == userID {
+					continue
+				}
+				h.notificationService.Notify(ctx, notifier.Notification{
+					Event:       notifier.EventMentioned,
+					RecipientID: mentionedID,
+					ActorName:   actorName,
+					ProjectKey:  projectKey,
+					TaskNumber:  taskNum,
+					TaskTitle:   task.Title,
+				})
+			}
+		}
+	}
 
 	// Get full comment with user info
 	fullComment, err := h.store.GetCommentByID(ctx, comment.ID)

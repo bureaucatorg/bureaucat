@@ -1,12 +1,14 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"strings"
 
 	"github.com/labstack/echo/v5"
 
+	"bereaucat/internal/notifier"
 	"bereaucat/internal/store"
 )
 
@@ -306,6 +308,160 @@ func (h *SettingsHandler) LoadSSOSettings(c *echo.Context) (*SSOSettings, error)
 	return &sso, nil
 }
 
+// --- Mattermost Settings ---
+
+// MattermostSettings represents the Mattermost integration configuration.
+type MattermostSettings struct {
+	Enabled   bool   `json:"enabled"`
+	ServerURL string `json:"server_url"`
+	BotToken  string `json:"bot_token"`
+}
+
+// MattermostResponse is the API response for Mattermost settings (token masked).
+type MattermostResponse struct {
+	Enabled   bool   `json:"enabled"`
+	ServerURL string `json:"server_url"`
+	BotToken  string `json:"bot_token"`
+}
+
+// GetMattermostSettings returns the Mattermost integration config with token masked (admin only).
+//
+//	@Summary		Get Mattermost settings
+//	@Description	Returns Mattermost integration configuration with bot token masked. Requires admin role.
+//	@Tags			Admin - Settings
+//	@Produce		json
+//	@Success		200	{object}	MattermostResponse
+//	@Security		BearerAuth
+//	@Router			/admin/settings/mattermost [get]
+func (h *SettingsHandler) GetMattermostSettings(c *echo.Context) error {
+	ctx := c.Request().Context()
+
+	setting, err := h.store.GetSetting(ctx, "mattermost")
+	if err != nil {
+		return c.JSON(http.StatusOK, MattermostResponse{})
+	}
+
+	var mm MattermostSettings
+	if err := json.Unmarshal(setting.Value, &mm); err != nil {
+		return c.JSON(http.StatusOK, MattermostResponse{})
+	}
+
+	return c.JSON(http.StatusOK, MattermostResponse{
+		Enabled:   mm.Enabled,
+		ServerURL: mm.ServerURL,
+		BotToken:  maskSecret(mm.BotToken),
+	})
+}
+
+// UpdateMattermostSettings saves the Mattermost integration configuration (admin only).
+//
+//	@Summary		Update Mattermost settings
+//	@Description	Update Mattermost integration configuration. Masked tokens are preserved. Requires admin role.
+//	@Tags			Admin - Settings
+//	@Accept			json
+//	@Produce		json
+//	@Param			body	body		MattermostSettings	true	"Mattermost configuration"
+//	@Success		200		{object}	MattermostResponse
+//	@Failure		400		{object}	ErrorResponse
+//	@Failure		500		{object}	ErrorResponse
+//	@Security		BearerAuth
+//	@Router			/admin/settings/mattermost [put]
+func (h *SettingsHandler) UpdateMattermostSettings(c *echo.Context) error {
+	var req MattermostSettings
+	if err := c.Bind(&req); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid request body")
+	}
+
+	ctx := c.Request().Context()
+
+	// Load existing settings to preserve token if masked
+	var existing MattermostSettings
+	setting, err := h.store.GetSetting(ctx, "mattermost")
+	if err == nil {
+		_ = json.Unmarshal(setting.Value, &existing)
+	}
+
+	if isSecretMasked(req.BotToken) {
+		req.BotToken = existing.BotToken
+	}
+
+	// Validate: if enabled, required fields must be set
+	if req.Enabled {
+		if req.ServerURL == "" || req.BotToken == "" {
+			return echo.NewHTTPError(http.StatusBadRequest, "Mattermost requires server_url and bot_token")
+		}
+	}
+
+	value, err := json.Marshal(req)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to marshal settings")
+	}
+
+	_, err = h.store.UpsertSetting(ctx, store.UpsertSettingParams{
+		Key:   "mattermost",
+		Value: value,
+	})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to update Mattermost settings")
+	}
+
+	return c.JSON(http.StatusOK, MattermostResponse{
+		Enabled:   req.Enabled,
+		ServerURL: req.ServerURL,
+		BotToken:  maskSecret(req.BotToken),
+	})
+}
+
+// TestMattermostConnection tests the Mattermost bot connection (admin only).
+//
+//	@Summary		Test Mattermost connection
+//	@Description	Tests the Mattermost bot connection using the saved settings. Requires admin role.
+//	@Tags			Admin - Settings
+//	@Produce		json
+//	@Success		200	{object}	MessageResponse
+//	@Failure		400	{object}	ErrorResponse
+//	@Failure		500	{object}	ErrorResponse
+//	@Security		BearerAuth
+//	@Router			/admin/settings/mattermost/test [post]
+func (h *SettingsHandler) TestMattermostConnection(c *echo.Context) error {
+	ctx := c.Request().Context()
+
+	setting, err := h.store.GetSetting(ctx, "mattermost")
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "Mattermost not configured")
+	}
+
+	var mm MattermostSettings
+	if err := json.Unmarshal(setting.Value, &mm); err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to parse Mattermost settings")
+	}
+
+	if !mm.Enabled || mm.ServerURL == "" || mm.BotToken == "" {
+		return echo.NewHTTPError(http.StatusBadRequest, "Mattermost is not configured or not enabled")
+	}
+
+	notif := notifierFromSettings(mm)
+	if err := notif.TestConnection(ctx); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "connection failed: "+err.Error())
+	}
+
+	return c.JSON(http.StatusOK, map[string]string{"message": "connection successful"})
+}
+
+// LoadMattermostSettings loads the Mattermost config from the database.
+func (h *SettingsHandler) LoadMattermostSettings(ctx context.Context) (*MattermostSettings, error) {
+	setting, err := h.store.GetSetting(ctx, "mattermost")
+	if err != nil {
+		return nil, err
+	}
+
+	var mm MattermostSettings
+	if err := json.Unmarshal(setting.Value, &mm); err != nil {
+		return nil, err
+	}
+	return &mm, nil
+}
+
 // maskSecret replaces all but the last 4 characters with asterisks.
 func maskSecret(secret string) string {
 	if secret == "" {
@@ -320,4 +476,12 @@ func maskSecret(secret string) string {
 // isSecretMasked returns true if the secret is empty or contains the mask pattern.
 func isSecretMasked(secret string) bool {
 	return secret == "" || strings.HasPrefix(secret, "****")
+}
+
+// notifierFromSettings creates a MattermostNotifier from settings.
+func notifierFromSettings(mm MattermostSettings) *notifier.MattermostNotifier {
+	return notifier.NewMattermostNotifier(notifier.MattermostConfig{
+		ServerURL: mm.ServerURL,
+		BotToken:  mm.BotToken,
+	})
 }

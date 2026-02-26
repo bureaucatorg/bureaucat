@@ -21,6 +21,12 @@ export interface SSOProvidersPublic {
   zitadel: boolean;
 }
 
+export interface MattermostSettings {
+  enabled: boolean;
+  server_url: string;
+  bot_token: string;
+}
+
 const branding = ref<BrandingSettings>({
   enabled: false,
   app_name: "Bureaucat",
@@ -153,6 +159,72 @@ export function useSettings() {
     }
   }
 
+  // --- Mattermost Settings ---
+
+  async function fetchMattermostSettings(): Promise<{ success: boolean; data?: MattermostSettings; error?: string }> {
+    try {
+      const response = await fetch("/api/v1/admin/settings/mattermost", {
+        headers: { ...getAuthHeader() },
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        return { success: false, error: data.message || "Failed to fetch Mattermost settings" };
+      }
+
+      const data = await response.json();
+      return { success: true, data };
+    } catch {
+      return { success: false, error: "Network error" };
+    }
+  }
+
+  async function updateMattermostSettings(
+    settings: MattermostSettings
+  ): Promise<{ success: boolean; data?: MattermostSettings; error?: string }> {
+    try {
+      const response = await fetch("/api/v1/admin/settings/mattermost", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          ...getAuthHeader(),
+        },
+        credentials: "include",
+        body: JSON.stringify(settings),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        return { success: false, error: data.message || "Failed to update Mattermost settings" };
+      }
+
+      const data = await response.json();
+      return { success: true, data };
+    } catch {
+      return { success: false, error: "Network error" };
+    }
+  }
+
+  async function testMattermostConnection(): Promise<{ success: boolean; error?: string }> {
+    try {
+      const response = await fetch("/api/v1/admin/settings/mattermost/test", {
+        method: "POST",
+        headers: { ...getAuthHeader() },
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        return { success: false, error: data.message || "Connection test failed" };
+      }
+
+      return { success: true };
+    } catch {
+      return { success: false, error: "Network error" };
+    }
+  }
+
   return {
     branding,
     appName,
@@ -164,5 +236,8 @@ export function useSettings() {
     fetchSSOProviders,
     fetchSSOSettings,
     updateSSOSettings,
+    fetchMattermostSettings,
+    updateMattermostSettings,
+    testMattermostConnection,
   };
 }

@@ -17,6 +17,7 @@ import (
 	"bereaucat/internal/activity"
 	"bereaucat/internal/auth"
 	"bereaucat/internal/handlers"
+	"bereaucat/internal/notifier"
 	"bereaucat/internal/store"
 	"bereaucat/internal/uploads"
 )
@@ -46,9 +47,10 @@ type Server struct {
 	ogHandler       *handlers.OGHandler
 	importHandler   *handlers.ImportHandler
 	oauthHandler    *handlers.OAuthHandler
-	activityService *activity.Service
-	uploadService   *uploads.Service
-	distFS          fs.FS
+	activityService     *activity.Service
+	notificationService *notifier.Service
+	uploadService       *uploads.Service
+	distFS              fs.FS
 }
 
 // New creates a new Server instance
@@ -120,10 +122,13 @@ func New(devMode bool, dbURL string, authConfig AuthConfig, distFS fs.FS) (*Serv
 		// Initialize activity service
 		srv.activityService = activity.NewService(srv.store)
 
+		// Initialize notification service (loads providers dynamically from settings)
+		srv.notificationService = notifier.NewService(srv.store)
+
 		// Initialize project and task handlers
 		srv.projectHandler = handlers.NewProjectHandler(srv.store)
-		srv.taskHandler = handlers.NewTaskHandler(srv.store, srv.activityService)
-		srv.commentHandler = handlers.NewCommentHandler(srv.store, srv.activityService)
+		srv.taskHandler = handlers.NewTaskHandler(srv.store, srv.activityService, srv.notificationService)
+		srv.commentHandler = handlers.NewCommentHandler(srv.store, srv.activityService, srv.notificationService)
 		srv.settingsHandler = handlers.NewSettingsHandler(srv.store)
 		srv.oauthHandler = handlers.NewOAuthHandler(srv.store, srv.authManager, srv.authHandler, devMode)
 		srv.ogHandler = handlers.NewOGHandler(srv.store)
