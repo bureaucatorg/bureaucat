@@ -273,7 +273,7 @@ const features = computed(() =>
         >
           <div class="flex items-center gap-2">
             <BurecatLogo :size="20" />
-            <span class="text-sm text-muted-foreground">{{ appName }}</span>
+            <span class="text-sm text-muted-foreground">{{ appName }} &copy; 2026</span>
           </div>
           <p class="text-center text-sm text-muted-foreground">
             Crafted by
