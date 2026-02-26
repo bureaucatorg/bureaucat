@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { User, LogOut, LayoutDashboard, FolderKanban, Shield } from "lucide-vue-next";
+import { User, LogOut, LayoutDashboard, FolderKanban, Shield, Star } from "lucide-vue-next";
 
 const { user, isAuthenticated, logout } = useAuth();
 const { appName } = useSettings();
@@ -29,6 +29,16 @@ async function handleLogout() {
             </template>
           </template>
         </nav>
+
+        <a
+          href="https://github.com/bureaucatorg/bureaucat"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="inline-flex items-center gap-1.5 rounded-md border border-border/60 px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:border-amber-500/40 hover:text-foreground"
+        >
+          <Star class="size-3.5" />
+          <span class="hidden sm:inline">Star on GitHub</span>
+        </a>
 
         <ThemeToggle />
 
