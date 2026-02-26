@@ -77,22 +77,56 @@ func (h *AdminHandler) ListUsers(c *echo.Context) error {
 		perPage = 20
 	}
 	offset := (page - 1) * perPage
+	search := c.QueryParam("search")
 
 	ctx := c.Request().Context()
 
-	// Get total count
-	total, err := h.store.CountUsers(ctx)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, "failed to count users")
-	}
+	var total int64
+	var users []store.ListUsersPaginatedRow
+	var err error
 
-	// Get paginated users
-	users, err := h.store.ListUsersPaginated(ctx, store.ListUsersPaginatedParams{
-		Limit:  int32(perPage),
-		Offset: int32(offset),
-	})
-	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, "failed to list users")
+	if search != "" {
+		// Search with filter
+		searchText := pgtype.Text{String: search, Valid: true}
+		total, err = h.store.CountSearchUsers(ctx, searchText)
+		if err != nil {
+			return echo.NewHTTPError(http.StatusInternalServerError, "failed to count users")
+		}
+		searchResults, searchErr := h.store.SearchUsersPaginated(ctx, store.SearchUsersPaginatedParams{
+			Column1: searchText,
+			Limit:   int32(perPage),
+			Offset:  int32(offset),
+		})
+		if searchErr != nil {
+			return echo.NewHTTPError(http.StatusInternalServerError, "failed to search users")
+		}
+		// Convert search results to same type
+		users = make([]store.ListUsersPaginatedRow, len(searchResults))
+		for i, u := range searchResults {
+			users[i] = store.ListUsersPaginatedRow{
+				ID:        u.ID,
+				Username:  u.Username,
+				Email:     u.Email,
+				FirstName: u.FirstName,
+				LastName:  u.LastName,
+				UserType:  u.UserType,
+				CreatedAt: u.CreatedAt,
+				UpdatedAt: u.UpdatedAt,
+			}
+		}
+	} else {
+		// No search filter
+		total, err = h.store.CountUsers(ctx)
+		if err != nil {
+			return echo.NewHTTPError(http.StatusInternalServerError, "failed to count users")
+		}
+		users, err = h.store.ListUsersPaginated(ctx, store.ListUsersPaginatedParams{
+			Limit:  int32(perPage),
+			Offset: int32(offset),
+		})
+		if err != nil {
+			return echo.NewHTTPError(http.StatusInternalServerError, "failed to list users")
+		}
 	}
 
 	// Convert to response format
@@ -303,6 +337,115 @@ func (h *AdminHandler) RevokeToken(c *echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, map[string]string{"message": "token revoked"})
+}
+
+// UpdateUserRoleRequest represents the request to update a user's role.
+type UpdateUserRoleRequest struct {
+	UserType string `json:"user_type"`
+}
+
+// UpdateUserRole updates a user's role (admin/user).
+func (h *AdminHandler) UpdateUserRole(c *echo.Context) error {
+	userIDStr := c.Param("id")
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid user ID")
+	}
+
+	var req UpdateUserRoleRequest
+	if err := c.Bind(&req); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid request body")
+	}
+
+	if req.UserType != "admin" && req.UserType != "user" {
+		return echo.NewHTTPError(http.StatusBadRequest, "user_type must be 'admin' or 'user'")
+	}
+
+	// Prevent self-demotion
+	currentUserIDStr := c.Request().Header.Get(auth.HeaderUserID)
+	currentUserID, _ := uuid.Parse(currentUserIDStr)
+	if userID == currentUserID && req.UserType != "admin" {
+		return echo.NewHTTPError(http.StatusBadRequest, "cannot demote yourself")
+	}
+
+	ctx := c.Request().Context()
+
+	// Check user exists
+	user, err := h.store.GetUserByID(ctx, userID)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusNotFound, "user not found")
+	}
+
+	err = h.store.UpdateUserType(ctx, store.UpdateUserTypeParams{
+		ID:       userID,
+		UserType: req.UserType,
+	})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to update user role")
+	}
+
+	return c.JSON(http.StatusOK, UserResponse{
+		ID:        user.ID,
+		Username:  user.Username,
+		Email:     user.Email,
+		FirstName: user.FirstName,
+		LastName:  user.LastName,
+		UserType:  req.UserType,
+		CreatedAt: user.CreatedAt.Time,
+	})
+}
+
+// ResetUserPasswordRequest represents the request to reset a user's password.
+type ResetUserPasswordRequest struct {
+	Password string `json:"password"`
+}
+
+// ResetUserPassword resets a user's password and revokes all their sessions.
+func (h *AdminHandler) ResetUserPassword(c *echo.Context) error {
+	userIDStr := c.Param("id")
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid user ID")
+	}
+
+	var req ResetUserPasswordRequest
+	if err := c.Bind(&req); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid request body")
+	}
+
+	if len(req.Password) < 8 {
+		return echo.NewHTTPError(http.StatusBadRequest, "password must be at least 8 characters")
+	}
+
+	ctx := c.Request().Context()
+
+	// Check user exists
+	_, err = h.store.GetUserByID(ctx, userID)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusNotFound, "user not found")
+	}
+
+	// Hash new password
+	passwordHash, err := auth.HashPassword(req.Password)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to hash password")
+	}
+
+	err = h.store.UpdateUserPassword(ctx, store.UpdateUserPasswordParams{
+		ID:           userID,
+		PasswordHash: pgtype.Text{String: passwordHash, Valid: true},
+	})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to reset password")
+	}
+
+	// Revoke all refresh tokens to force re-login
+	err = h.store.RevokeAllUserRefreshTokens(ctx, userID)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to revoke sessions")
+	}
+
+	return c.JSON(http.StatusOK, map[string]string{"message": "password reset successfully"})
 }
 
 // CleanupExpiredTokens hard-deletes all expired tokens.

@@ -25,6 +25,21 @@ func (q *Queries) CountActiveRefreshTokens(ctx context.Context) (int64, error) {
 	return count, err
 }
 
+const countSearchUsers = `-- name: CountSearchUsers :one
+SELECT COUNT(*) FROM users
+WHERE username ILIKE '%' || $1 || '%'
+   OR email ILIKE '%' || $1 || '%'
+   OR first_name ILIKE '%' || $1 || '%'
+   OR last_name ILIKE '%' || $1 || '%'
+`
+
+func (q *Queries) CountSearchUsers(ctx context.Context, dollar_1 pgtype.Text) (int64, error) {
+	row := q.db.QueryRow(ctx, countSearchUsers, dollar_1)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const countUsers = `-- name: CountUsers :one
 SELECT COUNT(*) FROM users
 `
@@ -530,6 +545,95 @@ WHERE id = $1
 
 func (q *Queries) RevokeRefreshToken(ctx context.Context, id uuid.UUID) error {
 	_, err := q.db.Exec(ctx, revokeRefreshToken, id)
+	return err
+}
+
+const searchUsersPaginated = `-- name: SearchUsersPaginated :many
+SELECT id, username, email, first_name, last_name, user_type, created_at, updated_at
+FROM users
+WHERE username ILIKE '%' || $1 || '%'
+   OR email ILIKE '%' || $1 || '%'
+   OR first_name ILIKE '%' || $1 || '%'
+   OR last_name ILIKE '%' || $1 || '%'
+ORDER BY created_at ASC
+LIMIT $2 OFFSET $3
+`
+
+type SearchUsersPaginatedParams struct {
+	Column1 pgtype.Text `json:"column_1"`
+	Limit   int32       `json:"limit"`
+	Offset  int32       `json:"offset"`
+}
+
+type SearchUsersPaginatedRow struct {
+	ID        uuid.UUID          `json:"id"`
+	Username  string             `json:"username"`
+	Email     string             `json:"email"`
+	FirstName string             `json:"first_name"`
+	LastName  string             `json:"last_name"`
+	UserType  string             `json:"user_type"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+}
+
+func (q *Queries) SearchUsersPaginated(ctx context.Context, arg SearchUsersPaginatedParams) ([]SearchUsersPaginatedRow, error) {
+	rows, err := q.db.Query(ctx, searchUsersPaginated, arg.Column1, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []SearchUsersPaginatedRow{}
+	for rows.Next() {
+		var i SearchUsersPaginatedRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Username,
+			&i.Email,
+			&i.FirstName,
+			&i.LastName,
+			&i.UserType,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const updateUserPassword = `-- name: UpdateUserPassword :exec
+UPDATE users
+SET password_hash = $2, updated_at = NOW()
+WHERE id = $1
+`
+
+type UpdateUserPasswordParams struct {
+	ID           uuid.UUID   `json:"id"`
+	PasswordHash pgtype.Text `json:"password_hash"`
+}
+
+func (q *Queries) UpdateUserPassword(ctx context.Context, arg UpdateUserPasswordParams) error {
+	_, err := q.db.Exec(ctx, updateUserPassword, arg.ID, arg.PasswordHash)
+	return err
+}
+
+const updateUserType = `-- name: UpdateUserType :exec
+UPDATE users
+SET user_type = $2, updated_at = NOW()
+WHERE id = $1
+`
+
+type UpdateUserTypeParams struct {
+	ID       uuid.UUID `json:"id"`
+	UserType string    `json:"user_type"`
+}
+
+func (q *Queries) UpdateUserType(ctx context.Context, arg UpdateUserTypeParams) error {
+	_, err := q.db.Exec(ctx, updateUserType, arg.ID, arg.UserType)
 	return err
 }
 

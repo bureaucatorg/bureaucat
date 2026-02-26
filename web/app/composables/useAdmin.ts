@@ -47,15 +47,18 @@ export function useAdmin() {
 
   async function listUsers(
     page = 1,
-    perPage = 20
+    perPage = 20,
+    search = ""
   ): Promise<{
     success: boolean;
     data?: PaginatedUsersResponse;
     error?: string;
   }> {
     try {
+      const params = new URLSearchParams({ page: String(page), per_page: String(perPage) });
+      if (search) params.set("search", search);
       const response = await fetch(
-        `/api/v1/admin/users?page=${page}&per_page=${perPage}`,
+        `/api/v1/admin/users?${params}`,
         { headers: getAuthHeader() }
       );
 
@@ -189,10 +192,64 @@ export function useAdmin() {
     }
   }
 
+  async function updateUserRole(userId: string, userType: string): Promise<{
+    success: boolean;
+    data?: User;
+    error?: string;
+  }> {
+    try {
+      const response = await fetch(`/api/v1/admin/users/${userId}/role`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          ...getAuthHeader(),
+        },
+        body: JSON.stringify({ user_type: userType }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        return { success: false, error: error.message || "Failed to update role" };
+      }
+
+      const data = await response.json();
+      return { success: true, data };
+    } catch {
+      return { success: false, error: "Network error" };
+    }
+  }
+
+  async function resetUserPassword(userId: string, password: string): Promise<{
+    success: boolean;
+    error?: string;
+  }> {
+    try {
+      const response = await fetch(`/api/v1/admin/users/${userId}/password`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          ...getAuthHeader(),
+        },
+        body: JSON.stringify({ password }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        return { success: false, error: error.message || "Failed to reset password" };
+      }
+
+      return { success: true };
+    } catch {
+      return { success: false, error: "Network error" };
+    }
+  }
+
   return {
     listUsers,
     createUser,
     deleteUser,
+    updateUserRole,
+    resetUserPassword,
     listTokens,
     revokeToken,
     cleanupExpiredTokens,

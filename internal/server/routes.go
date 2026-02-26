@@ -135,6 +135,8 @@ func (s *Server) registerRoutes() {
 		admin.GET("/users", s.adminHandler.ListUsers)
 		admin.POST("/users", s.adminHandler.CreateUser)
 		admin.DELETE("/users/:id", s.adminHandler.DeleteUser)
+		admin.PUT("/users/:id/role", s.adminHandler.UpdateUserRole)
+		admin.PUT("/users/:id/password", s.adminHandler.ResetUserPassword)
 		admin.GET("/tokens", s.adminHandler.ListTokens)
 		admin.DELETE("/tokens/:id", s.adminHandler.RevokeToken)
 		admin.DELETE("/tokens/expired", s.adminHandler.CleanupExpiredTokens)

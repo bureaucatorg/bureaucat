@@ -49,6 +49,23 @@ FROM users
 ORDER BY created_at ASC
 LIMIT $1 OFFSET $2;
 
+-- name: SearchUsersPaginated :many
+SELECT id, username, email, first_name, last_name, user_type, created_at, updated_at
+FROM users
+WHERE username ILIKE '%' || $1 || '%'
+   OR email ILIKE '%' || $1 || '%'
+   OR first_name ILIKE '%' || $1 || '%'
+   OR last_name ILIKE '%' || $1 || '%'
+ORDER BY created_at ASC
+LIMIT $2 OFFSET $3;
+
+-- name: CountSearchUsers :one
+SELECT COUNT(*) FROM users
+WHERE username ILIKE '%' || $1 || '%'
+   OR email ILIKE '%' || $1 || '%'
+   OR first_name ILIKE '%' || $1 || '%'
+   OR last_name ILIKE '%' || $1 || '%';
+
 -- name: DeleteUserByID :exec
 DELETE FROM users WHERE id = $1;
 
@@ -100,4 +117,14 @@ RETURNING id, username, email, first_name, last_name, user_type, auth_provider, 
 -- name: LinkProviderToUser :exec
 UPDATE users
 SET auth_provider = $2, provider_user_id = $3, updated_at = NOW()
+WHERE id = $1;
+
+-- name: UpdateUserType :exec
+UPDATE users
+SET user_type = $2, updated_at = NOW()
+WHERE id = $1;
+
+-- name: UpdateUserPassword :exec
+UPDATE users
+SET password_hash = $2, updated_at = NOW()
 WHERE id = $1;

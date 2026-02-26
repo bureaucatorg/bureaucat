@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Users, Plus, Trash2, Loader2, ChevronLeft, ChevronRight } from "lucide-vue-next";
+import { Users, Plus, Trash2, Loader2, ChevronLeft, ChevronRight, Shield, ShieldOff, KeyRound, Search, X } from "lucide-vue-next";
 
 definePageMeta({
   middleware: ["admin"],
@@ -7,7 +7,7 @@ definePageMeta({
 
 useSeoMeta({ title: "Manage Users" });
 
-const { listUsers, createUser, deleteUser } = useAdmin();
+const { listUsers, createUser, deleteUser, updateUserRole, resetUserPassword } = useAdmin();
 
 interface User {
   id: string;
@@ -27,6 +27,8 @@ const perPage = ref(20);
 const total = ref(0);
 const totalPages = ref(0);
 const error = ref<string | null>(null);
+const searchQuery = ref("");
+let searchDebounce: ReturnType<typeof setTimeout> | null = null;
 
 // Create dialog state
 const showCreateDialog = ref(false);
@@ -46,10 +48,22 @@ const showDeleteDialog = ref(false);
 const deleteLoading = ref(false);
 const userToDelete = ref<User | null>(null);
 
+// Role toggle dialog state
+const showRoleDialog = ref(false);
+const roleLoading = ref(false);
+const userToToggleRole = ref<User | null>(null);
+
+// Password reset dialog state
+const showPasswordDialog = ref(false);
+const passwordLoading = ref(false);
+const passwordError = ref<string | null>(null);
+const userToResetPassword = ref<User | null>(null);
+const newPassword = ref("");
+
 async function fetchUsers() {
   loading.value = true;
   error.value = null;
-  const result = await listUsers(page.value, perPage.value);
+  const result = await listUsers(page.value, perPage.value, searchQuery.value);
   if (result.success && result.data) {
     users.value = result.data.users || [];
     total.value = result.data.total;
@@ -108,12 +122,74 @@ async function handleDeleteUser() {
   }
 }
 
+function confirmToggleRole(user: User) {
+  userToToggleRole.value = user;
+  showRoleDialog.value = true;
+}
+
+async function handleToggleRole() {
+  if (!userToToggleRole.value) return;
+
+  roleLoading.value = true;
+  const newType = userToToggleRole.value.user_type === "admin" ? "user" : "admin";
+  const result = await updateUserRole(userToToggleRole.value.id, newType);
+  roleLoading.value = false;
+
+  if (result.success) {
+    showRoleDialog.value = false;
+    userToToggleRole.value = null;
+    await fetchUsers();
+  } else {
+    error.value = result.error || "Failed to update role";
+    showRoleDialog.value = false;
+  }
+}
+
+function openPasswordReset(user: User) {
+  userToResetPassword.value = user;
+  newPassword.value = "";
+  passwordError.value = null;
+  showPasswordDialog.value = true;
+}
+
+async function handleResetPassword() {
+  if (!userToResetPassword.value) return;
+
+  passwordLoading.value = true;
+  passwordError.value = null;
+  const result = await resetUserPassword(userToResetPassword.value.id, newPassword.value);
+  passwordLoading.value = false;
+
+  if (result.success) {
+    showPasswordDialog.value = false;
+    userToResetPassword.value = null;
+    newPassword.value = "";
+  } else {
+    passwordError.value = result.error || "Failed to reset password";
+  }
+}
+
 function formatDate(dateStr: string) {
   return new Date(dateStr).toLocaleDateString("en-US", {
     year: "numeric",
     month: "short",
     day: "numeric",
   });
+}
+
+// Search
+function onSearchInput() {
+  if (searchDebounce) clearTimeout(searchDebounce);
+  searchDebounce = setTimeout(() => {
+    page.value = 1;
+    fetchUsers();
+  }, 300);
+}
+
+function clearSearch() {
+  searchQuery.value = "";
+  page.value = 1;
+  fetchUsers();
 }
 
 // Pagination
@@ -162,6 +238,23 @@ onMounted(() => {
           {{ error }}
         </div>
 
+        <div class="mb-4 relative">
+          <Search class="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            v-model="searchQuery"
+            placeholder="Search by username, email, or name..."
+            class="pl-9 pr-9"
+            @input="onSearchInput"
+          />
+          <button
+            v-if="searchQuery"
+            class="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            @click="clearSearch"
+          >
+            <X class="size-4" />
+          </button>
+        </div>
+
         <Card>
           <CardContent class="p-0">
             <Table>
@@ -197,14 +290,33 @@ onMounted(() => {
                   </TableCell>
                   <TableCell>{{ formatDate(user.created_at) }}</TableCell>
                   <TableCell>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      class="text-destructive hover:text-destructive"
-                      @click="confirmDelete(user)"
-                    >
-                      <Trash2 class="size-4" />
-                    </Button>
+                    <div class="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        :title="user.user_type === 'admin' ? 'Demote to user' : 'Promote to admin'"
+                        @click="confirmToggleRole(user)"
+                      >
+                        <Shield v-if="user.user_type !== 'admin'" class="size-4" />
+                        <ShieldOff v-else class="size-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        title="Reset password"
+                        @click="openPasswordReset(user)"
+                      >
+                        <KeyRound class="size-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        class="text-destructive hover:text-destructive"
+                        @click="confirmDelete(user)"
+                      >
+                        <Trash2 class="size-4" />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               </TableBody>
@@ -275,6 +387,73 @@ onMounted(() => {
                 <Button type="submit" :disabled="createLoading">
                   <Loader2 v-if="createLoading" class="mr-2 size-4 animate-spin" />
                   Create
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+
+        <!-- Toggle Role Dialog -->
+        <Dialog v-model:open="showRoleDialog">
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Change User Role</DialogTitle>
+              <DialogDescription>
+                <template v-if="userToToggleRole?.user_type === 'admin'">
+                  Demote "{{ userToToggleRole?.username }}" from admin to regular user?
+                  They will lose access to admin features.
+                </template>
+                <template v-else>
+                  Promote "{{ userToToggleRole?.username }}" to admin?
+                  They will gain access to all admin features.
+                </template>
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant="outline" @click="showRoleDialog = false" :disabled="roleLoading">
+                Cancel
+              </Button>
+              <Button :disabled="roleLoading" @click="handleToggleRole">
+                <Loader2 v-if="roleLoading" class="mr-2 size-4 animate-spin" />
+                {{ userToToggleRole?.user_type === 'admin' ? 'Demote to User' : 'Promote to Admin' }}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <!-- Reset Password Dialog -->
+        <Dialog v-model:open="showPasswordDialog">
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Reset Password</DialogTitle>
+              <DialogDescription>
+                Set a new password for "{{ userToResetPassword?.username }}".
+                This will revoke all their active sessions.
+              </DialogDescription>
+            </DialogHeader>
+            <form @submit.prevent="handleResetPassword" class="space-y-4">
+              <div v-if="passwordError" class="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+                {{ passwordError }}
+              </div>
+              <div class="space-y-2">
+                <Label for="new_password">New Password</Label>
+                <Input
+                  id="new_password"
+                  type="password"
+                  v-model="newPassword"
+                  required
+                  minlength="8"
+                  placeholder="Minimum 8 characters"
+                  :disabled="passwordLoading"
+                />
+              </div>
+              <DialogFooter>
+                <Button type="button" variant="outline" @click="showPasswordDialog = false" :disabled="passwordLoading">
+                  Cancel
+                </Button>
+                <Button type="submit" :disabled="passwordLoading">
+                  <Loader2 v-if="passwordLoading" class="mr-2 size-4 animate-spin" />
+                  Reset Password
                 </Button>
               </DialogFooter>
             </form>
