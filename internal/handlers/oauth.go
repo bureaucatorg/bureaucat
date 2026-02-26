@@ -52,7 +52,15 @@ type oidcClaims struct {
 }
 
 // StartSSO initiates the OAuth2/OIDC flow for the given provider.
-// GET /api/v1/auth/sso/:provider
+//
+//	@Summary		Start SSO
+//	@Description	Initiates the OAuth2/OIDC flow. Redirects to the identity provider.
+//	@Tags			SSO
+//	@Param			provider	path	string	true	"SSO provider (google or zitadel)"
+//	@Success		307
+//	@Failure		400	{object}	ErrorResponse
+//	@Failure		500	{object}	ErrorResponse
+//	@Router			/auth/sso/{provider} [get]
 func (h *OAuthHandler) StartSSO(c *echo.Context) error {
 	provider := c.Param("provider")
 	if provider != "google" && provider != "zitadel" {
@@ -91,7 +99,15 @@ func (h *OAuthHandler) StartSSO(c *echo.Context) error {
 }
 
 // CallbackSSO handles the OAuth2/OIDC callback from the provider.
-// GET /api/v1/auth/sso/:provider/callback
+//
+//	@Summary		SSO callback
+//	@Description	Handles the OAuth2/OIDC callback. Redirects to frontend with auth status.
+//	@Tags			SSO
+//	@Param			provider	path	string	true	"SSO provider (google or zitadel)"
+//	@Param			code		query	string	false	"Authorization code"
+//	@Param			state		query	string	false	"OAuth state"
+//	@Success		307
+//	@Router			/auth/sso/{provider}/callback [get]
 func (h *OAuthHandler) CallbackSSO(c *echo.Context) error {
 	provider := c.Param("provider")
 	if provider != "google" && provider != "zitadel" {

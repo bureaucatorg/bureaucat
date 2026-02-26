@@ -22,6 +22,18 @@ func NewImportHandler(pool *pgxpool.Pool) *ImportHandler {
 }
 
 // ImportPlane handles uploading and importing a Plane.so SQL dump.
+//
+//	@Summary		Import from Plane.so
+//	@Description	Upload and import a Plane.so SQL dump file. Max 500MB. Requires admin role.
+//	@Tags			Admin - Import
+//	@Accept			multipart/form-data
+//	@Produce		json
+//	@Param			file	formData	file	true	"SQL dump file"
+//	@Success		200		{object}	MessageResponse
+//	@Failure		400		{object}	ErrorResponse
+//	@Failure		500		{object}	ErrorResponse
+//	@Security		BearerAuth
+//	@Router			/admin/import/plane [post]
 func (h *ImportHandler) ImportPlane(c *echo.Context) error {
 	// Get admin user ID.
 	adminUserIDStr := c.Request().Header.Get(auth.HeaderUserID)

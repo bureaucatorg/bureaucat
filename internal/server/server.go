@@ -13,6 +13,7 @@ import (
 	"github.com/labstack/echo/v5/middleware"
 	_ "github.com/lib/pq"
 
+	_ "bereaucat/docs"
 	"bereaucat/internal/activity"
 	"bereaucat/internal/auth"
 	"bereaucat/internal/handlers"

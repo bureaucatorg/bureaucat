@@ -12,6 +12,22 @@ import (
 	"bereaucat/internal/store"
 )
 
+// ErrorResponse represents an API error response.
+type ErrorResponse struct {
+	Message string `json:"message"`
+}
+
+// MessageResponse represents a generic success message.
+type MessageResponse struct {
+	Message string `json:"message"`
+}
+
+// CleanupResponse represents the response from cleanup operations.
+type CleanupResponse struct {
+	Message string `json:"message"`
+	Deleted int64  `json:"deleted"`
+}
+
 // AdminHandler handles admin-only endpoints.
 type AdminHandler struct {
 	store       store.Querier
@@ -67,6 +83,19 @@ type PaginatedTokensResponse struct {
 }
 
 // ListUsers returns paginated list of all users.
+//
+//	@Summary		List users
+//	@Description	Returns a paginated list of all users. Supports search by username, email, or name.
+//	@Tags			Admin - Users
+//	@Accept			json
+//	@Produce		json
+//	@Param			page		query		int		false	"Page number"		default(1)
+//	@Param			per_page	query		int		false	"Items per page"	default(20)
+//	@Param			search		query		string	false	"Search by username, email, or name"
+//	@Success		200			{object}	PaginatedUsersResponse
+//	@Failure		500			{object}	ErrorResponse
+//	@Security		BearerAuth
+//	@Router			/admin/users [get]
 func (h *AdminHandler) ListUsers(c *echo.Context) error {
 	page, _ := strconv.Atoi(c.QueryParam("page"))
 	if page < 1 {
@@ -158,6 +187,19 @@ func (h *AdminHandler) ListUsers(c *echo.Context) error {
 }
 
 // CreateUser creates a new user (admin can create any type).
+//
+//	@Summary		Create user
+//	@Description	Create a new user account with the specified details.
+//	@Tags			Admin - Users
+//	@Accept			json
+//	@Produce		json
+//	@Param			body	body		CreateUserRequest	true	"User details"
+//	@Success		201		{object}	UserResponse
+//	@Failure		400		{object}	ErrorResponse
+//	@Failure		409		{object}	ErrorResponse
+//	@Failure		500		{object}	ErrorResponse
+//	@Security		BearerAuth
+//	@Router			/admin/users [post]
 func (h *AdminHandler) CreateUser(c *echo.Context) error {
 	var req CreateUserRequest
 	if err := c.Bind(&req); err != nil {
@@ -225,6 +267,18 @@ func (h *AdminHandler) CreateUser(c *echo.Context) error {
 }
 
 // DeleteUser deletes a user by ID.
+//
+//	@Summary		Delete user
+//	@Description	Delete a user by their ID. Cannot delete yourself.
+//	@Tags			Admin - Users
+//	@Produce		json
+//	@Param			id	path		string	true	"User ID"
+//	@Success		200	{object}	MessageResponse
+//	@Failure		400	{object}	ErrorResponse
+//	@Failure		404	{object}	ErrorResponse
+//	@Failure		500	{object}	ErrorResponse
+//	@Security		BearerAuth
+//	@Router			/admin/users/{id} [delete]
 func (h *AdminHandler) DeleteUser(c *echo.Context) error {
 	userIDStr := c.Param("id")
 	userID, err := uuid.Parse(userIDStr)
@@ -259,6 +313,17 @@ func (h *AdminHandler) DeleteUser(c *echo.Context) error {
 }
 
 // ListTokens returns paginated list of active refresh tokens.
+//
+//	@Summary		List active tokens
+//	@Description	Returns a paginated list of active refresh tokens with user info.
+//	@Tags			Admin - Tokens
+//	@Produce		json
+//	@Param			page		query		int	false	"Page number"		default(1)
+//	@Param			per_page	query		int	false	"Items per page"	default(20)
+//	@Success		200			{object}	PaginatedTokensResponse
+//	@Failure		500			{object}	ErrorResponse
+//	@Security		BearerAuth
+//	@Router			/admin/tokens [get]
 func (h *AdminHandler) ListTokens(c *echo.Context) error {
 	page, _ := strconv.Atoi(c.QueryParam("page"))
 	if page < 1 {
@@ -315,6 +380,18 @@ func (h *AdminHandler) ListTokens(c *echo.Context) error {
 }
 
 // RevokeToken revokes a specific refresh token.
+//
+//	@Summary		Revoke token
+//	@Description	Revoke a specific refresh token by ID.
+//	@Tags			Admin - Tokens
+//	@Produce		json
+//	@Param			id	path		string	true	"Token ID"
+//	@Success		200	{object}	MessageResponse
+//	@Failure		400	{object}	ErrorResponse
+//	@Failure		404	{object}	ErrorResponse
+//	@Failure		500	{object}	ErrorResponse
+//	@Security		BearerAuth
+//	@Router			/admin/tokens/{id} [delete]
 func (h *AdminHandler) RevokeToken(c *echo.Context) error {
 	tokenIDStr := c.Param("id")
 	tokenID, err := uuid.Parse(tokenIDStr)
@@ -345,6 +422,20 @@ type UpdateUserRoleRequest struct {
 }
 
 // UpdateUserRole updates a user's role (admin/user).
+//
+//	@Summary		Update user role
+//	@Description	Change a user's role between admin and user. Cannot demote yourself.
+//	@Tags			Admin - Users
+//	@Accept			json
+//	@Produce		json
+//	@Param			id		path		string					true	"User ID"
+//	@Param			body	body		UpdateUserRoleRequest	true	"New role"
+//	@Success		200		{object}	UserResponse
+//	@Failure		400		{object}	ErrorResponse
+//	@Failure		404		{object}	ErrorResponse
+//	@Failure		500		{object}	ErrorResponse
+//	@Security		BearerAuth
+//	@Router			/admin/users/{id}/role [put]
 func (h *AdminHandler) UpdateUserRole(c *echo.Context) error {
 	userIDStr := c.Param("id")
 	userID, err := uuid.Parse(userIDStr)
@@ -401,6 +492,20 @@ type ResetUserPasswordRequest struct {
 }
 
 // ResetUserPassword resets a user's password and revokes all their sessions.
+//
+//	@Summary		Reset user password
+//	@Description	Reset a user's password and revoke all their active sessions.
+//	@Tags			Admin - Users
+//	@Accept			json
+//	@Produce		json
+//	@Param			id		path		string						true	"User ID"
+//	@Param			body	body		ResetUserPasswordRequest	true	"New password"
+//	@Success		200		{object}	MessageResponse
+//	@Failure		400		{object}	ErrorResponse
+//	@Failure		404		{object}	ErrorResponse
+//	@Failure		500		{object}	ErrorResponse
+//	@Security		BearerAuth
+//	@Router			/admin/users/{id}/password [put]
 func (h *AdminHandler) ResetUserPassword(c *echo.Context) error {
 	userIDStr := c.Param("id")
 	userID, err := uuid.Parse(userIDStr)
@@ -449,6 +554,15 @@ func (h *AdminHandler) ResetUserPassword(c *echo.Context) error {
 }
 
 // CleanupExpiredTokens hard-deletes all expired tokens.
+//
+//	@Summary		Cleanup expired tokens
+//	@Description	Hard-delete all expired refresh tokens from the database.
+//	@Tags			Admin - Tokens
+//	@Produce		json
+//	@Success		200	{object}	CleanupResponse
+//	@Failure		500	{object}	ErrorResponse
+//	@Security		BearerAuth
+//	@Router			/admin/tokens/expired [delete]
 func (h *AdminHandler) CleanupExpiredTokens(c *echo.Context) error {
 	ctx := c.Request().Context()
 

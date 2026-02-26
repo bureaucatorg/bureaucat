@@ -40,6 +40,13 @@ type UpdateBrandingRequest struct {
 
 // GetBranding returns the current branding settings.
 // This endpoint is public so the frontend can display the correct app name.
+//
+//	@Summary		Get branding
+//	@Description	Returns the current branding settings. Public endpoint.
+//	@Tags			Settings
+//	@Produce		json
+//	@Success		200	{object}	BrandingResponse
+//	@Router			/settings/branding [get]
 func (h *SettingsHandler) GetBranding(c *echo.Context) error {
 	ctx := c.Request().Context()
 
@@ -67,6 +74,18 @@ func (h *SettingsHandler) GetBranding(c *echo.Context) error {
 }
 
 // UpdateBranding updates the branding settings (admin only).
+//
+//	@Summary		Update branding
+//	@Description	Update branding settings. Requires admin role.
+//	@Tags			Admin - Settings
+//	@Accept			json
+//	@Produce		json
+//	@Param			body	body		UpdateBrandingRequest	true	"Branding settings"
+//	@Success		200		{object}	BrandingResponse
+//	@Failure		400		{object}	ErrorResponse
+//	@Failure		500		{object}	ErrorResponse
+//	@Security		BearerAuth
+//	@Router			/admin/settings/branding [put]
 func (h *SettingsHandler) UpdateBranding(c *echo.Context) error {
 	var req UpdateBrandingRequest
 	if err := c.Bind(&req); err != nil {
@@ -128,6 +147,13 @@ type SSOProvidersPublicResponse struct {
 }
 
 // GetSSOProviders returns which SSO providers are enabled (public, no secrets).
+//
+//	@Summary		Get SSO providers
+//	@Description	Returns which SSO providers are enabled. Public endpoint, no secrets exposed.
+//	@Tags			Settings
+//	@Produce		json
+//	@Success		200	{object}	SSOProvidersPublicResponse
+//	@Router			/settings/sso [get]
 func (h *SettingsHandler) GetSSOProviders(c *echo.Context) error {
 	ctx := c.Request().Context()
 
@@ -154,6 +180,14 @@ func (h *SettingsHandler) GetSSOProviders(c *echo.Context) error {
 }
 
 // GetSSOSettings returns the full SSO config with secrets masked (admin only).
+//
+//	@Summary		Get SSO settings
+//	@Description	Returns full SSO configuration with secrets masked. Requires admin role.
+//	@Tags			Admin - Settings
+//	@Produce		json
+//	@Success		200	{object}	SSOSettings
+//	@Security		BearerAuth
+//	@Router			/admin/settings/sso [get]
 func (h *SettingsHandler) GetSSOSettings(c *echo.Context) error {
 	ctx := c.Request().Context()
 
@@ -175,6 +209,18 @@ func (h *SettingsHandler) GetSSOSettings(c *echo.Context) error {
 }
 
 // UpdateSSOSettings saves the SSO configuration (admin only).
+//
+//	@Summary		Update SSO settings
+//	@Description	Update SSO provider configuration. Masked secrets are preserved. Requires admin role.
+//	@Tags			Admin - Settings
+//	@Accept			json
+//	@Produce		json
+//	@Param			body	body		SSOSettings	true	"SSO configuration"
+//	@Success		200		{object}	SSOSettings
+//	@Failure		400		{object}	ErrorResponse
+//	@Failure		500		{object}	ErrorResponse
+//	@Security		BearerAuth
+//	@Router			/admin/settings/sso [put]
 func (h *SettingsHandler) UpdateSSOSettings(c *echo.Context) error {
 	var req SSOSettings
 	if err := c.Bind(&req); err != nil {

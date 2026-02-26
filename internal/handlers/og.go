@@ -21,6 +21,14 @@ func NewOGHandler(store store.Querier) *OGHandler {
 }
 
 // OGImage generates a dynamic PNG Open Graph image with branding.
+//
+//	@Summary		Generate OG image
+//	@Description	Generates a dynamic PNG Open Graph image with the app's branding.
+//	@Tags			Misc
+//	@Produce		image/png
+//	@Success		200
+//	@Failure		500	{object}	ErrorResponse
+//	@Router			/og-image [get]
 func (h *OGHandler) OGImage(c *echo.Context) error {
 	ctx := c.Request().Context()
 

@@ -65,6 +65,18 @@ func NewAuthHandler(store store.Querier, authManager *auth.Manager, devMode bool
 }
 
 // Signup handles user registration.
+//
+//	@Summary		Sign up
+//	@Description	Register a new user account. The first user created becomes an admin.
+//	@Tags			Auth
+//	@Accept			json
+//	@Produce		json
+//	@Param			body	body		SignupRequest	true	"Registration details"
+//	@Success		200		{object}	AuthResponse
+//	@Failure		400		{object}	ErrorResponse
+//	@Failure		409		{object}	ErrorResponse
+//	@Failure		500		{object}	ErrorResponse
+//	@Router			/signup [post]
 func (h *AuthHandler) Signup(c *echo.Context) error {
 	var req SignupRequest
 	if err := c.Bind(&req); err != nil {
@@ -140,6 +152,17 @@ func (h *AuthHandler) Signup(c *echo.Context) error {
 }
 
 // Signin handles user login.
+//
+//	@Summary		Sign in
+//	@Description	Authenticate with email/username and password. Returns access token and sets refresh token cookie.
+//	@Tags			Auth
+//	@Accept			json
+//	@Produce		json
+//	@Param			body	body		SigninRequest	true	"Login credentials"
+//	@Success		200		{object}	AuthResponse
+//	@Failure		400		{object}	ErrorResponse
+//	@Failure		401		{object}	ErrorResponse
+//	@Router			/signin [post]
 func (h *AuthHandler) Signin(c *echo.Context) error {
 	var req SigninRequest
 	if err := c.Bind(&req); err != nil {
@@ -171,6 +194,15 @@ func (h *AuthHandler) Signin(c *echo.Context) error {
 }
 
 // TokenRefresh handles token refresh.
+//
+//	@Summary		Refresh token
+//	@Description	Refresh the access token using the refresh token cookie. Performs token rotation.
+//	@Tags			Auth
+//	@Produce		json
+//	@Success		200	{object}	AuthResponse
+//	@Failure		401	{object}	ErrorResponse
+//	@Failure		500	{object}	ErrorResponse
+//	@Router			/token_refresh [post]
 func (h *AuthHandler) TokenRefresh(c *echo.Context) error {
 	// Get refresh token from cookie
 	cookie, err := c.Cookie("refresh_token")
@@ -205,6 +237,13 @@ func (h *AuthHandler) TokenRefresh(c *echo.Context) error {
 }
 
 // Logout handles user logout by revoking all refresh tokens.
+//
+//	@Summary		Logout
+//	@Description	Revoke all refresh tokens for the current user and clear cookies.
+//	@Tags			Auth
+//	@Produce		json
+//	@Success		200	{object}	MessageResponse
+//	@Router			/logout [post]
 func (h *AuthHandler) Logout(c *echo.Context) error {
 	// Get refresh token from cookie
 	cookie, err := c.Cookie("refresh_token")
@@ -233,6 +272,16 @@ func (h *AuthHandler) Logout(c *echo.Context) error {
 }
 
 // Me returns the current user's info.
+//
+//	@Summary		Get current user
+//	@Description	Returns the authenticated user's profile information.
+//	@Tags			Auth
+//	@Produce		json
+//	@Success		200	{object}	UserResponse
+//	@Failure		401	{object}	ErrorResponse
+//	@Failure		404	{object}	ErrorResponse
+//	@Security		BearerAuth
+//	@Router			/me [get]
 func (h *AuthHandler) Me(c *echo.Context) error {
 	userIDStr := c.Request().Header.Get(auth.HeaderUserID)
 	userID, err := uuid.Parse(userIDStr)
@@ -259,6 +308,17 @@ func (h *AuthHandler) Me(c *echo.Context) error {
 }
 
 // GetUserProfile returns a user's public profile by ID.
+//
+//	@Summary		Get user profile
+//	@Description	Returns a user's public profile by their ID.
+//	@Tags			Auth
+//	@Produce		json
+//	@Param			id	path		string	true	"User ID"
+//	@Success		200	{object}	UserResponse
+//	@Failure		400	{object}	ErrorResponse
+//	@Failure		404	{object}	ErrorResponse
+//	@Security		BearerAuth
+//	@Router			/users/{id} [get]
 func (h *AuthHandler) GetUserProfile(c *echo.Context) error {
 	userIDStr := c.Param("id")
 	userID, err := uuid.Parse(userIDStr)

@@ -36,6 +36,18 @@ type UploadResponse struct {
 }
 
 // Upload handles file uploads.
+//
+//	@Summary		Upload file
+//	@Description	Upload an image file (jpeg, png, gif, webp). Max 5MB.
+//	@Tags			Uploads
+//	@Accept			multipart/form-data
+//	@Produce		json
+//	@Param			file	formData	file	true	"File to upload"
+//	@Success		201		{object}	UploadResponse
+//	@Failure		400		{object}	ErrorResponse
+//	@Failure		500		{object}	ErrorResponse
+//	@Security		BearerAuth
+//	@Router			/uploads [post]
 func (h *UploadHandler) Upload(c *echo.Context) error {
 	// Get current user ID from auth middleware
 	userIDStr := c.Request().Header.Get(auth.HeaderUserID)
@@ -88,6 +100,16 @@ func (h *UploadHandler) Upload(c *echo.Context) error {
 }
 
 // Serve serves an uploaded file.
+//
+//	@Summary		Serve uploaded file
+//	@Description	Serve a previously uploaded file by its ID.
+//	@Tags			Uploads
+//	@Produce		octet-stream
+//	@Param			id	path	string	true	"Upload ID"
+//	@Success		200
+//	@Failure		400	{object}	ErrorResponse
+//	@Failure		404	{object}	ErrorResponse
+//	@Router			/uploads/{id} [get]
 func (h *UploadHandler) Serve(c *echo.Context) error {
 	uploadIDStr := c.Param("id")
 	uploadID, err := uuid.Parse(uploadIDStr)

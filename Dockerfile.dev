@@ -9,6 +9,7 @@ RUN set -ex \
     unzip \
   && go install "github.com/air-verse/air@v1.63.6" \
   && go install "github.com/sqlc-dev/sqlc/cmd/sqlc@v1.30.0" \
+  && go install "github.com/swaggo/swag/cmd/swag@latest" \
   && curl -fsSL https://bun.com/install | bash -s "bun-v1.3.7"
 
 ENV PATH="/root/.bun/bin:${PATH}"

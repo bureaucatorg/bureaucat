@@ -68,6 +68,19 @@ type ActivityLogResponse struct {
 }
 
 // ListComments returns comments for a task.
+//
+//	@Summary		List comments
+//	@Description	Returns all comments for a task.
+//	@Tags			Comments
+//	@Produce		json
+//	@Param			projectKey	path		string	true	"Project key"
+//	@Param			taskNum		path		int		true	"Task number"
+//	@Success		200			{array}		CommentResponse
+//	@Failure		400			{object}	ErrorResponse
+//	@Failure		404			{object}	ErrorResponse
+//	@Failure		500			{object}	ErrorResponse
+//	@Security		BearerAuth
+//	@Router			/projects/{projectKey}/tasks/{taskNum}/comments [get]
 func (h *CommentHandler) ListComments(c *echo.Context) error {
 	projectIDStr := c.Request().Header.Get(auth.HeaderProjectID)
 	projectID, err := uuid.Parse(projectIDStr)
@@ -118,6 +131,21 @@ func (h *CommentHandler) ListComments(c *echo.Context) error {
 }
 
 // CreateComment creates a new comment.
+//
+//	@Summary		Create comment
+//	@Description	Add a comment to a task.
+//	@Tags			Comments
+//	@Accept			json
+//	@Produce		json
+//	@Param			projectKey	path		string					true	"Project key"
+//	@Param			taskNum		path		int						true	"Task number"
+//	@Param			body		body		CreateCommentRequest	true	"Comment content"
+//	@Success		201			{object}	CommentResponse
+//	@Failure		400			{object}	ErrorResponse
+//	@Failure		404			{object}	ErrorResponse
+//	@Failure		500			{object}	ErrorResponse
+//	@Security		BearerAuth
+//	@Router			/projects/{projectKey}/tasks/{taskNum}/comments [post]
 func (h *CommentHandler) CreateComment(c *echo.Context) error {
 	projectIDStr := c.Request().Header.Get(auth.HeaderProjectID)
 	projectID, err := uuid.Parse(projectIDStr)
@@ -199,6 +227,23 @@ func (h *CommentHandler) CreateComment(c *echo.Context) error {
 }
 
 // UpdateComment updates a comment.
+//
+//	@Summary		Update comment
+//	@Description	Update a comment. Can only edit your own comments.
+//	@Tags			Comments
+//	@Accept			json
+//	@Produce		json
+//	@Param			projectKey	path		string					true	"Project key"
+//	@Param			taskNum		path		int						true	"Task number"
+//	@Param			commentId	path		string					true	"Comment ID"
+//	@Param			body		body		UpdateCommentRequest	true	"Updated content"
+//	@Success		200			{object}	CommentResponse
+//	@Failure		400			{object}	ErrorResponse
+//	@Failure		403			{object}	ErrorResponse
+//	@Failure		404			{object}	ErrorResponse
+//	@Failure		500			{object}	ErrorResponse
+//	@Security		BearerAuth
+//	@Router			/projects/{projectKey}/tasks/{taskNum}/comments/{commentId} [patch]
 func (h *CommentHandler) UpdateComment(c *echo.Context) error {
 	projectIDStr := c.Request().Header.Get(auth.HeaderProjectID)
 	projectID, err := uuid.Parse(projectIDStr)
@@ -303,6 +348,21 @@ func (h *CommentHandler) UpdateComment(c *echo.Context) error {
 }
 
 // DeleteComment soft deletes a comment.
+//
+//	@Summary		Delete comment
+//	@Description	Soft-delete a comment. Can delete own comments or any comment as project admin.
+//	@Tags			Comments
+//	@Produce		json
+//	@Param			projectKey	path		string	true	"Project key"
+//	@Param			taskNum		path		int		true	"Task number"
+//	@Param			commentId	path		string	true	"Comment ID"
+//	@Success		200			{object}	MessageResponse
+//	@Failure		400			{object}	ErrorResponse
+//	@Failure		403			{object}	ErrorResponse
+//	@Failure		404			{object}	ErrorResponse
+//	@Failure		500			{object}	ErrorResponse
+//	@Security		BearerAuth
+//	@Router			/projects/{projectKey}/tasks/{taskNum}/comments/{commentId} [delete]
 func (h *CommentHandler) DeleteComment(c *echo.Context) error {
 	projectIDStr := c.Request().Header.Get(auth.HeaderProjectID)
 	projectID, err := uuid.Parse(projectIDStr)
@@ -374,6 +434,19 @@ func (h *CommentHandler) DeleteComment(c *echo.Context) error {
 }
 
 // GetActivity returns activity log for a task.
+//
+//	@Summary		Get activity log
+//	@Description	Returns the activity log for a task including all changes and comments.
+//	@Tags			Activity
+//	@Produce		json
+//	@Param			projectKey	path		string	true	"Project key"
+//	@Param			taskNum		path		int		true	"Task number"
+//	@Success		200			{array}		ActivityLogResponse
+//	@Failure		400			{object}	ErrorResponse
+//	@Failure		404			{object}	ErrorResponse
+//	@Failure		500			{object}	ErrorResponse
+//	@Security		BearerAuth
+//	@Router			/projects/{projectKey}/tasks/{taskNum}/activity [get]
 func (h *CommentHandler) GetActivity(c *echo.Context) error {
 	projectIDStr := c.Request().Header.Get(auth.HeaderProjectID)
 	projectID, err := uuid.Parse(projectIDStr)
@@ -435,6 +508,19 @@ type VerifyActivityResponse struct {
 }
 
 // VerifyActivity verifies the integrity of the activity log chain.
+//
+//	@Summary		Verify activity log
+//	@Description	Verify the integrity of the activity log chain for tampering detection.
+//	@Tags			Activity
+//	@Produce		json
+//	@Param			projectKey	path		string	true	"Project key"
+//	@Param			taskNum		path		int		true	"Task number"
+//	@Success		200			{object}	VerifyActivityResponse
+//	@Failure		400			{object}	ErrorResponse
+//	@Failure		404			{object}	ErrorResponse
+//	@Failure		500			{object}	ErrorResponse
+//	@Security		BearerAuth
+//	@Router			/projects/{projectKey}/tasks/{taskNum}/activity/verify [get]
 func (h *CommentHandler) VerifyActivity(c *echo.Context) error {
 	projectIDStr := c.Request().Header.Get(auth.HeaderProjectID)
 	projectID, err := uuid.Parse(projectIDStr)

@@ -85,6 +85,18 @@ var defaultStates = []struct {
 }
 
 // ListProjects returns paginated list of projects with optional search.
+//
+//	@Summary		List projects
+//	@Description	Returns a paginated list of projects. Admins see all projects; others see only their memberships.
+//	@Tags			Projects
+//	@Produce		json
+//	@Param			page		query		int		false	"Page number"		default(1)
+//	@Param			per_page	query		int		false	"Items per page"	default(20)
+//	@Param			search		query		string	false	"Search by name"
+//	@Success		200			{object}	PaginatedProjectsResponse
+//	@Failure		500			{object}	ErrorResponse
+//	@Security		BearerAuth
+//	@Router			/projects [get]
 func (h *ProjectHandler) ListProjects(c *echo.Context) error {
 	userIDStr := c.Request().Header.Get(auth.HeaderUserID)
 	userID, err := uuid.Parse(userIDStr)
@@ -191,6 +203,19 @@ func (h *ProjectHandler) ListProjects(c *echo.Context) error {
 }
 
 // CreateProject creates a new project.
+//
+//	@Summary		Create project
+//	@Description	Create a new project with default workflow states. Creator is added as admin.
+//	@Tags			Projects
+//	@Accept			json
+//	@Produce		json
+//	@Param			body	body		CreateProjectRequest	true	"Project details"
+//	@Success		201		{object}	ProjectResponse
+//	@Failure		400		{object}	ErrorResponse
+//	@Failure		409		{object}	ErrorResponse
+//	@Failure		500		{object}	ErrorResponse
+//	@Security		BearerAuth
+//	@Router			/projects [post]
 func (h *ProjectHandler) CreateProject(c *echo.Context) error {
 	userIDStr := c.Request().Header.Get(auth.HeaderUserID)
 	userID, err := uuid.Parse(userIDStr)
@@ -288,6 +313,16 @@ func (h *ProjectHandler) CreateProject(c *echo.Context) error {
 }
 
 // GetProject returns project details.
+//
+//	@Summary		Get project
+//	@Description	Returns project details by project key.
+//	@Tags			Projects
+//	@Produce		json
+//	@Param			projectKey	path		string	true	"Project key"
+//	@Success		200			{object}	ProjectResponse
+//	@Failure		404			{object}	ErrorResponse
+//	@Security		BearerAuth
+//	@Router			/projects/{projectKey} [get]
 func (h *ProjectHandler) GetProject(c *echo.Context) error {
 	projectIDStr := c.Request().Header.Get(auth.HeaderProjectID)
 	projectID, err := uuid.Parse(projectIDStr)
@@ -319,6 +354,19 @@ func (h *ProjectHandler) GetProject(c *echo.Context) error {
 }
 
 // UpdateProject updates a project.
+//
+//	@Summary		Update project
+//	@Description	Update project details. Requires project admin role.
+//	@Tags			Projects
+//	@Accept			json
+//	@Produce		json
+//	@Param			projectKey	path		string					true	"Project key"
+//	@Param			body		body		UpdateProjectRequest	true	"Fields to update"
+//	@Success		200			{object}	ProjectResponse
+//	@Failure		400			{object}	ErrorResponse
+//	@Failure		500			{object}	ErrorResponse
+//	@Security		BearerAuth
+//	@Router			/projects/{projectKey} [patch]
 func (h *ProjectHandler) UpdateProject(c *echo.Context) error {
 	projectIDStr := c.Request().Header.Get(auth.HeaderProjectID)
 	projectID, err := uuid.Parse(projectIDStr)
@@ -358,6 +406,16 @@ func (h *ProjectHandler) UpdateProject(c *echo.Context) error {
 }
 
 // DeleteProject soft deletes a project.
+//
+//	@Summary		Delete project
+//	@Description	Soft-delete a project. Requires project admin role.
+//	@Tags			Projects
+//	@Produce		json
+//	@Param			projectKey	path		string	true	"Project key"
+//	@Success		200			{object}	MessageResponse
+//	@Failure		500			{object}	ErrorResponse
+//	@Security		BearerAuth
+//	@Router			/projects/{projectKey} [delete]
 func (h *ProjectHandler) DeleteProject(c *echo.Context) error {
 	projectIDStr := c.Request().Header.Get(auth.HeaderProjectID)
 	projectID, err := uuid.Parse(projectIDStr)
@@ -399,6 +457,16 @@ type UpdateMemberRequest struct {
 }
 
 // ListMembers returns project members.
+//
+//	@Summary		List members
+//	@Description	Returns all members of a project.
+//	@Tags			Project Members
+//	@Produce		json
+//	@Param			projectKey	path		string	true	"Project key"
+//	@Success		200			{array}		MemberResponse
+//	@Failure		500			{object}	ErrorResponse
+//	@Security		BearerAuth
+//	@Router			/projects/{projectKey}/members [get]
 func (h *ProjectHandler) ListMembers(c *echo.Context) error {
 	projectIDStr := c.Request().Header.Get(auth.HeaderProjectID)
 	projectID, err := uuid.Parse(projectIDStr)
@@ -431,6 +499,20 @@ func (h *ProjectHandler) ListMembers(c *echo.Context) error {
 }
 
 // AddMember adds a member to a project.
+//
+//	@Summary		Add member
+//	@Description	Add a user as a member of the project. Requires project admin role.
+//	@Tags			Project Members
+//	@Accept			json
+//	@Produce		json
+//	@Param			projectKey	path		string			true	"Project key"
+//	@Param			body		body		AddMemberRequest	true	"Member details"
+//	@Success		201			{object}	MemberResponse
+//	@Failure		400			{object}	ErrorResponse
+//	@Failure		409			{object}	ErrorResponse
+//	@Failure		500			{object}	ErrorResponse
+//	@Security		BearerAuth
+//	@Router			/projects/{projectKey}/members [post]
 func (h *ProjectHandler) AddMember(c *echo.Context) error {
 	projectIDStr := c.Request().Header.Get(auth.HeaderProjectID)
 	projectID, err := uuid.Parse(projectIDStr)
@@ -498,6 +580,21 @@ func (h *ProjectHandler) AddMember(c *echo.Context) error {
 }
 
 // UpdateMemberRole updates a member's role.
+//
+//	@Summary		Update member role
+//	@Description	Update a project member's role. Requires project admin role.
+//	@Tags			Project Members
+//	@Accept			json
+//	@Produce		json
+//	@Param			projectKey	path		string				true	"Project key"
+//	@Param			userId		path		string				true	"User ID"
+//	@Param			body		body		UpdateMemberRequest	true	"New role"
+//	@Success		200			{object}	MessageResponse
+//	@Failure		400			{object}	ErrorResponse
+//	@Failure		404			{object}	ErrorResponse
+//	@Failure		500			{object}	ErrorResponse
+//	@Security		BearerAuth
+//	@Router			/projects/{projectKey}/members/{userId} [patch]
 func (h *ProjectHandler) UpdateMemberRole(c *echo.Context) error {
 	projectIDStr := c.Request().Header.Get(auth.HeaderProjectID)
 	projectID, err := uuid.Parse(projectIDStr)
@@ -548,6 +645,18 @@ func (h *ProjectHandler) UpdateMemberRole(c *echo.Context) error {
 }
 
 // RemoveMember removes a member from a project.
+//
+//	@Summary		Remove member
+//	@Description	Remove a member from the project. Cannot remove yourself. Requires project admin role.
+//	@Tags			Project Members
+//	@Produce		json
+//	@Param			projectKey	path		string	true	"Project key"
+//	@Param			userId		path		string	true	"User ID"
+//	@Success		200			{object}	MessageResponse
+//	@Failure		400			{object}	ErrorResponse
+//	@Failure		500			{object}	ErrorResponse
+//	@Security		BearerAuth
+//	@Router			/projects/{projectKey}/members/{userId} [delete]
 func (h *ProjectHandler) RemoveMember(c *echo.Context) error {
 	projectIDStr := c.Request().Header.Get(auth.HeaderProjectID)
 	projectID, err := uuid.Parse(projectIDStr)
@@ -608,6 +717,16 @@ type UpdateStateRequest struct {
 }
 
 // ListStates returns project states.
+//
+//	@Summary		List states
+//	@Description	Returns all workflow states for a project.
+//	@Tags			Project States
+//	@Produce		json
+//	@Param			projectKey	path		string	true	"Project key"
+//	@Success		200			{array}		StateResponse
+//	@Failure		500			{object}	ErrorResponse
+//	@Security		BearerAuth
+//	@Router			/projects/{projectKey}/states [get]
 func (h *ProjectHandler) ListStates(c *echo.Context) error {
 	projectIDStr := c.Request().Header.Get(auth.HeaderProjectID)
 	projectID, err := uuid.Parse(projectIDStr)
@@ -639,6 +758,19 @@ func (h *ProjectHandler) ListStates(c *echo.Context) error {
 }
 
 // CreateState creates a new state.
+//
+//	@Summary		Create state
+//	@Description	Create a new workflow state. Requires project admin role.
+//	@Tags			Project States
+//	@Accept			json
+//	@Produce		json
+//	@Param			projectKey	path		string				true	"Project key"
+//	@Param			body		body		CreateStateRequest	true	"State details"
+//	@Success		201			{object}	StateResponse
+//	@Failure		400			{object}	ErrorResponse
+//	@Failure		500			{object}	ErrorResponse
+//	@Security		BearerAuth
+//	@Router			/projects/{projectKey}/states [post]
 func (h *ProjectHandler) CreateState(c *echo.Context) error {
 	projectIDStr := c.Request().Header.Get(auth.HeaderProjectID)
 	projectID, err := uuid.Parse(projectIDStr)
@@ -696,6 +828,20 @@ func (h *ProjectHandler) CreateState(c *echo.Context) error {
 }
 
 // UpdateState updates a state.
+//
+//	@Summary		Update state
+//	@Description	Update a workflow state. Requires project admin role.
+//	@Tags			Project States
+//	@Accept			json
+//	@Produce		json
+//	@Param			projectKey	path		string				true	"Project key"
+//	@Param			stateId		path		string				true	"State ID"
+//	@Param			body		body		UpdateStateRequest	true	"Fields to update"
+//	@Success		200			{object}	StateResponse
+//	@Failure		400			{object}	ErrorResponse
+//	@Failure		500			{object}	ErrorResponse
+//	@Security		BearerAuth
+//	@Router			/projects/{projectKey}/states/{stateId} [patch]
 func (h *ProjectHandler) UpdateState(c *echo.Context) error {
 	stateIDStr := c.Param("stateId")
 	stateID, err := uuid.Parse(stateIDStr)
@@ -732,6 +878,19 @@ func (h *ProjectHandler) UpdateState(c *echo.Context) error {
 }
 
 // DeleteState deletes a state.
+//
+//	@Summary		Delete state
+//	@Description	Delete a workflow state. Cannot delete default states or states with tasks. Requires project admin role.
+//	@Tags			Project States
+//	@Produce		json
+//	@Param			projectKey	path		string	true	"Project key"
+//	@Param			stateId		path		string	true	"State ID"
+//	@Success		200			{object}	MessageResponse
+//	@Failure		400			{object}	ErrorResponse
+//	@Failure		404			{object}	ErrorResponse
+//	@Failure		500			{object}	ErrorResponse
+//	@Security		BearerAuth
+//	@Router			/projects/{projectKey}/states/{stateId} [delete]
 func (h *ProjectHandler) DeleteState(c *echo.Context) error {
 	stateIDStr := c.Param("stateId")
 	stateID, err := uuid.Parse(stateIDStr)
@@ -788,6 +947,16 @@ type UpdateLabelRequest struct {
 }
 
 // ListLabels returns project labels.
+//
+//	@Summary		List labels
+//	@Description	Returns all labels for a project.
+//	@Tags			Project Labels
+//	@Produce		json
+//	@Param			projectKey	path		string	true	"Project key"
+//	@Success		200			{array}		LabelResponse
+//	@Failure		500			{object}	ErrorResponse
+//	@Security		BearerAuth
+//	@Router			/projects/{projectKey}/labels [get]
 func (h *ProjectHandler) ListLabels(c *echo.Context) error {
 	projectIDStr := c.Request().Header.Get(auth.HeaderProjectID)
 	projectID, err := uuid.Parse(projectIDStr)
@@ -816,6 +985,19 @@ func (h *ProjectHandler) ListLabels(c *echo.Context) error {
 }
 
 // CreateLabel creates a new label.
+//
+//	@Summary		Create label
+//	@Description	Create a new project label.
+//	@Tags			Project Labels
+//	@Accept			json
+//	@Produce		json
+//	@Param			projectKey	path		string				true	"Project key"
+//	@Param			body		body		CreateLabelRequest	true	"Label details"
+//	@Success		201			{object}	LabelResponse
+//	@Failure		400			{object}	ErrorResponse
+//	@Failure		500			{object}	ErrorResponse
+//	@Security		BearerAuth
+//	@Router			/projects/{projectKey}/labels [post]
 func (h *ProjectHandler) CreateLabel(c *echo.Context) error {
 	projectIDStr := c.Request().Header.Get(auth.HeaderProjectID)
 	projectID, err := uuid.Parse(projectIDStr)
@@ -856,6 +1038,20 @@ func (h *ProjectHandler) CreateLabel(c *echo.Context) error {
 }
 
 // UpdateLabel updates a label.
+//
+//	@Summary		Update label
+//	@Description	Update a project label. Requires project admin role.
+//	@Tags			Project Labels
+//	@Accept			json
+//	@Produce		json
+//	@Param			projectKey	path		string				true	"Project key"
+//	@Param			labelId		path		string				true	"Label ID"
+//	@Param			body		body		UpdateLabelRequest	true	"Fields to update"
+//	@Success		200			{object}	LabelResponse
+//	@Failure		400			{object}	ErrorResponse
+//	@Failure		500			{object}	ErrorResponse
+//	@Security		BearerAuth
+//	@Router			/projects/{projectKey}/labels/{labelId} [patch]
 func (h *ProjectHandler) UpdateLabel(c *echo.Context) error {
 	labelIDStr := c.Param("labelId")
 	labelID, err := uuid.Parse(labelIDStr)
@@ -888,6 +1084,18 @@ func (h *ProjectHandler) UpdateLabel(c *echo.Context) error {
 }
 
 // DeleteLabel deletes a label.
+//
+//	@Summary		Delete label
+//	@Description	Delete a project label.
+//	@Tags			Project Labels
+//	@Produce		json
+//	@Param			projectKey	path		string	true	"Project key"
+//	@Param			labelId		path		string	true	"Label ID"
+//	@Success		200			{object}	MessageResponse
+//	@Failure		400			{object}	ErrorResponse
+//	@Failure		500			{object}	ErrorResponse
+//	@Security		BearerAuth
+//	@Router			/projects/{projectKey}/labels/{labelId} [delete]
 func (h *ProjectHandler) DeleteLabel(c *echo.Context) error {
 	labelIDStr := c.Param("labelId")
 	labelID, err := uuid.Parse(labelIDStr)
@@ -931,6 +1139,16 @@ type UpdateTemplateRequest struct {
 }
 
 // ListTemplates returns project task templates.
+//
+//	@Summary		List templates
+//	@Description	Returns all task templates for a project.
+//	@Tags			Project Templates
+//	@Produce		json
+//	@Param			projectKey	path		string	true	"Project key"
+//	@Success		200			{array}		TemplateResponse
+//	@Failure		500			{object}	ErrorResponse
+//	@Security		BearerAuth
+//	@Router			/projects/{projectKey}/templates [get]
 func (h *ProjectHandler) ListTemplates(c *echo.Context) error {
 	projectIDStr := c.Request().Header.Get(auth.HeaderProjectID)
 	projectID, err := uuid.Parse(projectIDStr)
@@ -962,6 +1180,19 @@ func (h *ProjectHandler) ListTemplates(c *echo.Context) error {
 }
 
 // CreateTemplate creates a new task template.
+//
+//	@Summary		Create template
+//	@Description	Create a new task template. Requires project admin role.
+//	@Tags			Project Templates
+//	@Accept			json
+//	@Produce		json
+//	@Param			projectKey	path		string					true	"Project key"
+//	@Param			body		body		CreateTemplateRequest	true	"Template details"
+//	@Success		201			{object}	TemplateResponse
+//	@Failure		400			{object}	ErrorResponse
+//	@Failure		500			{object}	ErrorResponse
+//	@Security		BearerAuth
+//	@Router			/projects/{projectKey}/templates [post]
 func (h *ProjectHandler) CreateTemplate(c *echo.Context) error {
 	projectIDStr := c.Request().Header.Get(auth.HeaderProjectID)
 	projectID, err := uuid.Parse(projectIDStr)
@@ -1009,6 +1240,20 @@ func (h *ProjectHandler) CreateTemplate(c *echo.Context) error {
 }
 
 // UpdateTemplate updates a task template.
+//
+//	@Summary		Update template
+//	@Description	Update a task template. Requires project admin role.
+//	@Tags			Project Templates
+//	@Accept			json
+//	@Produce		json
+//	@Param			projectKey	path		string					true	"Project key"
+//	@Param			templateId	path		string					true	"Template ID"
+//	@Param			body		body		UpdateTemplateRequest	true	"Fields to update"
+//	@Success		200			{object}	TemplateResponse
+//	@Failure		400			{object}	ErrorResponse
+//	@Failure		500			{object}	ErrorResponse
+//	@Security		BearerAuth
+//	@Router			/projects/{projectKey}/templates/{templateId} [patch]
 func (h *ProjectHandler) UpdateTemplate(c *echo.Context) error {
 	templateIDStr := c.Param("templateId")
 	templateID, err := uuid.Parse(templateIDStr)
@@ -1045,6 +1290,18 @@ func (h *ProjectHandler) UpdateTemplate(c *echo.Context) error {
 }
 
 // DeleteTemplate deletes a task template.
+//
+//	@Summary		Delete template
+//	@Description	Delete a task template. Requires project admin role.
+//	@Tags			Project Templates
+//	@Produce		json
+//	@Param			projectKey	path		string	true	"Project key"
+//	@Param			templateId	path		string	true	"Template ID"
+//	@Success		200			{object}	MessageResponse
+//	@Failure		400			{object}	ErrorResponse
+//	@Failure		500			{object}	ErrorResponse
+//	@Security		BearerAuth
+//	@Router			/projects/{projectKey}/templates/{templateId} [delete]
 func (h *ProjectHandler) DeleteTemplate(c *echo.Context) error {
 	templateIDStr := c.Param("templateId")
 	templateID, err := uuid.Parse(templateIDStr)

@@ -1,0 +1,2643 @@
+basePath: /api/v1
+definitions:
+  handlers.ActivityLogResponse:
+    properties:
+      activity_type:
+        type: string
+      actor_id:
+        type: string
+      created_at:
+        type: string
+      field_name:
+        type: string
+      first_name:
+        type: string
+      id:
+        type: string
+      last_name:
+        type: string
+      new_value: {}
+      old_value: {}
+      task_id:
+        type: string
+      username:
+        type: string
+    type: object
+  handlers.AddAssigneeRequest:
+    properties:
+      user_id:
+        type: string
+    type: object
+  handlers.AddLabelRequest:
+    properties:
+      label_id:
+        type: string
+    type: object
+  handlers.AddMemberRequest:
+    properties:
+      role:
+        type: string
+      user_id:
+        type: string
+    type: object
+  handlers.AssigneeResponse:
+    properties:
+      email:
+        type: string
+      first_name:
+        type: string
+      id:
+        type: string
+      last_name:
+        type: string
+      user_id:
+        type: string
+      username:
+        type: string
+    type: object
+  handlers.AuthResponse:
+    properties:
+      access_token:
+        type: string
+      expires_at:
+        description: Unix timestamp
+        type: integer
+      user:
+        $ref: '#/definitions/handlers.UserResponse'
+    type: object
+  handlers.BrandingResponse:
+    properties:
+      app_name:
+        type: string
+      enabled:
+        type: boolean
+    type: object
+  handlers.CleanupResponse:
+    properties:
+      deleted:
+        type: integer
+      message:
+        type: string
+    type: object
+  handlers.CommentResponse:
+    properties:
+      content:
+        type: string
+      created_at:
+        type: string
+      created_by:
+        type: string
+      first_name:
+        type: string
+      id:
+        type: string
+      last_name:
+        type: string
+      task_id:
+        type: string
+      updated_at:
+        type: string
+      username:
+        type: string
+      version:
+        type: integer
+    type: object
+  handlers.CreateCommentRequest:
+    properties:
+      content:
+        type: string
+    type: object
+  handlers.CreateLabelRequest:
+    properties:
+      color:
+        type: string
+      name:
+        type: string
+    type: object
+  handlers.CreateProjectRequest:
+    properties:
+      cover_id:
+        type: string
+      description:
+        type: string
+      icon_id:
+        type: string
+      name:
+        type: string
+      project_key:
+        type: string
+    type: object
+  handlers.CreateStateRequest:
+    properties:
+      color:
+        type: string
+      name:
+        type: string
+      position:
+        type: integer
+      state_type:
+        type: string
+    type: object
+  handlers.CreateTaskRequest:
+    properties:
+      assignees:
+        items:
+          type: string
+        type: array
+      description:
+        type: string
+      labels:
+        items:
+          type: string
+        type: array
+      priority:
+        type: integer
+      state_id:
+        type: string
+      title:
+        type: string
+    type: object
+  handlers.CreateTemplateRequest:
+    properties:
+      description:
+        type: string
+      name:
+        type: string
+      title:
+        type: string
+    type: object
+  handlers.CreateUserRequest:
+    properties:
+      email:
+        type: string
+      first_name:
+        type: string
+      last_name:
+        type: string
+      password:
+        type: string
+      user_type:
+        type: string
+      username:
+        type: string
+    type: object
+  handlers.ErrorResponse:
+    properties:
+      message:
+        type: string
+    type: object
+  handlers.LabelResponse:
+    properties:
+      color:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  handlers.MemberResponse:
+    properties:
+      email:
+        type: string
+      first_name:
+        type: string
+      id:
+        type: string
+      joined_at:
+        type: string
+      last_name:
+        type: string
+      role:
+        type: string
+      user_id:
+        type: string
+      username:
+        type: string
+    type: object
+  handlers.MessageResponse:
+    properties:
+      message:
+        type: string
+    type: object
+  handlers.PaginatedProjectsResponse:
+    properties:
+      page:
+        type: integer
+      per_page:
+        type: integer
+      projects:
+        items:
+          $ref: '#/definitions/handlers.ProjectResponse'
+        type: array
+      total:
+        type: integer
+      total_pages:
+        type: integer
+    type: object
+  handlers.PaginatedTasksResponse:
+    properties:
+      page:
+        type: integer
+      per_page:
+        type: integer
+      tasks:
+        items:
+          $ref: '#/definitions/handlers.TaskResponse'
+        type: array
+      total:
+        type: integer
+      total_pages:
+        type: integer
+    type: object
+  handlers.PaginatedTokensResponse:
+    properties:
+      page:
+        type: integer
+      per_page:
+        type: integer
+      tokens:
+        items:
+          $ref: '#/definitions/handlers.TokenInfo'
+        type: array
+      total:
+        type: integer
+      total_pages:
+        type: integer
+    type: object
+  handlers.PaginatedUsersResponse:
+    properties:
+      page:
+        type: integer
+      per_page:
+        type: integer
+      total:
+        type: integer
+      total_pages:
+        type: integer
+      users:
+        items:
+          $ref: '#/definitions/handlers.UserResponse'
+        type: array
+    type: object
+  handlers.ProjectResponse:
+    properties:
+      cover_url:
+        type: string
+      created_at:
+        type: string
+      created_by:
+        type: string
+      description:
+        type: string
+      icon_url:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      project_key:
+        type: string
+      role:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  handlers.ResetUserPasswordRequest:
+    properties:
+      password:
+        type: string
+    type: object
+  handlers.SSOProviderConfig:
+    properties:
+      client_id:
+        type: string
+      client_secret:
+        type: string
+      enabled:
+        type: boolean
+      issuer_url:
+        description: Zitadel only
+        type: string
+      redirect_uri:
+        type: string
+    type: object
+  handlers.SSOProvidersPublicResponse:
+    properties:
+      google:
+        type: boolean
+      zitadel:
+        type: boolean
+    type: object
+  handlers.SSOSettings:
+    properties:
+      google:
+        $ref: '#/definitions/handlers.SSOProviderConfig'
+      zitadel:
+        $ref: '#/definitions/handlers.SSOProviderConfig'
+    type: object
+  handlers.SigninRequest:
+    properties:
+      identifier:
+        description: email or username
+        type: string
+      password:
+        type: string
+    type: object
+  handlers.SignupRequest:
+    properties:
+      email:
+        type: string
+      first_name:
+        type: string
+      last_name:
+        type: string
+      password:
+        type: string
+      username:
+        type: string
+    type: object
+  handlers.StateResponse:
+    properties:
+      color:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: string
+      is_default:
+        type: boolean
+      name:
+        type: string
+      position:
+        type: integer
+      state_type:
+        type: string
+    type: object
+  handlers.TaskLabelInfo:
+    properties:
+      color:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  handlers.TaskResponse:
+    properties:
+      assignees:
+        items:
+          $ref: '#/definitions/handlers.AssigneeResponse'
+        type: array
+      created_at:
+        type: string
+      created_by:
+        type: string
+      creator_first_name:
+        type: string
+      creator_last_name:
+        type: string
+      creator_username:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      labels:
+        items:
+          $ref: '#/definitions/handlers.TaskLabelInfo'
+        type: array
+      priority:
+        type: integer
+      project_key:
+        type: string
+      state_color:
+        type: string
+      state_id:
+        type: string
+      state_name:
+        type: string
+      state_type:
+        type: string
+      task_id:
+        description: e.g., "DEVOP-123"
+        type: string
+      task_number:
+        type: integer
+      title:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  handlers.TemplateResponse:
+    properties:
+      created_at:
+        type: string
+      created_by:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      title:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  handlers.TokenInfo:
+    properties:
+      created_at:
+        type: string
+      email:
+        type: string
+      expires_at:
+        type: string
+      id:
+        type: string
+      user_id:
+        type: string
+      username:
+        type: string
+    type: object
+  handlers.UpdateBrandingRequest:
+    properties:
+      app_name:
+        type: string
+      enabled:
+        type: boolean
+    type: object
+  handlers.UpdateCommentRequest:
+    properties:
+      content:
+        type: string
+    type: object
+  handlers.UpdateLabelRequest:
+    properties:
+      color:
+        type: string
+      name:
+        type: string
+    type: object
+  handlers.UpdateMemberRequest:
+    properties:
+      role:
+        type: string
+    type: object
+  handlers.UpdateProjectRequest:
+    properties:
+      cover_id:
+        type: string
+      description:
+        type: string
+      icon_id:
+        type: string
+      name:
+        type: string
+    type: object
+  handlers.UpdateStateRequest:
+    properties:
+      color:
+        type: string
+      name:
+        type: string
+      position:
+        type: integer
+    type: object
+  handlers.UpdateTaskRequest:
+    properties:
+      description:
+        type: string
+      priority:
+        type: integer
+      state_id:
+        type: string
+      title:
+        type: string
+    type: object
+  handlers.UpdateTemplateRequest:
+    properties:
+      description:
+        type: string
+      name:
+        type: string
+      title:
+        type: string
+    type: object
+  handlers.UpdateUserRoleRequest:
+    properties:
+      user_type:
+        type: string
+    type: object
+  handlers.UploadResponse:
+    properties:
+      filename:
+        type: string
+      id:
+        type: string
+      mime_type:
+        type: string
+      size_bytes:
+        type: integer
+      url:
+        type: string
+    type: object
+  handlers.UserResponse:
+    properties:
+      created_at:
+        type: string
+      email:
+        type: string
+      first_name:
+        type: string
+      id:
+        type: string
+      last_name:
+        type: string
+      user_type:
+        type: string
+      username:
+        type: string
+    type: object
+  handlers.VerifyActivityResponse:
+    properties:
+      message:
+        type: string
+      valid:
+        type: boolean
+    type: object
+host: localhost:1341
+info:
+  contact: {}
+  description: Bureaucat - Approval workflow application API
+  title: Bureaucat API
+  version: "1.0"
+paths:
+  /admin/import/plane:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Upload and import a Plane.so SQL dump file. Max 500MB. Requires
+        admin role.
+      parameters:
+      - description: SQL dump file
+        in: formData
+        name: file
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.MessageResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Import from Plane.so
+      tags:
+      - Admin - Import
+  /admin/settings/branding:
+    put:
+      consumes:
+      - application/json
+      description: Update branding settings. Requires admin role.
+      parameters:
+      - description: Branding settings
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.UpdateBrandingRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.BrandingResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update branding
+      tags:
+      - Admin - Settings
+  /admin/settings/sso:
+    get:
+      description: Returns full SSO configuration with secrets masked. Requires admin
+        role.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.SSOSettings'
+      security:
+      - BearerAuth: []
+      summary: Get SSO settings
+      tags:
+      - Admin - Settings
+    put:
+      consumes:
+      - application/json
+      description: Update SSO provider configuration. Masked secrets are preserved.
+        Requires admin role.
+      parameters:
+      - description: SSO configuration
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.SSOSettings'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.SSOSettings'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update SSO settings
+      tags:
+      - Admin - Settings
+  /admin/tokens:
+    get:
+      description: Returns a paginated list of active refresh tokens with user info.
+      parameters:
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Items per page
+        in: query
+        name: per_page
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.PaginatedTokensResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List active tokens
+      tags:
+      - Admin - Tokens
+  /admin/tokens/{id}:
+    delete:
+      description: Revoke a specific refresh token by ID.
+      parameters:
+      - description: Token ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.MessageResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Revoke token
+      tags:
+      - Admin - Tokens
+  /admin/tokens/expired:
+    delete:
+      description: Hard-delete all expired refresh tokens from the database.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.CleanupResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Cleanup expired tokens
+      tags:
+      - Admin - Tokens
+  /admin/users:
+    get:
+      consumes:
+      - application/json
+      description: Returns a paginated list of all users. Supports search by username,
+        email, or name.
+      parameters:
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Items per page
+        in: query
+        name: per_page
+        type: integer
+      - description: Search by username, email, or name
+        in: query
+        name: search
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.PaginatedUsersResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List users
+      tags:
+      - Admin - Users
+    post:
+      consumes:
+      - application/json
+      description: Create a new user account with the specified details.
+      parameters:
+      - description: User details
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.CreateUserRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/handlers.UserResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create user
+      tags:
+      - Admin - Users
+  /admin/users/{id}:
+    delete:
+      description: Delete a user by their ID. Cannot delete yourself.
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.MessageResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete user
+      tags:
+      - Admin - Users
+  /admin/users/{id}/password:
+    put:
+      consumes:
+      - application/json
+      description: Reset a user's password and revoke all their active sessions.
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: New password
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.ResetUserPasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.MessageResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Reset user password
+      tags:
+      - Admin - Users
+  /admin/users/{id}/role:
+    put:
+      consumes:
+      - application/json
+      description: Change a user's role between admin and user. Cannot demote yourself.
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: New role
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.UpdateUserRoleRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.UserResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update user role
+      tags:
+      - Admin - Users
+  /auth/sso/{provider}:
+    get:
+      description: Initiates the OAuth2/OIDC flow. Redirects to the identity provider.
+      parameters:
+      - description: SSO provider (google or zitadel)
+        in: path
+        name: provider
+        required: true
+        type: string
+      responses:
+        "307":
+          description: Temporary Redirect
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Start SSO
+      tags:
+      - SSO
+  /auth/sso/{provider}/callback:
+    get:
+      description: Handles the OAuth2/OIDC callback. Redirects to frontend with auth
+        status.
+      parameters:
+      - description: SSO provider (google or zitadel)
+        in: path
+        name: provider
+        required: true
+        type: string
+      - description: Authorization code
+        in: query
+        name: code
+        type: string
+      - description: OAuth state
+        in: query
+        name: state
+        type: string
+      responses:
+        "307":
+          description: Temporary Redirect
+      summary: SSO callback
+      tags:
+      - SSO
+  /logout:
+    post:
+      description: Revoke all refresh tokens for the current user and clear cookies.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.MessageResponse'
+      summary: Logout
+      tags:
+      - Auth
+  /me:
+    get:
+      description: Returns the authenticated user's profile information.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.UserResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get current user
+      tags:
+      - Auth
+  /og-image:
+    get:
+      description: Generates a dynamic PNG Open Graph image with the app's branding.
+      produces:
+      - image/png
+      responses:
+        "200":
+          description: OK
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Generate OG image
+      tags:
+      - Misc
+  /projects:
+    get:
+      description: Returns a paginated list of projects. Admins see all projects;
+        others see only their memberships.
+      parameters:
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Items per page
+        in: query
+        name: per_page
+        type: integer
+      - description: Search by name
+        in: query
+        name: search
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.PaginatedProjectsResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List projects
+      tags:
+      - Projects
+    post:
+      consumes:
+      - application/json
+      description: Create a new project with default workflow states. Creator is added
+        as admin.
+      parameters:
+      - description: Project details
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.CreateProjectRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/handlers.ProjectResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create project
+      tags:
+      - Projects
+  /projects/{projectKey}:
+    delete:
+      description: Soft-delete a project. Requires project admin role.
+      parameters:
+      - description: Project key
+        in: path
+        name: projectKey
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.MessageResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete project
+      tags:
+      - Projects
+    get:
+      description: Returns project details by project key.
+      parameters:
+      - description: Project key
+        in: path
+        name: projectKey
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.ProjectResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get project
+      tags:
+      - Projects
+    patch:
+      consumes:
+      - application/json
+      description: Update project details. Requires project admin role.
+      parameters:
+      - description: Project key
+        in: path
+        name: projectKey
+        required: true
+        type: string
+      - description: Fields to update
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.UpdateProjectRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.ProjectResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update project
+      tags:
+      - Projects
+  /projects/{projectKey}/labels:
+    get:
+      description: Returns all labels for a project.
+      parameters:
+      - description: Project key
+        in: path
+        name: projectKey
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/handlers.LabelResponse'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List labels
+      tags:
+      - Project Labels
+    post:
+      consumes:
+      - application/json
+      description: Create a new project label.
+      parameters:
+      - description: Project key
+        in: path
+        name: projectKey
+        required: true
+        type: string
+      - description: Label details
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.CreateLabelRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/handlers.LabelResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create label
+      tags:
+      - Project Labels
+  /projects/{projectKey}/labels/{labelId}:
+    delete:
+      description: Delete a project label.
+      parameters:
+      - description: Project key
+        in: path
+        name: projectKey
+        required: true
+        type: string
+      - description: Label ID
+        in: path
+        name: labelId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.MessageResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete label
+      tags:
+      - Project Labels
+    patch:
+      consumes:
+      - application/json
+      description: Update a project label. Requires project admin role.
+      parameters:
+      - description: Project key
+        in: path
+        name: projectKey
+        required: true
+        type: string
+      - description: Label ID
+        in: path
+        name: labelId
+        required: true
+        type: string
+      - description: Fields to update
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.UpdateLabelRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.LabelResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update label
+      tags:
+      - Project Labels
+  /projects/{projectKey}/members:
+    get:
+      description: Returns all members of a project.
+      parameters:
+      - description: Project key
+        in: path
+        name: projectKey
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/handlers.MemberResponse'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List members
+      tags:
+      - Project Members
+    post:
+      consumes:
+      - application/json
+      description: Add a user as a member of the project. Requires project admin role.
+      parameters:
+      - description: Project key
+        in: path
+        name: projectKey
+        required: true
+        type: string
+      - description: Member details
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.AddMemberRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/handlers.MemberResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Add member
+      tags:
+      - Project Members
+  /projects/{projectKey}/members/{userId}:
+    delete:
+      description: Remove a member from the project. Cannot remove yourself. Requires
+        project admin role.
+      parameters:
+      - description: Project key
+        in: path
+        name: projectKey
+        required: true
+        type: string
+      - description: User ID
+        in: path
+        name: userId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.MessageResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Remove member
+      tags:
+      - Project Members
+    patch:
+      consumes:
+      - application/json
+      description: Update a project member's role. Requires project admin role.
+      parameters:
+      - description: Project key
+        in: path
+        name: projectKey
+        required: true
+        type: string
+      - description: User ID
+        in: path
+        name: userId
+        required: true
+        type: string
+      - description: New role
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.UpdateMemberRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.MessageResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update member role
+      tags:
+      - Project Members
+  /projects/{projectKey}/states:
+    get:
+      description: Returns all workflow states for a project.
+      parameters:
+      - description: Project key
+        in: path
+        name: projectKey
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/handlers.StateResponse'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List states
+      tags:
+      - Project States
+    post:
+      consumes:
+      - application/json
+      description: Create a new workflow state. Requires project admin role.
+      parameters:
+      - description: Project key
+        in: path
+        name: projectKey
+        required: true
+        type: string
+      - description: State details
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.CreateStateRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/handlers.StateResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create state
+      tags:
+      - Project States
+  /projects/{projectKey}/states/{stateId}:
+    delete:
+      description: Delete a workflow state. Cannot delete default states or states
+        with tasks. Requires project admin role.
+      parameters:
+      - description: Project key
+        in: path
+        name: projectKey
+        required: true
+        type: string
+      - description: State ID
+        in: path
+        name: stateId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.MessageResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete state
+      tags:
+      - Project States
+    patch:
+      consumes:
+      - application/json
+      description: Update a workflow state. Requires project admin role.
+      parameters:
+      - description: Project key
+        in: path
+        name: projectKey
+        required: true
+        type: string
+      - description: State ID
+        in: path
+        name: stateId
+        required: true
+        type: string
+      - description: Fields to update
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.UpdateStateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.StateResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update state
+      tags:
+      - Project States
+  /projects/{projectKey}/tasks:
+    get:
+      description: Returns a paginated list of tasks with optional filters.
+      parameters:
+      - description: Project key
+        in: path
+        name: projectKey
+        required: true
+        type: string
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Items per page
+        in: query
+        name: per_page
+        type: integer
+      - description: Filter by state ID
+        in: query
+        name: state_id
+        type: string
+      - description: Filter by state type
+        in: query
+        name: state_type
+        type: string
+      - description: Filter by creator ID
+        in: query
+        name: created_by
+        type: string
+      - description: Filter by priority
+        in: query
+        name: priority
+        type: integer
+      - description: Search by title
+        in: query
+        name: q
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.PaginatedTasksResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List tasks
+      tags:
+      - Tasks
+    post:
+      consumes:
+      - application/json
+      description: Create a new task in the project.
+      parameters:
+      - description: Project key
+        in: path
+        name: projectKey
+        required: true
+        type: string
+      - description: Task details
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.CreateTaskRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/handlers.TaskResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create task
+      tags:
+      - Tasks
+  /projects/{projectKey}/tasks/{taskNum}:
+    delete:
+      description: Soft-delete a task. Requires project admin role.
+      parameters:
+      - description: Project key
+        in: path
+        name: projectKey
+        required: true
+        type: string
+      - description: Task number
+        in: path
+        name: taskNum
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.MessageResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete task
+      tags:
+      - Tasks
+    get:
+      description: Returns task details by task number.
+      parameters:
+      - description: Project key
+        in: path
+        name: projectKey
+        required: true
+        type: string
+      - description: Task number
+        in: path
+        name: taskNum
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.TaskResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get task
+      tags:
+      - Tasks
+    patch:
+      consumes:
+      - application/json
+      description: Update task fields. Changes are logged in the activity log.
+      parameters:
+      - description: Project key
+        in: path
+        name: projectKey
+        required: true
+        type: string
+      - description: Task number
+        in: path
+        name: taskNum
+        required: true
+        type: integer
+      - description: Fields to update
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.UpdateTaskRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.TaskResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update task
+      tags:
+      - Tasks
+  /projects/{projectKey}/tasks/{taskNum}/activity:
+    get:
+      description: Returns the activity log for a task including all changes and comments.
+      parameters:
+      - description: Project key
+        in: path
+        name: projectKey
+        required: true
+        type: string
+      - description: Task number
+        in: path
+        name: taskNum
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/handlers.ActivityLogResponse'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get activity log
+      tags:
+      - Activity
+  /projects/{projectKey}/tasks/{taskNum}/activity/verify:
+    get:
+      description: Verify the integrity of the activity log chain for tampering detection.
+      parameters:
+      - description: Project key
+        in: path
+        name: projectKey
+        required: true
+        type: string
+      - description: Task number
+        in: path
+        name: taskNum
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.VerifyActivityResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Verify activity log
+      tags:
+      - Activity
+  /projects/{projectKey}/tasks/{taskNum}/assignees:
+    post:
+      consumes:
+      - application/json
+      description: Add a user as an assignee to a task.
+      parameters:
+      - description: Project key
+        in: path
+        name: projectKey
+        required: true
+        type: string
+      - description: Task number
+        in: path
+        name: taskNum
+        required: true
+        type: integer
+      - description: Assignee details
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.AddAssigneeRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/handlers.MessageResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Add assignee
+      tags:
+      - Task Assignees
+  /projects/{projectKey}/tasks/{taskNum}/assignees/{userId}:
+    delete:
+      description: Remove a user from a task's assignees.
+      parameters:
+      - description: Project key
+        in: path
+        name: projectKey
+        required: true
+        type: string
+      - description: Task number
+        in: path
+        name: taskNum
+        required: true
+        type: integer
+      - description: User ID
+        in: path
+        name: userId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.MessageResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Remove assignee
+      tags:
+      - Task Assignees
+  /projects/{projectKey}/tasks/{taskNum}/comments:
+    get:
+      description: Returns all comments for a task.
+      parameters:
+      - description: Project key
+        in: path
+        name: projectKey
+        required: true
+        type: string
+      - description: Task number
+        in: path
+        name: taskNum
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/handlers.CommentResponse'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List comments
+      tags:
+      - Comments
+    post:
+      consumes:
+      - application/json
+      description: Add a comment to a task.
+      parameters:
+      - description: Project key
+        in: path
+        name: projectKey
+        required: true
+        type: string
+      - description: Task number
+        in: path
+        name: taskNum
+        required: true
+        type: integer
+      - description: Comment content
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.CreateCommentRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/handlers.CommentResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create comment
+      tags:
+      - Comments
+  /projects/{projectKey}/tasks/{taskNum}/comments/{commentId}:
+    delete:
+      description: Soft-delete a comment. Can delete own comments or any comment as
+        project admin.
+      parameters:
+      - description: Project key
+        in: path
+        name: projectKey
+        required: true
+        type: string
+      - description: Task number
+        in: path
+        name: taskNum
+        required: true
+        type: integer
+      - description: Comment ID
+        in: path
+        name: commentId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.MessageResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete comment
+      tags:
+      - Comments
+    patch:
+      consumes:
+      - application/json
+      description: Update a comment. Can only edit your own comments.
+      parameters:
+      - description: Project key
+        in: path
+        name: projectKey
+        required: true
+        type: string
+      - description: Task number
+        in: path
+        name: taskNum
+        required: true
+        type: integer
+      - description: Comment ID
+        in: path
+        name: commentId
+        required: true
+        type: string
+      - description: Updated content
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.UpdateCommentRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.CommentResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update comment
+      tags:
+      - Comments
+  /projects/{projectKey}/tasks/{taskNum}/labels:
+    post:
+      consumes:
+      - application/json
+      description: Add a project label to a task.
+      parameters:
+      - description: Project key
+        in: path
+        name: projectKey
+        required: true
+        type: string
+      - description: Task number
+        in: path
+        name: taskNum
+        required: true
+        type: integer
+      - description: Label details
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.AddLabelRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/handlers.MessageResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Add label to task
+      tags:
+      - Task Labels
+  /projects/{projectKey}/tasks/{taskNum}/labels/{labelId}:
+    delete:
+      description: Remove a label from a task.
+      parameters:
+      - description: Project key
+        in: path
+        name: projectKey
+        required: true
+        type: string
+      - description: Task number
+        in: path
+        name: taskNum
+        required: true
+        type: integer
+      - description: Label ID
+        in: path
+        name: labelId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.MessageResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Remove label from task
+      tags:
+      - Task Labels
+  /projects/{projectKey}/templates:
+    get:
+      description: Returns all task templates for a project.
+      parameters:
+      - description: Project key
+        in: path
+        name: projectKey
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/handlers.TemplateResponse'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List templates
+      tags:
+      - Project Templates
+    post:
+      consumes:
+      - application/json
+      description: Create a new task template. Requires project admin role.
+      parameters:
+      - description: Project key
+        in: path
+        name: projectKey
+        required: true
+        type: string
+      - description: Template details
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.CreateTemplateRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/handlers.TemplateResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create template
+      tags:
+      - Project Templates
+  /projects/{projectKey}/templates/{templateId}:
+    delete:
+      description: Delete a task template. Requires project admin role.
+      parameters:
+      - description: Project key
+        in: path
+        name: projectKey
+        required: true
+        type: string
+      - description: Template ID
+        in: path
+        name: templateId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.MessageResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete template
+      tags:
+      - Project Templates
+    patch:
+      consumes:
+      - application/json
+      description: Update a task template. Requires project admin role.
+      parameters:
+      - description: Project key
+        in: path
+        name: projectKey
+        required: true
+        type: string
+      - description: Template ID
+        in: path
+        name: templateId
+        required: true
+        type: string
+      - description: Fields to update
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.UpdateTemplateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.TemplateResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update template
+      tags:
+      - Project Templates
+  /settings/branding:
+    get:
+      description: Returns the current branding settings. Public endpoint.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.BrandingResponse'
+      summary: Get branding
+      tags:
+      - Settings
+  /settings/sso:
+    get:
+      description: Returns which SSO providers are enabled. Public endpoint, no secrets
+        exposed.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.SSOProvidersPublicResponse'
+      summary: Get SSO providers
+      tags:
+      - Settings
+  /signin:
+    post:
+      consumes:
+      - application/json
+      description: Authenticate with email/username and password. Returns access token
+        and sets refresh token cookie.
+      parameters:
+      - description: Login credentials
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.SigninRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.AuthResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Sign in
+      tags:
+      - Auth
+  /signup:
+    post:
+      consumes:
+      - application/json
+      description: Register a new user account. The first user created becomes an
+        admin.
+      parameters:
+      - description: Registration details
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.SignupRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.AuthResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Sign up
+      tags:
+      - Auth
+  /token_refresh:
+    post:
+      description: Refresh the access token using the refresh token cookie. Performs
+        token rotation.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.AuthResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Refresh token
+      tags:
+      - Auth
+  /uploads:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Upload an image file (jpeg, png, gif, webp). Max 5MB.
+      parameters:
+      - description: File to upload
+        in: formData
+        name: file
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/handlers.UploadResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Upload file
+      tags:
+      - Uploads
+  /uploads/{id}:
+    get:
+      description: Serve a previously uploaded file by its ID.
+      parameters:
+      - description: Upload ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/octet-stream
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Serve uploaded file
+      tags:
+      - Uploads
+  /users/{id}:
+    get:
+      description: Returns a user's public profile by their ID.
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.UserResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get user profile
+      tags:
+      - Auth
+securityDefinitions:
+  BearerAuth:
+    description: 'Enter your bearer token in the format: Bearer {token}'
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

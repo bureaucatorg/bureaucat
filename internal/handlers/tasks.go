@@ -97,6 +97,23 @@ type PaginatedTasksResponse struct {
 }
 
 // ListTasks returns paginated list of tasks.
+//
+//	@Summary		List tasks
+//	@Description	Returns a paginated list of tasks with optional filters.
+//	@Tags			Tasks
+//	@Produce		json
+//	@Param			projectKey	path		string	true	"Project key"
+//	@Param			page		query		int		false	"Page number"		default(1)
+//	@Param			per_page	query		int		false	"Items per page"	default(20)
+//	@Param			state_id	query		string	false	"Filter by state ID"
+//	@Param			state_type	query		string	false	"Filter by state type"
+//	@Param			created_by	query		string	false	"Filter by creator ID"
+//	@Param			priority	query		int		false	"Filter by priority"
+//	@Param			q			query		string	false	"Search by title"
+//	@Success		200			{object}	PaginatedTasksResponse
+//	@Failure		500			{object}	ErrorResponse
+//	@Security		BearerAuth
+//	@Router			/projects/{projectKey}/tasks [get]
 func (h *TaskHandler) ListTasks(c *echo.Context) error {
 	projectIDStr := c.Request().Header.Get(auth.HeaderProjectID)
 	projectID, err := uuid.Parse(projectIDStr)
@@ -209,6 +226,19 @@ func (h *TaskHandler) ListTasks(c *echo.Context) error {
 }
 
 // CreateTask creates a new task.
+//
+//	@Summary		Create task
+//	@Description	Create a new task in the project.
+//	@Tags			Tasks
+//	@Accept			json
+//	@Produce		json
+//	@Param			projectKey	path		string				true	"Project key"
+//	@Param			body		body		CreateTaskRequest	true	"Task details"
+//	@Success		201			{object}	TaskResponse
+//	@Failure		400			{object}	ErrorResponse
+//	@Failure		500			{object}	ErrorResponse
+//	@Security		BearerAuth
+//	@Router			/projects/{projectKey}/tasks [post]
 func (h *TaskHandler) CreateTask(c *echo.Context) error {
 	projectIDStr := c.Request().Header.Get(auth.HeaderProjectID)
 	projectID, err := uuid.Parse(projectIDStr)
@@ -384,6 +414,18 @@ func (h *TaskHandler) CreateTask(c *echo.Context) error {
 }
 
 // GetTask returns task details.
+//
+//	@Summary		Get task
+//	@Description	Returns task details by task number.
+//	@Tags			Tasks
+//	@Produce		json
+//	@Param			projectKey	path		string	true	"Project key"
+//	@Param			taskNum		path		int		true	"Task number"
+//	@Success		200			{object}	TaskResponse
+//	@Failure		400			{object}	ErrorResponse
+//	@Failure		404			{object}	ErrorResponse
+//	@Security		BearerAuth
+//	@Router			/projects/{projectKey}/tasks/{taskNum} [get]
 func (h *TaskHandler) GetTask(c *echo.Context) error {
 	projectIDStr := c.Request().Header.Get(auth.HeaderProjectID)
 	projectID, err := uuid.Parse(projectIDStr)
@@ -437,6 +479,21 @@ func (h *TaskHandler) GetTask(c *echo.Context) error {
 }
 
 // UpdateTask updates a task.
+//
+//	@Summary		Update task
+//	@Description	Update task fields. Changes are logged in the activity log.
+//	@Tags			Tasks
+//	@Accept			json
+//	@Produce		json
+//	@Param			projectKey	path		string				true	"Project key"
+//	@Param			taskNum		path		int					true	"Task number"
+//	@Param			body		body		UpdateTaskRequest	true	"Fields to update"
+//	@Success		200			{object}	TaskResponse
+//	@Failure		400			{object}	ErrorResponse
+//	@Failure		404			{object}	ErrorResponse
+//	@Failure		500			{object}	ErrorResponse
+//	@Security		BearerAuth
+//	@Router			/projects/{projectKey}/tasks/{taskNum} [patch]
 func (h *TaskHandler) UpdateTask(c *echo.Context) error {
 	projectIDStr := c.Request().Header.Get(auth.HeaderProjectID)
 	projectID, err := uuid.Parse(projectIDStr)
@@ -581,6 +638,19 @@ func (h *TaskHandler) UpdateTask(c *echo.Context) error {
 }
 
 // DeleteTask soft deletes a task.
+//
+//	@Summary		Delete task
+//	@Description	Soft-delete a task. Requires project admin role.
+//	@Tags			Tasks
+//	@Produce		json
+//	@Param			projectKey	path		string	true	"Project key"
+//	@Param			taskNum		path		int		true	"Task number"
+//	@Success		200			{object}	MessageResponse
+//	@Failure		400			{object}	ErrorResponse
+//	@Failure		404			{object}	ErrorResponse
+//	@Failure		500			{object}	ErrorResponse
+//	@Security		BearerAuth
+//	@Router			/projects/{projectKey}/tasks/{taskNum} [delete]
 func (h *TaskHandler) DeleteTask(c *echo.Context) error {
 	projectIDStr := c.Request().Header.Get(auth.HeaderProjectID)
 	projectID, err := uuid.Parse(projectIDStr)
@@ -639,6 +709,22 @@ type AddAssigneeRequest struct {
 }
 
 // AddAssignee adds an assignee to a task.
+//
+//	@Summary		Add assignee
+//	@Description	Add a user as an assignee to a task.
+//	@Tags			Task Assignees
+//	@Accept			json
+//	@Produce		json
+//	@Param			projectKey	path		string				true	"Project key"
+//	@Param			taskNum		path		int					true	"Task number"
+//	@Param			body		body		AddAssigneeRequest	true	"Assignee details"
+//	@Success		201			{object}	MessageResponse
+//	@Failure		400			{object}	ErrorResponse
+//	@Failure		404			{object}	ErrorResponse
+//	@Failure		409			{object}	ErrorResponse
+//	@Failure		500			{object}	ErrorResponse
+//	@Security		BearerAuth
+//	@Router			/projects/{projectKey}/tasks/{taskNum}/assignees [post]
 func (h *TaskHandler) AddAssignee(c *echo.Context) error {
 	projectIDStr := c.Request().Header.Get(auth.HeaderProjectID)
 	projectID, err := uuid.Parse(projectIDStr)
@@ -724,6 +810,20 @@ func (h *TaskHandler) AddAssignee(c *echo.Context) error {
 }
 
 // RemoveAssignee removes an assignee from a task.
+//
+//	@Summary		Remove assignee
+//	@Description	Remove a user from a task's assignees.
+//	@Tags			Task Assignees
+//	@Produce		json
+//	@Param			projectKey	path		string	true	"Project key"
+//	@Param			taskNum		path		int		true	"Task number"
+//	@Param			userId		path		string	true	"User ID"
+//	@Success		200			{object}	MessageResponse
+//	@Failure		400			{object}	ErrorResponse
+//	@Failure		404			{object}	ErrorResponse
+//	@Failure		500			{object}	ErrorResponse
+//	@Security		BearerAuth
+//	@Router			/projects/{projectKey}/tasks/{taskNum}/assignees/{userId} [delete]
 func (h *TaskHandler) RemoveAssignee(c *echo.Context) error {
 	projectIDStr := c.Request().Header.Get(auth.HeaderProjectID)
 	projectID, err := uuid.Parse(projectIDStr)
@@ -797,6 +897,22 @@ type AddLabelRequest struct {
 }
 
 // AddLabel adds a label to a task.
+//
+//	@Summary		Add label to task
+//	@Description	Add a project label to a task.
+//	@Tags			Task Labels
+//	@Accept			json
+//	@Produce		json
+//	@Param			projectKey	path		string			true	"Project key"
+//	@Param			taskNum		path		int				true	"Task number"
+//	@Param			body		body		AddLabelRequest	true	"Label details"
+//	@Success		201			{object}	MessageResponse
+//	@Failure		400			{object}	ErrorResponse
+//	@Failure		404			{object}	ErrorResponse
+//	@Failure		409			{object}	ErrorResponse
+//	@Failure		500			{object}	ErrorResponse
+//	@Security		BearerAuth
+//	@Router			/projects/{projectKey}/tasks/{taskNum}/labels [post]
 func (h *TaskHandler) AddLabel(c *echo.Context) error {
 	projectIDStr := c.Request().Header.Get(auth.HeaderProjectID)
 	projectID, err := uuid.Parse(projectIDStr)
@@ -881,6 +997,20 @@ func (h *TaskHandler) AddLabel(c *echo.Context) error {
 }
 
 // RemoveLabel removes a label from a task.
+//
+//	@Summary		Remove label from task
+//	@Description	Remove a label from a task.
+//	@Tags			Task Labels
+//	@Produce		json
+//	@Param			projectKey	path		string	true	"Project key"
+//	@Param			taskNum		path		int		true	"Task number"
+//	@Param			labelId		path		string	true	"Label ID"
+//	@Success		200			{object}	MessageResponse
+//	@Failure		400			{object}	ErrorResponse
+//	@Failure		404			{object}	ErrorResponse
+//	@Failure		500			{object}	ErrorResponse
+//	@Security		BearerAuth
+//	@Router			/projects/{projectKey}/tasks/{taskNum}/labels/{labelId} [delete]
 func (h *TaskHandler) RemoveLabel(c *echo.Context) error {
 	projectIDStr := c.Request().Header.Get(auth.HeaderProjectID)
 	projectID, err := uuid.Parse(projectIDStr)

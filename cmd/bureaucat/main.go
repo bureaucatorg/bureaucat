@@ -26,6 +26,15 @@ func init() {
 	cli.MigrationsFS = migrationsFS
 }
 
+//	@title						Bureaucat API
+//	@version					1.0
+//	@description				Bureaucat - Approval workflow application API
+//	@host						localhost:1341
+//	@BasePath					/api/v1
+//	@securityDefinitions.apikey	BearerAuth
+//	@in							header
+//	@name						Authorization
+//	@description				Enter your bearer token in the format: Bearer {token}
 func main() {
 	app := &ucli.Command{
 		Name:  "bureaucat",
