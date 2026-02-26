@@ -40,6 +40,7 @@ type Querier interface {
 	// ==================== PROJECT STATES ====================
 	CreateProjectState(ctx context.Context, arg CreateProjectStateParams) (ProjectState, error)
 	CreateRefreshToken(ctx context.Context, arg CreateRefreshTokenParams) (RefreshToken, error)
+	CreateSSOUser(ctx context.Context, arg CreateSSOUserParams) (CreateSSOUserRow, error)
 	// ==================== TASKS ====================
 	CreateTask(ctx context.Context, arg CreateTaskParams) (Task, error)
 	// ==================== TASK TEMPLATES ====================
@@ -72,11 +73,14 @@ type Querier interface {
 	GetTaskByProjectAndNumber(ctx context.Context, arg GetTaskByProjectAndNumberParams) (GetTaskByProjectAndNumberRow, error)
 	GetTaskTemplateByID(ctx context.Context, id uuid.UUID) (TaskTemplate, error)
 	GetUploadByID(ctx context.Context, id uuid.UUID) (Upload, error)
-	GetUserByEmailOrUsername(ctx context.Context, email string) (User, error)
+	GetUserByEmail(ctx context.Context, email string) (GetUserByEmailRow, error)
+	GetUserByEmailOrUsername(ctx context.Context, email string) (GetUserByEmailOrUsernameRow, error)
 	GetUserByID(ctx context.Context, id uuid.UUID) (GetUserByIDRow, error)
+	GetUserByProviderID(ctx context.Context, arg GetUserByProviderIDParams) (GetUserByProviderIDRow, error)
 	HasTaskLabel(ctx context.Context, arg HasTaskLabelParams) (bool, error)
 	IsProjectMember(ctx context.Context, arg IsProjectMemberParams) (bool, error)
 	IsTaskAssignee(ctx context.Context, arg IsTaskAssigneeParams) (bool, error)
+	LinkProviderToUser(ctx context.Context, arg LinkProviderToUserParams) error
 	ListActiveRefreshTokens(ctx context.Context, arg ListActiveRefreshTokensParams) ([]ListActiveRefreshTokensRow, error)
 	ListAllProjects(ctx context.Context, arg ListAllProjectsParams) ([]ListAllProjectsRow, error)
 	ListAllProjectsFiltered(ctx context.Context, arg ListAllProjectsFilteredParams) ([]ListAllProjectsFilteredRow, error)

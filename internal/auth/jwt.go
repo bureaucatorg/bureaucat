@@ -105,3 +105,8 @@ func (m *Manager) ValidateAccessToken(tokenString string) (*UserClaims, error) {
 func (m *Manager) GetRefreshTokenExpiryDays() int {
 	return m.config.RefreshTokenExpiryDays
 }
+
+// GetJWTSecret returns the JWT secret (used for HMAC signing of OAuth state).
+func (m *Manager) GetJWTSecret() string {
+	return m.config.JWTSecret
+}

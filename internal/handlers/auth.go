@@ -126,7 +126,7 @@ func (h *AuthHandler) Signup(c *echo.Context) error {
 	user, err := h.store.CreateUser(ctx, store.CreateUserParams{
 		Username:     req.Username,
 		Email:        req.Email,
-		PasswordHash: passwordHash,
+		PasswordHash: pgtype.Text{String: passwordHash, Valid: true},
 		FirstName:    req.FirstName,
 		LastName:     req.LastName,
 		UserType:     userType,
@@ -158,8 +158,11 @@ func (h *AuthHandler) Signin(c *echo.Context) error {
 		return echo.NewHTTPError(http.StatusUnauthorized, "invalid credentials")
 	}
 
-	// Verify password
-	if !auth.CheckPassword(req.Password, user.PasswordHash) {
+	// Verify password (SSO-only users have no password)
+	if !user.PasswordHash.Valid || user.PasswordHash.String == "" {
+		return echo.NewHTTPError(http.StatusUnauthorized, "invalid credentials")
+	}
+	if !auth.CheckPassword(req.Password, user.PasswordHash.String) {
 		return echo.NewHTTPError(http.StatusUnauthorized, "invalid credentials")
 	}
 
@@ -302,7 +305,7 @@ func userFromCreateRow(u store.CreateUserRow) userInfo {
 	}
 }
 
-func userFromFullUser(u store.User) userInfo {
+func userFromFullUser(u store.GetUserByEmailOrUsernameRow) userInfo {
 	return userInfo{
 		ID:        u.ID,
 		Username:  u.Username,
@@ -326,18 +329,19 @@ func userFromGetByIDRow(u store.GetUserByIDRow) userInfo {
 	}
 }
 
-// generateAndSetTokens generates access and refresh tokens and sets cookies.
-func (h *AuthHandler) generateAndSetTokens(c *echo.Context, ctx context.Context, userID uuid.UUID, username, userType string, user userInfo) error {
+// GenerateTokensAndSetCookies creates access + refresh tokens, stores refresh in DB, and sets cookies.
+// Returns the AuthResponse data without sending it. Used by both normal auth and SSO callback.
+func (h *AuthHandler) GenerateTokensAndSetCookies(c *echo.Context, ctx context.Context, userID uuid.UUID, username, userType string, user userInfo) (*AuthResponse, error) {
 	// Generate access token
 	accessToken, expiresAt, err := h.authManager.GenerateAccessToken(userID, username, userType)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, "failed to generate access token")
+		return nil, err
 	}
 
 	// Generate refresh token
 	refreshToken, refreshExpiresAt, err := h.authManager.GenerateRefreshToken()
 	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, "failed to generate refresh token")
+		return nil, err
 	}
 
 	// Store refresh token hash in database
@@ -348,7 +352,7 @@ func (h *AuthHandler) generateAndSetTokens(c *echo.Context, ctx context.Context,
 		ExpiresAt: pgtype.Timestamptz{Time: refreshExpiresAt, Valid: true},
 	})
 	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, "failed to store refresh token")
+		return nil, err
 	}
 
 	// Set refresh token as httpOnly cookie
@@ -357,7 +361,7 @@ func (h *AuthHandler) generateAndSetTokens(c *echo.Context, ctx context.Context,
 	// Set access token as httpOnly cookie (backup for page reload)
 	h.setAccessTokenCookie(c, accessToken, expiresAt)
 
-	return c.JSON(http.StatusOK, AuthResponse{
+	return &AuthResponse{
 		User: UserResponse{
 			ID:        user.ID,
 			Username:  user.Username,
@@ -369,7 +373,16 @@ func (h *AuthHandler) generateAndSetTokens(c *echo.Context, ctx context.Context,
 		},
 		AccessToken: accessToken,
 		ExpiresAt:   expiresAt.Unix(),
-	})
+	}, nil
+}
+
+// generateAndSetTokens generates access and refresh tokens, sets cookies, and returns JSON response.
+func (h *AuthHandler) generateAndSetTokens(c *echo.Context, ctx context.Context, userID uuid.UUID, username, userType string, user userInfo) error {
+	resp, err := h.GenerateTokensAndSetCookies(c, ctx, userID, username, userType, user)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to generate tokens")
+	}
+	return c.JSON(http.StatusOK, resp)
 }
 
 func (h *AuthHandler) setRefreshTokenCookie(c *echo.Context, token string, expiresAt time.Time) {

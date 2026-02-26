@@ -322,13 +322,15 @@ type Upload struct {
 }
 
 type User struct {
-	ID           uuid.UUID          `json:"id"`
-	Username     string             `json:"username"`
-	Email        string             `json:"email"`
-	PasswordHash string             `json:"password_hash"`
-	FirstName    string             `json:"first_name"`
-	LastName     string             `json:"last_name"`
-	UserType     string             `json:"user_type"`
-	CreatedAt    pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
+	ID             uuid.UUID          `json:"id"`
+	Username       string             `json:"username"`
+	Email          string             `json:"email"`
+	PasswordHash   pgtype.Text        `json:"password_hash"`
+	FirstName      string             `json:"first_name"`
+	LastName       string             `json:"last_name"`
+	UserType       string             `json:"user_type"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
+	AuthProvider   pgtype.Text        `json:"auth_provider"`
+	ProviderUserID pgtype.Text        `json:"provider_user_id"`
 }

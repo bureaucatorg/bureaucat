@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { Users, Key, Shield, ArrowRight, Loader2, Upload, CheckCircle2 } from "lucide-vue-next";
+import { Users, Key, Shield, ArrowRight, Loader2, Upload, CheckCircle2, Copy, Check } from "lucide-vue-next";
 import { toast } from "vue-sonner";
+import type { SSOSettings } from "~/composables/useSettings";
 
 definePageMeta({
   middleware: ["admin"],
@@ -8,7 +9,7 @@ definePageMeta({
 
 useSeoMeta({ title: "Admin" });
 
-const { branding, updateBranding } = useSettings();
+const { branding, updateBranding, fetchSSOSettings, updateSSOSettings } = useSettings();
 const { getAuthHeader } = useAuth();
 
 const brandingForm = ref({
@@ -96,6 +97,87 @@ async function handlePlaneImport() {
     importing.value = false;
   }
 }
+
+// SSO Settings
+const ssoForm = ref<SSOSettings>({
+  google: { enabled: false, client_id: "", client_secret: "", redirect_uri: "" },
+  zitadel: { enabled: false, client_id: "", client_secret: "", issuer_url: "", redirect_uri: "" },
+});
+const savingSSO = ref(false);
+const ssoLoaded = ref(false);
+const copiedField = ref("");
+
+function getRedirectURI(provider: string): string {
+  if (import.meta.client) {
+    return `${window.location.origin}/api/v1/auth/sso/${provider}/callback`;
+  }
+  return `/api/v1/auth/sso/${provider}/callback`;
+}
+
+async function loadSSOSettings() {
+  const result = await fetchSSOSettings();
+  if (result.success && result.data) {
+    ssoForm.value = {
+      google: {
+        enabled: result.data.google?.enabled || false,
+        client_id: result.data.google?.client_id || "",
+        client_secret: result.data.google?.client_secret || "",
+        redirect_uri: result.data.google?.redirect_uri || "",
+      },
+      zitadel: {
+        enabled: result.data.zitadel?.enabled || false,
+        client_id: result.data.zitadel?.client_id || "",
+        client_secret: result.data.zitadel?.client_secret || "",
+        issuer_url: result.data.zitadel?.issuer_url || "",
+        redirect_uri: result.data.zitadel?.redirect_uri || "",
+      },
+    };
+  }
+  ssoLoaded.value = true;
+}
+
+async function handleSaveSSO() {
+  savingSSO.value = true;
+  const result = await updateSSOSettings(ssoForm.value);
+  savingSSO.value = false;
+
+  if (result.success) {
+    if (result.data) {
+      ssoForm.value = {
+        google: {
+          enabled: result.data.google?.enabled || false,
+          client_id: result.data.google?.client_id || "",
+          client_secret: result.data.google?.client_secret || "",
+          redirect_uri: result.data.google?.redirect_uri || "",
+        },
+        zitadel: {
+          enabled: result.data.zitadel?.enabled || false,
+          client_id: result.data.zitadel?.client_id || "",
+          client_secret: result.data.zitadel?.client_secret || "",
+          issuer_url: result.data.zitadel?.issuer_url || "",
+          redirect_uri: result.data.zitadel?.redirect_uri || "",
+        },
+      };
+    }
+    toast.success("SSO settings saved");
+  } else {
+    toast.error(result.error || "Failed to save SSO settings");
+  }
+}
+
+async function copyToClipboard(text: string, field: string) {
+  try {
+    await navigator.clipboard.writeText(text);
+    copiedField.value = field;
+    setTimeout(() => { copiedField.value = ""; }, 2000);
+  } catch {
+    toast.error("Failed to copy");
+  }
+}
+
+onMounted(() => {
+  loadSSOSettings();
+});
 
 const adminModels = [
   {
@@ -302,6 +384,161 @@ const adminModels = [
               </div>
             </CardContent>
           </Card>
+        </div>
+
+        <!-- Authentication / SSO Settings -->
+        <div class="mt-12">
+          <div class="mb-4">
+            <h2 class="text-xl font-semibold">Authentication</h2>
+            <p class="text-sm text-muted-foreground">
+              Configure single sign-on (SSO) providers
+            </p>
+          </div>
+
+          <div class="space-y-4">
+            <!-- Google SSO -->
+            <Card>
+              <CardContent class="pt-6">
+                <div class="space-y-6">
+                  <div class="flex items-center justify-between">
+                    <div>
+                      <p class="font-medium">Google SSO</p>
+                      <p class="text-sm text-muted-foreground">
+                        Allow users to sign in with their Google account
+                      </p>
+                    </div>
+                    <Switch
+                      :checked="ssoForm.google.enabled"
+                      @update:checked="ssoForm.google.enabled = $event"
+                    />
+                  </div>
+
+                  <div v-if="ssoForm.google.enabled" class="space-y-4">
+                    <div class="space-y-2">
+                      <Label for="google-client-id">Client ID</Label>
+                      <Input
+                        id="google-client-id"
+                        v-model="ssoForm.google.client_id"
+                        placeholder="xxxx.apps.googleusercontent.com"
+                        :disabled="savingSSO"
+                      />
+                    </div>
+                    <div class="space-y-2">
+                      <Label for="google-client-secret">Client Secret</Label>
+                      <Input
+                        id="google-client-secret"
+                        v-model="ssoForm.google.client_secret"
+                        type="password"
+                        placeholder="Enter client secret"
+                        :disabled="savingSSO"
+                      />
+                    </div>
+                    <div class="space-y-2">
+                      <Label>Redirect URI</Label>
+                      <div class="flex items-center gap-2">
+                        <Input
+                          :model-value="getRedirectURI('google')"
+                          readonly
+                          class="bg-muted font-mono text-xs"
+                        />
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          @click="copyToClipboard(getRedirectURI('google'), 'google-redirect')"
+                        >
+                          <Check v-if="copiedField === 'google-redirect'" class="size-4 text-emerald-500" />
+                          <Copy v-else class="size-4" />
+                        </Button>
+                      </div>
+                      <p class="text-xs text-muted-foreground">
+                        Add this URI to your Google Cloud Console OAuth credentials
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <!-- Zitadel SSO -->
+            <Card>
+              <CardContent class="pt-6">
+                <div class="space-y-6">
+                  <div class="flex items-center justify-between">
+                    <div>
+                      <p class="font-medium">Zitadel SSO (OIDC)</p>
+                      <p class="text-sm text-muted-foreground">
+                        Allow users to sign in with Zitadel identity provider
+                      </p>
+                    </div>
+                    <Switch
+                      :checked="ssoForm.zitadel.enabled"
+                      @update:checked="ssoForm.zitadel.enabled = $event"
+                    />
+                  </div>
+
+                  <div v-if="ssoForm.zitadel.enabled" class="space-y-4">
+                    <div class="space-y-2">
+                      <Label for="zitadel-issuer">Issuer URL</Label>
+                      <Input
+                        id="zitadel-issuer"
+                        v-model="ssoForm.zitadel.issuer_url"
+                        placeholder="https://your-instance.zitadel.cloud"
+                        :disabled="savingSSO"
+                      />
+                    </div>
+                    <div class="space-y-2">
+                      <Label for="zitadel-client-id">Client ID</Label>
+                      <Input
+                        id="zitadel-client-id"
+                        v-model="ssoForm.zitadel.client_id"
+                        placeholder="Enter client ID"
+                        :disabled="savingSSO"
+                      />
+                    </div>
+                    <div class="space-y-2">
+                      <Label for="zitadel-client-secret">Client Secret</Label>
+                      <Input
+                        id="zitadel-client-secret"
+                        v-model="ssoForm.zitadel.client_secret"
+                        type="password"
+                        placeholder="Enter client secret"
+                        :disabled="savingSSO"
+                      />
+                    </div>
+                    <div class="space-y-2">
+                      <Label>Redirect URI</Label>
+                      <div class="flex items-center gap-2">
+                        <Input
+                          :model-value="getRedirectURI('zitadel')"
+                          readonly
+                          class="bg-muted font-mono text-xs"
+                        />
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          @click="copyToClipboard(getRedirectURI('zitadel'), 'zitadel-redirect')"
+                        >
+                          <Check v-if="copiedField === 'zitadel-redirect'" class="size-4 text-emerald-500" />
+                          <Copy v-else class="size-4" />
+                        </Button>
+                      </div>
+                      <p class="text-xs text-muted-foreground">
+                        Add this URI to your Zitadel application's redirect settings
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <!-- Save SSO button -->
+            <div class="flex justify-end pt-2">
+              <Button @click="handleSaveSSO" :disabled="savingSSO">
+                <Loader2 v-if="savingSSO" class="mr-2 size-4 animate-spin" />
+                Save SSO Settings
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
     </main>

@@ -27,6 +27,13 @@ func (s *Server) registerRoutes() {
 	// Public settings routes
 	if s.settingsHandler != nil {
 		api.GET("/settings/branding", s.settingsHandler.GetBranding)
+		api.GET("/settings/sso", s.settingsHandler.GetSSOProviders)
+	}
+
+	// SSO auth routes (public)
+	if s.oauthHandler != nil {
+		api.GET("/auth/sso/:provider", s.oauthHandler.StartSSO)
+		api.GET("/auth/sso/:provider/callback", s.oauthHandler.CallbackSSO)
 	}
 
 	// Dynamic OG image
@@ -135,6 +142,8 @@ func (s *Server) registerRoutes() {
 		// Admin settings
 		if s.settingsHandler != nil {
 			admin.PUT("/settings/branding", s.settingsHandler.UpdateBranding)
+			admin.GET("/settings/sso", s.settingsHandler.GetSSOSettings)
+			admin.PUT("/settings/sso", s.settingsHandler.UpdateSSOSettings)
 		}
 
 		// Admin data import

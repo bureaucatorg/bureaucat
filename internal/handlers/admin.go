@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/labstack/echo/v5"
 
 	"bereaucat/internal/auth"
@@ -169,7 +170,7 @@ func (h *AdminHandler) CreateUser(c *echo.Context) error {
 	user, err := h.store.CreateUser(ctx, store.CreateUserParams{
 		Username:     req.Username,
 		Email:        req.Email,
-		PasswordHash: passwordHash,
+		PasswordHash: pgtype.Text{String: passwordHash, Valid: true},
 		FirstName:    req.FirstName,
 		LastName:     req.LastName,
 		UserType:     req.UserType,

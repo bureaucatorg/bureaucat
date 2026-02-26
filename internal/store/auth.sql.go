@@ -62,6 +62,61 @@ func (q *Queries) CreateRefreshToken(ctx context.Context, arg CreateRefreshToken
 	return i, err
 }
 
+const createSSOUser = `-- name: CreateSSOUser :one
+INSERT INTO users (username, email, first_name, last_name, user_type, auth_provider, provider_user_id)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
+RETURNING id, username, email, first_name, last_name, user_type, auth_provider, provider_user_id, created_at, updated_at
+`
+
+type CreateSSOUserParams struct {
+	Username       string      `json:"username"`
+	Email          string      `json:"email"`
+	FirstName      string      `json:"first_name"`
+	LastName       string      `json:"last_name"`
+	UserType       string      `json:"user_type"`
+	AuthProvider   pgtype.Text `json:"auth_provider"`
+	ProviderUserID pgtype.Text `json:"provider_user_id"`
+}
+
+type CreateSSOUserRow struct {
+	ID             uuid.UUID          `json:"id"`
+	Username       string             `json:"username"`
+	Email          string             `json:"email"`
+	FirstName      string             `json:"first_name"`
+	LastName       string             `json:"last_name"`
+	UserType       string             `json:"user_type"`
+	AuthProvider   pgtype.Text        `json:"auth_provider"`
+	ProviderUserID pgtype.Text        `json:"provider_user_id"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
+}
+
+func (q *Queries) CreateSSOUser(ctx context.Context, arg CreateSSOUserParams) (CreateSSOUserRow, error) {
+	row := q.db.QueryRow(ctx, createSSOUser,
+		arg.Username,
+		arg.Email,
+		arg.FirstName,
+		arg.LastName,
+		arg.UserType,
+		arg.AuthProvider,
+		arg.ProviderUserID,
+	)
+	var i CreateSSOUserRow
+	err := row.Scan(
+		&i.ID,
+		&i.Username,
+		&i.Email,
+		&i.FirstName,
+		&i.LastName,
+		&i.UserType,
+		&i.AuthProvider,
+		&i.ProviderUserID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const createUser = `-- name: CreateUser :one
 INSERT INTO users (username, email, password_hash, first_name, last_name, user_type)
 VALUES ($1, $2, $3, $4, $5, $6)
@@ -69,12 +124,12 @@ RETURNING id, username, email, first_name, last_name, user_type, created_at, upd
 `
 
 type CreateUserParams struct {
-	Username     string `json:"username"`
-	Email        string `json:"email"`
-	PasswordHash string `json:"password_hash"`
-	FirstName    string `json:"first_name"`
-	LastName     string `json:"last_name"`
-	UserType     string `json:"user_type"`
+	Username     string      `json:"username"`
+	Email        string      `json:"email"`
+	PasswordHash pgtype.Text `json:"password_hash"`
+	FirstName    string      `json:"first_name"`
+	LastName     string      `json:"last_name"`
+	UserType     string      `json:"user_type"`
 }
 
 type CreateUserRow struct {
@@ -173,15 +228,30 @@ func (q *Queries) GetRefreshTokenByID(ctx context.Context, id uuid.UUID) (Refres
 	return i, err
 }
 
-const getUserByEmailOrUsername = `-- name: GetUserByEmailOrUsername :one
-SELECT id, username, email, password_hash, first_name, last_name, user_type, created_at, updated_at
+const getUserByEmail = `-- name: GetUserByEmail :one
+SELECT id, username, email, password_hash, first_name, last_name, user_type,
+       auth_provider, provider_user_id, created_at, updated_at
 FROM users
-WHERE email = $1 OR username = $1
+WHERE email = $1
 `
 
-func (q *Queries) GetUserByEmailOrUsername(ctx context.Context, email string) (User, error) {
-	row := q.db.QueryRow(ctx, getUserByEmailOrUsername, email)
-	var i User
+type GetUserByEmailRow struct {
+	ID             uuid.UUID          `json:"id"`
+	Username       string             `json:"username"`
+	Email          string             `json:"email"`
+	PasswordHash   pgtype.Text        `json:"password_hash"`
+	FirstName      string             `json:"first_name"`
+	LastName       string             `json:"last_name"`
+	UserType       string             `json:"user_type"`
+	AuthProvider   pgtype.Text        `json:"auth_provider"`
+	ProviderUserID pgtype.Text        `json:"provider_user_id"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
+}
+
+func (q *Queries) GetUserByEmail(ctx context.Context, email string) (GetUserByEmailRow, error) {
+	row := q.db.QueryRow(ctx, getUserByEmail, email)
+	var i GetUserByEmailRow
 	err := row.Scan(
 		&i.ID,
 		&i.Username,
@@ -190,6 +260,48 @@ func (q *Queries) GetUserByEmailOrUsername(ctx context.Context, email string) (U
 		&i.FirstName,
 		&i.LastName,
 		&i.UserType,
+		&i.AuthProvider,
+		&i.ProviderUserID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getUserByEmailOrUsername = `-- name: GetUserByEmailOrUsername :one
+SELECT id, username, email, password_hash, first_name, last_name, user_type,
+       auth_provider, provider_user_id, created_at, updated_at
+FROM users
+WHERE email = $1 OR username = $1
+`
+
+type GetUserByEmailOrUsernameRow struct {
+	ID             uuid.UUID          `json:"id"`
+	Username       string             `json:"username"`
+	Email          string             `json:"email"`
+	PasswordHash   pgtype.Text        `json:"password_hash"`
+	FirstName      string             `json:"first_name"`
+	LastName       string             `json:"last_name"`
+	UserType       string             `json:"user_type"`
+	AuthProvider   pgtype.Text        `json:"auth_provider"`
+	ProviderUserID pgtype.Text        `json:"provider_user_id"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
+}
+
+func (q *Queries) GetUserByEmailOrUsername(ctx context.Context, email string) (GetUserByEmailOrUsernameRow, error) {
+	row := q.db.QueryRow(ctx, getUserByEmailOrUsername, email)
+	var i GetUserByEmailOrUsernameRow
+	err := row.Scan(
+		&i.ID,
+		&i.Username,
+		&i.Email,
+		&i.PasswordHash,
+		&i.FirstName,
+		&i.LastName,
+		&i.UserType,
+		&i.AuthProvider,
+		&i.ProviderUserID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -227,6 +339,68 @@ func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (GetUserByIDRow
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const getUserByProviderID = `-- name: GetUserByProviderID :one
+SELECT id, username, email, password_hash, first_name, last_name, user_type,
+       auth_provider, provider_user_id, created_at, updated_at
+FROM users
+WHERE auth_provider = $1 AND provider_user_id = $2
+`
+
+type GetUserByProviderIDParams struct {
+	AuthProvider   pgtype.Text `json:"auth_provider"`
+	ProviderUserID pgtype.Text `json:"provider_user_id"`
+}
+
+type GetUserByProviderIDRow struct {
+	ID             uuid.UUID          `json:"id"`
+	Username       string             `json:"username"`
+	Email          string             `json:"email"`
+	PasswordHash   pgtype.Text        `json:"password_hash"`
+	FirstName      string             `json:"first_name"`
+	LastName       string             `json:"last_name"`
+	UserType       string             `json:"user_type"`
+	AuthProvider   pgtype.Text        `json:"auth_provider"`
+	ProviderUserID pgtype.Text        `json:"provider_user_id"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
+}
+
+func (q *Queries) GetUserByProviderID(ctx context.Context, arg GetUserByProviderIDParams) (GetUserByProviderIDRow, error) {
+	row := q.db.QueryRow(ctx, getUserByProviderID, arg.AuthProvider, arg.ProviderUserID)
+	var i GetUserByProviderIDRow
+	err := row.Scan(
+		&i.ID,
+		&i.Username,
+		&i.Email,
+		&i.PasswordHash,
+		&i.FirstName,
+		&i.LastName,
+		&i.UserType,
+		&i.AuthProvider,
+		&i.ProviderUserID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const linkProviderToUser = `-- name: LinkProviderToUser :exec
+UPDATE users
+SET auth_provider = $2, provider_user_id = $3, updated_at = NOW()
+WHERE id = $1
+`
+
+type LinkProviderToUserParams struct {
+	ID             uuid.UUID   `json:"id"`
+	AuthProvider   pgtype.Text `json:"auth_provider"`
+	ProviderUserID pgtype.Text `json:"provider_user_id"`
+}
+
+func (q *Queries) LinkProviderToUser(ctx context.Context, arg LinkProviderToUserParams) error {
+	_, err := q.db.Exec(ctx, linkProviderToUser, arg.ID, arg.AuthProvider, arg.ProviderUserID)
+	return err
 }
 
 const listActiveRefreshTokens = `-- name: ListActiveRefreshTokens :many

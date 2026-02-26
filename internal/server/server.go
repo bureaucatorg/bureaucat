@@ -44,6 +44,7 @@ type Server struct {
 	settingsHandler *handlers.SettingsHandler
 	ogHandler       *handlers.OGHandler
 	importHandler   *handlers.ImportHandler
+	oauthHandler    *handlers.OAuthHandler
 	activityService *activity.Service
 	uploadService   *uploads.Service
 	distFS          fs.FS
@@ -123,6 +124,7 @@ func New(devMode bool, dbURL string, authConfig AuthConfig, distFS fs.FS) (*Serv
 		srv.taskHandler = handlers.NewTaskHandler(srv.store, srv.activityService)
 		srv.commentHandler = handlers.NewCommentHandler(srv.store, srv.activityService)
 		srv.settingsHandler = handlers.NewSettingsHandler(srv.store)
+		srv.oauthHandler = handlers.NewOAuthHandler(srv.store, srv.authManager, srv.authHandler, devMode)
 		srv.ogHandler = handlers.NewOGHandler(srv.store)
 		srv.importHandler = handlers.NewImportHandler(srv.pool)
 	}

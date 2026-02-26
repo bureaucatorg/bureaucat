@@ -3,12 +3,33 @@ export interface BrandingSettings {
   app_name: string;
 }
 
+export interface SSOProviderConfig {
+  enabled: boolean;
+  client_id: string;
+  client_secret: string;
+  issuer_url?: string;
+  redirect_uri: string;
+}
+
+export interface SSOSettings {
+  google: SSOProviderConfig;
+  zitadel: SSOProviderConfig;
+}
+
+export interface SSOProvidersPublic {
+  google: boolean;
+  zitadel: boolean;
+}
+
 const branding = ref<BrandingSettings>({
   enabled: false,
   app_name: "Bureaucat",
 });
 
 const brandingLoaded = ref(false);
+
+const ssoProviders = ref<SSOProvidersPublic>({ google: false, zitadel: false });
+const ssoProvidersLoaded = ref(false);
 
 export function useSettings() {
   const { getAuthHeader } = useAuth();
@@ -64,11 +85,84 @@ export function useSettings() {
     }
   }
 
+  // --- SSO Settings ---
+
+  async function fetchSSOProviders(): Promise<void> {
+    if (ssoProvidersLoaded.value) return;
+
+    try {
+      const response = await fetch("/api/v1/settings/sso");
+      if (response.ok) {
+        const data = await response.json();
+        ssoProviders.value = data;
+      }
+    } catch {
+      // Use defaults on error
+    } finally {
+      ssoProvidersLoaded.value = true;
+    }
+  }
+
+  async function fetchSSOSettings(): Promise<{ success: boolean; data?: SSOSettings; error?: string }> {
+    try {
+      const response = await fetch("/api/v1/admin/settings/sso", {
+        headers: { ...getAuthHeader() },
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        return { success: false, error: data.message || "Failed to fetch SSO settings" };
+      }
+
+      const data = await response.json();
+      return { success: true, data };
+    } catch {
+      return { success: false, error: "Network error" };
+    }
+  }
+
+  async function updateSSOSettings(
+    settings: SSOSettings
+  ): Promise<{ success: boolean; data?: SSOSettings; error?: string }> {
+    try {
+      const response = await fetch("/api/v1/admin/settings/sso", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          ...getAuthHeader(),
+        },
+        credentials: "include",
+        body: JSON.stringify(settings),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        return { success: false, error: data.message || "Failed to update SSO settings" };
+      }
+
+      const data = await response.json();
+      // Update public providers state too
+      ssoProviders.value = {
+        google: data.google?.enabled || false,
+        zitadel: data.zitadel?.enabled || false,
+      };
+      return { success: true, data };
+    } catch {
+      return { success: false, error: "Network error" };
+    }
+  }
+
   return {
     branding,
     appName,
     brandingLoaded,
     fetchBranding,
     updateBranding,
+    ssoProviders,
+    ssoProvidersLoaded,
+    fetchSSOProviders,
+    fetchSSOSettings,
+    updateSSOSettings,
   };
 }

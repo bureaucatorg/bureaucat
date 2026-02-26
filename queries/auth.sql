@@ -9,7 +9,8 @@ FROM users
 WHERE id = $1;
 
 -- name: GetUserByEmailOrUsername :one
-SELECT id, username, email, password_hash, first_name, last_name, user_type, created_at, updated_at
+SELECT id, username, email, password_hash, first_name, last_name, user_type,
+       auth_provider, provider_user_id, created_at, updated_at
 FROM users
 WHERE email = $1 OR username = $1;
 
@@ -78,3 +79,25 @@ WHERE id = $1;
 -- name: DeleteExpiredRefreshTokens :execrows
 DELETE FROM refresh_tokens
 WHERE expires_at <= NOW();
+
+-- name: GetUserByEmail :one
+SELECT id, username, email, password_hash, first_name, last_name, user_type,
+       auth_provider, provider_user_id, created_at, updated_at
+FROM users
+WHERE email = $1;
+
+-- name: GetUserByProviderID :one
+SELECT id, username, email, password_hash, first_name, last_name, user_type,
+       auth_provider, provider_user_id, created_at, updated_at
+FROM users
+WHERE auth_provider = $1 AND provider_user_id = $2;
+
+-- name: CreateSSOUser :one
+INSERT INTO users (username, email, first_name, last_name, user_type, auth_provider, provider_user_id)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
+RETURNING id, username, email, first_name, last_name, user_type, auth_provider, provider_user_id, created_at, updated_at;
+
+-- name: LinkProviderToUser :exec
+UPDATE users
+SET auth_provider = $2, provider_user_id = $3, updated_at = NOW()
+WHERE id = $1;

@@ -193,7 +193,7 @@ func PopulateDBCommand() *cli.Command {
 			_, err = q.CreateUser(ctx, store.CreateUserParams{
 				Username:     "admin",
 				Email:        "admin@example.com",
-				PasswordHash: adminHash,
+				PasswordHash: pgtype.Text{String: adminHash, Valid: true},
 				FirstName:    "Ada",
 				LastName:     "Lovelace",
 				UserType:     "admin",
