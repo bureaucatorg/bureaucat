@@ -2,6 +2,7 @@ package notifier
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/google/uuid"
 )
@@ -22,6 +23,12 @@ type Notification struct {
 	ProjectKey  string    // e.g. "DEVOP"
 	TaskNumber  int       // e.g. 123
 	TaskTitle   string
+	BaseURL     string    // App base URL for building task links (e.g. "https://bureaucat.example.com")
+}
+
+// TaskURL returns the full URL to the task.
+func (n Notification) TaskURL() string {
+	return fmt.Sprintf("%s/projects/%s/tasks/%d", n.BaseURL, n.ProjectKey, n.TaskNumber)
 }
 
 // Notifier is the interface that all notification providers must implement.

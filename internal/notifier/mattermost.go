@@ -220,14 +220,15 @@ func (m *MattermostNotifier) postMessage(ctx context.Context, channelID, message
 }
 
 func formatMessage(n Notification) string {
-	taskRef := fmt.Sprintf("%s-%d: %s", n.ProjectKey, n.TaskNumber, n.TaskTitle)
+	taskID := fmt.Sprintf("%s-%d", n.ProjectKey, n.TaskNumber)
+	taskLink := fmt.Sprintf("[%s: %s](%s)", taskID, n.TaskTitle, n.TaskURL())
 
 	switch n.Event {
 	case EventTaskAssigned:
-		return fmt.Sprintf("**%s** assigned you to **%s**", n.ActorName, taskRef)
+		return fmt.Sprintf("**%s** assigned you to %s", n.ActorName, taskLink)
 	case EventMentioned:
-		return fmt.Sprintf("**%s** mentioned you in **%s**", n.ActorName, taskRef)
+		return fmt.Sprintf("**%s** mentioned you in %s", n.ActorName, taskLink)
 	default:
-		return fmt.Sprintf("**%s** — %s", taskRef, n.ActorName)
+		return fmt.Sprintf("%s — %s", taskLink, n.ActorName)
 	}
 }

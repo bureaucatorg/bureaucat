@@ -391,6 +391,7 @@ func (h *TaskHandler) CreateTask(c *echo.Context) error {
 			actorName = actorUser.Username
 		}
 		taskNum := int(task.TaskNumber)
+		baseURL := requestBaseURL(c)
 
 		// Notify assignees
 		for _, assigneeIDStr := range req.Assignees {
@@ -405,6 +406,7 @@ func (h *TaskHandler) CreateTask(c *echo.Context) error {
 				ProjectKey:  projectKey,
 				TaskNumber:  taskNum,
 				TaskTitle:   req.Title,
+				BaseURL:     baseURL,
 			})
 		}
 
@@ -422,6 +424,7 @@ func (h *TaskHandler) CreateTask(c *echo.Context) error {
 					ProjectKey:  projectKey,
 					TaskNumber:  taskNum,
 					TaskTitle:   req.Title,
+					BaseURL:     baseURL,
 				})
 			}
 		}
@@ -664,6 +667,7 @@ func (h *TaskHandler) UpdateTask(c *echo.Context) error {
 			if actorName == " " {
 				actorName = actorUser.Username
 			}
+			baseURL := requestBaseURL(c)
 			for _, mentionedID := range newMentions {
 				if mentionedID == userID {
 					continue
@@ -675,6 +679,7 @@ func (h *TaskHandler) UpdateTask(c *echo.Context) error {
 					ProjectKey:  projectKey,
 					TaskNumber:  taskNum,
 					TaskTitle:   oldTask.Title,
+					BaseURL:     baseURL,
 				})
 			}
 		}
@@ -898,6 +903,7 @@ func (h *TaskHandler) AddAssignee(c *echo.Context) error {
 			ProjectKey:  projectKey,
 			TaskNumber:  taskNum,
 			TaskTitle:   task.Title,
+			BaseURL:     requestBaseURL(c),
 		})
 	}
 
@@ -1192,6 +1198,19 @@ func (h *TaskHandler) getTaskAssignees(ctx context.Context, taskID uuid.UUID) []
 		}
 	}
 	return result
+}
+
+// requestBaseURL extracts the base URL from the request (e.g. "https://bureaucat.example.com").
+func requestBaseURL(c *echo.Context) string {
+	scheme := "https"
+	if c.Request().TLS == nil {
+		if proto := c.Request().Header.Get("X-Forwarded-Proto"); proto != "" {
+			scheme = proto
+		} else {
+			scheme = "http"
+		}
+	}
+	return scheme + "://" + c.Request().Host
 }
 
 func (h *TaskHandler) getTaskLabels(ctx context.Context, taskID uuid.UUID) []TaskLabelInfo {

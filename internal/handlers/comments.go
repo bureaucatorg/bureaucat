@@ -219,6 +219,7 @@ func (h *CommentHandler) CreateComment(c *echo.Context) error {
 				actorName = actorUser.Username
 			}
 			projectKey := c.Request().Header.Get(auth.HeaderProjectKey)
+			baseURL := requestBaseURL(c)
 			for _, mentionedID := range mentionedIDs {
 				if mentionedID == userID {
 					continue
@@ -230,6 +231,7 @@ func (h *CommentHandler) CreateComment(c *echo.Context) error {
 					ProjectKey:  projectKey,
 					TaskNumber:  taskNum,
 					TaskTitle:   task.Title,
+					BaseURL:     baseURL,
 				})
 			}
 		}
