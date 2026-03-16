@@ -125,6 +125,72 @@ func (h *SettingsHandler) UpdateBranding(c *echo.Context) error {
 	})
 }
 
+// --- Signup Settings ---
+
+// SignupSettings represents the signup configuration.
+type SignupSettings struct {
+	Enabled bool `json:"enabled"`
+}
+
+// GetSignupSettings returns whether public signups are enabled.
+// This endpoint is public so the frontend can hide the signup page when disabled.
+func (h *SettingsHandler) GetSignupSettings(c *echo.Context) error {
+	ctx := c.Request().Context()
+
+	setting, err := h.store.GetSetting(ctx, "signup")
+	if err != nil {
+		// Default: signups are enabled
+		return c.JSON(http.StatusOK, SignupSettings{Enabled: true})
+	}
+
+	var signup SignupSettings
+	if err := json.Unmarshal(setting.Value, &signup); err != nil {
+		return c.JSON(http.StatusOK, SignupSettings{Enabled: true})
+	}
+
+	return c.JSON(http.StatusOK, signup)
+}
+
+// UpdateSignupSettings updates the signup settings (admin only).
+func (h *SettingsHandler) UpdateSignupSettings(c *echo.Context) error {
+	var req SignupSettings
+	if err := c.Bind(&req); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid request body")
+	}
+
+	ctx := c.Request().Context()
+
+	value, err := json.Marshal(req)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to marshal settings")
+	}
+
+	_, err = h.store.UpsertSetting(ctx, store.UpsertSettingParams{
+		Key:   "signup",
+		Value: value,
+	})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to update settings")
+	}
+
+	return c.JSON(http.StatusOK, req)
+}
+
+// IsSignupEnabled checks if public signups are enabled (used by auth handler).
+func (h *SettingsHandler) IsSignupEnabled(ctx context.Context) bool {
+	setting, err := h.store.GetSetting(ctx, "signup")
+	if err != nil {
+		return true // Default: enabled
+	}
+
+	var signup SignupSettings
+	if err := json.Unmarshal(setting.Value, &signup); err != nil {
+		return true
+	}
+
+	return signup.Enabled
+}
+
 // --- SSO Settings ---
 
 // SSOProviderConfig represents configuration for a single SSO provider.

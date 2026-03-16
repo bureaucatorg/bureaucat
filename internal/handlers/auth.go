@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"regexp"
 	"time"
@@ -78,6 +79,11 @@ func NewAuthHandler(store store.Querier, authManager *auth.Manager, devMode bool
 //	@Failure		500		{object}	ErrorResponse
 //	@Router			/signup [post]
 func (h *AuthHandler) Signup(c *echo.Context) error {
+	// Check if signups are enabled
+	if !h.isSignupEnabled(c.Request().Context()) {
+		return echo.NewHTTPError(http.StatusForbidden, "new signups are currently disabled")
+	}
+
 	var req SignupRequest
 	if err := c.Bind(&req); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid request body")
@@ -500,6 +506,24 @@ var emailRegex = regexp.MustCompile(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]
 
 func isValidEmail(email string) bool {
 	return emailRegex.MatchString(email)
+}
+
+// isSignupEnabled checks the "signup" setting from the database.
+// Returns true (enabled) by default if the setting doesn't exist.
+func (h *AuthHandler) isSignupEnabled(ctx context.Context) bool {
+	setting, err := h.store.GetSetting(ctx, "signup")
+	if err != nil {
+		return true // Default: enabled
+	}
+
+	var signup struct {
+		Enabled bool `json:"enabled"`
+	}
+	if err := json.Unmarshal(setting.Value, &signup); err != nil {
+		return true
+	}
+
+	return signup.Enabled
 }
 
 func validatePassword(password string) []string {

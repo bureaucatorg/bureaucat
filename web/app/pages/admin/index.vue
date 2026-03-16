@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Users, Key, Shield, ArrowRight, Loader2, Upload, CheckCircle2, Copy, Check, MessageSquare } from "lucide-vue-next";
+import { Users, Key, Shield, ArrowRight, Loader2, Upload, CheckCircle2, Copy, Check, MessageSquare, UserPlus } from "lucide-vue-next";
 import { toast } from "vue-sonner";
 import type { SSOSettings, MattermostSettings } from "~/composables/useSettings";
 
@@ -9,7 +9,7 @@ definePageMeta({
 
 useSeoMeta({ title: "Admin" });
 
-const { branding, updateBranding, fetchSSOSettings, updateSSOSettings, fetchMattermostSettings, updateMattermostSettings, testMattermostConnection } = useSettings();
+const { branding, updateBranding, signupSettings, updateSignupSettings, fetchSignupSettings, fetchSSOSettings, updateSSOSettings, fetchMattermostSettings, updateMattermostSettings, testMattermostConnection } = useSettings();
 const { getAuthHeader } = useAuth();
 
 const brandingForm = ref({
@@ -37,6 +37,21 @@ async function handleSaveBranding() {
     toast.success("Branding settings saved");
   } else {
     toast.error(result.error || "Failed to save branding settings");
+  }
+}
+
+// Signup settings
+const savingSignup = ref(false);
+
+async function handleToggleSignup(enabled: boolean) {
+  savingSignup.value = true;
+  const result = await updateSignupSettings({ enabled });
+  savingSignup.value = false;
+
+  if (result.success) {
+    toast.success(enabled ? "Signups enabled" : "Signups disabled");
+  } else {
+    toast.error(result.error || "Failed to update signup settings");
   }
 }
 
@@ -229,6 +244,7 @@ async function handleTestMattermost() {
 }
 
 onMounted(() => {
+  fetchSignupSettings();
   loadSSOSettings();
   loadMattermostSettings();
 });
@@ -445,11 +461,33 @@ const adminModels = [
           <div class="mb-4">
             <h2 class="text-xl font-semibold">Authentication</h2>
             <p class="text-sm text-muted-foreground">
-              Configure single sign-on (SSO) providers
+              Configure signup and single sign-on (SSO) providers
             </p>
           </div>
 
           <div class="space-y-4">
+            <!-- Public Signups -->
+            <Card>
+              <CardContent class="pt-6">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-3">
+                    <UserPlus class="size-5 text-muted-foreground" />
+                    <div>
+                      <p class="font-medium">Public Signups</p>
+                      <p class="text-sm text-muted-foreground">
+                        Allow new users to create accounts via the signup page
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    :checked="signupSettings.enabled"
+                    :disabled="savingSignup"
+                    @update:checked="handleToggleSignup"
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
             <!-- Google SSO -->
             <Card>
               <CardContent class="pt-6">

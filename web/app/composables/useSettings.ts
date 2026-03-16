@@ -21,6 +21,10 @@ export interface SSOProvidersPublic {
   zitadel: boolean;
 }
 
+export interface SignupSettings {
+  enabled: boolean;
+}
+
 export interface MattermostSettings {
   enabled: boolean;
   server_url: string;
@@ -33,6 +37,9 @@ const branding = ref<BrandingSettings>({
 });
 
 const brandingLoaded = ref(false);
+
+const signupSettings = ref<SignupSettings>({ enabled: true });
+const signupSettingsLoaded = ref(false);
 
 const ssoProviders = ref<SSOProvidersPublic>({ google: false, zitadel: false });
 const ssoProvidersLoaded = ref(false);
@@ -85,6 +92,51 @@ export function useSettings() {
 
       const data = await response.json();
       branding.value = data;
+      return { success: true };
+    } catch {
+      return { success: false, error: "Network error" };
+    }
+  }
+
+  // --- Signup Settings ---
+
+  async function fetchSignupSettings(): Promise<void> {
+    if (signupSettingsLoaded.value) return;
+
+    try {
+      const response = await fetch("/api/v1/settings/signup");
+      if (response.ok) {
+        const data = await response.json();
+        signupSettings.value = data;
+      }
+    } catch {
+      // Default: enabled
+    } finally {
+      signupSettingsLoaded.value = true;
+    }
+  }
+
+  async function updateSignupSettings(
+    settings: SignupSettings
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      const response = await fetch("/api/v1/admin/settings/signup", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          ...getAuthHeader(),
+        },
+        credentials: "include",
+        body: JSON.stringify(settings),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        return { success: false, error: data.message || "Failed to update signup settings" };
+      }
+
+      const data = await response.json();
+      signupSettings.value = data;
       return { success: true };
     } catch {
       return { success: false, error: "Network error" };
@@ -231,6 +283,10 @@ export function useSettings() {
     brandingLoaded,
     fetchBranding,
     updateBranding,
+    signupSettings,
+    signupSettingsLoaded,
+    fetchSignupSettings,
+    updateSignupSettings,
     ssoProviders,
     ssoProvidersLoaded,
     fetchSSOProviders,

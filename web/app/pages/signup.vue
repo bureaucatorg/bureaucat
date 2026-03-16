@@ -9,7 +9,12 @@ definePageMeta({
 useSeoMeta({ title: "Sign Up" });
 
 const { signup } = useAuth();
+const { signupSettings, fetchSignupSettings } = useSettings();
 const runtimeConfig = useRuntimeConfig();
+
+onMounted(() => {
+  fetchSignupSettings();
+});
 
 const isProduction = computed(() => runtimeConfig.public.nodeEnv === "production");
 
@@ -105,9 +110,15 @@ async function handleSubmit() {
       <Card class="w-full max-w-md">
         <CardHeader class="space-y-1 text-center">
           <CardTitle class="text-2xl font-bold">Create an account</CardTitle>
-          <CardDescription>Enter your details to get started</CardDescription>
+          <CardDescription v-if="signupSettings.enabled">Enter your details to get started</CardDescription>
+          <CardDescription v-else>New account registration is currently disabled</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent v-if="!signupSettings.enabled">
+          <div class="rounded-md bg-muted p-4 text-center text-sm text-muted-foreground">
+            Signups are not available at this time. Please contact your administrator for access.
+          </div>
+        </CardContent>
+        <CardContent v-else>
           <form @submit.prevent="handleSubmit" class="space-y-4">
             <div v-if="error" class="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
               {{ error }}
@@ -235,8 +246,14 @@ async function handleSubmit() {
         </CardContent>
         <CardFooter class="flex justify-center">
           <p class="text-sm text-muted-foreground">
-            Already have an account?
-            <NuxtLink to="/signin" class="text-foreground underline-offset-4 hover:underline">Sign in</NuxtLink>
+            <template v-if="signupSettings.enabled">
+              Already have an account?
+              <NuxtLink to="/signin" class="text-foreground underline-offset-4 hover:underline">Sign in</NuxtLink>
+            </template>
+            <template v-else>
+              <NuxtLink to="/signin" class="text-foreground underline-offset-4 hover:underline">Sign in</NuxtLink>
+              with an existing account
+            </template>
           </p>
         </CardFooter>
       </Card>
