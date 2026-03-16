@@ -279,6 +279,7 @@ WHERE t.project_id = $1
   AND (sqlc.narg('state_type')::state_type IS NULL OR ps.state_type = sqlc.narg('state_type'))
   AND (sqlc.narg('priority')::int IS NULL OR t.priority = sqlc.narg('priority'))
   AND (sqlc.narg('created_by')::uuid IS NULL OR t.created_by = sqlc.narg('created_by'))
+  AND (sqlc.narg('assigned_to')::uuid IS NULL OR EXISTS (SELECT 1 FROM task_assignees ta WHERE ta.task_id = t.id AND ta.user_id = sqlc.narg('assigned_to')))
   AND (sqlc.narg('search')::text IS NULL OR t.title ILIKE '%' || sqlc.narg('search') || '%' OR t.description ILIKE '%' || sqlc.narg('search') || '%')
 ORDER BY t.created_at DESC
 LIMIT $2 OFFSET $3;
@@ -298,6 +299,7 @@ WHERE t.project_id = $1
   AND (sqlc.narg('state_type')::state_type IS NULL OR ps.state_type = sqlc.narg('state_type'))
   AND (sqlc.narg('priority')::int IS NULL OR t.priority = sqlc.narg('priority'))
   AND (sqlc.narg('created_by')::uuid IS NULL OR t.created_by = sqlc.narg('created_by'))
+  AND (sqlc.narg('assigned_to')::uuid IS NULL OR EXISTS (SELECT 1 FROM task_assignees ta WHERE ta.task_id = t.id AND ta.user_id = sqlc.narg('assigned_to')))
   AND (sqlc.narg('search')::text IS NULL OR t.title ILIKE '%' || sqlc.narg('search') || '%' OR t.description ILIKE '%' || sqlc.narg('search') || '%');
 
 -- name: ListTasksByAssignee :many

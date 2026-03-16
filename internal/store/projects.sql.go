@@ -145,16 +145,18 @@ WHERE t.project_id = $1
   AND ($3::state_type IS NULL OR ps.state_type = $3)
   AND ($4::int IS NULL OR t.priority = $4)
   AND ($5::uuid IS NULL OR t.created_by = $5)
-  AND ($6::text IS NULL OR t.title ILIKE '%' || $6 || '%' OR t.description ILIKE '%' || $6 || '%')
+  AND ($6::uuid IS NULL OR EXISTS (SELECT 1 FROM task_assignees ta WHERE ta.task_id = t.id AND ta.user_id = $6))
+  AND ($7::text IS NULL OR t.title ILIKE '%' || $7 || '%' OR t.description ILIKE '%' || $7 || '%')
 `
 
 type CountProjectTasksFilteredParams struct {
-	ProjectID uuid.UUID     `json:"project_id"`
-	StateID   pgtype.UUID   `json:"state_id"`
-	StateType NullStateType `json:"state_type"`
-	Priority  pgtype.Int4   `json:"priority"`
-	CreatedBy pgtype.UUID   `json:"created_by"`
-	Search    pgtype.Text   `json:"search"`
+	ProjectID  uuid.UUID     `json:"project_id"`
+	StateID    pgtype.UUID   `json:"state_id"`
+	StateType  NullStateType `json:"state_type"`
+	Priority   pgtype.Int4   `json:"priority"`
+	CreatedBy  pgtype.UUID   `json:"created_by"`
+	AssignedTo pgtype.UUID   `json:"assigned_to"`
+	Search     pgtype.Text   `json:"search"`
 }
 
 func (q *Queries) CountProjectTasksFiltered(ctx context.Context, arg CountProjectTasksFilteredParams) (int64, error) {
@@ -164,6 +166,7 @@ func (q *Queries) CountProjectTasksFiltered(ctx context.Context, arg CountProjec
 		arg.StateType,
 		arg.Priority,
 		arg.CreatedBy,
+		arg.AssignedTo,
 		arg.Search,
 	)
 	var count int64
@@ -1347,20 +1350,22 @@ WHERE t.project_id = $1
   AND ($5::state_type IS NULL OR ps.state_type = $5)
   AND ($6::int IS NULL OR t.priority = $6)
   AND ($7::uuid IS NULL OR t.created_by = $7)
-  AND ($8::text IS NULL OR t.title ILIKE '%' || $8 || '%' OR t.description ILIKE '%' || $8 || '%')
+  AND ($8::uuid IS NULL OR EXISTS (SELECT 1 FROM task_assignees ta WHERE ta.task_id = t.id AND ta.user_id = $8))
+  AND ($9::text IS NULL OR t.title ILIKE '%' || $9 || '%' OR t.description ILIKE '%' || $9 || '%')
 ORDER BY t.created_at DESC
 LIMIT $2 OFFSET $3
 `
 
 type ListProjectTasksFilteredParams struct {
-	ProjectID uuid.UUID     `json:"project_id"`
-	Limit     int32         `json:"limit"`
-	Offset    int32         `json:"offset"`
-	StateID   pgtype.UUID   `json:"state_id"`
-	StateType NullStateType `json:"state_type"`
-	Priority  pgtype.Int4   `json:"priority"`
-	CreatedBy pgtype.UUID   `json:"created_by"`
-	Search    pgtype.Text   `json:"search"`
+	ProjectID  uuid.UUID     `json:"project_id"`
+	Limit      int32         `json:"limit"`
+	Offset     int32         `json:"offset"`
+	StateID    pgtype.UUID   `json:"state_id"`
+	StateType  NullStateType `json:"state_type"`
+	Priority   pgtype.Int4   `json:"priority"`
+	CreatedBy  pgtype.UUID   `json:"created_by"`
+	AssignedTo pgtype.UUID   `json:"assigned_to"`
+	Search     pgtype.Text   `json:"search"`
 }
 
 type ListProjectTasksFilteredRow struct {
@@ -1391,6 +1396,7 @@ func (q *Queries) ListProjectTasksFiltered(ctx context.Context, arg ListProjectT
 		arg.StateType,
 		arg.Priority,
 		arg.CreatedBy,
+		arg.AssignedTo,
 		arg.Search,
 	)
 	if err != nil {

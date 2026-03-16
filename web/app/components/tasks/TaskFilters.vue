@@ -8,12 +8,15 @@ import {
   CheckCircle2,
   XCircle,
   Clock,
+  User,
 } from "lucide-vue-next";
 import type { ProjectState, TaskFilters } from "~/types";
+import type { ProjectMember } from "~/types";
 import { PRIORITY_LABELS } from "~/types";
 
 const props = defineProps<{
   states: ProjectState[];
+  members: ProjectMember[];
   filters: TaskFilters;
 }>();
 
@@ -24,6 +27,7 @@ const emit = defineEmits<{
 const searchQuery = ref(props.filters.q || "");
 const selectedStateId = ref(props.filters.state_id || "");
 const selectedPriority = ref(props.filters.priority?.toString() || "");
+const selectedAssignee = ref(props.filters.assigned_to || "");
 
 const priorities = [
   { value: "", label: "All priorities", color: "" },
@@ -81,11 +85,38 @@ function selectPriority(value: string) {
   selectedPriority.value = value;
 }
 
+const assigneeSearch = ref("");
+const assigneeOpen = ref(false);
+
+function selectAssignee(userId: string) {
+  selectedAssignee.value = userId;
+  assigneeSearch.value = "";
+  assigneeOpen.value = false;
+}
+
+const currentAssignee = computed(() => {
+  if (!selectedAssignee.value) return null;
+  return props.members.find((m) => m.user_id === selectedAssignee.value) || null;
+});
+
+const filteredMembers = computed(() => {
+  if (!assigneeSearch.value) return props.members;
+  const q = assigneeSearch.value.toLowerCase();
+  return props.members.filter(
+    (m) =>
+      m.first_name.toLowerCase().includes(q) ||
+      m.last_name.toLowerCase().includes(q) ||
+      m.username.toLowerCase().includes(q) ||
+      m.email.toLowerCase().includes(q)
+  );
+});
+
 function updateFilters() {
   const filters: TaskFilters = {};
   if (searchQuery.value) filters.q = searchQuery.value;
   if (selectedStateId.value) filters.state_id = selectedStateId.value;
   if (selectedPriority.value) filters.priority = parseInt(selectedPriority.value);
+  if (selectedAssignee.value) filters.assigned_to = selectedAssignee.value;
   emit("update:filters", filters);
 }
 
@@ -93,14 +124,15 @@ function clearFilters() {
   searchQuery.value = "";
   selectedStateId.value = "";
   selectedPriority.value = "";
+  selectedAssignee.value = "";
   emit("update:filters", {});
 }
 
 const hasActiveFilters = computed(() => {
-  return searchQuery.value || selectedStateId.value || selectedPriority.value;
+  return searchQuery.value || selectedStateId.value || selectedPriority.value || selectedAssignee.value;
 });
 
-watch([searchQuery, selectedStateId, selectedPriority], () => {
+watch([searchQuery, selectedStateId, selectedPriority, selectedAssignee], () => {
   updateFilters();
 });
 </script>
@@ -190,6 +222,62 @@ watch([searchQuery, selectedStateId, selectedPriority], () => {
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
+
+    <!-- Assignee dropdown -->
+    <Popover v-model:open="assigneeOpen">
+      <PopoverTrigger as-child>
+        <Button variant="outline" class="gap-1.5">
+          <User class="size-4" />
+          <template v-if="currentAssignee">
+            {{ currentAssignee.first_name }} {{ currentAssignee.last_name }}
+          </template>
+          <template v-else>
+            All assignees
+          </template>
+          <ChevronDown class="size-3.5 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent class="w-56 p-0" align="start">
+        <div class="p-2">
+          <div class="relative">
+            <Search class="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              v-model="assigneeSearch"
+              placeholder="Search members..."
+              class="h-8 pl-8 text-sm"
+            />
+          </div>
+        </div>
+        <Separator />
+        <div class="max-h-48 overflow-y-auto p-1">
+          <button
+            class="flex w-full items-center rounded-sm px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground"
+            @click="selectAssignee('')"
+          >
+            All assignees
+          </button>
+          <button
+            v-for="member in filteredMembers"
+            :key="member.user_id"
+            class="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground"
+            @click="selectAssignee(member.user_id)"
+          >
+            <Avatar class="size-5">
+              <AvatarFallback class="text-[10px]">
+                {{ member.first_name[0] }}{{ member.last_name[0] }}
+              </AvatarFallback>
+            </Avatar>
+            {{ member.first_name }} {{ member.last_name }}
+          </button>
+          <p
+            v-if="filteredMembers.length === 0"
+            class="px-2 py-3 text-center text-xs text-muted-foreground"
+          >
+            No members found
+          </p>
+        </div>
+      </PopoverContent>
+    </Popover>
 
     <Button
       v-if="hasActiveFilters"

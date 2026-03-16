@@ -63,6 +63,7 @@ export interface TaskFilters {
   state_id?: string;
   state_type?: string;
   created_by?: string;
+  assigned_to?: string;
   priority?: number;
   q?: string;
 }

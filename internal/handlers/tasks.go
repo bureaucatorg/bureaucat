@@ -137,7 +137,7 @@ func (h *TaskHandler) ListTasks(c *echo.Context) error {
 	ctx := c.Request().Context()
 
 	// Parse optional filter parameters
-	var stateID, createdByID pgtype.UUID
+	var stateID, createdByID, assignedToID pgtype.UUID
 	var stateType store.NullStateType
 	var priority pgtype.Int4
 	var search pgtype.Text
@@ -155,6 +155,11 @@ func (h *TaskHandler) ListTasks(c *echo.Context) error {
 			createdByID = pgtype.UUID{Bytes: id, Valid: true}
 		}
 	}
+	if s := c.QueryParam("assigned_to"); s != "" {
+		if id, err := uuid.Parse(s); err == nil {
+			assignedToID = pgtype.UUID{Bytes: id, Valid: true}
+		}
+	}
 	if s := c.QueryParam("priority"); s != "" {
 		if p, err := strconv.Atoi(s); err == nil {
 			priority = pgtype.Int4{Int32: int32(p), Valid: true}
@@ -166,14 +171,15 @@ func (h *TaskHandler) ListTasks(c *echo.Context) error {
 
 	// Get filtered tasks
 	tasks, err := h.store.ListProjectTasksFiltered(ctx, store.ListProjectTasksFilteredParams{
-		ProjectID: projectID,
-		Limit:     int32(perPage),
-		Offset:    int32(offset),
-		StateID:   stateID,
-		StateType: stateType,
-		CreatedBy: createdByID,
-		Priority:  priority,
-		Search:    search,
+		ProjectID:  projectID,
+		Limit:      int32(perPage),
+		Offset:     int32(offset),
+		StateID:    stateID,
+		StateType:  stateType,
+		CreatedBy:  createdByID,
+		AssignedTo: assignedToID,
+		Priority:   priority,
+		Search:     search,
 	})
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to list tasks")
@@ -181,12 +187,13 @@ func (h *TaskHandler) ListTasks(c *echo.Context) error {
 
 	// Get total count with same filters
 	total, err := h.store.CountProjectTasksFiltered(ctx, store.CountProjectTasksFilteredParams{
-		ProjectID: projectID,
-		StateID:   stateID,
-		StateType: stateType,
-		CreatedBy: createdByID,
-		Priority:  priority,
-		Search:    search,
+		ProjectID:  projectID,
+		StateID:    stateID,
+		StateType:  stateType,
+		CreatedBy:  createdByID,
+		AssignedTo: assignedToID,
+		Priority:   priority,
+		Search:     search,
 	})
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to count tasks")

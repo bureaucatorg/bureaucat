@@ -39,6 +39,7 @@ export function useTasks() {
     if (filters.state_id) params.set("state_id", filters.state_id);
     if (filters.state_type) params.set("state_type", filters.state_type);
     if (filters.created_by) params.set("created_by", filters.created_by);
+    if (filters.assigned_to) params.set("assigned_to", filters.assigned_to);
     if (filters.priority !== undefined) params.set("priority", filters.priority.toString());
     if (filters.q) params.set("q", filters.q);
 
