@@ -3,6 +3,9 @@ import { User, LogOut, LayoutDashboard, FolderKanban, Shield, Star } from "lucid
 
 const { user, isAuthenticated, logout } = useAuth();
 const { appName } = useSettings();
+const route = useRoute();
+
+const isLandingPage = computed(() => route.path === "/");
 
 async function handleLogout() {
   await logout();
@@ -20,17 +23,8 @@ async function handleLogout() {
       </NuxtLink>
 
       <div class="flex items-center gap-4">
-        <nav class="hidden items-center gap-6 md:flex">
-          <template v-if="isAuthenticated">
-            <NuxtLink to="/dashboard" class="text-sm text-muted-foreground transition-colors hover:text-foreground">Dashboard</NuxtLink>
-            <NuxtLink to="/projects" class="text-sm text-muted-foreground transition-colors hover:text-foreground">Projects</NuxtLink>
-            <template v-if="user?.user_type === 'admin'">
-              <NuxtLink to="/admin" class="text-sm text-muted-foreground transition-colors hover:text-foreground">Admin</NuxtLink>
-            </template>
-          </template>
-        </nav>
-
         <a
+          v-if="isLandingPage"
           href="https://github.com/bureaucatorg/bureaucat"
           target="_blank"
           rel="noopener noreferrer"
