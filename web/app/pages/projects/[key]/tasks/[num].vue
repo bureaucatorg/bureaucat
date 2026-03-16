@@ -9,6 +9,7 @@ import {
   X,
   Calendar,
   Clock,
+  Link,
 } from "lucide-vue-next";
 import { toast } from "vue-sonner";
 import { marked } from "marked";
@@ -244,6 +245,14 @@ function formatDate(dateStr: string): string {
   });
 }
 
+const copiedLink = ref(false);
+function copyLink() {
+  navigator.clipboard.writeText(window.location.href);
+  copiedLink.value = true;
+  toast.success("Link copied");
+  setTimeout(() => { copiedLink.value = false; }, 2000);
+}
+
 onMounted(() => {
   loadData();
 });
@@ -295,6 +304,13 @@ onMounted(() => {
             >
               {{ taskNum }}
             </NuxtLink>
+            <button
+              class="ml-1 rounded-md p-1 text-muted-foreground/50 hover:text-muted-foreground"
+              @click="copyLink"
+            >
+              <Check v-if="copiedLink" class="size-3.5 text-emerald-500" />
+              <Link v-else class="size-3.5" />
+            </button>
           </nav>
 
           <div class="flex flex-col gap-8 md:flex-row">

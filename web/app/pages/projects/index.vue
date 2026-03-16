@@ -1,11 +1,20 @@
 <script setup lang="ts">
-import { Plus, FolderKanban, Search, Loader2, ChevronLeft, ChevronRight } from "lucide-vue-next";
+import { Plus, FolderKanban, Search, Loader2, ChevronLeft, ChevronRight, Link, Check } from "lucide-vue-next";
+import { toast } from "vue-sonner";
 
 definePageMeta({
   middleware: ["auth"],
 });
 
 useSeoMeta({ title: "Projects" });
+
+const copied = ref(false);
+function copyLink() {
+  navigator.clipboard.writeText(window.location.href);
+  copied.value = true;
+  toast.success("Link copied");
+  setTimeout(() => { copied.value = false; }, 2000);
+}
 
 const { projects, loading, listProjects, total, page, totalPages } = useProjects();
 
@@ -49,6 +58,13 @@ onMounted(() => {
         <nav class="mb-4 flex items-center gap-2 text-sm text-muted-foreground">
           <ChevronLeft class="size-4" />
           <span class="font-semibold text-amber-600 dark:text-amber-500">Projects</span>
+          <button
+            class="ml-1 rounded-md p-1 text-muted-foreground/50 hover:text-muted-foreground"
+            @click="copyLink"
+          >
+            <Check v-if="copied" class="size-3.5 text-emerald-500" />
+            <Link v-else class="size-3.5" />
+          </button>
         </nav>
 
         <div class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

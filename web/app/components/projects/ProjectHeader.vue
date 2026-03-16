@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { FolderKanban, Users, Settings, ChevronLeft } from "lucide-vue-next";
+import { FolderKanban, Users, Settings, ChevronLeft, Link, Check } from "lucide-vue-next";
+import { toast } from "vue-sonner";
 import type { Project } from "~/types";
 
 const props = defineProps<{
@@ -8,6 +9,14 @@ const props = defineProps<{
 }>();
 
 const isAdmin = computed(() => props.project.role === "admin");
+
+const copied = ref(false);
+function copyLink() {
+  navigator.clipboard.writeText(window.location.href);
+  copied.value = true;
+  toast.success("Link copied");
+  setTimeout(() => { copied.value = false; }, 2000);
+}
 </script>
 
 <template>
@@ -24,6 +33,13 @@ const isAdmin = computed(() => props.project.role === "admin");
       >
         {{ project.project_key }}
       </NuxtLink>
+      <button
+        class="ml-1 rounded-md p-1 text-muted-foreground/50 hover:text-muted-foreground"
+        @click="copyLink"
+      >
+        <Check v-if="copied" class="size-3.5 text-emerald-500" />
+        <Link v-else class="size-3.5" />
+      </button>
     </nav>
 
     <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
