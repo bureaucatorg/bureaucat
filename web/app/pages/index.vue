@@ -282,7 +282,7 @@ const features = computed(() =>
               target="_blank"
               rel="noopener noreferrer"
               class="underline underline-offset-4 hover:text-foreground transition-colors"
-              >codingcoffee</a
+              >Ameya Shenoy</a
             >
           </p>
         </div>
