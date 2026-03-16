@@ -52,7 +52,7 @@ function handleDragLeave() {
 
 <template>
   <div
-    class="flex w-72 shrink-0 flex-col rounded-lg border bg-muted/30 transition-colors"
+    class="flex min-w-56 flex-1 flex-col rounded-lg border bg-muted/30 transition-colors"
     :class="{ 'border-primary border-2 bg-primary/5': isDragOver }"
     @drop="handleDrop"
     @dragover="handleDragOver"

@@ -273,7 +273,7 @@ onMounted(() => {
             </TabsContent>
 
             <!-- Board Tab -->
-            <TabsContent value="board" class="mt-6">
+            <TabsContent value="board" class="-mx-32 mt-6 px-2">
               <KanbanBoard
                 :tasks="tasks"
                 :states="states"
