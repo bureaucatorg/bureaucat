@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"regexp"
+	"strconv"
 	"time"
 	"unicode"
 
@@ -345,6 +346,95 @@ func (h *AuthHandler) GetUserProfile(c *echo.Context) error {
 		LastName:  user.LastName,
 		UserType:  user.UserType,
 		CreatedAt: user.CreatedAt.Time,
+	})
+}
+
+// MyTaskItem represents a task assigned to the current user.
+type MyTaskItem struct {
+	ID         uuid.UUID `json:"id"`
+	ProjectKey string    `json:"project_key"`
+	TaskNumber int32     `json:"task_number"`
+	TaskID     string    `json:"task_id"`
+	Title      string    `json:"title"`
+	StateName  string    `json:"state_name"`
+	StateType  string    `json:"state_type"`
+	StateColor string    `json:"state_color"`
+	Priority   int32     `json:"priority"`
+}
+
+// MyTasksResponse represents the paginated response for user's assigned tasks.
+type MyTasksResponse struct {
+	Tasks      []MyTaskItem `json:"tasks"`
+	Total      int64        `json:"total"`
+	Page       int          `json:"page"`
+	PerPage    int          `json:"per_page"`
+	TotalPages int          `json:"total_pages"`
+}
+
+// MyTasks returns tasks assigned to the current user across all projects.
+func (h *AuthHandler) MyTasks(c *echo.Context) error {
+	userIDStr := c.Request().Header.Get(auth.HeaderUserID)
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusUnauthorized, "invalid user ID")
+	}
+
+	page, _ := strconv.Atoi(c.QueryParam("page"))
+	if page < 1 {
+		page = 1
+	}
+	perPage, _ := strconv.Atoi(c.QueryParam("per_page"))
+	if perPage < 1 || perPage > 100 {
+		perPage = 20
+	}
+	offset := (page - 1) * perPage
+
+	ctx := c.Request().Context()
+
+	tasks, err := h.store.ListTasksByAssignee(ctx, store.ListTasksByAssigneeParams{
+		UserID: userID,
+		Limit:  int32(perPage),
+		Offset: int32(offset),
+	})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to list tasks")
+	}
+
+	total, err := h.store.CountTasksByAssignee(ctx, userID)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to count tasks")
+	}
+
+	items := make([]MyTaskItem, len(tasks))
+	for i, t := range tasks {
+		stateColor := ""
+		if t.StateColor.Valid {
+			stateColor = t.StateColor.String
+		}
+		items[i] = MyTaskItem{
+			ID:         t.ID,
+			ProjectKey: t.ProjectKey,
+			TaskNumber: t.TaskNumber,
+			TaskID:     t.ProjectKey + "-" + strconv.Itoa(int(t.TaskNumber)),
+			Title:      t.Title,
+			StateName:  t.StateName,
+			StateType:  t.StateType,
+			StateColor: stateColor,
+			Priority:   t.Priority,
+		}
+	}
+
+	totalPages := int(total) / perPage
+	if int(total)%perPage > 0 {
+		totalPages++
+	}
+
+	return c.JSON(http.StatusOK, MyTasksResponse{
+		Tasks:      items,
+		Total:      total,
+		Page:       page,
+		PerPage:    perPage,
+		TotalPages: totalPages,
 	})
 }
 

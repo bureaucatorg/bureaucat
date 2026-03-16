@@ -185,6 +185,23 @@ func (q *Queries) CountTaskComments(ctx context.Context, taskID uuid.UUID) (int6
 	return count, err
 }
 
+const countTasksByAssignee = `-- name: CountTasksByAssignee :one
+SELECT COUNT(*)
+FROM tasks t
+JOIN projects p ON t.project_id = p.id
+JOIN project_states ps ON t.state_id = ps.id
+JOIN task_assignees ta ON t.id = ta.task_id
+WHERE ta.user_id = $1 AND t.deleted_at IS NULL AND p.deleted_at IS NULL
+  AND ps.state_type NOT IN ('completed', 'cancelled')
+`
+
+func (q *Queries) CountTasksByAssignee(ctx context.Context, userID uuid.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countTasksByAssignee, userID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const countTasksInState = `-- name: CountTasksInState :one
 SELECT COUNT(*) FROM tasks WHERE state_id = $1 AND deleted_at IS NULL
 `
@@ -1677,12 +1694,13 @@ func (q *Queries) ListTaskTemplates(ctx context.Context, projectID uuid.UUID) ([
 
 const listTasksByAssignee = `-- name: ListTasksByAssignee :many
 SELECT t.id, t.project_id, t.task_number, t.title, t.state_id, t.priority,
-       p.project_key, ps.name as state_name, ps.state_type
+       p.project_key, ps.name as state_name, ps.state_type, ps.color as state_color
 FROM tasks t
 JOIN projects p ON t.project_id = p.id
 JOIN project_states ps ON t.state_id = ps.id
 JOIN task_assignees ta ON t.id = ta.task_id
 WHERE ta.user_id = $1 AND t.deleted_at IS NULL AND p.deleted_at IS NULL
+  AND ps.state_type NOT IN ('completed', 'cancelled')
 ORDER BY t.updated_at DESC
 LIMIT $2 OFFSET $3
 `
@@ -1694,15 +1712,16 @@ type ListTasksByAssigneeParams struct {
 }
 
 type ListTasksByAssigneeRow struct {
-	ID         uuid.UUID `json:"id"`
-	ProjectID  uuid.UUID `json:"project_id"`
-	TaskNumber int32     `json:"task_number"`
-	Title      string    `json:"title"`
-	StateID    uuid.UUID `json:"state_id"`
-	Priority   int32     `json:"priority"`
-	ProjectKey string    `json:"project_key"`
-	StateName  string    `json:"state_name"`
-	StateType  string    `json:"state_type"`
+	ID         uuid.UUID   `json:"id"`
+	ProjectID  uuid.UUID   `json:"project_id"`
+	TaskNumber int32       `json:"task_number"`
+	Title      string      `json:"title"`
+	StateID    uuid.UUID   `json:"state_id"`
+	Priority   int32       `json:"priority"`
+	ProjectKey string      `json:"project_key"`
+	StateName  string      `json:"state_name"`
+	StateType  string      `json:"state_type"`
+	StateColor pgtype.Text `json:"state_color"`
 }
 
 func (q *Queries) ListTasksByAssignee(ctx context.Context, arg ListTasksByAssigneeParams) ([]ListTasksByAssigneeRow, error) {
@@ -1724,6 +1743,7 @@ func (q *Queries) ListTasksByAssignee(ctx context.Context, arg ListTasksByAssign
 			&i.ProjectKey,
 			&i.StateName,
 			&i.StateType,
+			&i.StateColor,
 		); err != nil {
 			return nil, err
 		}

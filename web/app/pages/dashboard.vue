@@ -1,11 +1,18 @@
 <script setup lang="ts">
 import {
   FolderKanban,
+  ListTodo,
   Plus,
   ArrowRight,
   Loader2,
   Search,
+  Circle,
+  CircleDot,
+  CheckCircle2,
+  XCircle,
+  Clock,
 } from "lucide-vue-next";
+import { PRIORITY_LABELS } from "~/types";
 
 definePageMeta({
   middleware: ["auth"],
@@ -13,7 +20,7 @@ definePageMeta({
 
 useSeoMeta({ title: "Dashboard" });
 
-const { user } = useAuth();
+const { user, getAuthHeader } = useAuth();
 const { projects, loading: projectsLoading, listProjects } = useProjects();
 
 const showCreateDialog = ref(false);
@@ -33,8 +40,63 @@ async function handleCreated() {
   fetchProjects();
 }
 
+// My Tasks
+interface MyTask {
+  id: string;
+  project_key: string;
+  task_number: number;
+  task_id: string;
+  title: string;
+  state_name: string;
+  state_type: string;
+  state_color: string;
+  priority: number;
+}
+
+interface MyTasksResponse {
+  tasks: MyTask[];
+  total: number;
+  page: number;
+  per_page: number;
+  total_pages: number;
+}
+
+const myTasks = ref<MyTask[]>([]);
+const myTasksTotal = ref(0);
+const myTasksLoading = ref(false);
+
+async function fetchMyTasks() {
+  myTasksLoading.value = true;
+  try {
+    const response = await fetch("/api/v1/me/tasks?per_page=20", {
+      headers: getAuthHeader(),
+    });
+    if (response.ok) {
+      const data: MyTasksResponse = await response.json();
+      myTasks.value = data.tasks || [];
+      myTasksTotal.value = data.total;
+    }
+  } catch {
+    // silently fail
+  } finally {
+    myTasksLoading.value = false;
+  }
+}
+
+function getStateIcon(stateType: string) {
+  switch (stateType) {
+    case "backlog": return Clock;
+    case "unstarted": return Circle;
+    case "started": return CircleDot;
+    case "completed": return CheckCircle2;
+    case "cancelled": return XCircle;
+    default: return Circle;
+  }
+}
+
 onMounted(() => {
   fetchProjects();
+  fetchMyTasks();
 });
 </script>
 
@@ -52,6 +114,54 @@ onMounted(() => {
           <p class="mt-2 text-muted-foreground">
             Here's an overview of your projects and tasks
           </p>
+        </div>
+
+        <!-- Assigned to You -->
+        <div class="mb-10">
+          <div class="mb-4 flex items-center justify-between">
+            <h2 class="flex items-center gap-2 text-lg font-semibold">
+              <ListTodo class="size-5" />
+              Assigned to You
+              <span v-if="myTasksTotal > 0" class="text-sm font-normal text-muted-foreground">
+                ({{ myTasksTotal }})
+              </span>
+            </h2>
+          </div>
+
+          <div v-if="myTasksLoading" class="flex items-center justify-center py-8">
+            <Loader2 class="size-6 animate-spin text-muted-foreground" />
+          </div>
+
+          <div
+            v-else-if="myTasks.length === 0"
+            class="rounded-lg border border-dashed py-8 text-center text-sm text-muted-foreground"
+          >
+            No tasks assigned to you
+          </div>
+
+          <div v-else class="space-y-1.5">
+            <NuxtLink
+              v-for="task in myTasks"
+              :key="task.id"
+              :to="`/projects/${task.project_key}/tasks/${task.task_number}`"
+              class="flex items-center gap-3 rounded-lg border px-4 py-3 transition-colors hover:bg-muted/50"
+            >
+              <component
+                :is="getStateIcon(task.state_type)"
+                class="size-4 shrink-0"
+                :style="{ color: task.state_color || undefined }"
+              />
+              <span class="min-w-0 flex-1 truncate text-sm">{{ task.title }}</span>
+              <span
+                v-if="task.priority > 0"
+                class="size-2 shrink-0 rounded-full"
+                :style="{ backgroundColor: PRIORITY_LABELS[task.priority]?.color }"
+              />
+              <span class="shrink-0 text-xs font-medium text-muted-foreground">
+                {{ task.task_id }}
+              </span>
+            </NuxtLink>
+          </div>
         </div>
 
         <!-- Your Projects Section -->

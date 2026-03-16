@@ -26,6 +26,7 @@ type Querier interface {
 	CountProjectTasksFiltered(ctx context.Context, arg CountProjectTasksFilteredParams) (int64, error)
 	CountSearchUsers(ctx context.Context, dollar_1 pgtype.Text) (int64, error)
 	CountTaskComments(ctx context.Context, taskID uuid.UUID) (int64, error)
+	CountTasksByAssignee(ctx context.Context, userID uuid.UUID) (int64, error)
 	CountTasksInState(ctx context.Context, stateID uuid.UUID) (int64, error)
 	CountUserProjects(ctx context.Context, userID uuid.UUID) (int64, error)
 	CountUserProjectsFiltered(ctx context.Context, arg CountUserProjectsFilteredParams) (int64, error)

@@ -304,14 +304,24 @@ WHERE t.project_id = $1
 
 -- name: ListTasksByAssignee :many
 SELECT t.id, t.project_id, t.task_number, t.title, t.state_id, t.priority,
-       p.project_key, ps.name as state_name, ps.state_type
+       p.project_key, ps.name as state_name, ps.state_type, ps.color as state_color
 FROM tasks t
 JOIN projects p ON t.project_id = p.id
 JOIN project_states ps ON t.state_id = ps.id
 JOIN task_assignees ta ON t.id = ta.task_id
 WHERE ta.user_id = $1 AND t.deleted_at IS NULL AND p.deleted_at IS NULL
+  AND ps.state_type NOT IN ('completed', 'cancelled')
 ORDER BY t.updated_at DESC
 LIMIT $2 OFFSET $3;
+
+-- name: CountTasksByAssignee :one
+SELECT COUNT(*)
+FROM tasks t
+JOIN projects p ON t.project_id = p.id
+JOIN project_states ps ON t.state_id = ps.id
+JOIN task_assignees ta ON t.id = ta.task_id
+WHERE ta.user_id = $1 AND t.deleted_at IS NULL AND p.deleted_at IS NULL
+  AND ps.state_type NOT IN ('completed', 'cancelled');
 
 -- ==================== TASK ASSIGNEES ====================
 
