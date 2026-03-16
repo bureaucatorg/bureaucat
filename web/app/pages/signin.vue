@@ -9,6 +9,14 @@ useSeoMeta({ title: "Sign In" });
 
 const { signin } = useAuth();
 const { fetchSSOProviders, ssoProviders } = useSettings();
+const route = useRoute();
+
+const redirectTo = computed(() => {
+  const r = route.query.redirect as string | undefined;
+  // Only allow relative paths to prevent open redirect
+  if (r && r.startsWith("/")) return r;
+  return "/dashboard";
+});
 
 const identifier = ref("");
 const password = ref("");
@@ -23,7 +31,12 @@ onMounted(async () => {
 const hasSSOProviders = computed(() => ssoProviders.value.google || ssoProviders.value.zitadel);
 
 function startSSO(provider: string) {
-  window.location.href = `/api/v1/auth/sso/${provider}`;
+  const params = new URLSearchParams();
+  if (redirectTo.value !== "/dashboard") {
+    params.set("redirect", redirectTo.value);
+  }
+  const qs = params.toString();
+  window.location.href = `/api/v1/auth/sso/${provider}${qs ? `?${qs}` : ""}`;
 }
 
 async function handleSubmit() {
@@ -44,7 +57,7 @@ async function handleSubmit() {
   loading.value = false;
 
   if (result.success) {
-    await navigateTo("/dashboard");
+    await navigateTo(redirectTo.value);
   } else {
     error.value = result.error || "Sign in failed";
   }

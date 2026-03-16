@@ -1,4 +1,4 @@
-export default defineNuxtRouteMiddleware(async () => {
+export default defineNuxtRouteMiddleware(async (to) => {
   const { isAuthenticated, isLoading, user } = useAuth();
 
   // Wait for auth initialization to complete
@@ -16,7 +16,10 @@ export default defineNuxtRouteMiddleware(async () => {
   }
 
   if (!isAuthenticated.value) {
-    return navigateTo("/signin");
+    return navigateTo({
+      path: "/signin",
+      query: { redirect: to.fullPath },
+    });
   }
 
   if (user.value?.user_type !== "admin") {

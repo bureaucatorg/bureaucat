@@ -1,4 +1,4 @@
-export default defineNuxtRouteMiddleware(async () => {
+export default defineNuxtRouteMiddleware(async (to) => {
   const { isAuthenticated, isLoading } = useAuth();
 
   // Wait for auth initialization to complete
@@ -16,6 +16,7 @@ export default defineNuxtRouteMiddleware(async () => {
   }
 
   if (isAuthenticated.value) {
-    return navigateTo("/dashboard");
+    const redirect = to.query.redirect as string | undefined;
+    return navigateTo(redirect && redirect.startsWith("/") ? redirect : "/dashboard");
   }
 });
