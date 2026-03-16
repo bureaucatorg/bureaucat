@@ -1,12 +1,10 @@
 <script setup lang="ts">
 import {
   FolderKanban,
-  ListTodo,
-  CheckCircle2,
-  Clock,
   Plus,
   ArrowRight,
   Loader2,
+  Search,
 } from "lucide-vue-next";
 
 definePageMeta({
@@ -16,21 +14,27 @@ definePageMeta({
 useSeoMeta({ title: "Dashboard" });
 
 const { user } = useAuth();
-const { projects, loading: projectsLoading, listProjects, total: totalProjects } = useProjects();
+const { projects, loading: projectsLoading, listProjects } = useProjects();
 
 const showCreateDialog = ref(false);
+const searchQuery = ref("");
+let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
-// Recent projects (max 6)
-const recentProjects = computed(() => {
-  return projects.value.slice(0, 6);
+function fetchProjects() {
+  listProjects(1, 100, searchQuery.value);
+}
+
+watch(searchQuery, () => {
+  if (debounceTimer) clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(fetchProjects, 300);
 });
 
 async function handleCreated() {
-  await listProjects();
+  fetchProjects();
 }
 
 onMounted(() => {
-  listProjects();
+  fetchProjects();
 });
 </script>
 
@@ -51,10 +55,18 @@ onMounted(() => {
         </div>
 
         <!-- Your Projects Section -->
-        <div class="mb-8">
-          <div class="mb-4 flex items-center justify-between">
+        <div>
+          <div class="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <h2 class="text-lg font-semibold">Your Projects</h2>
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-3">
+              <div class="relative">
+                <Search class="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  v-model="searchQuery"
+                  placeholder="Search projects..."
+                  class="h-9 w-56 pl-9"
+                />
+              </div>
               <Button variant="ghost" size="sm" as-child>
                 <NuxtLink to="/projects" class="flex items-center gap-1">
                   View all
@@ -75,7 +87,7 @@ onMounted(() => {
 
           <!-- Empty state -->
           <Card
-            v-else-if="projects.length === 0"
+            v-else-if="projects.length === 0 && !searchQuery"
             class="flex flex-col items-center justify-center border-dashed py-12"
           >
             <div class="flex size-14 items-center justify-center rounded-full bg-muted">
@@ -91,58 +103,25 @@ onMounted(() => {
             </Button>
           </Card>
 
+          <!-- No search results -->
+          <div
+            v-else-if="projects.length === 0 && searchQuery"
+            class="flex flex-col items-center justify-center rounded-lg border border-dashed py-12"
+          >
+            <Search class="size-8 text-muted-foreground" />
+            <h3 class="mt-4 font-semibold">No projects found</h3>
+            <p class="mt-1 text-sm text-muted-foreground">
+              Try a different search term
+            </p>
+          </div>
+
           <!-- Projects grid -->
           <div v-else class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <ProjectCard
-              v-for="project in recentProjects"
+              v-for="project in projects"
               :key="project.id"
               :project="project"
             />
-          </div>
-        </div>
-
-        <!-- Quick Actions -->
-        <div>
-          <h2 class="mb-4 text-lg font-semibold">Quick Actions</h2>
-          <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <Card
-              class="group cursor-pointer border-border/50 bg-background/50 transition-all hover:border-amber-500/30 hover:shadow-lg hover:shadow-amber-500/5"
-              @click="showCreateDialog = true"
-            >
-              <CardContent class="flex items-center gap-3 p-4">
-                <div
-                  class="flex size-10 items-center justify-center rounded-lg bg-muted transition-colors group-hover:bg-amber-500/10"
-                >
-                  <Plus
-                    class="size-5 text-muted-foreground transition-colors group-hover:text-amber-600 dark:group-hover:text-amber-500"
-                  />
-                </div>
-                <div>
-                  <p class="font-medium">New Project</p>
-                  <p class="text-xs text-muted-foreground">Create a workspace</p>
-                </div>
-              </CardContent>
-            </Card>
-
-            <NuxtLink to="/projects">
-              <Card
-                class="group h-full cursor-pointer border-border/50 bg-background/50 transition-all hover:border-amber-500/30 hover:shadow-lg hover:shadow-amber-500/5"
-              >
-                <CardContent class="flex items-center gap-3 p-4">
-                  <div
-                    class="flex size-10 items-center justify-center rounded-lg bg-muted transition-colors group-hover:bg-amber-500/10"
-                  >
-                    <FolderKanban
-                      class="size-5 text-muted-foreground transition-colors group-hover:text-amber-600 dark:group-hover:text-amber-500"
-                    />
-                  </div>
-                  <div>
-                    <p class="font-medium">Browse Projects</p>
-                    <p class="text-xs text-muted-foreground">View all projects</p>
-                  </div>
-                </CardContent>
-              </Card>
-            </NuxtLink>
           </div>
         </div>
 
