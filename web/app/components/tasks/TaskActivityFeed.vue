@@ -323,7 +323,7 @@ function getStateChangeDetail(activity: ActivityLogEntry): { from: string; to: s
       <div
         v-for="(item, index) in feedItems"
         :key="item.type === 'comment' ? `c-${item.data.id}` : `a-${item.data.id}`"
-        class="relative flex gap-3 pb-4"
+        class="relative flex gap-3 pb-6"
       >
         <!-- Timeline line -->
         <div
