@@ -1,7 +1,12 @@
 <script setup lang="ts">
 import { Clock, Shield, Eye, Zap, Sparkles } from "lucide-vue-next";
 
+const { isAuthenticated } = useAuth();
 const { appName } = useSettings();
+
+if (import.meta.client && isAuthenticated.value) {
+  navigateTo("/dashboard");
+}
 
 const quirkyDesc = "Bureaucracy That Actually Moves.";
 
