@@ -9,13 +9,15 @@ import (
 	echoSwagger "github.com/swaggo/echo-swagger"
 
 	"bereaucat/internal/auth"
+	"bereaucat/internal/buildinfo"
 )
 
 // HealthResponse represents the health check response
 type HealthResponse struct {
-	All bool `json:"all"`
-	DB  bool `json:"db"`
-	API bool `json:"api"`
+	All     bool   `json:"all"`
+	DB      bool   `json:"db"`
+	API     bool   `json:"api"`
+	Version string `json:"version"`
 }
 
 func (s *Server) registerRoutes() {
@@ -170,14 +172,16 @@ func (s *Server) registerRoutes() {
 
 func healthCheck(c *echo.Context) error {
 	return c.JSON(http.StatusOK, map[string]string{
-		"status": "ok",
+		"status":  "ok",
+		"version": buildinfo.Version,
 	})
 }
 
 func (s *Server) healthCheckDetailed(c *echo.Context) error {
 	resp := HealthResponse{
-		API: true,
-		DB:  false,
+		API:     true,
+		DB:      false,
+		Version: buildinfo.Version,
 	}
 
 	// Check database connection with timeout

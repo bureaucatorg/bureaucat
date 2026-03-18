@@ -5,10 +5,14 @@ import (
 	"log"
 	"os"
 
+	"bereaucat/internal/buildinfo"
 	"bereaucat/internal/cli"
 
 	ucli "github.com/urfave/cli/v3"
 )
+
+// Version is set at build time via ldflags.
+var Version = "dev"
 
 func init() {
 	// Set the embedded dist filesystem for production mode
@@ -36,9 +40,12 @@ func init() {
 //	@name						Authorization
 //	@description				Enter your bearer token in the format: Bearer {token}
 func main() {
+	buildinfo.Version = Version
+
 	app := &ucli.Command{
-		Name:  "bureaucat",
-		Usage: "A CLI tool for managing the Bureaucat application",
+		Name:    "bureaucat",
+		Usage:   "A CLI tool for managing the Bureaucat application",
+		Version: Version,
 		Commands: []*ucli.Command{
 			cli.ServeCommand(),
 			cli.MigrateCommand(),

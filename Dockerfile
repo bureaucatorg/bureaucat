@@ -8,6 +8,7 @@ RUN bun run generate
 
 # Build backend
 FROM golang:1.25.6-trixie AS backend
+ARG VERSION=dev
 WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download
@@ -16,7 +17,7 @@ COPY . .
 COPY --from=frontend /app/web/.output/public ./cmd/bureaucat/dist
 # Copy migrations to embed location
 RUN cp -r migrations/* ./cmd/bureaucat/migrations/
-RUN go build -o bureaucat ./cmd/bureaucat
+RUN go build -ldflags "-X main.Version=${VERSION}" -o bureaucat ./cmd/bureaucat
 
 # Runtime
 FROM debian:bookworm-slim

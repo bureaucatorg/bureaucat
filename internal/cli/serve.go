@@ -25,6 +25,7 @@ var NuxtPidFile = filepath.Join(os.TempDir(), "bureaucat-nuxt.pid")
 // DistFS is set by the main package to provide embedded static files
 var DistFS fs.FS
 
+
 func ServeCommand() *cli.Command {
 	return &cli.Command{
 		Name:  "serve",
