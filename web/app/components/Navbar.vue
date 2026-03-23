@@ -7,6 +7,17 @@ const route = useRoute();
 
 const isLandingPage = computed(() => route.path === "/");
 
+const appVersion = ref("");
+onMounted(async () => {
+  try {
+    const res = await fetch("/api/v1/health");
+    if (res.ok) {
+      const data = await res.json();
+      appVersion.value = data.version || "";
+    }
+  } catch {}
+});
+
 async function handleLogout() {
   await logout();
   await navigateTo("/");
@@ -87,6 +98,12 @@ async function handleLogout() {
                 <LogOut class="mr-2 size-4" />
                 <span>Log out</span>
               </DropdownMenuItem>
+              <template v-if="appVersion">
+                <DropdownMenuSeparator />
+                <div class="px-2 leading-none py-px text-center">
+                  <span class="font-mono text-[10px] text-muted-foreground/60">v{{ appVersion }}</span>
+                </div>
+              </template>
             </DropdownMenuContent>
           </DropdownMenu>
         </template>

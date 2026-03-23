@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"os"
+	"strings"
 
 	"bereaucat/internal/buildinfo"
 	"bereaucat/internal/cli"
@@ -12,9 +13,19 @@ import (
 )
 
 // Version is set at build time via ldflags.
+// Falls back to reading the VERSION file if not set.
 var Version = "dev"
 
 func init() {
+	// Read version from VERSION file if not set via ldflags
+	if Version == "dev" {
+		if data, err := os.ReadFile("VERSION"); err == nil {
+			if v := strings.TrimSpace(string(data)); v != "" {
+				Version = v + "-dev"
+			}
+		}
+	}
+
 	// Set the embedded dist filesystem for production mode
 	distFS, err := GetDistFS()
 	if err != nil {
