@@ -160,7 +160,7 @@ function removeLabel(labelId: string) {
 
 <template>
   <Dialog v-model:open="open">
-    <DialogContent class="sm:max-w-lg">
+    <DialogContent class="sm:max-w-4xl max-h-[85vh] overflow-y-auto">
       <DialogHeader>
         <DialogTitle>Create New Task</DialogTitle>
         <DialogDescription>
@@ -197,12 +197,9 @@ function removeLabel(labelId: string) {
         </div>
 
         <div class="space-y-2">
-          <Label for="description">Description</Label>
-          <Textarea
-            id="description"
+          <Label>Description</Label>
+          <TiptapEditor
             v-model="form.description"
-            placeholder="Describe the task..."
-            rows="3"
             :disabled="loading"
           />
         </div>

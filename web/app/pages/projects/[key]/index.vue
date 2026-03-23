@@ -8,6 +8,7 @@ import {
   Loader2,
   ChevronLeft,
   ChevronRight,
+  ExternalLink,
 } from "lucide-vue-next";
 import type { TaskFilters } from "~/types";
 
@@ -201,10 +202,21 @@ onMounted(() => {
                   :filters="taskFilters"
                   @update:filters="handleFilterChange"
                 />
-                <Button v-if="isMember" @click="showCreateTask = true">
-                  <Plus class="mr-2 size-4" />
-                  Create Task
-                </Button>
+                <div v-if="isMember" class="flex items-center">
+                  <Button class="rounded-r-none" @click="showCreateTask = true">
+                    <Plus class="mr-2 size-4" />
+                    Create Task
+                  </Button>
+                  <Button
+                    class="rounded-l-none border-l border-primary-foreground/20 px-2"
+                    aria-label="Create task in full page"
+                    as-child
+                  >
+                    <a :href="`/projects/${projectKey}/tasks/new`" target="_blank">
+                      <ExternalLink class="size-4" />
+                    </a>
+                  </Button>
+                </div>
               </div>
 
               <!-- Tasks loading -->
@@ -222,9 +234,11 @@ onMounted(() => {
                 <p class="mt-1 text-sm text-muted-foreground">
                   Create your first task to get started
                 </p>
-                <Button v-if="isMember" class="mt-4" @click="showCreateTask = true">
-                  <Plus class="mr-2 size-4" />
-                  Create Task
+                <Button v-if="isMember" class="mt-4" as-child>
+                  <NuxtLink :to="`/projects/${projectKey}/tasks/new`">
+                    <Plus class="mr-2 size-4" />
+                    Create Task
+                  </NuxtLink>
                 </Button>
               </div>
 
