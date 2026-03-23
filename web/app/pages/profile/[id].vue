@@ -384,10 +384,10 @@ onMounted(async () => {
                             class="size-[11px] rounded-[2px]"
                             :class="{
                               'bg-muted dark:bg-muted/50': cell.level === 0,
-                              'bg-emerald-200 dark:bg-emerald-900': cell.level === 1,
-                              'bg-emerald-400 dark:bg-emerald-700': cell.level === 2,
-                              'bg-emerald-500 dark:bg-emerald-500': cell.level === 3,
-                              'bg-emerald-700 dark:bg-emerald-400': cell.level === 4,
+                              'bg-amber-200 dark:bg-amber-900': cell.level === 1,
+                              'bg-amber-400 dark:bg-amber-700': cell.level === 2,
+                              'bg-amber-500 dark:bg-amber-500': cell.level === 3,
+                              'bg-amber-700 dark:bg-amber-400': cell.level === 4,
                             }"
                             :title="`${cell.count} ${cell.count === 1 ? 'activity' : 'activities'} on ${cell.date}`"
                           />
@@ -399,10 +399,10 @@ onMounted(async () => {
                   <div class="mt-3 flex items-center justify-end gap-1 text-[10px] text-muted-foreground">
                     <span>Less</span>
                     <div class="size-[11px] rounded-[2px] bg-muted dark:bg-muted/50" />
-                    <div class="size-[11px] rounded-[2px] bg-emerald-200 dark:bg-emerald-900" />
-                    <div class="size-[11px] rounded-[2px] bg-emerald-400 dark:bg-emerald-700" />
-                    <div class="size-[11px] rounded-[2px] bg-emerald-500 dark:bg-emerald-500" />
-                    <div class="size-[11px] rounded-[2px] bg-emerald-700 dark:bg-emerald-400" />
+                    <div class="size-[11px] rounded-[2px] bg-amber-200 dark:bg-amber-900" />
+                    <div class="size-[11px] rounded-[2px] bg-amber-400 dark:bg-amber-700" />
+                    <div class="size-[11px] rounded-[2px] bg-amber-500 dark:bg-amber-500" />
+                    <div class="size-[11px] rounded-[2px] bg-amber-700 dark:bg-amber-400" />
                     <span>More</span>
                   </div>
                 </div>
