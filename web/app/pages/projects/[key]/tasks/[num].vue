@@ -15,10 +15,12 @@ import { toast } from "vue-sonner";
 import { marked } from "marked";
 import { PRIORITY_LABELS } from "~/types";
 
-marked.setOptions({
-  breaks: true,
-  gfm: true,
-});
+const renderer = new marked.Renderer();
+renderer.link = ({ href, title, text }) => {
+  const titleAttr = title ? ` title="${title}"` : "";
+  return `<a href="${href}"${titleAttr} target="_blank" rel="noopener noreferrer">${text}</a>`;
+};
+marked.setOptions({ breaks: true, gfm: true, renderer });
 
 definePageMeta({
   middleware: ["auth"],
