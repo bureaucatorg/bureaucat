@@ -59,7 +59,6 @@ const editingTitle = ref(false);
 const editingDescription = ref(false);
 const editTitle = ref("");
 const editDescription = ref("");
-const descriptionMentionRef = ref<InstanceType<typeof MentionTextarea> | null>(null);
 const updating = ref(false);
 const deleting = ref(false);
 const showDeleteConfirm = ref(false);
@@ -148,7 +147,9 @@ async function saveTitle() {
 }
 
 function startEditDescription() {
-  editDescription.value = currentTask.value?.description || "";
+  const desc = currentTask.value?.description || "";
+  // Convert markdown to HTML for the editor (handles legacy markdown descriptions)
+  editDescription.value = desc.startsWith("<") ? desc : (marked(desc) as string);
   editingDescription.value = true;
 }
 
@@ -158,22 +159,22 @@ function cancelEditDescription() {
 }
 
 async function saveDescription() {
-  if (editDescription.value === (currentTask.value?.description || "")) {
+  // Treat empty tiptap content as no description
+  const isEmpty = !editDescription.value || editDescription.value === "<p></p>";
+  const current = currentTask.value?.description || "";
+  if (editDescription.value === current) {
     cancelEditDescription();
     return;
   }
 
-  const markdownDescription = descriptionMentionRef.value?.getMarkdownContent() ?? editDescription.value;
-
   updating.value = true;
   const result = await updateTask(projectKey.value, taskNum.value, {
-    description: markdownDescription || undefined,
+    description: isEmpty ? undefined : editDescription.value,
   });
   updating.value = false;
 
   if (result.success) {
     toast.success("Description updated");
-    descriptionMentionRef.value?.clearMentions();
     cancelEditDescription();
   } else {
     toast.error(result.error || "Failed to update description");
@@ -236,8 +237,10 @@ async function refreshComments() {
 }
 
 const renderedDescription = computed(() => {
-  if (!currentTask.value?.description) return "";
-  return marked(currentTask.value.description) as string;
+  const desc = currentTask.value?.description;
+  if (!desc) return "";
+  // If already HTML (from tiptap), render directly; otherwise convert markdown
+  return desc.startsWith("<") ? desc : (marked(desc) as string);
 });
 
 function formatDate(dateStr: string): string {
@@ -366,13 +369,9 @@ onMounted(() => {
                   Description
                 </h3>
                 <div v-if="editingDescription" class="space-y-2">
-                  <MentionTextarea
-                    ref="descriptionMentionRef"
+                  <TiptapEditor
                     v-model="editDescription"
-                    :rows="20"
                     :disabled="updating"
-                    placeholder="Add a description..."
-                    :members="members"
                   />
                   <div class="flex gap-2">
                     <Button size="sm" :disabled="updating" @click="saveDescription">
