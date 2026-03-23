@@ -728,7 +728,7 @@ func (h *TaskHandler) UpdateTask(c *echo.Context) error {
 // DeleteTask soft deletes a task.
 //
 //	@Summary		Delete task
-//	@Description	Soft-delete a task. Requires project admin role.
+//	@Description	Soft-delete a task. Requires project admin role or task creator.
 //	@Tags			Tasks
 //	@Produce		json
 //	@Param			projectKey	path		string	true	"Project key"
@@ -767,6 +767,12 @@ func (h *TaskHandler) DeleteTask(c *echo.Context) error {
 	})
 	if err != nil {
 		return echo.NewHTTPError(http.StatusNotFound, "task not found")
+	}
+
+	// Only admins or the task creator can delete
+	role := c.Request().Header.Get(auth.HeaderProjectRole)
+	if role != "admin" && task.CreatedBy != userID {
+		return echo.NewHTTPError(http.StatusForbidden, "only admins or the task creator can delete this task")
 	}
 
 	// Log deletion

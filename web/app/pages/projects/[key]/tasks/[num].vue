@@ -64,10 +64,13 @@ const updating = ref(false);
 const deleting = ref(false);
 const showDeleteConfirm = ref(false);
 
+const { user } = useAuth();
 const isAdmin = computed(() => currentProject.value?.role === "admin");
 const isMember = computed(
   () => currentProject.value?.role === "admin" || currentProject.value?.role === "member"
 );
+const isCreator = computed(() => user.value?.id === currentTask.value?.created_by);
+const canDelete = computed(() => isAdmin.value || isCreator.value);
 
 const priorityOptions = Object.entries(PRIORITY_LABELS).map(([value, info]) => ({
   value: parseInt(value),
@@ -545,7 +548,7 @@ onMounted(() => {
               </div>
 
               <!-- Delete -->
-              <div v-if="isAdmin" class="mt-2 border-t border-border pt-3">
+              <div v-if="canDelete" class="mt-2 border-t border-border pt-3">
                 <Button
                   variant="ghost"
                   size="sm"
