@@ -78,9 +78,9 @@ func (q *Queries) CreateRefreshToken(ctx context.Context, arg CreateRefreshToken
 }
 
 const createSSOUser = `-- name: CreateSSOUser :one
-INSERT INTO users (username, email, first_name, last_name, user_type, auth_provider, provider_user_id)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
-RETURNING id, username, email, first_name, last_name, user_type, auth_provider, provider_user_id, created_at, updated_at
+INSERT INTO users (username, email, first_name, last_name, user_type, auth_provider, provider_user_id, avatar_url)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+RETURNING id, username, email, first_name, last_name, user_type, auth_provider, provider_user_id, avatar_url, created_at, updated_at
 `
 
 type CreateSSOUserParams struct {
@@ -91,6 +91,7 @@ type CreateSSOUserParams struct {
 	UserType       string      `json:"user_type"`
 	AuthProvider   pgtype.Text `json:"auth_provider"`
 	ProviderUserID pgtype.Text `json:"provider_user_id"`
+	AvatarUrl      pgtype.Text `json:"avatar_url"`
 }
 
 type CreateSSOUserRow struct {
@@ -102,6 +103,7 @@ type CreateSSOUserRow struct {
 	UserType       string             `json:"user_type"`
 	AuthProvider   pgtype.Text        `json:"auth_provider"`
 	ProviderUserID pgtype.Text        `json:"provider_user_id"`
+	AvatarUrl      pgtype.Text        `json:"avatar_url"`
 	CreatedAt      pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
 }
@@ -115,6 +117,7 @@ func (q *Queries) CreateSSOUser(ctx context.Context, arg CreateSSOUserParams) (C
 		arg.UserType,
 		arg.AuthProvider,
 		arg.ProviderUserID,
+		arg.AvatarUrl,
 	)
 	var i CreateSSOUserRow
 	err := row.Scan(
@@ -126,6 +129,7 @@ func (q *Queries) CreateSSOUser(ctx context.Context, arg CreateSSOUserParams) (C
 		&i.UserType,
 		&i.AuthProvider,
 		&i.ProviderUserID,
+		&i.AvatarUrl,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -324,7 +328,7 @@ func (q *Queries) GetUserByEmailOrUsername(ctx context.Context, email string) (G
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, username, email, first_name, last_name, user_type, created_at, updated_at
+SELECT id, username, email, first_name, last_name, user_type, avatar_url, created_at, updated_at
 FROM users
 WHERE id = $1
 `
@@ -336,6 +340,7 @@ type GetUserByIDRow struct {
 	FirstName string             `json:"first_name"`
 	LastName  string             `json:"last_name"`
 	UserType  string             `json:"user_type"`
+	AvatarUrl pgtype.Text        `json:"avatar_url"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
 }
@@ -350,6 +355,7 @@ func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (GetUserByIDRow
 		&i.FirstName,
 		&i.LastName,
 		&i.UserType,
+		&i.AvatarUrl,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -603,6 +609,22 @@ func (q *Queries) SearchUsersPaginated(ctx context.Context, arg SearchUsersPagin
 		return nil, err
 	}
 	return items, nil
+}
+
+const updateUserAvatarURL = `-- name: UpdateUserAvatarURL :exec
+UPDATE users
+SET avatar_url = $2, updated_at = NOW()
+WHERE id = $1
+`
+
+type UpdateUserAvatarURLParams struct {
+	ID        uuid.UUID   `json:"id"`
+	AvatarUrl pgtype.Text `json:"avatar_url"`
+}
+
+func (q *Queries) UpdateUserAvatarURL(ctx context.Context, arg UpdateUserAvatarURLParams) error {
+	_, err := q.db.Exec(ctx, updateUserAvatarURL, arg.ID, arg.AvatarUrl)
+	return err
 }
 
 const updateUserPassword = `-- name: UpdateUserPassword :exec

@@ -5,6 +5,7 @@ interface User {
   first_name: string;
   last_name: string;
   user_type: string;
+  avatar_url?: string;
   created_at: string;
 }
 

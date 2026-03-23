@@ -47,6 +47,7 @@ type UserResponse struct {
 	FirstName string    `json:"first_name"`
 	LastName  string    `json:"last_name"`
 	UserType  string    `json:"user_type"`
+	AvatarURL *string   `json:"avatar_url,omitempty"`
 	CreatedAt time.Time `json:"created_at"`
 }
 
@@ -310,6 +311,7 @@ func (h *AuthHandler) Me(c *echo.Context) error {
 		FirstName: user.FirstName,
 		LastName:  user.LastName,
 		UserType:  user.UserType,
+		AvatarURL: textToStringPtr(user.AvatarUrl),
 		CreatedAt: user.CreatedAt.Time,
 	})
 }
@@ -345,6 +347,7 @@ func (h *AuthHandler) GetUserProfile(c *echo.Context) error {
 		FirstName: user.FirstName,
 		LastName:  user.LastName,
 		UserType:  user.UserType,
+		AvatarURL: textToStringPtr(user.AvatarUrl),
 		CreatedAt: user.CreatedAt.Time,
 	})
 }
@@ -446,6 +449,7 @@ type userInfo struct {
 	FirstName string
 	LastName  string
 	UserType  string
+	AvatarURL *string
 	CreatedAt time.Time
 }
 
@@ -525,6 +529,7 @@ func (h *AuthHandler) GenerateTokensAndSetCookies(c *echo.Context, ctx context.C
 			FirstName: user.FirstName,
 			LastName:  user.LastName,
 			UserType:  user.UserType,
+			AvatarURL: user.AvatarURL,
 			CreatedAt: user.CreatedAt,
 		},
 		AccessToken: accessToken,

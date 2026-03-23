@@ -4,7 +4,7 @@ VALUES ($1, $2, $3, $4, $5, $6)
 RETURNING id, username, email, first_name, last_name, user_type, created_at, updated_at;
 
 -- name: GetUserByID :one
-SELECT id, username, email, first_name, last_name, user_type, created_at, updated_at
+SELECT id, username, email, first_name, last_name, user_type, avatar_url, created_at, updated_at
 FROM users
 WHERE id = $1;
 
@@ -110,13 +110,18 @@ FROM users
 WHERE auth_provider = $1 AND provider_user_id = $2;
 
 -- name: CreateSSOUser :one
-INSERT INTO users (username, email, first_name, last_name, user_type, auth_provider, provider_user_id)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
-RETURNING id, username, email, first_name, last_name, user_type, auth_provider, provider_user_id, created_at, updated_at;
+INSERT INTO users (username, email, first_name, last_name, user_type, auth_provider, provider_user_id, avatar_url)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+RETURNING id, username, email, first_name, last_name, user_type, auth_provider, provider_user_id, avatar_url, created_at, updated_at;
 
 -- name: LinkProviderToUser :exec
 UPDATE users
 SET auth_provider = $2, provider_user_id = $3, updated_at = NOW()
+WHERE id = $1;
+
+-- name: UpdateUserAvatarURL :exec
+UPDATE users
+SET avatar_url = $2, updated_at = NOW()
 WHERE id = $1;
 
 -- name: UpdateUserType :exec

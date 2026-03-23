@@ -27,6 +27,7 @@ export interface ProjectMember {
   first_name: string;
   last_name: string;
   role: string;
+  avatar_url?: string;
   joined_at: string;
 }
 

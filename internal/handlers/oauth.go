@@ -49,6 +49,7 @@ type oidcClaims struct {
 	GivenName  string `json:"given_name"`
 	FamilyName string `json:"family_name"`
 	Name       string `json:"name"`
+	Picture    string `json:"picture"`
 }
 
 // StartSSO initiates the OAuth2/OIDC flow for the given provider.
@@ -290,6 +291,18 @@ func (h *OAuthHandler) extractClaims(ctx context.Context, provider string, confi
 		return nil, fmt.Errorf("failed to parse claims: %w", err)
 	}
 
+	// If picture is not in the ID token, try the userinfo endpoint.
+	// Zitadel and some providers only return picture via userinfo.
+	if claims.Picture == "" {
+		userInfo, err := oidcProvider.UserInfo(ctx, oauth2.StaticTokenSource(token))
+		if err == nil {
+			var uiClaims oidcClaims
+			if err := userInfo.Claims(&uiClaims); err == nil && uiClaims.Picture != "" {
+				claims.Picture = uiClaims.Picture
+			}
+		}
+	}
+
 	return &claims, nil
 }
 
@@ -302,6 +315,14 @@ func (h *OAuthHandler) findOrCreateUser(ctx context.Context, provider string, cl
 		ProviderUserID: pgtype.Text{String: claims.Sub, Valid: true},
 	})
 	if err == nil {
+		// Update avatar URL on each login if the provider supplies one
+		if claims.Picture != "" {
+			_ = h.store.UpdateUserAvatarURL(ctx, store.UpdateUserAvatarURLParams{
+				ID:        user.ID,
+				AvatarUrl: pgtype.Text{String: claims.Picture, Valid: true},
+			})
+		}
+		avatarPtr := textToStringPtr(pgtype.Text{String: claims.Picture, Valid: claims.Picture != ""})
 		return &userInfo{
 			ID:        user.ID,
 			Username:  user.Username,
@@ -309,6 +330,7 @@ func (h *OAuthHandler) findOrCreateUser(ctx context.Context, provider string, cl
 			FirstName: user.FirstName,
 			LastName:  user.LastName,
 			UserType:  user.UserType,
+			AvatarURL: avatarPtr,
 			CreatedAt: user.CreatedAt.Time,
 		}, nil
 	}
@@ -322,6 +344,14 @@ func (h *OAuthHandler) findOrCreateUser(ctx context.Context, provider string, cl
 			AuthProvider:   pgtype.Text{String: provider, Valid: true},
 			ProviderUserID: pgtype.Text{String: claims.Sub, Valid: true},
 		})
+		// Update avatar URL
+		if claims.Picture != "" {
+			_ = h.store.UpdateUserAvatarURL(ctx, store.UpdateUserAvatarURLParams{
+				ID:        userByEmail.ID,
+				AvatarUrl: pgtype.Text{String: claims.Picture, Valid: true},
+			})
+		}
+		avatarPtr := textToStringPtr(pgtype.Text{String: claims.Picture, Valid: claims.Picture != ""})
 		return &userInfo{
 			ID:        userByEmail.ID,
 			Username:  userByEmail.Username,
@@ -329,6 +359,7 @@ func (h *OAuthHandler) findOrCreateUser(ctx context.Context, provider string, cl
 			FirstName: userByEmail.FirstName,
 			LastName:  userByEmail.LastName,
 			UserType:  userByEmail.UserType,
+			AvatarURL: avatarPtr,
 			CreatedAt: userByEmail.CreatedAt.Time,
 		}, nil
 	}
@@ -361,11 +392,13 @@ func (h *OAuthHandler) findOrCreateUser(ctx context.Context, provider string, cl
 		UserType:       "user",
 		AuthProvider:   pgtype.Text{String: provider, Valid: true},
 		ProviderUserID: pgtype.Text{String: claims.Sub, Valid: true},
+		AvatarUrl:      pgtype.Text{String: claims.Picture, Valid: claims.Picture != ""},
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create user: %w", err)
 	}
 
+	avatarPtr := textToStringPtr(pgtype.Text{String: claims.Picture, Valid: claims.Picture != ""})
 	return &userInfo{
 		ID:        newUser.ID,
 		Username:  newUser.Username,
@@ -373,6 +406,7 @@ func (h *OAuthHandler) findOrCreateUser(ctx context.Context, provider string, cl
 		FirstName: newUser.FirstName,
 		LastName:  newUser.LastName,
 		UserType:  newUser.UserType,
+		AvatarURL: avatarPtr,
 		CreatedAt: newUser.CreatedAt.Time,
 	}, nil
 }

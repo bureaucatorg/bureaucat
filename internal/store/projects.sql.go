@@ -846,7 +846,7 @@ const getTaskByID = `-- name: GetTaskByID :one
 SELECT t.id, t.project_id, t.task_number, t.title, t.description, t.state_id, t.priority, t.created_by, t.created_at, t.updated_at, t.deleted_at,
        p.project_key,
        ps.name as state_name, ps.state_type, ps.color as state_color,
-       u.username as creator_username, u.first_name as creator_first_name, u.last_name as creator_last_name
+       u.username as creator_username, u.first_name as creator_first_name, u.last_name as creator_last_name, u.avatar_url as creator_avatar_url
 FROM tasks t
 JOIN projects p ON t.project_id = p.id
 JOIN project_states ps ON t.state_id = ps.id
@@ -870,9 +870,10 @@ type GetTaskByIDRow struct {
 	StateName        string             `json:"state_name"`
 	StateType        string             `json:"state_type"`
 	StateColor       pgtype.Text        `json:"state_color"`
-	CreatorUsername  string             `json:"creator_username"`
+	CreatorUsername   string             `json:"creator_username"`
 	CreatorFirstName string             `json:"creator_first_name"`
 	CreatorLastName  string             `json:"creator_last_name"`
+	CreatorAvatarUrl pgtype.Text        `json:"creator_avatar_url"`
 }
 
 func (q *Queries) GetTaskByID(ctx context.Context, id uuid.UUID) (GetTaskByIDRow, error) {
@@ -897,6 +898,7 @@ func (q *Queries) GetTaskByID(ctx context.Context, id uuid.UUID) (GetTaskByIDRow
 		&i.CreatorUsername,
 		&i.CreatorFirstName,
 		&i.CreatorLastName,
+		&i.CreatorAvatarUrl,
 	)
 	return i, err
 }
@@ -905,7 +907,7 @@ const getTaskByProjectAndNumber = `-- name: GetTaskByProjectAndNumber :one
 SELECT t.id, t.project_id, t.task_number, t.title, t.description, t.state_id, t.priority, t.created_by, t.created_at, t.updated_at, t.deleted_at,
        p.project_key,
        ps.name as state_name, ps.state_type, ps.color as state_color,
-       u.username as creator_username, u.first_name as creator_first_name, u.last_name as creator_last_name
+       u.username as creator_username, u.first_name as creator_first_name, u.last_name as creator_last_name, u.avatar_url as creator_avatar_url
 FROM tasks t
 JOIN projects p ON t.project_id = p.id
 JOIN project_states ps ON t.state_id = ps.id
@@ -937,6 +939,7 @@ type GetTaskByProjectAndNumberRow struct {
 	CreatorUsername  string             `json:"creator_username"`
 	CreatorFirstName string             `json:"creator_first_name"`
 	CreatorLastName  string             `json:"creator_last_name"`
+	CreatorAvatarUrl pgtype.Text        `json:"creator_avatar_url"`
 }
 
 func (q *Queries) GetTaskByProjectAndNumber(ctx context.Context, arg GetTaskByProjectAndNumberParams) (GetTaskByProjectAndNumberRow, error) {
@@ -961,6 +964,7 @@ func (q *Queries) GetTaskByProjectAndNumber(ctx context.Context, arg GetTaskByPr
 		&i.CreatorUsername,
 		&i.CreatorFirstName,
 		&i.CreatorLastName,
+		&i.CreatorAvatarUrl,
 	)
 	return i, err
 }
@@ -1197,7 +1201,7 @@ func (q *Queries) ListProjectLabels(ctx context.Context, projectID uuid.UUID) ([
 
 const listProjectMembers = `-- name: ListProjectMembers :many
 SELECT pm.id, pm.project_id, pm.user_id, pm.role, pm.joined_at,
-       u.username, u.email, u.first_name, u.last_name
+       u.username, u.email, u.first_name, u.last_name, u.avatar_url
 FROM project_members pm
 JOIN users u ON pm.user_id = u.id
 WHERE pm.project_id = $1
@@ -1214,6 +1218,7 @@ type ListProjectMembersRow struct {
 	Email     string             `json:"email"`
 	FirstName string             `json:"first_name"`
 	LastName  string             `json:"last_name"`
+	AvatarUrl pgtype.Text        `json:"avatar_url"`
 }
 
 func (q *Queries) ListProjectMembers(ctx context.Context, projectID uuid.UUID) ([]ListProjectMembersRow, error) {
@@ -1235,6 +1240,7 @@ func (q *Queries) ListProjectMembers(ctx context.Context, projectID uuid.UUID) (
 			&i.Email,
 			&i.FirstName,
 			&i.LastName,
+			&i.AvatarUrl,
 		); err != nil {
 			return nil, err
 		}
@@ -1362,7 +1368,7 @@ const listProjectTasksFiltered = `-- name: ListProjectTasksFiltered :many
 SELECT t.id, t.project_id, t.task_number, t.title, t.description, t.state_id, t.priority, t.created_by, t.created_at, t.updated_at, t.deleted_at,
        p.project_key,
        ps.name as state_name, ps.state_type, ps.color as state_color,
-       u.username as creator_username, u.first_name as creator_first_name, u.last_name as creator_last_name,
+       u.username as creator_username, u.first_name as creator_first_name, u.last_name as creator_last_name, u.avatar_url as creator_avatar_url,
        (SELECT COUNT(*) FROM comments c WHERE c.task_id = t.id AND c.deleted_at IS NULL)::bigint as comment_count
 FROM tasks t
 JOIN projects p ON t.project_id = p.id
@@ -1415,6 +1421,7 @@ type ListProjectTasksFilteredRow struct {
 	CreatorUsername  string             `json:"creator_username"`
 	CreatorFirstName string             `json:"creator_first_name"`
 	CreatorLastName  string             `json:"creator_last_name"`
+	CreatorAvatarUrl pgtype.Text        `json:"creator_avatar_url"`
 	CommentCount     int64              `json:"comment_count"`
 }
 
@@ -1458,6 +1465,7 @@ func (q *Queries) ListProjectTasksFiltered(ctx context.Context, arg ListProjectT
 			&i.CreatorUsername,
 			&i.CreatorFirstName,
 			&i.CreatorLastName,
+			&i.CreatorAvatarUrl,
 			&i.CommentCount,
 		); err != nil {
 			return nil, err
@@ -1529,7 +1537,7 @@ func (q *Queries) ListTaskActivity(ctx context.Context, taskID uuid.UUID) ([]Lis
 
 const listTaskAssignees = `-- name: ListTaskAssignees :many
 SELECT ta.id, ta.task_id, ta.user_id, ta.assigned_at, ta.assigned_by,
-       u.username, u.email, u.first_name, u.last_name
+       u.username, u.email, u.first_name, u.last_name, u.avatar_url
 FROM task_assignees ta
 JOIN users u ON ta.user_id = u.id
 WHERE ta.task_id = $1
@@ -1546,6 +1554,7 @@ type ListTaskAssigneesRow struct {
 	Email      string             `json:"email"`
 	FirstName  string             `json:"first_name"`
 	LastName   string             `json:"last_name"`
+	AvatarUrl  pgtype.Text        `json:"avatar_url"`
 }
 
 func (q *Queries) ListTaskAssignees(ctx context.Context, taskID uuid.UUID) ([]ListTaskAssigneesRow, error) {
@@ -1567,6 +1576,7 @@ func (q *Queries) ListTaskAssignees(ctx context.Context, taskID uuid.UUID) ([]Li
 			&i.Email,
 			&i.FirstName,
 			&i.LastName,
+			&i.AvatarUrl,
 		); err != nil {
 			return nil, err
 		}

@@ -121,7 +121,7 @@ WHERE project_id = $1 AND user_id = $2;
 
 -- name: ListProjectMembers :many
 SELECT pm.id, pm.project_id, pm.user_id, pm.role, pm.joined_at,
-       u.username, u.email, u.first_name, u.last_name
+       u.username, u.email, u.first_name, u.last_name, u.avatar_url
 FROM project_members pm
 JOIN users u ON pm.user_id = u.id
 WHERE pm.project_id = $1
@@ -218,7 +218,7 @@ WHERE project_id = $1;
 SELECT t.id, t.project_id, t.task_number, t.title, t.description, t.state_id, t.priority, t.created_by, t.created_at, t.updated_at, t.deleted_at,
        p.project_key,
        ps.name as state_name, ps.state_type, ps.color as state_color,
-       u.username as creator_username, u.first_name as creator_first_name, u.last_name as creator_last_name
+       u.username as creator_username, u.first_name as creator_first_name, u.last_name as creator_last_name, u.avatar_url as creator_avatar_url
 FROM tasks t
 JOIN projects p ON t.project_id = p.id
 JOIN project_states ps ON t.state_id = ps.id
@@ -229,7 +229,7 @@ WHERE t.id = $1 AND t.deleted_at IS NULL;
 SELECT t.id, t.project_id, t.task_number, t.title, t.description, t.state_id, t.priority, t.created_by, t.created_at, t.updated_at, t.deleted_at,
        p.project_key,
        ps.name as state_name, ps.state_type, ps.color as state_color,
-       u.username as creator_username, u.first_name as creator_first_name, u.last_name as creator_last_name
+       u.username as creator_username, u.first_name as creator_first_name, u.last_name as creator_last_name, u.avatar_url as creator_avatar_url
 FROM tasks t
 JOIN projects p ON t.project_id = p.id
 JOIN project_states ps ON t.state_id = ps.id
@@ -268,7 +268,7 @@ LIMIT $2 OFFSET $3;
 SELECT t.id, t.project_id, t.task_number, t.title, t.description, t.state_id, t.priority, t.created_by, t.created_at, t.updated_at, t.deleted_at,
        p.project_key,
        ps.name as state_name, ps.state_type, ps.color as state_color,
-       u.username as creator_username, u.first_name as creator_first_name, u.last_name as creator_last_name,
+       u.username as creator_username, u.first_name as creator_first_name, u.last_name as creator_last_name, u.avatar_url as creator_avatar_url,
        (SELECT COUNT(*) FROM comments c WHERE c.task_id = t.id AND c.deleted_at IS NULL)::bigint as comment_count
 FROM tasks t
 JOIN projects p ON t.project_id = p.id
@@ -341,7 +341,7 @@ WHERE task_id = $1 AND user_id = $2;
 
 -- name: ListTaskAssignees :many
 SELECT ta.id, ta.task_id, ta.user_id, ta.assigned_at, ta.assigned_by,
-       u.username, u.email, u.first_name, u.last_name
+       u.username, u.email, u.first_name, u.last_name, u.avatar_url
 FROM task_assignees ta
 JOIN users u ON ta.user_id = u.id
 WHERE ta.task_id = $1

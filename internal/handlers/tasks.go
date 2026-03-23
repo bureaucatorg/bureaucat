@@ -49,6 +49,7 @@ type TaskResponse struct {
 	CreatorUsername  string             `json:"creator_username"`
 	CreatorFirstName string            `json:"creator_first_name"`
 	CreatorLastName  string            `json:"creator_last_name"`
+	CreatorAvatarURL *string           `json:"creator_avatar_url,omitempty"`
 	Assignees       []AssigneeResponse `json:"assignees,omitempty"`
 	Labels          []TaskLabelInfo    `json:"labels,omitempty"`
 	CommentCount    int                `json:"comment_count"`
@@ -64,6 +65,7 @@ type AssigneeResponse struct {
 	Email     string    `json:"email"`
 	FirstName string    `json:"first_name"`
 	LastName  string    `json:"last_name"`
+	AvatarURL *string   `json:"avatar_url,omitempty"`
 }
 
 // TaskLabelInfo represents a label on a task.
@@ -239,6 +241,7 @@ func (h *TaskHandler) ListTasks(c *echo.Context) error {
 			CreatorUsername:   t.CreatorUsername,
 			CreatorFirstName: t.CreatorFirstName,
 			CreatorLastName:  t.CreatorLastName,
+			CreatorAvatarURL: textToStringPtr(t.CreatorAvatarUrl),
 			Assignees:        assignees,
 			Labels:           labels,
 			CommentCount:     int(t.CommentCount),
@@ -489,6 +492,7 @@ func (h *TaskHandler) CreateTask(c *echo.Context) error {
 		CreatorUsername:  fullTask.CreatorUsername,
 		CreatorFirstName: fullTask.CreatorFirstName,
 		CreatorLastName:  fullTask.CreatorLastName,
+		CreatorAvatarURL: textToStringPtr(fullTask.CreatorAvatarUrl),
 		Assignees:       assignees,
 		Labels:          labels,
 		CreatedAt:       fullTask.CreatedAt.Time,
@@ -554,6 +558,7 @@ func (h *TaskHandler) GetTask(c *echo.Context) error {
 		CreatorUsername:  task.CreatorUsername,
 		CreatorFirstName: task.CreatorFirstName,
 		CreatorLastName:  task.CreatorLastName,
+		CreatorAvatarURL: textToStringPtr(task.CreatorAvatarUrl),
 		Assignees:       assignees,
 		Labels:          labels,
 		CreatedAt:       task.CreatedAt.Time,
@@ -744,6 +749,7 @@ func (h *TaskHandler) UpdateTask(c *echo.Context) error {
 		CreatorUsername:  fullTask.CreatorUsername,
 		CreatorFirstName: fullTask.CreatorFirstName,
 		CreatorLastName:  fullTask.CreatorLastName,
+		CreatorAvatarURL: textToStringPtr(fullTask.CreatorAvatarUrl),
 		Assignees:       assignees,
 		Labels:          labels,
 		CreatedAt:       fullTask.CreatedAt.Time,
@@ -1234,6 +1240,7 @@ func (h *TaskHandler) getTaskAssignees(ctx context.Context, taskID uuid.UUID) []
 			Email:     a.Email,
 			FirstName: a.FirstName,
 			LastName:  a.LastName,
+			AvatarURL: textToStringPtr(a.AvatarUrl),
 		}
 	}
 	return result

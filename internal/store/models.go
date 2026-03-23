@@ -333,4 +333,5 @@ type User struct {
 	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
 	AuthProvider   pgtype.Text        `json:"auth_provider"`
 	ProviderUserID pgtype.Text        `json:"provider_user_id"`
+	AvatarUrl      pgtype.Text        `json:"avatar_url"`
 }

@@ -29,7 +29,7 @@ const priorityInfo = computed(() => PRIORITY_LABELS[props.task.priority] || PRIO
 
 // Collect all people involved: creator + assignees (deduplicated)
 const involvedPeople = computed(() => {
-  const people: { id: string; firstName: string; lastName: string }[] = [];
+  const people: { id: string; firstName: string; lastName: string; avatarUrl?: string }[] = [];
   const seen = new Set<string>();
 
   if (props.task.created_by && !seen.has(props.task.created_by)) {
@@ -38,6 +38,7 @@ const involvedPeople = computed(() => {
       id: props.task.created_by,
       firstName: props.task.creator_first_name || "",
       lastName: props.task.creator_last_name || "",
+      avatarUrl: props.task.creator_avatar_url,
     });
   }
 
@@ -49,6 +50,7 @@ const involvedPeople = computed(() => {
           id: a.user_id,
           firstName: a.first_name,
           lastName: a.last_name,
+          avatarUrl: a.avatar_url,
         });
       }
     }
@@ -100,6 +102,11 @@ const involvedPeople = computed(() => {
             class="size-6 border-2 border-background"
             :title="`${person.firstName} ${person.lastName}`"
           >
+            <AvatarImage
+              v-if="person.avatarUrl"
+              :src="person.avatarUrl"
+              :alt="`${person.firstName} ${person.lastName}`"
+            />
             <AvatarFallback class="text-[10px]">
               {{ person.firstName?.[0] || "" }}{{ person.lastName?.[0] || "" }}
             </AvatarFallback>
@@ -123,7 +130,7 @@ const involvedPeople = computed(() => {
           :title="`${task.comment_count} comment${task.comment_count !== 1 ? 's' : ''}`"
         >
           <MessageSquare class="size-3 text-muted-foreground" />
-          <span class="text-xs font-medium text-muted-foreground">{{ task.comment_count }}</span>
+          <span class="font-mono text-xs font-medium text-muted-foreground">{{ task.comment_count }}</span>
         </div>
       </div>
     </div>

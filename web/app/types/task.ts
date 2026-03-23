@@ -14,6 +14,7 @@ export interface Task {
   creator_username: string;
   creator_first_name: string;
   creator_last_name: string;
+  creator_avatar_url?: string;
   assignees?: TaskAssignee[];
   labels?: TaskLabel[];
   comment_count: number;
@@ -36,6 +37,7 @@ export interface TaskAssignee {
   email: string;
   first_name: string;
   last_name: string;
+  avatar_url?: string;
 }
 
 export interface TaskLabel {

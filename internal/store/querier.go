@@ -119,6 +119,7 @@ type Querier interface {
 	UpdateProjectState(ctx context.Context, arg UpdateProjectStateParams) (ProjectState, error)
 	UpdateTask(ctx context.Context, arg UpdateTaskParams) (Task, error)
 	UpdateTaskTemplate(ctx context.Context, arg UpdateTaskTemplateParams) (TaskTemplate, error)
+	UpdateUserAvatarURL(ctx context.Context, arg UpdateUserAvatarURLParams) error
 	UpdateUserPassword(ctx context.Context, arg UpdateUserPasswordParams) error
 	UpdateUserType(ctx context.Context, arg UpdateUserTypeParams) error
 	UpsertSetting(ctx context.Context, arg UpsertSettingParams) (Setting, error)
