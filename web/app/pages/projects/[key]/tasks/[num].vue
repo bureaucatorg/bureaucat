@@ -10,6 +10,10 @@ import {
   Calendar,
   Clock,
   Link,
+  Circle,
+  CircleDot,
+  CheckCircle2,
+  XCircle,
 } from "lucide-vue-next";
 import { toast } from "vue-sonner";
 import { marked } from "marked";
@@ -83,6 +87,18 @@ const currentPriority = computed(() => {
   const p = currentTask.value?.priority ?? 0;
   return PRIORITY_LABELS[p] || PRIORITY_LABELS[0];
 });
+
+const currentState = computed(() =>
+  states.value.find((s) => s.id === currentTask.value?.state_id)
+);
+
+const stateIconMap: Record<string, typeof Circle> = {
+  backlog: Clock,
+  unstarted: Circle,
+  started: CircleDot,
+  completed: CheckCircle2,
+  cancelled: XCircle,
+};
 
 async function loadData() {
   loading.value = true;
@@ -363,7 +379,22 @@ onMounted(() => {
                     <Pencil class="size-3.5" />
                   </Button>
                 </div>
-                <div class="mt-1.5 flex items-center gap-1.5 text-xs text-muted-foreground">
+                <div class="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+                  <div v-if="currentState" class="flex items-center gap-1 rounded-md border bg-muted/50 px-1.5 py-0.5 w-fit">
+                    <component
+                      :is="stateIconMap[currentState.state_type] || Circle"
+                      class="size-3.5 stroke-[2.5]"
+                      :style="{ color: currentState.color }"
+                    />
+                    <span>{{ currentState.name }}</span>
+                  </div>
+                  <div class="flex items-center gap-1 rounded-md border bg-muted/50 px-1.5 py-0.5 w-fit">
+                    <span
+                      class="size-2.5 rounded-full ring-1.5 ring-offset-1 ring-offset-background"
+                      :style="{ backgroundColor: currentPriority.color, '--tw-ring-color': currentPriority.color }"
+                    />
+                    <span>{{ currentPriority.label }}</span>
+                  </div>
                   <div class="flex items-center gap-1 rounded-md border bg-muted/50 py-0.5 pl-0.5 pr-1.5 w-fit">
                     <Avatar class="size-4">
                       <AvatarFallback class="text-[10px]">
@@ -484,8 +515,8 @@ onMounted(() => {
                         :disabled="!isMember || updating"
                       >
                         <span
-                          class="size-2 rounded-full"
-                          :style="{ backgroundColor: currentPriority.color }"
+                          class="size-3 rounded-full ring-2 ring-offset-1 ring-offset-background"
+                          :style="{ backgroundColor: currentPriority.color, '--tw-ring-color': currentPriority.color }"
                         />
                         {{ currentPriority.label }}
                         <ChevronDown class="size-3.5 opacity-50" />

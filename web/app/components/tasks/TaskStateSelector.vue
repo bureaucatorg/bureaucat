@@ -64,7 +64,7 @@ const groupedStates = computed(() => {
         <span class="flex items-center gap-1.5">
           <component
             :is="getStateIcon(currentState?.state_type || 'backlog')"
-            class="size-4"
+            :class="compact ? 'size-5 stroke-[2.5]' : 'size-4'"
             :style="{ color: currentState?.color }"
           />
           {{ currentState?.name || "Select state" }}
