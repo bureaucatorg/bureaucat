@@ -43,3 +43,14 @@ export interface VerifyActivityResponse {
   valid: boolean;
   message: string;
 }
+
+export interface UserActivityEntry extends ActivityLogEntry {
+  task_number: number;
+  project_key: string;
+  task_title: string;
+}
+
+export interface UserActivityDateCount {
+  date: string;
+  count: number;
+}

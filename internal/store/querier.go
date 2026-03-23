@@ -28,6 +28,7 @@ type Querier interface {
 	CountTaskComments(ctx context.Context, taskID uuid.UUID) (int64, error)
 	CountTasksByAssignee(ctx context.Context, userID uuid.UUID) (int64, error)
 	CountTasksInState(ctx context.Context, stateID uuid.UUID) (int64, error)
+	CountUserActivity(ctx context.Context, actorID uuid.UUID) (int64, error)
 	CountUserProjects(ctx context.Context, userID uuid.UUID) (int64, error)
 	CountUserProjectsFiltered(ctx context.Context, arg CountUserProjectsFilteredParams) (int64, error)
 	CountUsers(ctx context.Context) (int64, error)
@@ -99,6 +100,9 @@ type Querier interface {
 	ListTaskTemplates(ctx context.Context, projectID uuid.UUID) ([]TaskTemplate, error)
 	ListTasksByAssignee(ctx context.Context, arg ListTasksByAssigneeParams) ([]ListTasksByAssigneeRow, error)
 	ListUploadsByUser(ctx context.Context, arg ListUploadsByUserParams) ([]Upload, error)
+	// ==================== USER ACTIVITY ====================
+	ListUserActivity(ctx context.Context, arg ListUserActivityParams) ([]ListUserActivityRow, error)
+	ListUserActivityDates(ctx context.Context, arg ListUserActivityDatesParams) ([]ListUserActivityDatesRow, error)
 	ListUserProjects(ctx context.Context, arg ListUserProjectsParams) ([]ListUserProjectsRow, error)
 	ListUserProjectsFiltered(ctx context.Context, arg ListUserProjectsFilteredParams) ([]ListUserProjectsFilteredRow, error)
 	ListUsersPaginated(ctx context.Context, arg ListUsersPaginatedParams) ([]ListUsersPaginatedRow, error)

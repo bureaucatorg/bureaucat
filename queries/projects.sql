@@ -468,6 +468,77 @@ RETURNING *;
 -- name: DeleteTaskTemplate :exec
 DELETE FROM task_templates WHERE id = $1;
 
+-- ==================== USER ACTIVITY ====================
+
+-- name: ListUserActivity :many
+SELECT id, task_id, activity_type, actor_id, field_name, old_value, new_value, created_at,
+       username, first_name, last_name,
+       task_number, project_key, task_title
+FROM (
+  -- Activities from activity_log
+  SELECT al.id, al.task_id, al.activity_type, al.actor_id, al.field_name, al.old_value, al.new_value, al.created_at,
+         u.username, u.first_name, u.last_name,
+         t.task_number, p.project_key, t.title as task_title
+  FROM activity_log al
+  JOIN users u ON al.actor_id = u.id
+  JOIN tasks t ON al.task_id = t.id
+  JOIN projects p ON t.project_id = p.id
+  WHERE al.actor_id = $1
+
+  UNION ALL
+
+  -- Synthetic "task_created" entries for imported tasks with no activity_log
+  SELECT t.id as id, t.id as task_id, 'task_created'::activity_type as activity_type, t.created_by as actor_id,
+         NULL::varchar(100) as field_name, NULL::jsonb as old_value, NULL::jsonb as new_value, t.created_at,
+         u.username, u.first_name, u.last_name,
+         t.task_number, p.project_key, t.title as task_title
+  FROM tasks t
+  JOIN users u ON t.created_by = u.id
+  JOIN projects p ON t.project_id = p.id
+  WHERE t.created_by = $1
+    AND t.deleted_at IS NULL
+    AND NOT EXISTS (
+      SELECT 1 FROM activity_log al
+      WHERE al.task_id = t.id AND al.actor_id = $1 AND al.activity_type = 'task_created'
+    )
+) combined
+ORDER BY created_at DESC
+LIMIT $2 OFFSET $3;
+
+-- name: CountUserActivity :one
+SELECT (
+  (SELECT COUNT(*) FROM activity_log al1 WHERE al1.actor_id = $1)
+  +
+  (SELECT COUNT(*) FROM tasks t
+   WHERE t.created_by = $1 AND t.deleted_at IS NULL
+   AND NOT EXISTS (
+     SELECT 1 FROM activity_log al2
+     WHERE al2.task_id = t.id AND al2.actor_id = $1 AND al2.activity_type = 'task_created'
+   ))
+)::bigint;
+
+-- name: ListUserActivityDates :many
+SELECT activity_date, SUM(cnt)::int as activity_count
+FROM (
+  SELECT DATE(al.created_at AT TIME ZONE 'UTC') as activity_date, COUNT(*) as cnt
+  FROM activity_log al
+  WHERE al.actor_id = $1 AND al.created_at >= $2
+  GROUP BY DATE(al.created_at AT TIME ZONE 'UTC')
+
+  UNION ALL
+
+  SELECT DATE(t.created_at AT TIME ZONE 'UTC') as activity_date, COUNT(*) as cnt
+  FROM tasks t
+  WHERE t.created_by = $1 AND t.deleted_at IS NULL AND t.created_at >= $2
+    AND NOT EXISTS (
+      SELECT 1 FROM activity_log al
+      WHERE al.task_id = t.id AND al.actor_id = $1 AND al.activity_type = 'task_created'
+    )
+  GROUP BY DATE(t.created_at AT TIME ZONE 'UTC')
+) combined
+GROUP BY activity_date
+ORDER BY activity_date ASC;
+
 -- ==================== IMPORT HELPERS ====================
 
 -- name: GetProjectStateByProjectAndName :one

@@ -621,6 +621,142 @@ func (h *AuthHandler) isSignupEnabled(ctx context.Context) bool {
 	return signup.Enabled
 }
 
+// UserActivityResponse represents a user activity entry with task/project context.
+type UserActivityResponse struct {
+	ID           uuid.UUID   `json:"id"`
+	TaskID       uuid.UUID   `json:"task_id"`
+	ActivityType string      `json:"activity_type"`
+	ActorID      uuid.UUID   `json:"actor_id"`
+	Username     string      `json:"username"`
+	FirstName    string      `json:"first_name"`
+	LastName     string      `json:"last_name"`
+	FieldName    *string     `json:"field_name,omitempty"`
+	OldValue     interface{} `json:"old_value,omitempty"`
+	NewValue     interface{} `json:"new_value,omitempty"`
+	CreatedAt    time.Time   `json:"created_at"`
+	TaskNumber   int32       `json:"task_number"`
+	ProjectKey   string      `json:"project_key"`
+	TaskTitle    string      `json:"task_title"`
+}
+
+// UserActivityDateCount represents the activity count on a single date.
+type UserActivityDateCount struct {
+	Date  string `json:"date"`
+	Count int    `json:"count"`
+}
+
+// GetUserActivity returns paginated activity for a user across all projects.
+func (h *AuthHandler) GetUserActivity(c *echo.Context) error {
+	userIDStr := c.Param("id")
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid user ID")
+	}
+
+	page, _ := strconv.Atoi(c.QueryParam("page"))
+	if page < 1 {
+		page = 1
+	}
+	perPage, _ := strconv.Atoi(c.QueryParam("per_page"))
+	if perPage < 1 || perPage > 100 {
+		perPage = 30
+	}
+	offset := (page - 1) * perPage
+
+	ctx := c.Request().Context()
+
+	activities, err := h.store.ListUserActivity(ctx, store.ListUserActivityParams{
+		ActorID: userID,
+		Limit:   int32(perPage),
+		Offset:  int32(offset),
+	})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to list user activity")
+	}
+
+	total, err := h.store.CountUserActivity(ctx, userID)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to count user activity")
+	}
+
+	totalPages := int(total) / perPage
+	if int(total)%perPage > 0 {
+		totalPages++
+	}
+
+	items := make([]UserActivityResponse, len(activities))
+	for i, a := range activities {
+		var fieldName *string
+		if a.FieldName.Valid {
+			fieldName = &a.FieldName.String
+		}
+		items[i] = UserActivityResponse{
+			ID:           a.ID,
+			TaskID:       a.TaskID,
+			ActivityType: a.ActivityType,
+			ActorID:      a.ActorID,
+			Username:     a.Username,
+			FirstName:    a.FirstName,
+			LastName:     a.LastName,
+			FieldName:    fieldName,
+			OldValue:     parseJSONBAuth(a.OldValue),
+			NewValue:     parseJSONBAuth(a.NewValue),
+			CreatedAt:    a.CreatedAt.Time,
+			TaskNumber:   a.TaskNumber,
+			ProjectKey:   a.ProjectKey,
+			TaskTitle:    a.TaskTitle,
+		}
+	}
+
+	return c.JSON(http.StatusOK, map[string]interface{}{
+		"activities":  items,
+		"total":       total,
+		"page":        page,
+		"per_page":    perPage,
+		"total_pages": totalPages,
+	})
+}
+
+// GetUserActivityGraph returns daily activity counts for the contribution graph.
+func (h *AuthHandler) GetUserActivityGraph(c *echo.Context) error {
+	userIDStr := c.Param("id")
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid user ID")
+	}
+
+	// Default to last 365 days
+	since := time.Now().AddDate(-1, 0, 0)
+
+	ctx := c.Request().Context()
+
+	dates, err := h.store.ListUserActivityDates(ctx, store.ListUserActivityDatesParams{
+		ActorID:   userID,
+		CreatedAt: pgtype.Timestamptz{Time: since, Valid: true},
+	})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to list activity dates")
+	}
+
+	items := make([]UserActivityDateCount, len(dates))
+	for i, d := range dates {
+		items[i] = UserActivityDateCount{
+			Date:  d.ActivityDate.Time.Format("2006-01-02"),
+			Count: int(d.ActivityCount),
+		}
+	}
+
+	return c.JSON(http.StatusOK, items)
+}
+
+// parseJSONBAuth safely parses JSONB data.
+func parseJSONBAuth(data []byte) interface{} {
+	if data == nil {
+		return nil
+	}
+	return string(data)
+}
+
 func validatePassword(password string) []string {
 	var errors []string
 

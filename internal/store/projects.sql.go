@@ -219,6 +219,26 @@ func (q *Queries) CountTasksInState(ctx context.Context, stateID uuid.UUID) (int
 	return count, err
 }
 
+const countUserActivity = `-- name: CountUserActivity :one
+SELECT (
+  (SELECT COUNT(*) FROM activity_log al1 WHERE al1.actor_id = $1)
+  +
+  (SELECT COUNT(*) FROM tasks t
+   WHERE t.created_by = $1 AND t.deleted_at IS NULL
+   AND NOT EXISTS (
+     SELECT 1 FROM activity_log al2
+     WHERE al2.task_id = t.id AND al2.actor_id = $1 AND al2.activity_type = 'task_created'
+   ))
+)::bigint
+`
+
+func (q *Queries) CountUserActivity(ctx context.Context, actorID uuid.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countUserActivity, actorID)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const countUserProjects = `-- name: CountUserProjects :one
 SELECT COUNT(*)
 FROM projects p
@@ -870,7 +890,7 @@ type GetTaskByIDRow struct {
 	StateName        string             `json:"state_name"`
 	StateType        string             `json:"state_type"`
 	StateColor       pgtype.Text        `json:"state_color"`
-	CreatorUsername   string             `json:"creator_username"`
+	CreatorUsername  string             `json:"creator_username"`
 	CreatorFirstName string             `json:"creator_first_name"`
 	CreatorLastName  string             `json:"creator_last_name"`
 	CreatorAvatarUrl pgtype.Text        `json:"creator_avatar_url"`
@@ -1774,6 +1794,155 @@ func (q *Queries) ListTasksByAssignee(ctx context.Context, arg ListTasksByAssign
 			&i.StateType,
 			&i.StateColor,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listUserActivity = `-- name: ListUserActivity :many
+
+SELECT id, task_id, activity_type, actor_id, field_name, old_value, new_value, created_at,
+       username, first_name, last_name,
+       task_number, project_key, task_title
+FROM (
+  -- Activities from activity_log
+  SELECT al.id, al.task_id, al.activity_type, al.actor_id, al.field_name, al.old_value, al.new_value, al.created_at,
+         u.username, u.first_name, u.last_name,
+         t.task_number, p.project_key, t.title as task_title
+  FROM activity_log al
+  JOIN users u ON al.actor_id = u.id
+  JOIN tasks t ON al.task_id = t.id
+  JOIN projects p ON t.project_id = p.id
+  WHERE al.actor_id = $1
+
+  UNION ALL
+
+  -- Synthetic "task_created" entries for imported tasks with no activity_log
+  SELECT t.id as id, t.id as task_id, 'task_created'::activity_type as activity_type, t.created_by as actor_id,
+         NULL::varchar(100) as field_name, NULL::jsonb as old_value, NULL::jsonb as new_value, t.created_at,
+         u.username, u.first_name, u.last_name,
+         t.task_number, p.project_key, t.title as task_title
+  FROM tasks t
+  JOIN users u ON t.created_by = u.id
+  JOIN projects p ON t.project_id = p.id
+  WHERE t.created_by = $1
+    AND t.deleted_at IS NULL
+    AND NOT EXISTS (
+      SELECT 1 FROM activity_log al
+      WHERE al.task_id = t.id AND al.actor_id = $1 AND al.activity_type = 'task_created'
+    )
+) combined
+ORDER BY created_at DESC
+LIMIT $2 OFFSET $3
+`
+
+type ListUserActivityParams struct {
+	ActorID uuid.UUID `json:"actor_id"`
+	Limit   int32     `json:"limit"`
+	Offset  int32     `json:"offset"`
+}
+
+type ListUserActivityRow struct {
+	ID           uuid.UUID          `json:"id"`
+	TaskID       uuid.UUID          `json:"task_id"`
+	ActivityType string             `json:"activity_type"`
+	ActorID      uuid.UUID          `json:"actor_id"`
+	FieldName    pgtype.Text        `json:"field_name"`
+	OldValue     []byte             `json:"old_value"`
+	NewValue     []byte             `json:"new_value"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	Username     string             `json:"username"`
+	FirstName    string             `json:"first_name"`
+	LastName     string             `json:"last_name"`
+	TaskNumber   int32              `json:"task_number"`
+	ProjectKey   string             `json:"project_key"`
+	TaskTitle    string             `json:"task_title"`
+}
+
+// ==================== USER ACTIVITY ====================
+func (q *Queries) ListUserActivity(ctx context.Context, arg ListUserActivityParams) ([]ListUserActivityRow, error) {
+	rows, err := q.db.Query(ctx, listUserActivity, arg.ActorID, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListUserActivityRow{}
+	for rows.Next() {
+		var i ListUserActivityRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.TaskID,
+			&i.ActivityType,
+			&i.ActorID,
+			&i.FieldName,
+			&i.OldValue,
+			&i.NewValue,
+			&i.CreatedAt,
+			&i.Username,
+			&i.FirstName,
+			&i.LastName,
+			&i.TaskNumber,
+			&i.ProjectKey,
+			&i.TaskTitle,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listUserActivityDates = `-- name: ListUserActivityDates :many
+SELECT activity_date, SUM(cnt)::int as activity_count
+FROM (
+  SELECT DATE(al.created_at AT TIME ZONE 'UTC') as activity_date, COUNT(*) as cnt
+  FROM activity_log al
+  WHERE al.actor_id = $1 AND al.created_at >= $2
+  GROUP BY DATE(al.created_at AT TIME ZONE 'UTC')
+
+  UNION ALL
+
+  SELECT DATE(t.created_at AT TIME ZONE 'UTC') as activity_date, COUNT(*) as cnt
+  FROM tasks t
+  WHERE t.created_by = $1 AND t.deleted_at IS NULL AND t.created_at >= $2
+    AND NOT EXISTS (
+      SELECT 1 FROM activity_log al
+      WHERE al.task_id = t.id AND al.actor_id = $1 AND al.activity_type = 'task_created'
+    )
+  GROUP BY DATE(t.created_at AT TIME ZONE 'UTC')
+) combined
+GROUP BY activity_date
+ORDER BY activity_date ASC
+`
+
+type ListUserActivityDatesParams struct {
+	ActorID   uuid.UUID          `json:"actor_id"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}
+
+type ListUserActivityDatesRow struct {
+	ActivityDate  pgtype.Date `json:"activity_date"`
+	ActivityCount int32       `json:"activity_count"`
+}
+
+func (q *Queries) ListUserActivityDates(ctx context.Context, arg ListUserActivityDatesParams) ([]ListUserActivityDatesRow, error) {
+	rows, err := q.db.Query(ctx, listUserActivityDates, arg.ActorID, arg.CreatedAt)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListUserActivityDatesRow{}
+	for rows.Next() {
+		var i ListUserActivityDatesRow
+		if err := rows.Scan(&i.ActivityDate, &i.ActivityCount); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
