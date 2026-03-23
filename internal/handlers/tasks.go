@@ -51,6 +51,7 @@ type TaskResponse struct {
 	CreatorLastName  string            `json:"creator_last_name"`
 	Assignees       []AssigneeResponse `json:"assignees,omitempty"`
 	Labels          []TaskLabelInfo    `json:"labels,omitempty"`
+	CommentCount    int                `json:"comment_count"`
 	CreatedAt       time.Time          `json:"created_at"`
 	UpdatedAt       time.Time          `json:"updated_at"`
 }
@@ -169,6 +170,19 @@ func (h *TaskHandler) ListTasks(c *echo.Context) error {
 		search = pgtype.Text{String: s, Valid: true}
 	}
 
+	var fromDate, toDate pgtype.Timestamptz
+	if s := c.QueryParam("from_date"); s != "" {
+		if t, err := time.Parse("2006-01-02", s); err == nil {
+			fromDate = pgtype.Timestamptz{Time: t, Valid: true}
+		}
+	}
+	if s := c.QueryParam("to_date"); s != "" {
+		if t, err := time.Parse("2006-01-02", s); err == nil {
+			// Set to end of day
+			toDate = pgtype.Timestamptz{Time: t.Add(24*time.Hour - time.Nanosecond), Valid: true}
+		}
+	}
+
 	// Get filtered tasks
 	tasks, err := h.store.ListProjectTasksFiltered(ctx, store.ListProjectTasksFilteredParams{
 		ProjectID:  projectID,
@@ -180,6 +194,8 @@ func (h *TaskHandler) ListTasks(c *echo.Context) error {
 		AssignedTo: assignedToID,
 		Priority:   priority,
 		Search:     search,
+		FromDate:   fromDate,
+		ToDate:     toDate,
 	})
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to list tasks")
@@ -194,30 +210,40 @@ func (h *TaskHandler) ListTasks(c *echo.Context) error {
 		AssignedTo: assignedToID,
 		Priority:   priority,
 		Search:     search,
+		FromDate:   fromDate,
+		ToDate:     toDate,
 	})
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to count tasks")
 	}
 
-	// Convert to response format
+	// Convert to response format with enrichment
 	taskResponses := make([]TaskResponse, len(tasks))
 	for i, t := range tasks {
+		assignees := h.getTaskAssignees(ctx, t.ID)
+		labels := h.getTaskLabels(ctx, t.ID)
+
 		taskResponses[i] = TaskResponse{
-			ID:              t.ID,
-			ProjectKey:      t.ProjectKey,
-			TaskNumber:      int(t.TaskNumber),
-			TaskID:          t.ProjectKey + "-" + strconv.Itoa(int(t.TaskNumber)),
-			Title:           t.Title,
-			Description:     textToStringPtr(t.Description),
-			StateID:         t.StateID,
-			StateName:       t.StateName,
-			StateType:       t.StateType,
-			StateColor:      textToString(t.StateColor, "#6B7280"),
-			Priority:        int(t.Priority),
-			CreatedBy:       t.CreatedBy,
-			CreatorUsername: t.CreatorUsername,
-			CreatedAt:       t.CreatedAt.Time,
-			UpdatedAt:       t.UpdatedAt.Time,
+			ID:               t.ID,
+			ProjectKey:       t.ProjectKey,
+			TaskNumber:       int(t.TaskNumber),
+			TaskID:           t.ProjectKey + "-" + strconv.Itoa(int(t.TaskNumber)),
+			Title:            t.Title,
+			Description:      textToStringPtr(t.Description),
+			StateID:          t.StateID,
+			StateName:        t.StateName,
+			StateType:        t.StateType,
+			StateColor:       textToString(t.StateColor, "#6B7280"),
+			Priority:         int(t.Priority),
+			CreatedBy:        t.CreatedBy,
+			CreatorUsername:   t.CreatorUsername,
+			CreatorFirstName: t.CreatorFirstName,
+			CreatorLastName:  t.CreatorLastName,
+			Assignees:        assignees,
+			Labels:           labels,
+			CommentCount:     int(t.CommentCount),
+			CreatedAt:        t.CreatedAt.Time,
+			UpdatedAt:        t.UpdatedAt.Time,
 		}
 	}
 

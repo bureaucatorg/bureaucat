@@ -268,7 +268,8 @@ LIMIT $2 OFFSET $3;
 SELECT t.id, t.project_id, t.task_number, t.title, t.description, t.state_id, t.priority, t.created_by, t.created_at, t.updated_at, t.deleted_at,
        p.project_key,
        ps.name as state_name, ps.state_type, ps.color as state_color,
-       u.username as creator_username
+       u.username as creator_username, u.first_name as creator_first_name, u.last_name as creator_last_name,
+       (SELECT COUNT(*) FROM comments c WHERE c.task_id = t.id AND c.deleted_at IS NULL)::bigint as comment_count
 FROM tasks t
 JOIN projects p ON t.project_id = p.id
 JOIN project_states ps ON t.state_id = ps.id
@@ -281,6 +282,8 @@ WHERE t.project_id = $1
   AND (sqlc.narg('created_by')::uuid IS NULL OR t.created_by = sqlc.narg('created_by'))
   AND (sqlc.narg('assigned_to')::uuid IS NULL OR EXISTS (SELECT 1 FROM task_assignees ta WHERE ta.task_id = t.id AND ta.user_id = sqlc.narg('assigned_to')))
   AND (sqlc.narg('search')::text IS NULL OR t.title ILIKE '%' || sqlc.narg('search') || '%' OR t.description ILIKE '%' || sqlc.narg('search') || '%')
+  AND (sqlc.narg('from_date')::timestamptz IS NULL OR t.created_at >= sqlc.narg('from_date'))
+  AND (sqlc.narg('to_date')::timestamptz IS NULL OR t.created_at <= sqlc.narg('to_date'))
 ORDER BY t.created_at DESC
 LIMIT $2 OFFSET $3;
 
@@ -300,7 +303,9 @@ WHERE t.project_id = $1
   AND (sqlc.narg('priority')::int IS NULL OR t.priority = sqlc.narg('priority'))
   AND (sqlc.narg('created_by')::uuid IS NULL OR t.created_by = sqlc.narg('created_by'))
   AND (sqlc.narg('assigned_to')::uuid IS NULL OR EXISTS (SELECT 1 FROM task_assignees ta WHERE ta.task_id = t.id AND ta.user_id = sqlc.narg('assigned_to')))
-  AND (sqlc.narg('search')::text IS NULL OR t.title ILIKE '%' || sqlc.narg('search') || '%' OR t.description ILIKE '%' || sqlc.narg('search') || '%');
+  AND (sqlc.narg('search')::text IS NULL OR t.title ILIKE '%' || sqlc.narg('search') || '%' OR t.description ILIKE '%' || sqlc.narg('search') || '%')
+  AND (sqlc.narg('from_date')::timestamptz IS NULL OR t.created_at >= sqlc.narg('from_date'))
+  AND (sqlc.narg('to_date')::timestamptz IS NULL OR t.created_at <= sqlc.narg('to_date'));
 
 -- name: ListTasksByAssignee :many
 SELECT t.id, t.project_id, t.task_number, t.title, t.state_id, t.priority,

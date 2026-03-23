@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Circle, CircleDot, CheckCircle2, XCircle, Clock } from "lucide-vue-next";
+import { Circle, CircleDot, CheckCircle2, XCircle, Clock, MessageSquare } from "lucide-vue-next";
 import type { Task } from "~/types";
 import { PRIORITY_LABELS } from "~/types";
 
@@ -26,77 +26,113 @@ const stateIcon = computed(() => {
 });
 
 const priorityInfo = computed(() => PRIORITY_LABELS[props.task.priority] || PRIORITY_LABELS[0]);
+
+// Collect all people involved: creator + assignees (deduplicated)
+const involvedPeople = computed(() => {
+  const people: { id: string; firstName: string; lastName: string }[] = [];
+  const seen = new Set<string>();
+
+  if (props.task.created_by && !seen.has(props.task.created_by)) {
+    seen.add(props.task.created_by);
+    people.push({
+      id: props.task.created_by,
+      firstName: props.task.creator_first_name || "",
+      lastName: props.task.creator_last_name || "",
+    });
+  }
+
+  if (props.task.assignees) {
+    for (const a of props.task.assignees) {
+      if (!seen.has(a.user_id)) {
+        seen.add(a.user_id);
+        people.push({
+          id: a.user_id,
+          firstName: a.first_name,
+          lastName: a.last_name,
+        });
+      }
+    }
+  }
+
+  return people;
+});
 </script>
 
 <template>
   <NuxtLink :to="`/projects/${projectKey}/tasks/${task.task_number}`">
     <div
-      class="group flex items-center gap-3 rounded-lg border border-border/50 bg-background/50 p-3 transition-all hover:border-amber-500/30 hover:bg-muted/50"
+      class="task-row group grid items-center rounded-lg border border-border/50 bg-background/50 px-3 py-2.5 transition-all hover:border-amber-500/30 hover:bg-muted/50"
     >
-      <component
-        :is="stateIcon"
-        class="size-4 shrink-0"
-        :style="{ color: task.state_color }"
-      />
-      <div class="min-w-0 flex-1 flex items-center gap-8">
-        <div class="w-28 shrink-0">
-          <span class="font-mono text-sm text-muted-foreground">{{ task.task_id }}</span>
-          <div class="mt-1 flex items-center gap-2">
-            <span class="text-xs text-muted-foreground">{{ task.state_name }}</span>
-            <div
-              v-if="task.labels && task.labels.length > 0"
-              class="flex items-center gap-1"
-            >
-              <span
-                v-for="label in task.labels.slice(0, 2)"
-                :key="label.id"
-                class="rounded px-1.5 py-0.5 text-xs"
-                :style="{
-                  backgroundColor: label.color + '20',
-                  color: label.color,
-                }"
-              >
-                {{ label.name }}
-              </span>
-              <span
-                v-if="task.labels.length > 2"
-                class="text-xs text-muted-foreground"
-              >
-                +{{ task.labels.length - 2 }}
-              </span>
-            </div>
-          </div>
-        </div>
-        <span class="truncate text-sm font-medium">{{ task.title }}</span>
+      <!-- Col 1: Task ID -->
+      <span class="font-mono text-sm text-muted-foreground truncate">{{ task.task_id }}</span>
+
+      <!-- Col 2: Title -->
+      <span class="truncate text-sm font-medium min-w-0">{{ task.title }}</span>
+
+      <!-- Col 3: State badge -->
+      <div class="flex items-center gap-1 rounded-md border bg-muted/50 px-1.5 py-0.5 w-fit justify-self-end">
+        <component
+          :is="stateIcon"
+          class="size-3.5 shrink-0 stroke-[2.5]"
+          :style="{ color: task.state_color }"
+        />
+        <span class="text-xs text-muted-foreground whitespace-nowrap">{{ task.state_name }}</span>
       </div>
-      <div class="flex items-center gap-2">
+
+      <!-- Col 4: Priority badge -->
+      <div class="flex items-center gap-1 rounded-md border bg-muted/50 px-1.5 py-0.5 w-fit justify-self-end">
+        <span
+          class="size-2.5 shrink-0 rounded-full ring-1.5 ring-offset-1 ring-offset-background"
+          :style="{ backgroundColor: priorityInfo.color, '--tw-ring-color': priorityInfo.color }"
+        />
+        <span class="text-xs text-muted-foreground whitespace-nowrap">{{ priorityInfo.label }}</span>
+      </div>
+
+      <!-- Col 5: Stacked avatars -->
+      <div class="flex items-center justify-end">
         <div
-          v-if="task.assignees && task.assignees.length > 0"
+          v-if="involvedPeople.length > 0"
           class="flex -space-x-1.5"
         >
           <Avatar
-            v-for="assignee in task.assignees.slice(0, 3)"
-            :key="assignee.id"
+            v-for="person in involvedPeople.slice(0, 4)"
+            :key="person.id"
             class="size-6 border-2 border-background"
+            :title="`${person.firstName} ${person.lastName}`"
           >
-            <AvatarFallback class="text-xs">
-              {{ assignee.first_name[0] }}{{ assignee.last_name[0] }}
+            <AvatarFallback class="text-[10px]">
+              {{ person.firstName?.[0] || "" }}{{ person.lastName?.[0] || "" }}
             </AvatarFallback>
           </Avatar>
-          <div
-            v-if="task.assignees.length > 3"
-            class="flex size-6 items-center justify-center rounded-full border-2 border-background bg-muted text-xs"
+          <Avatar
+            v-if="involvedPeople.length > 4"
+            class="size-6 border-2 border-background"
+            :title="`${involvedPeople.length - 4} more`"
           >
-            +{{ task.assignees.length - 3 }}
-          </div>
+            <AvatarFallback class="text-[10px] bg-muted">
+              +{{ involvedPeople.length - 4 }}
+            </AvatarFallback>
+          </Avatar>
         </div>
+      </div>
+
+      <!-- Col 6: Comment count -->
+      <div class="flex items-center justify-end">
         <div
-          v-if="task.priority > 0"
-          class="size-2 rounded-full"
-          :style="{ backgroundColor: priorityInfo.color }"
-          :title="priorityInfo.label"
-        />
+          class="flex items-center gap-1 rounded-full bg-muted px-1.5 py-0.5"
+          :title="`${task.comment_count} comment${task.comment_count !== 1 ? 's' : ''}`"
+        >
+          <MessageSquare class="size-3 text-muted-foreground" />
+          <span class="text-xs font-medium text-muted-foreground">{{ task.comment_count }}</span>
+        </div>
       </div>
     </div>
   </NuxtLink>
 </template>
+
+<style scoped>
+.task-row {
+  grid-template-columns: 6rem 1fr 10rem 7rem 6rem 3rem;
+  column-gap: 0.375rem;
+}
+</style>

@@ -16,6 +16,7 @@ export interface Task {
   creator_last_name: string;
   assignees?: TaskAssignee[];
   labels?: TaskLabel[];
+  comment_count: number;
   created_at: string;
   updated_at: string;
 }
@@ -66,6 +67,8 @@ export interface TaskFilters {
   assigned_to?: string;
   priority?: number;
   q?: string;
+  from_date?: string;
+  to_date?: string;
 }
 
 export const PRIORITY_LABELS: Record<number, { label: string; color: string }> = {

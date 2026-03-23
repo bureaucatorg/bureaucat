@@ -42,6 +42,8 @@ export function useTasks() {
     if (filters.assigned_to) params.set("assigned_to", filters.assigned_to);
     if (filters.priority !== undefined) params.set("priority", filters.priority.toString());
     if (filters.q) params.set("q", filters.q);
+    if (filters.from_date) params.set("from_date", filters.from_date);
+    if (filters.to_date) params.set("to_date", filters.to_date);
 
     return params.toString();
   }

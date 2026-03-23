@@ -9,10 +9,13 @@ import {
   XCircle,
   Clock,
   User,
+  CalendarIcon,
 } from "lucide-vue-next";
 import type { ProjectState, TaskFilters } from "~/types";
 import type { ProjectMember } from "~/types";
 import { PRIORITY_LABELS } from "~/types";
+import type { DateValue } from "reka-ui";
+import { CalendarDate, getLocalTimeZone, today } from "@internationalized/date";
 
 const props = defineProps<{
   states: ProjectState[];
@@ -28,6 +31,23 @@ const searchQuery = ref(props.filters.q || "");
 const selectedStateId = ref(props.filters.state_id || "");
 const selectedPriority = ref(props.filters.priority?.toString() || "");
 const selectedAssignee = ref(props.filters.assigned_to || "");
+
+// Date filter state
+const fromDate = ref<DateValue | undefined>(undefined);
+const toDate = ref<DateValue | undefined>(undefined);
+const fromDateOpen = ref(false);
+const toDateOpen = ref(false);
+
+function formatDateValue(d: DateValue | undefined): string {
+  if (!d) return "";
+  return `${d.year}-${String(d.month).padStart(2, "0")}-${String(d.day).padStart(2, "0")}`;
+}
+
+function formatDateDisplay(d: DateValue | undefined): string {
+  if (!d) return "";
+  const date = new Date(d.year, d.month - 1, d.day);
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
 
 const priorities = [
   { value: "", label: "All priorities", color: "" },
@@ -87,11 +107,13 @@ function selectPriority(value: string) {
 
 const assigneeSearch = ref("");
 const assigneeOpen = ref(false);
+const highlightedIndex = ref(-1);
 
 function selectAssignee(userId: string) {
   selectedAssignee.value = userId;
   assigneeSearch.value = "";
   assigneeOpen.value = false;
+  highlightedIndex.value = -1;
 }
 
 const currentAssignee = computed(() => {
@@ -111,12 +133,70 @@ const filteredMembers = computed(() => {
   );
 });
 
+// All items: "All assignees" option + filtered members
+const allAssigneeItems = computed(() => {
+  return [{ user_id: "", first_name: "All", last_name: "assignees", username: "", email: "" }, ...filteredMembers.value];
+});
+
+function handleAssigneeKeydown(event: KeyboardEvent) {
+  const items = allAssigneeItems.value;
+  if (event.key === "ArrowDown") {
+    event.preventDefault();
+    highlightedIndex.value = Math.min(highlightedIndex.value + 1, items.length - 1);
+    scrollToHighlighted();
+  } else if (event.key === "ArrowUp") {
+    event.preventDefault();
+    highlightedIndex.value = Math.max(highlightedIndex.value - 1, 0);
+    scrollToHighlighted();
+  } else if (event.key === "Enter") {
+    event.preventDefault();
+    if (highlightedIndex.value >= 0 && highlightedIndex.value < items.length) {
+      selectAssignee(items[highlightedIndex.value].user_id);
+    }
+  } else if (event.key === "Escape") {
+    assigneeOpen.value = false;
+  }
+}
+
+function scrollToHighlighted() {
+  nextTick(() => {
+    const el = document.querySelector("[data-assignee-highlighted]");
+    el?.scrollIntoView({ block: "nearest" });
+  });
+}
+
+// Reset highlight when search changes
+watch(assigneeSearch, () => {
+  highlightedIndex.value = -1;
+});
+
+// Reset highlight when popover opens
+watch(assigneeOpen, (open) => {
+  if (open) {
+    highlightedIndex.value = -1;
+  }
+});
+
+function handleFromDateSelect(date: DateValue) {
+  fromDate.value = date;
+  fromDateOpen.value = false;
+}
+
+function handleToDateSelect(date: DateValue) {
+  toDate.value = date;
+  toDateOpen.value = false;
+}
+
 function updateFilters() {
   const filters: TaskFilters = {};
   if (searchQuery.value) filters.q = searchQuery.value;
   if (selectedStateId.value) filters.state_id = selectedStateId.value;
   if (selectedPriority.value) filters.priority = parseInt(selectedPriority.value);
   if (selectedAssignee.value) filters.assigned_to = selectedAssignee.value;
+  const fd = formatDateValue(fromDate.value);
+  const td = formatDateValue(toDate.value);
+  if (fd) filters.from_date = fd;
+  if (td) filters.to_date = td;
   emit("update:filters", filters);
 }
 
@@ -125,14 +205,16 @@ function clearFilters() {
   selectedStateId.value = "";
   selectedPriority.value = "";
   selectedAssignee.value = "";
+  fromDate.value = undefined;
+  toDate.value = undefined;
   emit("update:filters", {});
 }
 
 const hasActiveFilters = computed(() => {
-  return searchQuery.value || selectedStateId.value || selectedPriority.value || selectedAssignee.value;
+  return searchQuery.value || selectedStateId.value || selectedPriority.value || selectedAssignee.value || fromDate.value || toDate.value;
 });
 
-watch([searchQuery, selectedStateId, selectedPriority, selectedAssignee], () => {
+watch([searchQuery, selectedStateId, selectedPriority, selectedAssignee, fromDate, toDate], () => {
   updateFilters();
 });
 </script>
@@ -223,7 +305,7 @@ watch([searchQuery, selectedStateId, selectedPriority, selectedAssignee], () => 
       </DropdownMenuContent>
     </DropdownMenu>
 
-    <!-- Assignee dropdown -->
+    <!-- Assignee dropdown with keyboard navigation -->
     <Popover v-model:open="assigneeOpen">
       <PopoverTrigger as-child>
         <Button variant="outline" class="gap-1.5">
@@ -245,29 +327,32 @@ watch([searchQuery, selectedStateId, selectedPriority, selectedAssignee], () => 
               v-model="assigneeSearch"
               placeholder="Search members..."
               class="h-8 pl-8 text-sm"
+              @keydown="handleAssigneeKeydown"
             />
           </div>
         </div>
         <Separator />
         <div class="max-h-48 overflow-y-auto p-1">
           <button
-            class="flex w-full items-center rounded-sm px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground"
-            @click="selectAssignee('')"
+            v-for="(item, idx) in allAssigneeItems"
+            :key="item.user_id || '__all__'"
+            :data-assignee-highlighted="highlightedIndex === idx ? '' : undefined"
+            class="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm transition-colors"
+            :class="highlightedIndex === idx ? 'bg-accent text-accent-foreground' : 'hover:bg-accent hover:text-accent-foreground'"
+            @click="selectAssignee(item.user_id)"
+            @mouseenter="highlightedIndex = idx"
           >
-            All assignees
-          </button>
-          <button
-            v-for="member in filteredMembers"
-            :key="member.user_id"
-            class="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground"
-            @click="selectAssignee(member.user_id)"
-          >
-            <Avatar class="size-5">
-              <AvatarFallback class="text-[10px]">
-                {{ member.first_name[0] }}{{ member.last_name[0] }}
-              </AvatarFallback>
-            </Avatar>
-            {{ member.first_name }} {{ member.last_name }}
+            <template v-if="item.user_id">
+              <Avatar class="size-5">
+                <AvatarFallback class="text-[10px]">
+                  {{ item.first_name[0] }}{{ item.last_name[0] }}
+                </AvatarFallback>
+              </Avatar>
+              {{ item.first_name }} {{ item.last_name }}
+            </template>
+            <template v-else>
+              All assignees
+            </template>
           </button>
           <p
             v-if="filteredMembers.length === 0"
@@ -275,6 +360,74 @@ watch([searchQuery, selectedStateId, selectedPriority, selectedAssignee], () => 
           >
             No members found
           </p>
+        </div>
+      </PopoverContent>
+    </Popover>
+
+    <!-- From Date -->
+    <Popover v-model:open="fromDateOpen">
+      <PopoverTrigger as-child>
+        <Button variant="outline" class="gap-1.5">
+          <CalendarIcon class="size-4" />
+          <template v-if="fromDate">
+            {{ formatDateDisplay(fromDate) }}
+          </template>
+          <template v-else>
+            From
+          </template>
+          <ChevronDown class="size-3.5 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent class="w-auto p-0" align="start">
+        <Calendar
+          :model-value="fromDate"
+          layout="month-and-year"
+          @update:model-value="handleFromDateSelect"
+        />
+        <div v-if="fromDate" class="border-t px-3 py-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            class="w-full"
+            @click="fromDate = undefined; fromDateOpen = false"
+          >
+            <X class="mr-1.5 size-3.5" />
+            Clear
+          </Button>
+        </div>
+      </PopoverContent>
+    </Popover>
+
+    <!-- To Date -->
+    <Popover v-model:open="toDateOpen">
+      <PopoverTrigger as-child>
+        <Button variant="outline" class="gap-1.5">
+          <CalendarIcon class="size-4" />
+          <template v-if="toDate">
+            {{ formatDateDisplay(toDate) }}
+          </template>
+          <template v-else>
+            To
+          </template>
+          <ChevronDown class="size-3.5 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent class="w-auto p-0" align="start">
+        <Calendar
+          :model-value="toDate"
+          layout="month-and-year"
+          @update:model-value="handleToDateSelect"
+        />
+        <div v-if="toDate" class="border-t px-3 py-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            class="w-full"
+            @click="toDate = undefined; toDateOpen = false"
+          >
+            <X class="mr-1.5 size-3.5" />
+            Clear
+          </Button>
         </div>
       </PopoverContent>
     </Popover>
