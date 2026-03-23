@@ -11,6 +11,7 @@ import {
   CheckCircle2,
   XCircle,
   Clock,
+  MessageSquare,
 } from "lucide-vue-next";
 import { PRIORITY_LABELS } from "~/types";
 
@@ -41,6 +42,15 @@ async function handleCreated() {
 }
 
 // My Tasks
+interface MyTaskAssignee {
+  id: string;
+  user_id: string;
+  username: string;
+  first_name: string;
+  last_name: string;
+  avatar_url?: string;
+}
+
 interface MyTask {
   id: string;
   project_key: string;
@@ -51,6 +61,8 @@ interface MyTask {
   state_type: string;
   state_color: string;
   priority: number;
+  assignees: MyTaskAssignee[];
+  comment_count: number;
 }
 
 interface MyTasksResponse {
@@ -144,22 +156,67 @@ onMounted(() => {
               v-for="task in myTasks"
               :key="task.id"
               :to="`/projects/${task.project_key}/tasks/${task.task_number}`"
-              class="flex items-center gap-3 rounded-lg border px-4 py-3 transition-colors hover:bg-muted/50"
             >
-              <component
-                :is="getStateIcon(task.state_type)"
-                class="size-4 shrink-0"
-                :style="{ color: task.state_color || undefined }"
-              />
-              <span class="min-w-0 flex-1 truncate text-sm">{{ task.title }}</span>
-              <span
-                v-if="task.priority > 0"
-                class="size-2 shrink-0 rounded-full"
-                :style="{ backgroundColor: PRIORITY_LABELS[task.priority]?.color }"
-              />
-              <span class="shrink-0 text-xs font-medium text-muted-foreground">
-                {{ task.task_id }}
-              </span>
+              <div class="dashboard-task-row group grid items-center rounded-lg border border-border/50 bg-background/50 px-3 py-2.5 transition-all hover:border-amber-500/30 hover:bg-muted/50">
+                <span class="font-mono text-sm text-muted-foreground truncate">{{ task.task_id }}</span>
+                <span class="truncate text-sm font-medium min-w-0">{{ task.title }}</span>
+                <div class="flex items-center gap-1 rounded-md border bg-muted/50 px-1.5 py-0.5 w-fit justify-self-end">
+                  <component
+                    :is="getStateIcon(task.state_type)"
+                    class="size-3.5 shrink-0 stroke-[2.5]"
+                    :style="{ color: task.state_color || undefined }"
+                  />
+                  <span class="text-xs text-muted-foreground whitespace-nowrap">{{ task.state_name }}</span>
+                </div>
+                <div class="flex items-center gap-1 rounded-md border bg-muted/50 px-1.5 py-0.5 w-fit justify-self-end">
+                  <span
+                    class="size-2.5 shrink-0 rounded-full ring-1.5 ring-offset-1 ring-offset-background"
+                    :style="{ backgroundColor: PRIORITY_LABELS[task.priority]?.color, '--tw-ring-color': PRIORITY_LABELS[task.priority]?.color }"
+                  />
+                  <span class="text-xs text-muted-foreground whitespace-nowrap">{{ PRIORITY_LABELS[task.priority]?.label }}</span>
+                </div>
+                <div class="flex items-center justify-end">
+                  <div v-if="task.assignees?.length" class="flex -space-x-1.5">
+                    <NuxtLink
+                      v-for="person in task.assignees.slice(0, 4)"
+                      :key="person.user_id"
+                      :to="`/profile/${person.user_id}`"
+                      :title="`${person.first_name} ${person.last_name}`"
+                      class="hover:z-10"
+                      @click.stop
+                    >
+                      <Avatar class="size-6 border-2 border-background transition-transform hover:scale-110">
+                        <AvatarImage
+                          v-if="person.avatar_url"
+                          :src="person.avatar_url"
+                          :alt="`${person.first_name} ${person.last_name}`"
+                        />
+                        <AvatarFallback class="text-[10px]">
+                          {{ person.first_name?.[0] || "" }}{{ person.last_name?.[0] || "" }}
+                        </AvatarFallback>
+                      </Avatar>
+                    </NuxtLink>
+                    <Avatar
+                      v-if="task.assignees.length > 4"
+                      class="size-6 border-2 border-background"
+                      :title="`${task.assignees.length - 4} more`"
+                    >
+                      <AvatarFallback class="text-[10px] bg-muted">
+                        +{{ task.assignees.length - 4 }}
+                      </AvatarFallback>
+                    </Avatar>
+                  </div>
+                </div>
+                <div class="flex items-center justify-end">
+                  <div
+                    class="flex items-center gap-1 rounded-full bg-muted px-1.5 py-0.5"
+                    :title="`${task.comment_count} comment${task.comment_count !== 1 ? 's' : ''}`"
+                  >
+                    <MessageSquare class="size-3 text-muted-foreground" />
+                    <span class="font-mono text-xs font-medium text-muted-foreground">{{ task.comment_count }}</span>
+                  </div>
+                </div>
+              </div>
             </NuxtLink>
           </div>
         </div>
@@ -243,3 +300,10 @@ onMounted(() => {
     </main>
   </div>
 </template>
+
+<style scoped>
+.dashboard-task-row {
+  grid-template-columns: 6rem 1fr 10rem 7rem 6rem 3rem;
+  column-gap: 0.375rem;
+}
+</style>

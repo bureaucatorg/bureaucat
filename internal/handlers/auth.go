@@ -352,17 +352,30 @@ func (h *AuthHandler) GetUserProfile(c *echo.Context) error {
 	})
 }
 
+// MyTaskAssignee represents a task assignee in the my-tasks response.
+type MyTaskAssignee struct {
+	ID        uuid.UUID `json:"id"`
+	UserID    uuid.UUID `json:"user_id"`
+	Username  string    `json:"username"`
+	Email     string    `json:"email"`
+	FirstName string    `json:"first_name"`
+	LastName  string    `json:"last_name"`
+	AvatarURL *string   `json:"avatar_url,omitempty"`
+}
+
 // MyTaskItem represents a task assigned to the current user.
 type MyTaskItem struct {
-	ID         uuid.UUID `json:"id"`
-	ProjectKey string    `json:"project_key"`
-	TaskNumber int32     `json:"task_number"`
-	TaskID     string    `json:"task_id"`
-	Title      string    `json:"title"`
-	StateName  string    `json:"state_name"`
-	StateType  string    `json:"state_type"`
-	StateColor string    `json:"state_color"`
-	Priority   int32     `json:"priority"`
+	ID           uuid.UUID        `json:"id"`
+	ProjectKey   string           `json:"project_key"`
+	TaskNumber   int32            `json:"task_number"`
+	TaskID       string           `json:"task_id"`
+	Title        string           `json:"title"`
+	StateName    string           `json:"state_name"`
+	StateType    string           `json:"state_type"`
+	StateColor   string           `json:"state_color"`
+	Priority     int32            `json:"priority"`
+	Assignees    []MyTaskAssignee `json:"assignees"`
+	CommentCount int              `json:"comment_count"`
 }
 
 // MyTasksResponse represents the paginated response for user's assigned tasks.
@@ -414,16 +427,37 @@ func (h *AuthHandler) MyTasks(c *echo.Context) error {
 		if t.StateColor.Valid {
 			stateColor = t.StateColor.String
 		}
+
+		// Fetch assignees
+		assigneeRows, _ := h.store.ListTaskAssignees(ctx, t.ID)
+		assignees := make([]MyTaskAssignee, len(assigneeRows))
+		for j, a := range assigneeRows {
+			assignees[j] = MyTaskAssignee{
+				ID:        a.ID,
+				UserID:    a.UserID,
+				Username:  a.Username,
+				Email:     a.Email,
+				FirstName: a.FirstName,
+				LastName:  a.LastName,
+				AvatarURL: textToStringPtr(a.AvatarUrl),
+			}
+		}
+
+		// Fetch comment count
+		commentCount, _ := h.store.CountTaskComments(ctx, t.ID)
+
 		items[i] = MyTaskItem{
-			ID:         t.ID,
-			ProjectKey: t.ProjectKey,
-			TaskNumber: t.TaskNumber,
-			TaskID:     t.ProjectKey + "-" + strconv.Itoa(int(t.TaskNumber)),
-			Title:      t.Title,
-			StateName:  t.StateName,
-			StateType:  t.StateType,
-			StateColor: stateColor,
-			Priority:   t.Priority,
+			ID:           t.ID,
+			ProjectKey:   t.ProjectKey,
+			TaskNumber:   t.TaskNumber,
+			TaskID:       t.ProjectKey + "-" + strconv.Itoa(int(t.TaskNumber)),
+			Title:        t.Title,
+			StateName:    t.StateName,
+			StateType:    t.StateType,
+			StateColor:   stateColor,
+			Priority:     t.Priority,
+			Assignees:    assignees,
+			CommentCount: int(commentCount),
 		}
 	}
 
