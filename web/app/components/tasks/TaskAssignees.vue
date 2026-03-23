@@ -80,14 +80,16 @@ async function handleRemove(userId: string) {
         :key="assignee.id"
         class="group relative flex items-center gap-1.5 rounded-md border bg-muted/50 py-1 pl-1 pr-2.5"
       >
-        <Avatar class="size-6">
-          <AvatarFallback class="text-xs">
-            {{ assignee.first_name[0] }}{{ assignee.last_name[0] }}
-          </AvatarFallback>
-        </Avatar>
-        <span class="text-sm">
-          {{ assignee.first_name }} {{ assignee.last_name }}
-        </span>
+        <NuxtLink :to="`/profile/${assignee.user_id}`" class="flex items-center gap-1.5 hover:opacity-80 transition-opacity">
+          <Avatar class="size-6">
+            <AvatarFallback class="text-xs">
+              {{ assignee.first_name[0] }}{{ assignee.last_name[0] }}
+            </AvatarFallback>
+          </Avatar>
+          <span class="text-sm">
+            {{ assignee.first_name }} {{ assignee.last_name }}
+          </span>
+        </NuxtLink>
         <button
           v-if="isMember"
           type="button"

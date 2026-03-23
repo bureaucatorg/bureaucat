@@ -116,17 +116,19 @@ function formatDate(dateStr: string): string {
 
 <template>
   <div class="group flex gap-3">
-    <Avatar v-if="!compact" class="size-8">
-      <AvatarFallback class="text-xs">
-        {{ comment.first_name[0] }}{{ comment.last_name[0] }}
-      </AvatarFallback>
-    </Avatar>
+    <NuxtLink v-if="!compact" :to="`/profile/${comment.created_by}`" class="shrink-0">
+      <Avatar class="size-8 hover:opacity-80 transition-opacity">
+        <AvatarFallback class="text-xs">
+          {{ comment.first_name[0] }}{{ comment.last_name[0] }}
+        </AvatarFallback>
+      </Avatar>
+    </NuxtLink>
 
     <div class="min-w-0 flex-1 space-y-1">
       <div class="flex items-center gap-2">
-        <span class="text-sm font-medium">
+        <NuxtLink :to="`/profile/${comment.created_by}`" class="text-sm font-medium hover:underline">
           {{ comment.first_name }} {{ comment.last_name }}
-        </span>
+        </NuxtLink>
         <span class="text-xs text-muted-foreground">
           {{ formatDate(comment.created_at) }}
         </span>

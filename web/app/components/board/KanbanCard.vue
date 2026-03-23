@@ -93,15 +93,20 @@ function handleClick() {
         class="mt-2 flex items-center justify-end"
       >
         <div class="flex -space-x-1.5">
-          <Avatar
+          <NuxtLink
             v-for="assignee in task.assignees.slice(0, 3)"
             :key="assignee.id"
-            class="size-5 border border-background"
+            :to="`/profile/${assignee.user_id}`"
+            :title="`${assignee.first_name} ${assignee.last_name}`"
+            class="hover:z-10"
+            @click.stop
           >
-            <AvatarFallback class="text-[10px]">
-              {{ assignee.first_name[0] }}{{ assignee.last_name[0] }}
-            </AvatarFallback>
-          </Avatar>
+            <Avatar class="size-5 border border-background transition-transform hover:scale-110">
+              <AvatarFallback class="text-[10px]">
+                {{ assignee.first_name[0] }}{{ assignee.last_name[0] }}
+              </AvatarFallback>
+            </Avatar>
+          </NuxtLink>
           <div
             v-if="task.assignees.length > 3"
             class="flex size-5 items-center justify-center rounded-full border border-background bg-muted text-[10px]"

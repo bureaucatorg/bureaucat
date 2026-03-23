@@ -93,7 +93,7 @@ function formatDate(dateStr: string) {
       <TableBody>
         <TableRow v-for="member in members" :key="member.id">
           <TableCell>
-            <div class="flex items-center gap-3">
+            <NuxtLink :to="`/profile/${member.user_id}`" class="flex items-center gap-3 hover:opacity-80 transition-opacity">
               <Avatar>
                 <AvatarFallback>
                   {{ member.first_name[0] }}{{ member.last_name[0] }}
@@ -105,7 +105,7 @@ function formatDate(dateStr: string) {
                 </p>
                 <p class="text-sm text-muted-foreground">@{{ member.username }}</p>
               </div>
-            </div>
+            </NuxtLink>
           </TableCell>
           <TableCell>
             <div class="flex items-center gap-2">

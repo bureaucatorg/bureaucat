@@ -96,21 +96,25 @@ const involvedPeople = computed(() => {
           v-if="involvedPeople.length > 0"
           class="flex -space-x-1.5"
         >
-          <Avatar
+          <NuxtLink
             v-for="person in involvedPeople.slice(0, 4)"
             :key="person.id"
-            class="size-6 border-2 border-background"
+            :to="`/profile/${person.id}`"
             :title="`${person.firstName} ${person.lastName}`"
+            class="hover:z-10"
+            @click.stop
           >
-            <AvatarImage
-              v-if="person.avatarUrl"
-              :src="person.avatarUrl"
-              :alt="`${person.firstName} ${person.lastName}`"
-            />
-            <AvatarFallback class="text-[10px]">
-              {{ person.firstName?.[0] || "" }}{{ person.lastName?.[0] || "" }}
-            </AvatarFallback>
-          </Avatar>
+            <Avatar class="size-6 border-2 border-background transition-transform hover:scale-110">
+              <AvatarImage
+                v-if="person.avatarUrl"
+                :src="person.avatarUrl"
+                :alt="`${person.firstName} ${person.lastName}`"
+              />
+              <AvatarFallback class="text-[10px]">
+                {{ person.firstName?.[0] || "" }}{{ person.lastName?.[0] || "" }}
+              </AvatarFallback>
+            </Avatar>
+          </NuxtLink>
           <Avatar
             v-if="involvedPeople.length > 4"
             class="size-6 border-2 border-background"

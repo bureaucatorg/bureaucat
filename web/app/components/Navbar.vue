@@ -67,10 +67,10 @@ async function handleLogout() {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" class="w-48">
               <DropdownMenuLabel>
-                <div class="flex flex-col">
+                <NuxtLink :to="`/profile/${user?.id}`" class="flex flex-col hover:opacity-80 transition-opacity">
                   <span>{{ user?.first_name }} {{ user?.last_name }}</span>
                   <span class="text-xs font-normal text-muted-foreground">{{ user?.email }}</span>
-                </div>
+                </NuxtLink>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem as-child>
