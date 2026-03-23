@@ -749,6 +749,78 @@ func (h *AuthHandler) GetUserActivityGraph(c *echo.Context) error {
 	return c.JSON(http.StatusOK, items)
 }
 
+// GetMyNotifications returns activity on tasks the current user is involved with.
+func (h *AuthHandler) GetMyNotifications(c *echo.Context) error {
+	userIDStr := c.Request().Header.Get("X-User-ID")
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusUnauthorized, "invalid user")
+	}
+
+	page, _ := strconv.Atoi(c.QueryParam("page"))
+	if page < 1 {
+		page = 1
+	}
+	perPage, _ := strconv.Atoi(c.QueryParam("per_page"))
+	if perPage < 1 || perPage > 100 {
+		perPage = 20
+	}
+	offset := (page - 1) * perPage
+
+	ctx := c.Request().Context()
+
+	activities, err := h.store.ListUserNotifications(ctx, store.ListUserNotificationsParams{
+		ActorID: userID,
+		Limit:   int32(perPage),
+		Offset:  int32(offset),
+	})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to list notifications")
+	}
+
+	total, err := h.store.CountUserNotifications(ctx, userID)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to count notifications")
+	}
+
+	totalPages := int(total) / perPage
+	if int(total)%perPage > 0 {
+		totalPages++
+	}
+
+	items := make([]UserActivityResponse, len(activities))
+	for i, a := range activities {
+		var fieldName *string
+		if a.FieldName.Valid {
+			fieldName = &a.FieldName.String
+		}
+		items[i] = UserActivityResponse{
+			ID:           a.ID,
+			TaskID:       a.TaskID,
+			ActivityType: a.ActivityType,
+			ActorID:      a.ActorID,
+			Username:     a.Username,
+			FirstName:    a.FirstName,
+			LastName:     a.LastName,
+			FieldName:    fieldName,
+			OldValue:     parseJSONBAuth(a.OldValue),
+			NewValue:     parseJSONBAuth(a.NewValue),
+			CreatedAt:    a.CreatedAt.Time,
+			TaskNumber:   a.TaskNumber,
+			ProjectKey:   a.ProjectKey,
+			TaskTitle:    a.TaskTitle,
+		}
+	}
+
+	return c.JSON(http.StatusOK, map[string]interface{}{
+		"activities":  items,
+		"total":       total,
+		"page":        page,
+		"per_page":    perPage,
+		"total_pages": totalPages,
+	})
+}
+
 // parseJSONBAuth safely parses JSONB data.
 func parseJSONBAuth(data []byte) interface{} {
 	if data == nil {

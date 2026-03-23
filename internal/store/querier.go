@@ -29,6 +29,7 @@ type Querier interface {
 	CountTasksByAssignee(ctx context.Context, userID uuid.UUID) (int64, error)
 	CountTasksInState(ctx context.Context, stateID uuid.UUID) (int64, error)
 	CountUserActivity(ctx context.Context, actorID uuid.UUID) (int64, error)
+	CountUserNotifications(ctx context.Context, actorID uuid.UUID) (int64, error)
 	CountUserProjects(ctx context.Context, userID uuid.UUID) (int64, error)
 	CountUserProjectsFiltered(ctx context.Context, arg CountUserProjectsFilteredParams) (int64, error)
 	CountUsers(ctx context.Context) (int64, error)
@@ -103,6 +104,10 @@ type Querier interface {
 	// ==================== USER ACTIVITY ====================
 	ListUserActivity(ctx context.Context, arg ListUserActivityParams) ([]ListUserActivityRow, error)
 	ListUserActivityDates(ctx context.Context, arg ListUserActivityDatesParams) ([]ListUserActivityDatesRow, error)
+	// ==================== USER NOTIFICATIONS ====================
+	// Returns activity on all tasks the user is involved with (creator, assignee, or commenter),
+	// excluding the user's own actions. Includes synthetic entries for imported comments without activity_log rows.
+	ListUserNotifications(ctx context.Context, arg ListUserNotificationsParams) ([]ListUserNotificationsRow, error)
 	ListUserProjects(ctx context.Context, arg ListUserProjectsParams) ([]ListUserProjectsRow, error)
 	ListUserProjectsFiltered(ctx context.Context, arg ListUserProjectsFilteredParams) ([]ListUserProjectsFilteredRow, error)
 	ListUsersPaginated(ctx context.Context, arg ListUsersPaginatedParams) ([]ListUsersPaginatedRow, error)

@@ -67,6 +67,7 @@ func (s *Server) registerRoutes() {
 		protected := api.Group("", auth.Middleware(s.authManager))
 		protected.GET("/me", s.authHandler.Me)
 		protected.GET("/me/tasks", s.authHandler.MyTasks)
+		protected.GET("/me/notifications", s.authHandler.GetMyNotifications)
 		protected.GET("/users/:id", s.authHandler.GetUserProfile)
 		protected.GET("/users/:id/activity", s.authHandler.GetUserActivity)
 		protected.GET("/users/:id/activity/graph", s.authHandler.GetUserActivityGraph)

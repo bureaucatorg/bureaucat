@@ -22,8 +22,12 @@ const { user, getAuthHeader } = useAuth();
 
 const open = ref(false);
 const loading = ref(false);
+const loadingMore = ref(false);
 const activities = ref<UserActivityEntry[]>([]);
-const loaded = ref(false);
+const page = ref(1);
+const hasMore = ref(true);
+const perPage = 20;
+const maxItems = 100;
 
 const iconMap: Record<ActivityType, typeof Plus> = {
   task_created: Plus,
@@ -59,29 +63,55 @@ function formatRelativeDate(dateStr: string): string {
   });
 }
 
-async function loadActivity() {
+async function loadActivity(pageNum: number) {
   if (!user.value) return;
-  loading.value = true;
+
+  const isFirstPage = pageNum === 1;
+  if (isFirstPage) {
+    loading.value = true;
+  } else {
+    loadingMore.value = true;
+  }
+
   try {
     const response = await fetch(
-      `/api/v1/users/${user.value.id}/activity?page=1&per_page=15`,
+      `/api/v1/me/notifications?page=${pageNum}&per_page=${perPage}`,
       { headers: getAuthHeader() }
     );
     if (response.ok) {
       const data = await response.json();
-      activities.value = data.activities ?? [];
+      const items: UserActivityEntry[] = data.activities ?? [];
+      if (isFirstPage) {
+        activities.value = items;
+      } else {
+        activities.value = [...activities.value, ...items];
+      }
+      page.value = pageNum;
+      hasMore.value = items.length === perPage && activities.value.length < maxItems;
     }
   } catch {
     // silently fail
   } finally {
     loading.value = false;
-    loaded.value = true;
+    loadingMore.value = false;
+  }
+}
+
+function onScroll(e: Event) {
+  if (loadingMore.value || !hasMore.value) return;
+  const target = e.target as HTMLElement;
+  if (!target) return;
+  const nearBottom = target.scrollHeight - target.scrollTop - target.clientHeight < 80;
+  if (nearBottom) {
+    loadActivity(page.value + 1);
   }
 }
 
 watch(open, (isOpen) => {
   if (isOpen) {
-    loadActivity();
+    page.value = 1;
+    hasMore.value = true;
+    loadActivity(1);
   }
 });
 </script>
@@ -95,11 +125,11 @@ watch(open, (isOpen) => {
     </PopoverTrigger>
     <PopoverContent align="end" class="w-80 p-0">
       <div class="border-b px-4 py-3">
-        <h3 class="text-sm font-semibold">Activity</h3>
+        <h3 class="text-sm font-semibold">Notifications</h3>
       </div>
 
       <!-- Loading -->
-      <div v-if="loading && !loaded" class="flex items-center justify-center py-8">
+      <div v-if="loading" class="flex items-center justify-center py-8">
         <Loader2 class="size-5 animate-spin text-muted-foreground" />
       </div>
 
@@ -108,11 +138,11 @@ watch(open, (isOpen) => {
         v-else-if="activities.length === 0"
         class="px-4 py-8 text-center text-sm text-muted-foreground"
       >
-        No activity yet
+        No notifications yet
       </div>
 
       <!-- Activity list -->
-      <ScrollArea v-else class="h-[380px]">
+      <ScrollArea v-else class="h-[380px]" @scrollCapture="onScroll">
         <div class="divide-y">
           <NuxtLink
             v-for="activity in activities"
@@ -151,18 +181,11 @@ watch(open, (isOpen) => {
             </div>
           </NuxtLink>
         </div>
+        <!-- Loading more indicator -->
+        <div v-if="loadingMore" class="flex items-center justify-center py-3">
+          <Loader2 class="size-4 animate-spin text-muted-foreground" />
+        </div>
       </ScrollArea>
-
-      <!-- Footer -->
-      <div v-if="user" class="border-t px-4 py-2 text-center">
-        <NuxtLink
-          :to="`/profile/${user.id}`"
-          class="text-xs text-muted-foreground hover:text-foreground transition-colors"
-          @click="open = false"
-        >
-          View all activity
-        </NuxtLink>
-      </div>
     </PopoverContent>
   </Popover>
 </template>

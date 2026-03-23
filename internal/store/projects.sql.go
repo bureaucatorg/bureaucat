@@ -239,6 +239,45 @@ func (q *Queries) CountUserActivity(ctx context.Context, actorID uuid.UUID) (int
 	return column_1, err
 }
 
+const countUserNotifications = `-- name: CountUserNotifications :one
+SELECT (
+  (SELECT COUNT(*)
+   FROM activity_log al
+   JOIN tasks t ON al.task_id = t.id
+   WHERE al.actor_id != $1
+     AND t.deleted_at IS NULL
+     AND (
+       t.created_by = $1
+       OR EXISTS (SELECT 1 FROM task_assignees ta WHERE ta.task_id = t.id AND ta.user_id = $1)
+       OR EXISTS (SELECT 1 FROM comments c2 WHERE c2.task_id = t.id AND c2.created_by = $1 AND c2.deleted_at IS NULL)
+     ))
+  +
+  (SELECT COUNT(*)
+   FROM comments c
+   JOIN tasks t ON c.task_id = t.id
+   WHERE c.created_by != $1
+     AND c.deleted_at IS NULL
+     AND t.deleted_at IS NULL
+     AND (
+       t.created_by = $1
+       OR EXISTS (SELECT 1 FROM task_assignees ta WHERE ta.task_id = t.id AND ta.user_id = $1)
+       OR EXISTS (SELECT 1 FROM comments c2 WHERE c2.task_id = t.id AND c2.created_by = $1 AND c2.deleted_at IS NULL)
+     )
+     AND NOT EXISTS (
+       SELECT 1 FROM activity_log al
+       WHERE al.task_id = c.task_id AND al.actor_id = c.created_by AND al.activity_type = 'comment_created'
+         AND al.created_at = c.created_at
+     ))
+)::bigint
+`
+
+func (q *Queries) CountUserNotifications(ctx context.Context, actorID uuid.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countUserNotifications, actorID)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const countUserProjects = `-- name: CountUserProjects :one
 SELECT COUNT(*)
 FROM projects p
@@ -1943,6 +1982,116 @@ func (q *Queries) ListUserActivityDates(ctx context.Context, arg ListUserActivit
 	for rows.Next() {
 		var i ListUserActivityDatesRow
 		if err := rows.Scan(&i.ActivityDate, &i.ActivityCount); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listUserNotifications = `-- name: ListUserNotifications :many
+
+SELECT id, task_id, activity_type, actor_id, field_name, old_value, new_value, created_at,
+       username, first_name, last_name,
+       task_number, project_key, task_title
+FROM (
+  SELECT al.id, al.task_id, al.activity_type::text as activity_type, al.actor_id, al.field_name, al.old_value, al.new_value, al.created_at,
+         u.username, u.first_name, u.last_name,
+         t.task_number, p.project_key, t.title as task_title
+  FROM activity_log al
+  JOIN users u ON al.actor_id = u.id
+  JOIN tasks t ON al.task_id = t.id
+  JOIN projects p ON t.project_id = p.id
+  WHERE al.actor_id != $1
+    AND t.deleted_at IS NULL
+    AND (
+      t.created_by = $1
+      OR EXISTS (SELECT 1 FROM task_assignees ta WHERE ta.task_id = t.id AND ta.user_id = $1)
+      OR EXISTS (SELECT 1 FROM comments c2 WHERE c2.task_id = t.id AND c2.created_by = $1 AND c2.deleted_at IS NULL)
+    )
+
+  UNION ALL
+
+  SELECT c.id, c.task_id, 'comment_created'::text as activity_type, c.created_by as actor_id,
+         NULL::varchar(100) as field_name, NULL::jsonb as old_value, NULL::jsonb as new_value, c.created_at,
+         u.username, u.first_name, u.last_name,
+         t.task_number, p.project_key, t.title as task_title
+  FROM comments c
+  JOIN users u ON c.created_by = u.id
+  JOIN tasks t ON c.task_id = t.id
+  JOIN projects p ON t.project_id = p.id
+  WHERE c.created_by != $1
+    AND c.deleted_at IS NULL
+    AND t.deleted_at IS NULL
+    AND (
+      t.created_by = $1
+      OR EXISTS (SELECT 1 FROM task_assignees ta WHERE ta.task_id = t.id AND ta.user_id = $1)
+      OR EXISTS (SELECT 1 FROM comments c2 WHERE c2.task_id = t.id AND c2.created_by = $1 AND c2.deleted_at IS NULL)
+    )
+    AND NOT EXISTS (
+      SELECT 1 FROM activity_log al
+      WHERE al.task_id = c.task_id AND al.actor_id = c.created_by AND al.activity_type = 'comment_created'
+        AND al.created_at = c.created_at
+    )
+) combined
+ORDER BY created_at DESC
+LIMIT $2 OFFSET $3
+`
+
+type ListUserNotificationsParams struct {
+	ActorID uuid.UUID `json:"actor_id"`
+	Limit   int32     `json:"limit"`
+	Offset  int32     `json:"offset"`
+}
+
+type ListUserNotificationsRow struct {
+	ID           uuid.UUID          `json:"id"`
+	TaskID       uuid.UUID          `json:"task_id"`
+	ActivityType string             `json:"activity_type"`
+	ActorID      uuid.UUID          `json:"actor_id"`
+	FieldName    pgtype.Text        `json:"field_name"`
+	OldValue     []byte             `json:"old_value"`
+	NewValue     []byte             `json:"new_value"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	Username     string             `json:"username"`
+	FirstName    string             `json:"first_name"`
+	LastName     string             `json:"last_name"`
+	TaskNumber   int32              `json:"task_number"`
+	ProjectKey   string             `json:"project_key"`
+	TaskTitle    string             `json:"task_title"`
+}
+
+// ==================== USER NOTIFICATIONS ====================
+// Returns activity on all tasks the user is involved with (creator, assignee, or commenter),
+// excluding the user's own actions. Includes synthetic entries for imported comments without activity_log rows.
+func (q *Queries) ListUserNotifications(ctx context.Context, arg ListUserNotificationsParams) ([]ListUserNotificationsRow, error) {
+	rows, err := q.db.Query(ctx, listUserNotifications, arg.ActorID, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListUserNotificationsRow{}
+	for rows.Next() {
+		var i ListUserNotificationsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.TaskID,
+			&i.ActivityType,
+			&i.ActorID,
+			&i.FieldName,
+			&i.OldValue,
+			&i.NewValue,
+			&i.CreatedAt,
+			&i.Username,
+			&i.FirstName,
+			&i.LastName,
+			&i.TaskNumber,
+			&i.ProjectKey,
+			&i.TaskTitle,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
