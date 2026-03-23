@@ -14,6 +14,7 @@ import {
   ArrowRight,
   MessageSquare,
   Circle,
+  ArrowUpDown,
 } from "lucide-vue-next";
 import { toast } from "vue-sonner";
 import type { ActivityLogEntry, ActivityType, Comment } from "~/types";
@@ -39,6 +40,14 @@ const { verifyActivity } = useActivity();
 
 const verifying = ref(false);
 const verificationResult = ref<{ valid: boolean; message: string } | null>(null);
+
+const SORT_KEY = "bureaucat-activity-sort";
+const newestFirst = ref(localStorage.getItem(SORT_KEY) !== "oldest");
+
+function toggleSort() {
+  newestFirst.value = !newestFirst.value;
+  localStorage.setItem(SORT_KEY, newestFirst.value ? "newest" : "oldest");
+}
 
 // Icon map for activity types
 const iconMap: Record<ActivityType, typeof Plus> = {
@@ -126,8 +135,12 @@ const feedItems = computed<FeedItem[]>(() => {
     });
   }
 
-  // Sort by timestamp descending (newest first)
-  items.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+  // Sort by timestamp based on user preference
+  items.sort((a, b) =>
+    newestFirst.value
+      ? b.timestamp.getTime() - a.timestamp.getTime()
+      : a.timestamp.getTime() - b.timestamp.getTime()
+  );
 
   return items;
 });
@@ -284,16 +297,26 @@ function getStateChangeDetail(activity: ActivityLogEntry): { from: string; to: s
         <History class="size-4" />
         Activity
       </h3>
-      <Button
-        variant="outline"
-        size="sm"
-        :disabled="verifying"
-        @click="handleVerify"
-      >
-        <Loader2 v-if="verifying" class="mr-1.5 size-3.5 animate-spin" />
-        <ShieldCheck v-else class="mr-1.5 size-3.5" />
-        Verify Log
-      </Button>
+      <div class="flex items-center gap-2">
+        <Button
+          variant="ghost"
+          size="sm"
+          @click="toggleSort"
+        >
+          <ArrowUpDown class="mr-1.5 size-3.5" />
+          {{ newestFirst ? "Newest first" : "Oldest first" }}
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          :disabled="verifying"
+          @click="handleVerify"
+        >
+          <Loader2 v-if="verifying" class="mr-1.5 size-3.5 animate-spin" />
+          <ShieldCheck v-else class="mr-1.5 size-3.5" />
+          Verify Log
+        </Button>
+      </div>
     </div>
 
     <!-- Verification result -->
