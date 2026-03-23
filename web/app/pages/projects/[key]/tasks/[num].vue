@@ -363,6 +363,17 @@ onMounted(() => {
                     <Pencil class="size-3.5" />
                   </Button>
                 </div>
+                <div class="mt-1.5 flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <div class="flex items-center gap-1 rounded-md border bg-muted/50 py-0.5 pl-0.5 pr-1.5 w-fit">
+                    <Avatar class="size-4">
+                      <AvatarFallback class="text-[10px]">
+                        {{ currentTask.creator_first_name?.[0] }}{{ currentTask.creator_last_name?.[0] }}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span>{{ currentTask.creator_first_name }} {{ currentTask.creator_last_name }}</span>
+                  </div>
+                  <span>created on {{ formatDate(currentTask.created_at) }}</span>
+                </div>
               </div>
 
               <!-- Description -->
