@@ -209,6 +209,7 @@ async function handleDelete(template: TaskTemplate) {
                 type="submit"
                 variant="ghost"
                 size="icon"
+                aria-label="Save"
                 class="size-8"
                 :disabled="loading"
               >
@@ -219,6 +220,7 @@ async function handleDelete(template: TaskTemplate) {
                 type="button"
                 variant="ghost"
                 size="icon"
+                aria-label="Cancel"
                 class="size-8"
                 :disabled="loading"
                 @click="cancelEdit"
@@ -240,6 +242,7 @@ async function handleDelete(template: TaskTemplate) {
               v-if="isAdmin"
               variant="ghost"
               size="icon"
+              aria-label="Edit template"
               class="size-8"
               @click="startEdit(template)"
             >
@@ -249,6 +252,7 @@ async function handleDelete(template: TaskTemplate) {
               v-if="isAdmin"
               variant="ghost"
               size="icon"
+              aria-label="Delete template"
               class="size-8 text-destructive hover:text-destructive"
               :disabled="deletingId === template.id"
               @click="handleDelete(template)"

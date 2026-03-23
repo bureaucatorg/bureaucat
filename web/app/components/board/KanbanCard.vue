@@ -36,11 +36,16 @@ function handleClick() {
 <template>
   <div
     :draggable="isMember"
-    class="group cursor-pointer rounded-lg border bg-background p-3 shadow-sm transition-all hover:border-amber-500/30 hover:shadow-md"
+    role="button"
+    tabindex="0"
+    :aria-label="`Task ${task.task_id}: ${task.title}`"
+    class="group cursor-pointer rounded-lg border bg-background p-3 shadow-sm transition-all hover:border-amber-500/30 hover:shadow-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 outline-none"
     :class="{ 'cursor-grab active:cursor-grabbing': isMember }"
     @dragstart="handleDragStart"
     @dragend="handleDragEnd"
     @click="handleClick"
+    @keydown.enter="handleClick"
+    @keydown.space.prevent="handleClick"
   >
       <!-- Task ID and priority -->
       <div class="mb-2 flex items-center justify-between">

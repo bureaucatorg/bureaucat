@@ -40,7 +40,7 @@ onMounted(async () => {
   <div class="flex min-h-screen flex-col">
     <Navbar />
 
-    <main class="flex flex-1 items-center justify-center px-4 py-12">
+    <main id="main-content" class="flex flex-1 items-center justify-center px-4 py-12">
       <Card class="w-full max-w-md">
         <CardContent class="pt-6 text-center">
           <div v-if="loading" class="space-y-4 py-8">

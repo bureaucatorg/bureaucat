@@ -127,6 +127,7 @@ function formatDate(dateStr: string) {
                 <Button
                   variant="ghost"
                   size="icon"
+                  aria-label="Member actions"
                   :disabled="processingId === member.user_id"
                 >
                   <Loader2

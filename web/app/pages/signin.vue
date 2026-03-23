@@ -68,7 +68,7 @@ async function handleSubmit() {
   <div class="flex min-h-screen flex-col">
     <Navbar />
 
-    <main class="flex flex-1 items-center justify-center px-4 py-12">
+    <main id="main-content" class="flex flex-1 items-center justify-center px-4 py-12">
       <Card class="w-full max-w-md">
         <CardHeader class="space-y-1 text-center">
           <CardTitle class="text-2xl font-bold">Welcome back</CardTitle>
@@ -125,7 +125,7 @@ async function handleSubmit() {
           </div>
 
           <form @submit.prevent="handleSubmit" class="space-y-4">
-            <div v-if="error" class="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+            <div v-if="error" role="alert" class="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
               {{ error }}
             </div>
 
@@ -155,7 +155,8 @@ async function handleSubmit() {
                 />
                 <button
                   type="button"
-                  class="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  :aria-label="showPassword ? 'Hide password' : 'Show password'"
+                  class="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-sm outline-none"
                   @click="showPassword = !showPassword"
                 >
                   <Eye v-if="!showPassword" class="size-4" />

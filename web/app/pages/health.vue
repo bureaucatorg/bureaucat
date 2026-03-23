@@ -45,7 +45,7 @@ const services = computed(() => [
   <div class="flex min-h-screen flex-col">
     <Navbar />
 
-    <main class="flex-1">
+    <main id="main-content" class="flex-1">
       <div class="mx-auto max-w-2xl px-4 py-16">
         <div class="mb-8 flex items-center justify-between">
           <h1 class="text-3xl font-bold">System Health</h1>

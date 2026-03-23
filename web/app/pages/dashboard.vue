@@ -104,7 +104,7 @@ onMounted(() => {
   <div class="flex min-h-screen flex-col">
     <Navbar />
 
-    <main class="flex-1">
+    <main id="main-content" class="flex-1">
       <div class="mx-auto max-w-6xl px-6 py-12">
         <!-- Welcome Section -->
         <div class="mb-8">

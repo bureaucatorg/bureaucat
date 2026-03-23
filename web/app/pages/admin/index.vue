@@ -273,7 +273,7 @@ const adminModels = [
   <div class="flex min-h-screen flex-col">
     <Navbar />
 
-    <main class="flex-1">
+    <main id="main-content" class="flex-1">
       <div class="mx-auto max-w-6xl px-6 py-12">
         <div class="mb-8">
           <div class="flex items-center gap-3 mb-2">
@@ -536,6 +536,7 @@ const adminModels = [
                         <Button
                           variant="outline"
                           size="icon"
+                          aria-label="Copy redirect URI"
                           @click="copyToClipboard(getRedirectURI('google'), 'google-redirect')"
                         >
                           <Check v-if="copiedField === 'google-redirect'" class="size-4 text-emerald-500" />
@@ -608,6 +609,7 @@ const adminModels = [
                         <Button
                           variant="outline"
                           size="icon"
+                          aria-label="Copy redirect URI"
                           @click="copyToClipboard(getRedirectURI('zitadel'), 'zitadel-redirect')"
                         >
                           <Check v-if="copiedField === 'zitadel-redirect'" class="size-4 text-emerald-500" />

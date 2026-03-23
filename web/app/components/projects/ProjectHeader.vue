@@ -34,7 +34,8 @@ function copyLink() {
         {{ project.project_key }}
       </NuxtLink>
       <button
-        class="ml-1 rounded-md p-1 text-muted-foreground/50 hover:text-muted-foreground"
+        aria-label="Copy link"
+        class="ml-1 rounded-md p-1 text-muted-foreground/50 hover:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 outline-none"
         @click="copyLink"
       >
         <Check v-if="copied" class="size-3.5 text-emerald-500" />

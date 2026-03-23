@@ -142,7 +142,8 @@ function formatDate(dateStr: string): string {
             <Button
               variant="ghost"
               size="sm"
-              class="h-6 w-6 p-0 opacity-0 transition-opacity group-hover:opacity-100"
+              aria-label="Comment actions"
+              class="h-6 w-6 p-0 opacity-0 transition-opacity group-hover:opacity-100 focus:opacity-100"
             >
               <MoreHorizontal class="size-3.5" />
             </Button>

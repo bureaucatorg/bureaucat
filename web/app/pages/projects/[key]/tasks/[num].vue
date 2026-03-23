@@ -286,7 +286,7 @@ onMounted(() => {
   <div class="flex min-h-screen flex-col">
     <Navbar />
 
-    <main class="flex-1">
+    <main id="main-content" class="flex-1">
       <div class="mx-auto max-w-6xl px-6 py-8">
         <!-- Loading -->
         <div v-if="loading" class="flex items-center justify-center py-20">
@@ -329,7 +329,8 @@ onMounted(() => {
               {{ taskNum }}
             </NuxtLink>
             <button
-              class="ml-1 rounded-md p-1 text-muted-foreground/50 hover:text-muted-foreground"
+              aria-label="Copy link"
+              class="ml-1 rounded-md p-1 text-muted-foreground/50 hover:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 outline-none"
               @click="copyLink"
             >
               <Check v-if="copiedLink" class="size-3.5 text-emerald-500" />
@@ -373,7 +374,8 @@ onMounted(() => {
                     v-if="isMember"
                     variant="ghost"
                     size="icon"
-                    class="mt-1 size-7 opacity-0 transition-opacity group-hover:opacity-100"
+                    aria-label="Edit title"
+                    class="mt-1 size-7 opacity-0 transition-opacity group-hover:opacity-100 focus:opacity-100"
                     @click="startEditTitle"
                   >
                     <Pencil class="size-3.5" />
@@ -409,9 +411,9 @@ onMounted(() => {
 
               <!-- Description -->
               <div>
-                <h3 class="mb-2 text-sm font-medium text-muted-foreground">
+                <h2 class="mb-2 text-sm font-medium text-muted-foreground">
                   Description
-                </h3>
+                </h2>
                 <div v-if="editingDescription" class="space-y-2">
                   <TiptapEditor
                     v-model="editDescription"
@@ -444,7 +446,8 @@ onMounted(() => {
                       v-if="isMember"
                       variant="ghost"
                       size="icon"
-                      class="absolute top-0 right-0 size-7 opacity-0 transition-opacity group-hover:opacity-100"
+                      aria-label="Edit description"
+                      class="absolute top-0 right-0 size-7 opacity-0 transition-opacity group-hover:opacity-100 focus:opacity-100"
                       @click="startEditDescription"
                     >
                       <Pencil class="size-3.5" />

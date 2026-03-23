@@ -151,7 +151,8 @@ async function handleDelete(state: ProjectState) {
                   v-for="color in presetColors"
                   :key="color"
                   type="button"
-                  class="size-6 rounded border-2 transition-all"
+                  :aria-label="`Select color ${color}`"
+                  class="size-6 rounded border-2 transition-all focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 outline-none"
                   :class="{
                     'border-foreground scale-110': newState.color === color,
                     'border-transparent': newState.color !== color,
@@ -205,6 +206,7 @@ async function handleDelete(state: ProjectState) {
             v-if="isAdmin && !state.is_default"
             variant="ghost"
             size="icon"
+            aria-label="Delete state"
             class="size-8 text-destructive hover:text-destructive"
             :disabled="deletingId === state.id"
             @click="handleDelete(state)"

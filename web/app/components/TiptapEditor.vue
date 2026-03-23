@@ -70,7 +70,8 @@ function isActive(name: string, attrs?: Record<string, unknown>) {
     >
       <button
         type="button"
-        class="inline-flex size-7 items-center justify-center rounded-md hover:bg-muted"
+        aria-label="Bold"
+        class="inline-flex size-7 items-center justify-center rounded-md hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 outline-none"
         :class="{ 'bg-muted text-foreground': isActive('bold') }"
         @click="editor!.chain().focus().toggleBold().run()"
       >
@@ -78,7 +79,8 @@ function isActive(name: string, attrs?: Record<string, unknown>) {
       </button>
       <button
         type="button"
-        class="inline-flex size-7 items-center justify-center rounded-md hover:bg-muted"
+        aria-label="Italic"
+        class="inline-flex size-7 items-center justify-center rounded-md hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 outline-none"
         :class="{ 'bg-muted text-foreground': isActive('italic') }"
         @click="editor!.chain().focus().toggleItalic().run()"
       >
@@ -86,7 +88,8 @@ function isActive(name: string, attrs?: Record<string, unknown>) {
       </button>
       <button
         type="button"
-        class="inline-flex size-7 items-center justify-center rounded-md hover:bg-muted"
+        aria-label="Strikethrough"
+        class="inline-flex size-7 items-center justify-center rounded-md hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 outline-none"
         :class="{ 'bg-muted text-foreground': isActive('strike') }"
         @click="editor!.chain().focus().toggleStrike().run()"
       >
@@ -94,18 +97,20 @@ function isActive(name: string, attrs?: Record<string, unknown>) {
       </button>
       <button
         type="button"
-        class="inline-flex size-7 items-center justify-center rounded-md hover:bg-muted"
+        aria-label="Inline code"
+        class="inline-flex size-7 items-center justify-center rounded-md hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 outline-none"
         :class="{ 'bg-muted text-foreground': isActive('code') }"
         @click="editor!.chain().focus().toggleCode().run()"
       >
         <Code class="size-3.5" />
       </button>
 
-      <div class="mx-1 h-4 w-px bg-border" />
+      <div class="mx-1 h-4 w-px bg-border" role="separator" />
 
       <button
         type="button"
-        class="inline-flex size-7 items-center justify-center rounded-md hover:bg-muted"
+        aria-label="Heading 1"
+        class="inline-flex size-7 items-center justify-center rounded-md hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 outline-none"
         :class="{ 'bg-muted text-foreground': isActive('heading', { level: 1 }) }"
         @click="editor!.chain().focus().toggleHeading({ level: 1 }).run()"
       >
@@ -113,7 +118,8 @@ function isActive(name: string, attrs?: Record<string, unknown>) {
       </button>
       <button
         type="button"
-        class="inline-flex size-7 items-center justify-center rounded-md hover:bg-muted"
+        aria-label="Heading 2"
+        class="inline-flex size-7 items-center justify-center rounded-md hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 outline-none"
         :class="{ 'bg-muted text-foreground': isActive('heading', { level: 2 }) }"
         @click="editor!.chain().focus().toggleHeading({ level: 2 }).run()"
       >
@@ -121,18 +127,20 @@ function isActive(name: string, attrs?: Record<string, unknown>) {
       </button>
       <button
         type="button"
-        class="inline-flex size-7 items-center justify-center rounded-md hover:bg-muted"
+        aria-label="Heading 3"
+        class="inline-flex size-7 items-center justify-center rounded-md hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 outline-none"
         :class="{ 'bg-muted text-foreground': isActive('heading', { level: 3 }) }"
         @click="editor!.chain().focus().toggleHeading({ level: 3 }).run()"
       >
         <Heading3 class="size-3.5" />
       </button>
 
-      <div class="mx-1 h-4 w-px bg-border" />
+      <div class="mx-1 h-4 w-px bg-border" role="separator" />
 
       <button
         type="button"
-        class="inline-flex size-7 items-center justify-center rounded-md hover:bg-muted"
+        aria-label="Bullet list"
+        class="inline-flex size-7 items-center justify-center rounded-md hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 outline-none"
         :class="{ 'bg-muted text-foreground': isActive('bulletList') }"
         @click="editor!.chain().focus().toggleBulletList().run()"
       >
@@ -140,7 +148,8 @@ function isActive(name: string, attrs?: Record<string, unknown>) {
       </button>
       <button
         type="button"
-        class="inline-flex size-7 items-center justify-center rounded-md hover:bg-muted"
+        aria-label="Ordered list"
+        class="inline-flex size-7 items-center justify-center rounded-md hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 outline-none"
         :class="{ 'bg-muted text-foreground': isActive('orderedList') }"
         @click="editor!.chain().focus().toggleOrderedList().run()"
       >
@@ -148,7 +157,8 @@ function isActive(name: string, attrs?: Record<string, unknown>) {
       </button>
       <button
         type="button"
-        class="inline-flex size-7 items-center justify-center rounded-md hover:bg-muted"
+        aria-label="Blockquote"
+        class="inline-flex size-7 items-center justify-center rounded-md hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 outline-none"
         :class="{ 'bg-muted text-foreground': isActive('blockquote') }"
         @click="editor!.chain().focus().toggleBlockquote().run()"
       >
@@ -156,28 +166,31 @@ function isActive(name: string, attrs?: Record<string, unknown>) {
       </button>
       <button
         type="button"
-        class="inline-flex size-7 items-center justify-center rounded-md hover:bg-muted"
+        aria-label="Code block"
+        class="inline-flex size-7 items-center justify-center rounded-md hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 outline-none"
         :class="{ 'bg-muted text-foreground': isActive('codeBlock') }"
         @click="editor!.chain().focus().toggleCodeBlock().run()"
       >
         <CodeSquare class="size-3.5" />
       </button>
 
-      <div class="mx-1 h-4 w-px bg-border" />
+      <div class="mx-1 h-4 w-px bg-border" role="separator" />
 
       <button
         type="button"
-        class="inline-flex size-7 items-center justify-center rounded-md hover:bg-muted"
+        aria-label="Horizontal rule"
+        class="inline-flex size-7 items-center justify-center rounded-md hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 outline-none"
         @click="editor!.chain().focus().setHorizontalRule().run()"
       >
         <Minus class="size-3.5" />
       </button>
 
-      <div class="mx-1 h-4 w-px bg-border" />
+      <div class="mx-1 h-4 w-px bg-border" role="separator" />
 
       <button
         type="button"
-        class="inline-flex size-7 items-center justify-center rounded-md hover:bg-muted disabled:opacity-40"
+        aria-label="Undo"
+        class="inline-flex size-7 items-center justify-center rounded-md hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 outline-none disabled:opacity-40"
         :disabled="!editor!.can().undo()"
         @click="editor!.chain().focus().undo().run()"
       >
@@ -185,7 +198,8 @@ function isActive(name: string, attrs?: Record<string, unknown>) {
       </button>
       <button
         type="button"
-        class="inline-flex size-7 items-center justify-center rounded-md hover:bg-muted disabled:opacity-40"
+        aria-label="Redo"
+        class="inline-flex size-7 items-center justify-center rounded-md hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 outline-none disabled:opacity-40"
         :disabled="!editor!.can().redo()"
         @click="editor!.chain().focus().redo().run()"
       >

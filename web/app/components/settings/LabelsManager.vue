@@ -137,7 +137,8 @@ async function handleDelete(label: ProjectLabel) {
                   v-for="color in presetColors"
                   :key="color"
                   type="button"
-                  class="size-6 rounded border-2 transition-all"
+                  :aria-label="`Select color ${color}`"
+                  class="size-6 rounded border-2 transition-all focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 outline-none"
                   :class="{
                     'border-foreground scale-110': newLabel.color === color,
                     'border-transparent': newLabel.color !== color,
@@ -188,7 +189,8 @@ async function handleDelete(label: ProjectLabel) {
               v-for="color in presetColors"
               :key="color"
               type="button"
-              class="size-5 rounded transition-all"
+              :aria-label="`Select color ${color}`"
+              class="size-5 rounded transition-all focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 outline-none"
               :class="{
                 'ring-2 ring-foreground ring-offset-1': editForm.color === color,
               }"
@@ -199,6 +201,7 @@ async function handleDelete(label: ProjectLabel) {
           <Button
             variant="ghost"
             size="icon"
+            aria-label="Save"
             class="size-8"
             :disabled="loading"
             @click="handleUpdate"
@@ -209,6 +212,7 @@ async function handleDelete(label: ProjectLabel) {
           <Button
             variant="ghost"
             size="icon"
+            aria-label="Cancel"
             class="size-8"
             :disabled="loading"
             @click="cancelEdit"
@@ -231,6 +235,7 @@ async function handleDelete(label: ProjectLabel) {
             v-if="isAdmin"
             variant="ghost"
             size="icon"
+            aria-label="Edit label"
             class="size-8"
             @click="startEdit(label)"
           >
@@ -240,6 +245,7 @@ async function handleDelete(label: ProjectLabel) {
             v-if="isAdmin"
             variant="ghost"
             size="icon"
+            aria-label="Delete label"
             class="size-8 text-destructive hover:text-destructive"
             :disabled="deletingId === label.id"
             @click="handleDelete(label)"

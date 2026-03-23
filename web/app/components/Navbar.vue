@@ -39,7 +39,8 @@ async function handleLogout() {
           href="https://github.com/bureaucatorg/bureaucat"
           target="_blank"
           rel="noopener noreferrer"
-          class="inline-flex items-center gap-1.5 rounded-md border border-border/60 px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:border-amber-500/40 hover:text-foreground"
+          aria-label="Star on GitHub"
+          class="inline-flex items-center gap-1.5 rounded-md border border-border/60 px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:border-amber-500/40 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 outline-none"
         >
           <Star class="size-3.5" />
           <span class="hidden sm:inline">Star on GitHub</span>

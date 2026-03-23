@@ -53,13 +53,14 @@ onMounted(() => {
   <div class="flex min-h-screen flex-col">
     <Navbar />
 
-    <main class="flex-1">
+    <main id="main-content" class="flex-1">
       <div class="mx-auto max-w-6xl px-6 py-8">
         <nav class="mb-4 flex items-center gap-2 text-sm text-muted-foreground">
           <ChevronLeft class="size-4" />
           <span class="font-semibold text-amber-600 dark:text-amber-500">Projects</span>
           <button
-            class="ml-1 rounded-md p-1 text-muted-foreground/50 hover:text-muted-foreground"
+            aria-label="Copy link"
+            class="ml-1 rounded-md p-1 text-muted-foreground/50 hover:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 outline-none"
             @click="copyLink"
           >
             <Check v-if="copied" class="size-3.5 text-emerald-500" />

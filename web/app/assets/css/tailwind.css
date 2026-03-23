@@ -117,6 +117,41 @@
   body {
     @apply bg-background text-foreground;
   }
+
+  /* Cursor: pointer for all interactive elements */
+  button,
+  [role="button"],
+  a,
+  select,
+  input[type="checkbox"],
+  input[type="radio"],
+  [role="tab"],
+  [role="menuitem"],
+  [role="menuitemcheckbox"],
+  [role="menuitemradio"],
+  [role="option"],
+  [role="switch"],
+  [role="combobox"],
+  summary {
+    cursor: pointer;
+  }
+
+  /* Focus-visible ring for all interactive elements */
+  a:focus-visible,
+  select:focus-visible,
+  [role="tab"]:focus-visible,
+  [role="menuitem"]:focus-visible,
+  [role="option"]:focus-visible,
+  [role="switch"]:focus-visible,
+  summary:focus-visible {
+    @apply ring-2 ring-ring ring-offset-2 ring-offset-background outline-none;
+  }
+
+  /* Skip to main content link */
+  .skip-to-main {
+    @apply absolute -top-full left-4 z-[100] rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground;
+    @apply focus:top-4 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2;
+  }
 }
 
 /* Markdown prose styles */

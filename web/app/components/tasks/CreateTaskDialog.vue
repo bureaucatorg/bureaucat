@@ -243,7 +243,8 @@ function removeLabel(labelId: string) {
               <span class="text-sm">{{ member.first_name }} {{ member.last_name }}</span>
               <button
                 type="button"
-                class="ml-0.5 flex size-4 items-center justify-center rounded-sm hover:bg-muted"
+                :aria-label="`Remove ${member.first_name} ${member.last_name}`"
+                class="ml-0.5 flex size-4 items-center justify-center rounded-sm hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring outline-none"
                 :disabled="loading"
                 @click="removeAssignee(member.user_id)"
               >
@@ -312,7 +313,8 @@ function removeLabel(labelId: string) {
               <span class="text-sm font-medium">{{ label.name }}</span>
               <button
                 type="button"
-                class="flex size-4 items-center justify-center rounded-sm hover:opacity-70"
+                :aria-label="`Remove ${label.name}`"
+                class="flex size-4 items-center justify-center rounded-sm hover:opacity-70 focus-visible:ring-2 focus-visible:ring-ring outline-none"
                 :disabled="loading"
                 @click="removeLabel(label.id)"
               >

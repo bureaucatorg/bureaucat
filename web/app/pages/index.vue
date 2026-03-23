@@ -86,7 +86,7 @@ const features = computed(() =>
     <!-- Header -->
     <Navbar />
 
-    <main class="flex-1">
+    <main id="main-content" class="flex-1">
       <!-- Hero Section -->
       <section class="relative">
         <!-- Background decoration -->
@@ -223,7 +223,7 @@ const features = computed(() =>
                   {{ feature.stat }}
                 </span>
               </div>
-              <h3 class="text-lg font-semibold">{{ feature.title }}</h3>
+              <h2 class="text-lg font-semibold">{{ feature.title }}</h2>
               <p class="mt-2 text-sm leading-relaxed text-muted-foreground">
                 {{ feature.description }}
               </p>

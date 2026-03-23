@@ -145,7 +145,7 @@ onMounted(() => {
   <div class="flex min-h-screen flex-col">
     <Navbar />
 
-    <main class="flex-1">
+    <main id="main-content" class="flex-1">
       <div class="mx-auto max-w-6xl px-6 py-8">
         <!-- Loading -->
         <div v-if="loading" class="flex items-center justify-center py-20">
@@ -251,6 +251,7 @@ onMounted(() => {
                     <Button
                       variant="outline"
                       size="sm"
+                      aria-label="Previous page"
                       :disabled="tasksPage === 1"
                       @click="prevPage"
                     >
@@ -262,6 +263,7 @@ onMounted(() => {
                     <Button
                       variant="outline"
                       size="sm"
+                      aria-label="Next page"
                       :disabled="tasksPage >= tasksTotalPages"
                       @click="nextPage"
                     >
@@ -287,7 +289,7 @@ onMounted(() => {
             <TabsContent value="members" class="mt-6 space-y-4">
               <div class="flex items-center justify-between">
                 <div>
-                  <h3 class="text-lg font-semibold">Project Members</h3>
+                  <h2 class="text-lg font-semibold">Project Members</h2>
                   <p class="text-sm text-muted-foreground">
                     {{ members.length }} member{{ members.length !== 1 ? "s" : "" }}
                   </p>

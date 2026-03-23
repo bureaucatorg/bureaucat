@@ -118,7 +118,7 @@ onMounted(() => {
   <div class="flex min-h-screen flex-col">
     <Navbar />
 
-    <main class="flex-1">
+    <main id="main-content" class="flex-1">
       <div class="mx-auto max-w-6xl px-6 py-12">
         <div class="mb-8 flex items-center justify-between">
           <div>
@@ -137,7 +137,7 @@ onMounted(() => {
           </Button>
         </div>
 
-        <div v-if="error" class="mb-4 rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+        <div v-if="error" role="alert" class="mb-4 rounded-md bg-destructive/10 p-3 text-sm text-destructive">
           {{ error }}
         </div>
 
@@ -173,6 +173,7 @@ onMounted(() => {
                     <Button
                       variant="ghost"
                       size="icon"
+                      aria-label="Revoke token"
                       class="text-destructive hover:text-destructive"
                       @click="confirmRevoke(token)"
                     >
@@ -188,11 +189,11 @@ onMounted(() => {
               Showing {{ tokens.length }} of {{ total }} active tokens
             </p>
             <div class="flex items-center gap-2">
-              <Button variant="outline" size="sm" :disabled="page === 1" @click="prevPage">
+              <Button variant="outline" size="sm" aria-label="Previous page" :disabled="page === 1" @click="prevPage">
                 <ChevronLeft class="size-4" />
               </Button>
               <span class="text-sm">Page {{ page }} of {{ totalPages || 1 }}</span>
-              <Button variant="outline" size="sm" :disabled="page >= totalPages" @click="nextPage">
+              <Button variant="outline" size="sm" aria-label="Next page" :disabled="page >= totalPages" @click="nextPage">
                 <ChevronRight class="size-4" />
               </Button>
             </div>

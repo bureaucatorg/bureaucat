@@ -91,7 +91,8 @@ async function handleRemove(userId: string) {
         <button
           v-if="isMember"
           type="button"
-          class="absolute -top-1.5 -right-1.5 flex size-4 items-center justify-center rounded-full bg-foreground text-background opacity-0 shadow-sm transition-opacity group-hover:opacity-100"
+          :aria-label="`Remove ${assignee.first_name} ${assignee.last_name}`"
+          class="absolute -top-1.5 -right-1.5 flex size-4 items-center justify-center rounded-full bg-foreground text-background opacity-0 shadow-sm transition-opacity group-hover:opacity-100 focus:opacity-100 focus-visible:ring-2 focus-visible:ring-ring outline-none"
           :disabled="loading === assignee.user_id"
           @click="handleRemove(assignee.user_id)"
         >
