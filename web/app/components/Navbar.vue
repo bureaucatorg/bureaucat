@@ -48,6 +48,8 @@ async function handleLogout() {
 
         <ThemeToggle />
 
+        <NotificationPopover v-if="isAuthenticated" />
+
         <template v-if="!isAuthenticated">
           <NuxtLink to="/signin">
             <Button variant="ghost" size="sm">Sign In</Button>
