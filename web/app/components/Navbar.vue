@@ -104,7 +104,7 @@ async function handleLogout() {
               <template v-if="appVersion">
                 <DropdownMenuSeparator />
                 <div class="px-2 leading-none py-px text-center">
-                  <span class="font-mono text-[10px] text-muted-foreground/60">v{{ appVersion }}</span>
+                  <span class="font-mono text-[10px] text-muted-foreground/60">{{ appVersion }}</span>
                 </div>
               </template>
             </DropdownMenuContent>
