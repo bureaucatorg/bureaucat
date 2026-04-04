@@ -478,17 +478,9 @@ onMounted(() => {
                 :activities-loading="activitiesLoading"
                 :comments-loading="commentsLoading"
                 :is-member="isMember"
+                :members="members"
                 @refresh-comments="refreshComments"
                 @refresh-activity="listActivity(projectKey, taskNum)"
-              />
-
-              <!-- Comment Form -->
-              <CommentForm
-                v-if="isMember"
-                :project-key="projectKey"
-                :task-num="taskNum"
-                :members="members"
-                @created="refreshComments"
               />
             </div>
 

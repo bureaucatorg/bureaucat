@@ -17,7 +17,7 @@ import {
   ArrowUpDown,
 } from "lucide-vue-next";
 import { toast } from "vue-sonner";
-import type { ActivityLogEntry, ActivityType, Comment } from "~/types";
+import type { ActivityLogEntry, ActivityType, Comment, ProjectMember } from "~/types";
 import { ACTIVITY_TYPE_LABELS } from "~/types";
 
 const props = defineProps<{
@@ -28,6 +28,7 @@ const props = defineProps<{
   activitiesLoading?: boolean;
   commentsLoading?: boolean;
   isMember: boolean;
+  members: ProjectMember[];
 }>();
 
 const emit = defineEmits<{
@@ -336,6 +337,15 @@ function getStateChangeDetail(activity: ActivityLogEntry): { from: string; to: s
       </AlertDescription>
     </Alert>
 
+    <!-- Comment Form (newest first = top) -->
+    <CommentForm
+      v-if="isMember && newestFirst"
+      :project-key="projectKey"
+      :task-num="taskNum"
+      :members="members"
+      @created="emit('refreshComments')"
+    />
+
     <!-- Loading -->
     <div v-if="loading" class="flex items-center justify-center py-8">
       <Loader2 class="size-5 animate-spin text-muted-foreground" />
@@ -421,5 +431,14 @@ function getStateChangeDetail(activity: ActivityLogEntry): { from: string; to: s
     >
       No activity yet
     </div>
+
+    <!-- Comment Form (oldest first = bottom) -->
+    <CommentForm
+      v-if="isMember && !newestFirst"
+      :project-key="projectKey"
+      :task-num="taskNum"
+      :members="members"
+      @created="emit('refreshComments')"
+    />
   </div>
 </template>
