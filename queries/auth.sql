@@ -10,7 +10,7 @@ WHERE id = $1;
 
 -- name: GetUserByEmailOrUsername :one
 SELECT id, username, email, password_hash, first_name, last_name, user_type,
-       auth_provider, provider_user_id, created_at, updated_at
+       avatar_url, auth_provider, provider_user_id, created_at, updated_at
 FROM users
 WHERE email = $1 OR username = $1;
 

@@ -6,6 +6,7 @@ export interface ActivityLogEntry {
   username: string;
   first_name: string;
   last_name: string;
+  avatar_url?: string;
   field_name?: string;
   old_value?: unknown;
   new_value?: unknown;

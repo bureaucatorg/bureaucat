@@ -608,7 +608,7 @@ func (q *Queries) DeleteTaskTemplate(ctx context.Context, id uuid.UUID) error {
 
 const getCommentByID = `-- name: GetCommentByID :one
 SELECT c.id, c.task_id, c.content, c.version, c.created_by, c.created_at, c.updated_at, c.deleted_at,
-       u.username, u.first_name, u.last_name
+       u.username, u.first_name, u.last_name, u.avatar_url
 FROM comments c
 JOIN users u ON c.created_by = u.id
 WHERE c.id = $1 AND c.deleted_at IS NULL
@@ -626,6 +626,7 @@ type GetCommentByIDRow struct {
 	Username  string             `json:"username"`
 	FirstName string             `json:"first_name"`
 	LastName  string             `json:"last_name"`
+	AvatarUrl pgtype.Text        `json:"avatar_url"`
 }
 
 func (q *Queries) GetCommentByID(ctx context.Context, id uuid.UUID) (GetCommentByIDRow, error) {
@@ -643,6 +644,7 @@ func (q *Queries) GetCommentByID(ctx context.Context, id uuid.UUID) (GetCommentB
 		&i.Username,
 		&i.FirstName,
 		&i.LastName,
+		&i.AvatarUrl,
 	)
 	return i, err
 }
@@ -1539,7 +1541,7 @@ func (q *Queries) ListProjectTasksFiltered(ctx context.Context, arg ListProjectT
 
 const listTaskActivity = `-- name: ListTaskActivity :many
 SELECT al.id, al.task_id, al.activity_type, al.actor_id, al.field_name, al.old_value, al.new_value, al.created_at, al.checksum,
-       u.username, u.first_name, u.last_name
+       u.username, u.first_name, u.last_name, u.avatar_url
 FROM activity_log al
 JOIN users u ON al.actor_id = u.id
 WHERE al.task_id = $1
@@ -1559,6 +1561,7 @@ type ListTaskActivityRow struct {
 	Username     string             `json:"username"`
 	FirstName    string             `json:"first_name"`
 	LastName     string             `json:"last_name"`
+	AvatarUrl    pgtype.Text        `json:"avatar_url"`
 }
 
 func (q *Queries) ListTaskActivity(ctx context.Context, taskID uuid.UUID) ([]ListTaskActivityRow, error) {
@@ -1583,6 +1586,7 @@ func (q *Queries) ListTaskActivity(ctx context.Context, taskID uuid.UUID) ([]Lis
 			&i.Username,
 			&i.FirstName,
 			&i.LastName,
+			&i.AvatarUrl,
 		); err != nil {
 			return nil, err
 		}
@@ -1649,7 +1653,7 @@ func (q *Queries) ListTaskAssignees(ctx context.Context, taskID uuid.UUID) ([]Li
 
 const listTaskComments = `-- name: ListTaskComments :many
 SELECT c.id, c.task_id, c.content, c.version, c.created_by, c.created_at, c.updated_at, c.deleted_at,
-       u.username, u.first_name, u.last_name
+       u.username, u.first_name, u.last_name, u.avatar_url
 FROM comments c
 JOIN users u ON c.created_by = u.id
 WHERE c.task_id = $1 AND c.deleted_at IS NULL
@@ -1668,6 +1672,7 @@ type ListTaskCommentsRow struct {
 	Username  string             `json:"username"`
 	FirstName string             `json:"first_name"`
 	LastName  string             `json:"last_name"`
+	AvatarUrl pgtype.Text        `json:"avatar_url"`
 }
 
 func (q *Queries) ListTaskComments(ctx context.Context, taskID uuid.UUID) ([]ListTaskCommentsRow, error) {
@@ -1691,6 +1696,7 @@ func (q *Queries) ListTaskComments(ctx context.Context, taskID uuid.UUID) ([]Lis
 			&i.Username,
 			&i.FirstName,
 			&i.LastName,
+			&i.AvatarUrl,
 		); err != nil {
 			return nil, err
 		}

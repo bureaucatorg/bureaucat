@@ -41,6 +41,7 @@ type CommentResponse struct {
 	Username  string    `json:"username"`
 	FirstName string    `json:"first_name"`
 	LastName  string    `json:"last_name"`
+	AvatarURL *string   `json:"avatar_url,omitempty"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
@@ -64,6 +65,7 @@ type ActivityLogResponse struct {
 	Username     string      `json:"username"`
 	FirstName    string      `json:"first_name"`
 	LastName     string      `json:"last_name"`
+	AvatarURL    *string     `json:"avatar_url,omitempty"`
 	FieldName    *string     `json:"field_name,omitempty"`
 	OldValue     interface{} `json:"old_value,omitempty"`
 	NewValue     interface{} `json:"new_value,omitempty"`
@@ -125,6 +127,7 @@ func (h *CommentHandler) ListComments(c *echo.Context) error {
 			Username:  cm.Username,
 			FirstName: cm.FirstName,
 			LastName:  cm.LastName,
+			AvatarURL: textToStringPtr(cm.AvatarUrl),
 			CreatedAt: cm.CreatedAt.Time,
 			UpdatedAt: cm.UpdatedAt.Time,
 		}
@@ -252,6 +255,7 @@ func (h *CommentHandler) CreateComment(c *echo.Context) error {
 		Username:  fullComment.Username,
 		FirstName: fullComment.FirstName,
 		LastName:  fullComment.LastName,
+		AvatarURL: textToStringPtr(fullComment.AvatarUrl),
 		CreatedAt: fullComment.CreatedAt.Time,
 		UpdatedAt: fullComment.UpdatedAt.Time,
 	})
@@ -373,6 +377,7 @@ func (h *CommentHandler) UpdateComment(c *echo.Context) error {
 		Username:  fullComment.Username,
 		FirstName: fullComment.FirstName,
 		LastName:  fullComment.LastName,
+		AvatarURL: textToStringPtr(fullComment.AvatarUrl),
 		CreatedAt: fullComment.CreatedAt.Time,
 		UpdatedAt: fullComment.UpdatedAt.Time,
 	})
@@ -522,6 +527,7 @@ func (h *CommentHandler) GetActivity(c *echo.Context) error {
 			Username:     a.Username,
 			FirstName:    a.FirstName,
 			LastName:     a.LastName,
+			AvatarURL:    textToStringPtr(a.AvatarUrl),
 			FieldName:    fieldName,
 			OldValue:     parseJSONB(a.OldValue),
 			NewValue:     parseJSONB(a.NewValue),

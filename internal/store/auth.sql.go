@@ -289,7 +289,7 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (GetUserByEm
 
 const getUserByEmailOrUsername = `-- name: GetUserByEmailOrUsername :one
 SELECT id, username, email, password_hash, first_name, last_name, user_type,
-       auth_provider, provider_user_id, created_at, updated_at
+       avatar_url, auth_provider, provider_user_id, created_at, updated_at
 FROM users
 WHERE email = $1 OR username = $1
 `
@@ -302,6 +302,7 @@ type GetUserByEmailOrUsernameRow struct {
 	FirstName      string             `json:"first_name"`
 	LastName       string             `json:"last_name"`
 	UserType       string             `json:"user_type"`
+	AvatarUrl      pgtype.Text        `json:"avatar_url"`
 	AuthProvider   pgtype.Text        `json:"auth_provider"`
 	ProviderUserID pgtype.Text        `json:"provider_user_id"`
 	CreatedAt      pgtype.Timestamptz `json:"created_at"`
@@ -319,6 +320,7 @@ func (q *Queries) GetUserByEmailOrUsername(ctx context.Context, email string) (G
 		&i.FirstName,
 		&i.LastName,
 		&i.UserType,
+		&i.AvatarUrl,
 		&i.AuthProvider,
 		&i.ProviderUserID,
 		&i.CreatedAt,

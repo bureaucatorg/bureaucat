@@ -386,7 +386,7 @@ RETURNING id, task_id, content, version, created_by, created_at, updated_at, del
 
 -- name: GetCommentByID :one
 SELECT c.id, c.task_id, c.content, c.version, c.created_by, c.created_at, c.updated_at, c.deleted_at,
-       u.username, u.first_name, u.last_name
+       u.username, u.first_name, u.last_name, u.avatar_url
 FROM comments c
 JOIN users u ON c.created_by = u.id
 WHERE c.id = $1 AND c.deleted_at IS NULL;
@@ -406,7 +406,7 @@ WHERE id = $1 AND deleted_at IS NULL;
 
 -- name: ListTaskComments :many
 SELECT c.id, c.task_id, c.content, c.version, c.created_by, c.created_at, c.updated_at, c.deleted_at,
-       u.username, u.first_name, u.last_name
+       u.username, u.first_name, u.last_name, u.avatar_url
 FROM comments c
 JOIN users u ON c.created_by = u.id
 WHERE c.task_id = $1 AND c.deleted_at IS NULL
@@ -431,7 +431,7 @@ LIMIT 1;
 
 -- name: ListTaskActivity :many
 SELECT al.id, al.task_id, al.activity_type, al.actor_id, al.field_name, al.old_value, al.new_value, al.created_at, al.checksum,
-       u.username, u.first_name, u.last_name
+       u.username, u.first_name, u.last_name, u.avatar_url
 FROM activity_log al
 JOIN users u ON al.actor_id = u.id
 WHERE al.task_id = $1

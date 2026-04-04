@@ -82,6 +82,7 @@ async function handleRemove(userId: string) {
       >
         <NuxtLink :to="`/profile/${assignee.user_id}`" class="flex items-center gap-1.5 hover:opacity-80 transition-opacity">
           <Avatar class="size-6">
+            <AvatarImage v-if="assignee.avatar_url" :src="assignee.avatar_url" />
             <AvatarFallback class="text-xs">
               {{ assignee.first_name[0] }}{{ assignee.last_name[0] }}
             </AvatarFallback>
@@ -136,6 +137,7 @@ async function handleRemove(userId: string) {
                 @click="handleAdd(member.user_id)"
               >
                 <Avatar class="size-6">
+                  <AvatarImage v-if="member.avatar_url" :src="member.avatar_url" />
                   <AvatarFallback class="text-xs">
                     {{ member.first_name[0] }}{{ member.last_name[0] }}
                   </AvatarFallback>

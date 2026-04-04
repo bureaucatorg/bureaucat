@@ -507,6 +507,7 @@ func userFromFullUser(u store.GetUserByEmailOrUsernameRow) userInfo {
 		FirstName: u.FirstName,
 		LastName:  u.LastName,
 		UserType:  u.UserType,
+		AvatarURL: textToStringPtr(u.AvatarUrl),
 		CreatedAt: u.CreatedAt.Time,
 	}
 }
@@ -519,6 +520,7 @@ func userFromGetByIDRow(u store.GetUserByIDRow) userInfo {
 		FirstName: u.FirstName,
 		LastName:  u.LastName,
 		UserType:  u.UserType,
+		AvatarURL: textToStringPtr(u.AvatarUrl),
 		CreatedAt: u.CreatedAt.Time,
 	}
 }

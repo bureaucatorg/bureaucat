@@ -52,6 +52,10 @@ function handleKeyDown(event: KeyboardEvent) {
 <template>
   <div class="flex gap-3">
     <Avatar class="size-8">
+      <AvatarImage
+        v-if="user?.avatar_url"
+        :src="user.avatar_url"
+      />
       <AvatarFallback class="text-xs">
         {{ user?.first_name?.[0] }}{{ user?.last_name?.[0] }}
       </AvatarFallback>
