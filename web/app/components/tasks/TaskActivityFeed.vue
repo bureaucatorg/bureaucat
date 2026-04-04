@@ -403,11 +403,12 @@ function getStateChangeDetail(activity: ActivityLogEntry): { from: string; to: s
 
         <!-- Comment item -->
         <template v-else>
-          <div
-            class="relative z-10 flex size-6 shrink-0 items-center justify-center rounded-full border bg-primary text-primary-foreground"
-          >
-            <MessageSquare class="size-3" />
-          </div>
+          <Avatar class="relative z-10 size-6 shrink-0">
+            <AvatarImage v-if="item.data.avatar_url" :src="item.data.avatar_url" />
+            <AvatarFallback class="text-[10px]">
+              {{ item.data.first_name?.[0] }}{{ item.data.last_name?.[0] }}
+            </AvatarFallback>
+          </Avatar>
           <div class="min-w-0 flex-1">
             <CommentItem
               :comment="item.data"
