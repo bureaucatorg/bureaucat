@@ -108,8 +108,11 @@ function getStateIcon(stateType: string) {
 }
 
 // Tips
-const tips = [
-  "You can set your profile picture on your SSO provider (e.g. Zitadel)",
+const tips: { text: string; show: () => boolean }[] = [
+  {
+    text: "You can set your profile picture on your SSO provider (e.g. Zitadel) to make sure it shows up on your avatar across Bureaucat.",
+    show: () => !user.value?.avatar_url,
+  },
 ];
 
 const currentTip = ref<string | null>(null);
@@ -118,9 +121,9 @@ onMounted(() => {
   fetchProjects();
   fetchMyTasks();
 
-  // Show a tip with 1/5 probability
-  if (Math.random() < 0.2) {
-    currentTip.value = tips[Math.floor(Math.random() * tips.length)];
+  const applicable = tips.filter((t) => t.show());
+  if (applicable.length > 0) {
+    currentTip.value = applicable[Math.floor(Math.random() * applicable.length)].text;
   }
 });
 </script>
