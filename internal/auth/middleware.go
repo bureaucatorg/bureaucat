@@ -17,6 +17,11 @@ const (
 	HeaderUsername = "X-Username"
 	// HeaderUserType is the header name for the user type.
 	HeaderUserType = "X-User-Type"
+	// HeaderAuthMethod is the header name for the authentication method.
+	HeaderAuthMethod = "X-Auth-Method"
+
+	// AuthMethodPAT is the value for PAT authentication.
+	AuthMethodPAT = "pat"
 
 	// patPrefix is the prefix for Personal Access Tokens.
 	patPrefix = "bcat_"
@@ -62,6 +67,18 @@ func Middleware(manager *Manager, queries store.Querier) echo.MiddlewareFunc {
 	}
 }
 
+// RejectPAT returns a middleware that rejects requests authenticated via Personal Access Tokens.
+func RejectPAT() echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c *echo.Context) error {
+			if c.Request().Header.Get(HeaderAuthMethod) == AuthMethodPAT {
+				return echo.NewHTTPError(http.StatusForbidden, "personal access tokens cannot access this endpoint")
+			}
+			return next(c)
+		}
+	}
+}
+
 // authenticateWithPAT validates a Personal Access Token and sets user headers.
 func authenticateWithPAT(c *echo.Context, queries store.Querier, token string, next echo.HandlerFunc) error {
 	tokenHash := HashToken(token)
@@ -75,6 +92,7 @@ func authenticateWithPAT(c *echo.Context, queries store.Querier, token string, n
 	c.Request().Header.Set(HeaderUserID, pat.UserID.String())
 	c.Request().Header.Set(HeaderUsername, pat.Username)
 	c.Request().Header.Set(HeaderUserType, pat.UserType)
+	c.Request().Header.Set(HeaderAuthMethod, AuthMethodPAT)
 
 	// Update last_used_at in the background
 	go func() {

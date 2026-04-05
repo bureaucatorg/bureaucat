@@ -69,11 +69,12 @@ func (s *Server) registerRoutes() {
 		protected.GET("/me/tasks", s.authHandler.MyTasks)
 		protected.GET("/me/notifications", s.authHandler.GetMyNotifications)
 
-		// Personal Access Token routes
+		// Personal Access Token routes (not accessible via PAT)
 		if s.patHandler != nil {
-			protected.GET("/me/tokens", s.patHandler.ListTokens)
-			protected.POST("/me/tokens", s.patHandler.CreateToken)
-			protected.DELETE("/me/tokens/:tokenId", s.patHandler.DeleteToken)
+			patGroup := protected.Group("", auth.RejectPAT())
+			patGroup.GET("/me/tokens", s.patHandler.ListTokens)
+			patGroup.POST("/me/tokens", s.patHandler.CreateToken)
+			patGroup.DELETE("/me/tokens/:tokenId", s.patHandler.DeleteToken)
 		}
 		protected.GET("/users/:id", s.authHandler.GetUserProfile)
 		protected.GET("/users/:id/activity", s.authHandler.GetUserActivity)
@@ -152,7 +153,7 @@ func (s *Server) registerRoutes() {
 		}
 
 		// Admin routes (requires auth + admin)
-		admin := api.Group("/admin", auth.Middleware(s.authManager, s.store), auth.AdminMiddleware())
+		admin := api.Group("/admin", auth.Middleware(s.authManager, s.store), auth.RejectPAT(), auth.AdminMiddleware())
 		admin.GET("/users", s.adminHandler.ListUsers)
 		admin.POST("/users", s.adminHandler.CreateUser)
 		admin.DELETE("/users/:id", s.adminHandler.DeleteUser)
