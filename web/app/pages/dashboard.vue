@@ -108,22 +108,25 @@ function getStateIcon(stateType: string) {
 }
 
 // Tips
-const tips: { text: string; show: () => boolean }[] = [
+const { ssoProviders, fetchSSOProviders } = useSettings();
+
+const tips: { id: string; show: () => boolean }[] = [
   {
-    text: "You can set your profile picture on your SSO provider (e.g. Zitadel) to make sure it shows up on your avatar across Bureaucat.",
+    id: "avatar-sso",
     show: () => !user.value?.avatar_url,
   },
 ];
 
 const currentTip = ref<string | null>(null);
 
-onMounted(() => {
+onMounted(async () => {
   fetchProjects();
   fetchMyTasks();
+  await fetchSSOProviders();
 
   const applicable = tips.filter((t) => t.show());
   if (applicable.length > 0) {
-    currentTip.value = applicable[Math.floor(Math.random() * applicable.length)].text;
+    currentTip.value = applicable[Math.floor(Math.random() * applicable.length)].id;
   }
 });
 </script>
@@ -150,7 +153,17 @@ onMounted(() => {
           class="mb-8 flex items-center gap-3 rounded-lg bg-amber-500/10 px-4 py-3 text-sm text-amber-700 dark:text-amber-400"
         >
           <Lightbulb class="size-4 shrink-0" />
-          <span><span class="font-semibold">Tip:</span> {{ currentTip }}</span>
+          <span v-if="currentTip === 'avatar-sso'">
+            <span class="font-semibold">Tip:</span> You can set your profile picture on your SSO provider
+            (e.g. <a
+              v-if="ssoProviders.zitadel && ssoProviders.zitadel_url"
+              :href="`${ssoProviders.zitadel_url}/ui/console/users/me?id=general`"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="underline underline-offset-2 hover:text-amber-900 dark:hover:text-amber-300"
+            >Zitadel</a><span v-else>Zitadel</span>)
+            to make sure it shows up on your avatar across Bureaucat.
+          </span>
         </div>
 
         <!-- Assigned to You -->

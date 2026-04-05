@@ -210,8 +210,9 @@ type SSOSettings struct {
 
 // SSOProvidersPublicResponse is the public response showing only which providers are enabled.
 type SSOProvidersPublicResponse struct {
-	Google  bool `json:"google"`
-	Zitadel bool `json:"zitadel"`
+	Google     bool   `json:"google"`
+	Zitadel    bool   `json:"zitadel"`
+	ZitadelURL string `json:"zitadel_url,omitempty"`
 }
 
 // GetSSOProviders returns which SSO providers are enabled (public, no secrets).
@@ -241,10 +242,14 @@ func (h *SettingsHandler) GetSSOProviders(c *echo.Context) error {
 		})
 	}
 
-	return c.JSON(http.StatusOK, SSOProvidersPublicResponse{
+	resp := SSOProvidersPublicResponse{
 		Google:  sso.Google.Enabled,
 		Zitadel: sso.Zitadel.Enabled,
-	})
+	}
+	if sso.Zitadel.Enabled && sso.Zitadel.IssuerURL != "" {
+		resp.ZitadelURL = sso.Zitadel.IssuerURL
+	}
+	return c.JSON(http.StatusOK, resp)
 }
 
 // GetSSOSettings returns the full SSO config with secrets masked (admin only).

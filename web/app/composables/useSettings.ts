@@ -19,6 +19,7 @@ export interface SSOSettings {
 export interface SSOProvidersPublic {
   google: boolean;
   zitadel: boolean;
+  zitadel_url?: string;
 }
 
 export interface SignupSettings {
