@@ -12,6 +12,7 @@ import {
   XCircle,
   Clock,
   MessageSquare,
+  Lightbulb,
 } from "lucide-vue-next";
 import { PRIORITY_LABELS } from "~/types";
 
@@ -106,9 +107,21 @@ function getStateIcon(stateType: string) {
   }
 }
 
+// Tips
+const tips = [
+  "You can set your profile picture on your SSO provider (e.g. Zitadel)",
+];
+
+const currentTip = ref<string | null>(null);
+
 onMounted(() => {
   fetchProjects();
   fetchMyTasks();
+
+  // Show a tip with 1/5 probability
+  if (Math.random() < 0.2) {
+    currentTip.value = tips[Math.floor(Math.random() * tips.length)];
+  }
 });
 </script>
 
@@ -126,6 +139,15 @@ onMounted(() => {
           <p class="mt-2 text-muted-foreground">
             Here's an overview of your projects and tasks
           </p>
+        </div>
+
+        <!-- Tip -->
+        <div
+          v-if="currentTip"
+          class="mb-8 flex items-center gap-3 rounded-lg bg-amber-500/10 px-4 py-3 text-sm text-amber-700 dark:text-amber-400"
+        >
+          <Lightbulb class="size-4 shrink-0" />
+          <span><span class="font-semibold">Tip:</span> {{ currentTip }}</span>
         </div>
 
         <!-- Assigned to You -->
