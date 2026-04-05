@@ -29,6 +29,8 @@ const error = ref<string | null>(null);
 // Create form state
 const newTokenName = ref("");
 const expiryDate = ref<DateValue>();
+const expiryHour = ref("23");
+const expiryMinute = ref("59");
 const expiryPopoverOpen = ref(false);
 const createLoading = ref(false);
 
@@ -45,10 +47,13 @@ const tokenToDelete = ref<TokenInfo | null>(null);
 
 const minDate = today(getLocalTimeZone()).add({ days: 1 });
 
+const hours = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, "0"));
+const minutes = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, "0"));
+
 const formattedExpiry = computed(() => {
   if (!expiryDate.value) return "";
   const d = expiryDate.value;
-  return `${String(d.day).padStart(2, "0")}-${String(d.month).padStart(2, "0")}-${d.year}`;
+  return `${String(d.day).padStart(2, "0")}-${String(d.month).padStart(2, "0")}-${d.year} ${expiryHour.value}:${expiryMinute.value}`;
 });
 
 async function fetchTokens() {
@@ -69,11 +74,11 @@ async function handleCreate() {
   createLoading.value = true;
   error.value = null;
 
-  // Convert DateValue to RFC3339 string for the API
+  // Convert DateValue + time to RFC3339 string for the API
   let expiresAt: string | undefined;
   if (expiryDate.value) {
     const d = expiryDate.value;
-    expiresAt = `${d.year}-${String(d.month).padStart(2, "0")}-${String(d.day).padStart(2, "0")}T23:59:59Z`;
+    expiresAt = `${d.year}-${String(d.month).padStart(2, "0")}-${String(d.day).padStart(2, "0")}T${expiryHour.value}:${expiryMinute.value}:00Z`;
   }
 
   const result = await createToken(newTokenName.value.trim(), expiresAt);
@@ -86,6 +91,8 @@ async function handleCreate() {
     showCreatedDialog.value = true;
     newTokenName.value = "";
     expiryDate.value = undefined;
+    expiryHour.value = "23";
+    expiryMinute.value = "59";
     await fetchTokens();
   } else {
     error.value = result.error || "Failed to create token";
@@ -142,7 +149,6 @@ function isExpired(dateStr: string | null) {
 
 function onExpirySelect(date: DateValue) {
   expiryDate.value = date;
-  expiryPopoverOpen.value = false;
 }
 
 onMounted(() => {
@@ -221,6 +227,28 @@ onMounted(() => {
                         :min-value="minDate"
                         @update:model-value="onExpirySelect"
                       />
+                      <div class="border-t px-3 py-3">
+                        <div class="flex items-center gap-2">
+                          <Clock class="size-4 text-muted-foreground" />
+                          <Select v-model="expiryHour">
+                            <SelectTrigger class="h-8 w-[4.5rem]">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem v-for="h in hours" :key="h" :value="h">{{ h }}</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <span class="text-sm font-medium text-muted-foreground">:</span>
+                          <Select v-model="expiryMinute">
+                            <SelectTrigger class="h-8 w-[4.5rem]">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem v-for="m in minutes" :key="m" :value="m">{{ m }}</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
                     </PopoverContent>
                   </Popover>
                 </div>
