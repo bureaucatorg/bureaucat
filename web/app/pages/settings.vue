@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Key, Trash2, Loader2, Plus, Copy, Check, Eye, EyeOff, CalendarIcon, X } from "lucide-vue-next";
+import { Key, Trash2, Loader2, Plus, Copy, Check, Eye, EyeOff, CalendarIcon, X, Clock } from "lucide-vue-next";
 import { getLocalTimeZone, today } from "@internationalized/date";
 import { cn } from "@/lib/utils";
 import type { DateValue } from "reka-ui";
@@ -234,59 +234,70 @@ onMounted(() => {
           </Card>
 
           <!-- Tokens List -->
-          <Card>
-            <CardContent class="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Created</TableHead>
-                    <TableHead>Last Used</TableHead>
-                    <TableHead>Expires</TableHead>
-                    <TableHead class="w-[80px]">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  <TableRow v-if="loading">
-                    <TableCell colspan="5" class="py-8 text-center">
-                      <Loader2 class="mx-auto size-6 animate-spin" />
-                    </TableCell>
-                  </TableRow>
-                  <TableRow v-else-if="tokens.length === 0">
-                    <TableCell colspan="5" class="py-8 text-center text-muted-foreground">
-                      No tokens yet
-                    </TableCell>
-                  </TableRow>
-                  <TableRow v-for="token in tokens" :key="token.id">
-                    <TableCell class="font-medium">{{ token.name }}</TableCell>
-                    <TableCell class="text-muted-foreground">{{ formatDate(token.created_at) }}</TableCell>
-                    <TableCell class="text-muted-foreground">{{ formatDate(token.last_used_at) }}</TableCell>
-                    <TableCell>
-                      <span
-                        v-if="token.expires_at"
-                        :class="isExpired(token.expires_at) ? 'text-destructive' : 'text-muted-foreground'"
-                      >
-                        {{ formatDate(token.expires_at) }}
-                        <span v-if="isExpired(token.expires_at)" class="text-xs">(expired)</span>
-                      </span>
-                      <span v-else class="text-muted-foreground">Never</span>
-                    </TableCell>
-                    <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        aria-label="Delete token"
-                        class="text-destructive hover:text-destructive"
-                        @click="confirmDelete(token)"
-                      >
-                        <Trash2 class="size-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
+          <div v-if="loading" class="flex items-center justify-center py-12">
+            <Loader2 class="size-6 animate-spin text-muted-foreground" />
+          </div>
+
+          <div
+            v-else-if="tokens.length === 0"
+            class="flex flex-col items-center justify-center rounded-lg border border-dashed py-12"
+          >
+            <div class="flex size-12 items-center justify-center rounded-full bg-muted">
+              <Key class="size-6 text-muted-foreground" />
+            </div>
+            <p class="mt-3 text-sm text-muted-foreground">No tokens yet</p>
+            <p class="mt-1 text-xs text-muted-foreground/70">Create a token above to get started</p>
+          </div>
+
+          <div v-else class="space-y-3">
+            <div
+              v-for="token in tokens"
+              :key="token.id"
+              class="group flex items-center justify-between rounded-lg border bg-card px-4 py-3 transition-colors hover:bg-muted/50"
+            >
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-2">
+                  <Key class="size-3.5 shrink-0 text-muted-foreground" />
+                  <span class="truncate text-sm font-medium">{{ token.name }}</span>
+                  <span
+                    v-if="token.expires_at && isExpired(token.expires_at)"
+                    class="rounded-full bg-destructive/10 px-2 py-0.5 text-[10px] font-medium text-destructive"
+                  >
+                    Expired
+                  </span>
+                </div>
+                <div class="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                  <span class="flex items-center gap-1">
+                    <CalendarIcon class="size-3" />
+                    Created {{ formatDate(token.created_at) }}
+                  </span>
+                  <span v-if="token.last_used_at" class="flex items-center gap-1">
+                    <Clock class="size-3" />
+                    Last used {{ formatDate(token.last_used_at) }}
+                  </span>
+                  <span v-else class="flex items-center gap-1">
+                    <Clock class="size-3" />
+                    Never used
+                  </span>
+                  <span v-if="token.expires_at && !isExpired(token.expires_at)" class="flex items-center gap-1">
+                    Expires {{ formatDate(token.expires_at) }}
+                  </span>
+                  <span v-else-if="!token.expires_at" class="flex items-center gap-1">
+                    No expiry
+                  </span>
+                </div>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="Delete token"
+                class="shrink-0 text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
+                @click="confirmDelete(token)"
+              >
+                <Trash2 class="size-4" />
+              </Button>
+            </div>
+          </div>
         </div>
 
         <!-- Token Created Dialog -->
