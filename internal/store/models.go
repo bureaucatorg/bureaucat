@@ -216,6 +216,16 @@ type Comment struct {
 	DeletedAt pgtype.Timestamptz `json:"deleted_at"`
 }
 
+type PersonalAccessToken struct {
+	ID         uuid.UUID          `json:"id"`
+	UserID     uuid.UUID          `json:"user_id"`
+	Name       string             `json:"name"`
+	TokenHash  string             `json:"token_hash"`
+	ExpiresAt  pgtype.Timestamptz `json:"expires_at"`
+	LastUsedAt pgtype.Timestamptz `json:"last_used_at"`
+	CreatedAt  pgtype.Timestamptz `json:"created_at"`
+}
+
 type Project struct {
 	ID          uuid.UUID          `json:"id"`
 	ProjectKey  string             `json:"project_key"`

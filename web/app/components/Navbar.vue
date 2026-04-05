@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { User, LogOut, LayoutDashboard, FolderKanban, Shield, Star } from "lucide-vue-next";
+import { User, LogOut, LayoutDashboard, FolderKanban, Shield, Star, Settings } from "lucide-vue-next";
 
 const { user, isAuthenticated, logout } = useAuth();
 const { appName } = useSettings();
@@ -85,6 +85,12 @@ async function handleLogout() {
                 <NuxtLink to="/projects" class="flex cursor-pointer items-center gap-2">
                   <FolderKanban class="size-4" />
                   <span>Projects</span>
+                </NuxtLink>
+              </DropdownMenuItem>
+              <DropdownMenuItem as-child>
+                <NuxtLink to="/settings" class="flex cursor-pointer items-center gap-2">
+                  <Settings class="size-4" />
+                  <span>Settings</span>
                 </NuxtLink>
               </DropdownMenuItem>
               <template v-if="user?.user_type === 'admin'">

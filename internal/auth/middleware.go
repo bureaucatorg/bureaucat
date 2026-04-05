@@ -1,10 +1,13 @@
 package auth
 
 import (
+	"context"
 	"net/http"
 	"strings"
 
 	"github.com/labstack/echo/v5"
+
+	"bereaucat/internal/store"
 )
 
 const (
@@ -14,10 +17,13 @@ const (
 	HeaderUsername = "X-Username"
 	// HeaderUserType is the header name for the user type.
 	HeaderUserType = "X-User-Type"
+
+	// patPrefix is the prefix for Personal Access Tokens.
+	patPrefix = "bcat_"
 )
 
-// Middleware returns an Echo middleware that validates JWT tokens.
-func Middleware(manager *Manager) echo.MiddlewareFunc {
+// Middleware returns an Echo middleware that validates JWT tokens and Personal Access Tokens.
+func Middleware(manager *Manager, queries store.Querier) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c *echo.Context) error {
 			authHeader := c.Request().Header.Get("Authorization")
@@ -31,6 +37,13 @@ func Middleware(manager *Manager) echo.MiddlewareFunc {
 			}
 
 			tokenString := parts[1]
+
+			// Check if this is a Personal Access Token
+			if strings.HasPrefix(tokenString, patPrefix) {
+				return authenticateWithPAT(c, queries, tokenString, next)
+			}
+
+			// Otherwise, validate as JWT
 			claims, err := manager.ValidateAccessToken(tokenString)
 			if err != nil {
 				if err == ErrExpiredToken {
@@ -47,4 +60,26 @@ func Middleware(manager *Manager) echo.MiddlewareFunc {
 			return next(c)
 		}
 	}
+}
+
+// authenticateWithPAT validates a Personal Access Token and sets user headers.
+func authenticateWithPAT(c *echo.Context, queries store.Querier, token string, next echo.HandlerFunc) error {
+	tokenHash := HashToken(token)
+
+	pat, err := queries.GetPersonalAccessTokenByHash(c.Request().Context(), tokenHash)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusUnauthorized, "invalid token")
+	}
+
+	// Set user info from the joined user data
+	c.Request().Header.Set(HeaderUserID, pat.UserID.String())
+	c.Request().Header.Set(HeaderUsername, pat.Username)
+	c.Request().Header.Set(HeaderUserType, pat.UserType)
+
+	// Update last_used_at in the background
+	go func() {
+		_ = queries.UpdatePersonalAccessTokenLastUsed(context.Background(), pat.ID)
+	}()
+
+	return next(c)
 }

@@ -37,6 +37,7 @@ type Querier interface {
 	CreateActivityLog(ctx context.Context, arg CreateActivityLogParams) (ActivityLog, error)
 	// ==================== COMMENTS ====================
 	CreateComment(ctx context.Context, arg CreateCommentParams) (Comment, error)
+	CreatePersonalAccessToken(ctx context.Context, arg CreatePersonalAccessTokenParams) (PersonalAccessToken, error)
 	// ==================== PROJECTS ====================
 	CreateProject(ctx context.Context, arg CreateProjectParams) (Project, error)
 	// ==================== PROJECT LABELS ====================
@@ -52,6 +53,7 @@ type Querier interface {
 	CreateUpload(ctx context.Context, arg CreateUploadParams) (Upload, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (CreateUserRow, error)
 	DeleteExpiredRefreshTokens(ctx context.Context) (int64, error)
+	DeletePersonalAccessToken(ctx context.Context, arg DeletePersonalAccessTokenParams) error
 	DeleteProjectLabel(ctx context.Context, id uuid.UUID) error
 	DeleteProjectState(ctx context.Context, id uuid.UUID) error
 	DeleteTaskTemplate(ctx context.Context, id uuid.UUID) error
@@ -61,6 +63,7 @@ type Querier interface {
 	GetDefaultProjectState(ctx context.Context, projectID uuid.UUID) (ProjectState, error)
 	GetLastActivityChecksum(ctx context.Context, taskID uuid.UUID) (string, error)
 	GetNextTaskNumber(ctx context.Context, projectID uuid.UUID) (int32, error)
+	GetPersonalAccessTokenByHash(ctx context.Context, tokenHash string) (GetPersonalAccessTokenByHashRow, error)
 	GetProjectByID(ctx context.Context, id uuid.UUID) (Project, error)
 	GetProjectByKey(ctx context.Context, projectKey string) (Project, error)
 	GetProjectLabelByID(ctx context.Context, id uuid.UUID) (ProjectLabel, error)
@@ -88,6 +91,7 @@ type Querier interface {
 	ListActiveRefreshTokens(ctx context.Context, arg ListActiveRefreshTokensParams) ([]ListActiveRefreshTokensRow, error)
 	ListAllProjects(ctx context.Context, arg ListAllProjectsParams) ([]ListAllProjectsRow, error)
 	ListAllProjectsFiltered(ctx context.Context, arg ListAllProjectsFilteredParams) ([]ListAllProjectsFilteredRow, error)
+	ListPersonalAccessTokensByUser(ctx context.Context, userID uuid.UUID) ([]ListPersonalAccessTokensByUserRow, error)
 	ListProjectLabels(ctx context.Context, projectID uuid.UUID) ([]ProjectLabel, error)
 	ListProjectMembers(ctx context.Context, projectID uuid.UUID) ([]ListProjectMembersRow, error)
 	ListProjectStates(ctx context.Context, projectID uuid.UUID) ([]ProjectState, error)
@@ -122,6 +126,7 @@ type Querier interface {
 	SoftDeleteProject(ctx context.Context, id uuid.UUID) error
 	SoftDeleteTask(ctx context.Context, id uuid.UUID) error
 	UpdateComment(ctx context.Context, arg UpdateCommentParams) (Comment, error)
+	UpdatePersonalAccessTokenLastUsed(ctx context.Context, id uuid.UUID) error
 	UpdateProject(ctx context.Context, arg UpdateProjectParams) (Project, error)
 	UpdateProjectLabel(ctx context.Context, arg UpdateProjectLabelParams) (ProjectLabel, error)
 	UpdateProjectMemberRole(ctx context.Context, arg UpdateProjectMemberRoleParams) error
