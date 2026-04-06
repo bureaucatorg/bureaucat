@@ -39,3 +39,5 @@ cmd/bureaucat/migrations/*
 !cmd/bureaucat/migrations/.gitkeep
 
 *.sql
+
+garage/

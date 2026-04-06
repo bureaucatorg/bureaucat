@@ -13,8 +13,43 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      garage:
+        condition: service_healthy
     env_file:
       - .env
+
+  garage-webui:
+    image: khairul169/garage-webui:1.1.0
+    container_name: bureaucat-garage-webui
+    restart: unless-stopped
+    volumes:
+      - ./garage/garage.toml:/etc/garage.toml
+    ports:
+      - 3909:3909
+    depends_on:
+      garage:
+        condition: service_healthy
+    environment:
+      API_BASE_URL: "http://garage:3903"
+      S3_ENDPOINT_URL: "http://garage:3900"
+
+  garage:
+    image: dxflrs/garage:v2.2.0
+    restart: unless-stopped
+    container_name: bureaucat-garage
+    ports:
+      - 3900:3900 # S3 API
+      - 3903:3903 # admin API
+    volumes:
+      - ./garage/garage.toml:/etc/garage.toml
+      - ./garage/meta:/var/lib/garage/meta
+      - ./garage/data:/var/lib/garage/data
+    healthcheck:
+      test: ["CMD", "/garage", "status"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
   pgweb:
     image: sosedoff/pgweb:0.17.0

@@ -32,3 +32,5 @@ tmp
 Dockerfile.dev
 Dockerfile
 .git
+
+garage/
