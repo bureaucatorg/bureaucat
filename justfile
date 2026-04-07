@@ -29,6 +29,12 @@ release kind="patch":
     read -p "Proceed? [y/N] " confirm
     [[ "$confirm" =~ ^[yY]$ ]] || { echo "Aborted."; exit 1; }
 
+    # Update VERSION file
+    echo "${version}" > VERSION
+    git add VERSION
+    git commit -m "chore: bump version to ${version}"
+    git push origin HEAD
+
     # Tag and push
     git tag -a "${version}" -m "Release ${version}"
     git push origin "${version}"
