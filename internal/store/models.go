@@ -205,6 +205,15 @@ type ActivityLog struct {
 	Checksum     string             `json:"checksum"`
 }
 
+type Attachment struct {
+	ID         uuid.UUID          `json:"id"`
+	UploadID   uuid.UUID          `json:"upload_id"`
+	EntityType string             `json:"entity_type"`
+	EntityID   uuid.UUID          `json:"entity_id"`
+	CreatedBy  uuid.UUID          `json:"created_by"`
+	CreatedAt  pgtype.Timestamptz `json:"created_at"`
+}
+
 type Comment struct {
 	ID        uuid.UUID          `json:"id"`
 	TaskID    uuid.UUID          `json:"task_id"`

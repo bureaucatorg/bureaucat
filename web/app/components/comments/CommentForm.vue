@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Send, Loader2 } from "lucide-vue-next";
+import { Send, Loader2, Paperclip, X, FileText } from "lucide-vue-next";
 import { toast } from "vue-sonner";
 import type { ProjectMember } from "~/types";
 
@@ -14,31 +14,78 @@ const emit = defineEmits<{
 }>();
 
 const { createComment } = useComments();
+const { uploadFiles, uploading } = useFileAttach();
+const { attachFile } = useAttachments();
 const { user } = useAuth();
 
 const content = ref("");
 const loading = ref(false);
 const mentionTextareaRef = ref<InstanceType<typeof MentionTextarea> | null>(null);
+const dropZoneRef = ref<InstanceType<typeof FileDropZone> | null>(null);
+
+// Pending uploads (not yet attached to a comment)
+const pendingUploads = ref<{ uploadId: string; filename: string; mimeType: string }[]>([]);
+
+async function handleFilesDropped(files: File[]) {
+  const results = await uploadFiles(files);
+  for (const r of results) {
+    pendingUploads.value.push({
+      uploadId: r.uploadId,
+      filename: r.filename,
+      mimeType: r.mimeType,
+    });
+  }
+  if (results.length > 0) {
+    toast.success(`${results.length} file${results.length > 1 ? "s" : ""} uploaded`);
+  }
+}
+
+function removePendingUpload(index: number) {
+  pendingUploads.value.splice(index, 1);
+}
+
+function handlePaste(event: ClipboardEvent) {
+  const files = Array.from(event.clipboardData?.files || []);
+  if (files.length > 0) {
+    event.preventDefault();
+    handleFilesDropped(files);
+  }
+}
+
+function isImage(mimeType: string): boolean {
+  return mimeType.startsWith("image/");
+}
 
 async function handleSubmit() {
-  if (!content.value.trim()) return;
+  if (!content.value.trim() && pendingUploads.value.length === 0) return;
 
-  // Convert @Name display text to markdown links before sending
   const markdownContent = mentionTextareaRef.value?.getMarkdownContent() ?? content.value;
 
   loading.value = true;
   const result = await createComment(props.projectKey, props.taskNum, {
-    content: markdownContent,
+    content: markdownContent || "(attachment)",
   });
-  loading.value = false;
 
-  if (result.success) {
+  if (result.success && result.data) {
+    // Attach pending files to the new comment
+    for (const upload of pendingUploads.value) {
+      await attachFile(
+        props.projectKey,
+        props.taskNum,
+        "comment",
+        upload.uploadId,
+        result.data.id
+      );
+    }
+
     content.value = "";
+    pendingUploads.value = [];
     mentionTextareaRef.value?.clearMentions();
     emit("created");
   } else {
     toast.error(result.error || "Failed to add comment");
   }
+  loading.value = false;
 }
 
 function handleKeyDown(event: KeyboardEvent) {
@@ -61,31 +108,74 @@ function handleKeyDown(event: KeyboardEvent) {
       </AvatarFallback>
     </Avatar>
 
-    <form class="flex-1 space-y-2" @submit.prevent="handleSubmit">
-      <MentionTextarea
-        ref="mentionTextareaRef"
-        v-model="content"
-        placeholder="Add a comment..."
-        :rows="2"
-        :disabled="loading"
-        :members="members"
-        @keydown="handleKeyDown"
-      />
-      <div class="flex items-center justify-between">
-        <p class="text-xs text-muted-foreground">
-          <kbd class="rounded border px-1 py-0.5 text-[10px]">
-            {{ navigator?.platform?.includes("Mac") ? "⌘" : "Ctrl" }}
-          </kbd>
-          +
-          <kbd class="rounded border px-1 py-0.5 text-[10px]">Enter</kbd>
-          to submit
-        </p>
-        <Button type="submit" size="sm" :disabled="loading || !content.trim()">
-          <Loader2 v-if="loading" class="mr-1.5 size-3.5 animate-spin" />
-          <Send v-else class="mr-1.5 size-3.5" />
-          Comment
-        </Button>
-      </div>
-    </form>
+    <FileDropZone
+      ref="dropZoneRef"
+      class="flex-1"
+      :disabled="loading"
+      :uploading="uploading"
+      :show-button="false"
+      accept="*/*"
+      @files-dropped="handleFilesDropped"
+    >
+      <form class="space-y-2" @submit.prevent="handleSubmit" @paste="handlePaste">
+        <MentionTextarea
+          ref="mentionTextareaRef"
+          v-model="content"
+          placeholder="Add a comment... (drop files to attach)"
+          :rows="2"
+          :disabled="loading || uploading"
+          :members="members"
+          @keydown="handleKeyDown"
+        />
+
+        <!-- Pending uploads -->
+        <div v-if="pendingUploads.length > 0" class="flex flex-wrap gap-1.5">
+          <div
+            v-for="(upload, index) in pendingUploads"
+            :key="upload.uploadId"
+            class="flex items-center gap-1.5 rounded-md border bg-muted/30 px-2 py-1 text-xs"
+          >
+            <FileText v-if="!isImage(upload.mimeType)" class="size-3 text-muted-foreground" />
+            <span class="max-w-[120px] truncate">{{ upload.filename }}</span>
+            <button
+              type="button"
+              class="text-muted-foreground hover:text-destructive"
+              @click="removePendingUpload(index)"
+            >
+              <X class="size-3" />
+            </button>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between">
+          <p class="text-xs text-muted-foreground">
+            <kbd class="rounded border px-1 py-0.5 text-[10px]">
+              {{ navigator?.platform?.includes("Mac") ? "⌘" : "Ctrl" }}
+            </kbd>
+            +
+            <kbd class="rounded border px-1 py-0.5 text-[10px]">Enter</kbd>
+            to submit
+          </p>
+          <div class="flex items-center gap-1">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              :disabled="loading || uploading"
+              aria-label="Attach file"
+              @click="dropZoneRef?.openFilePicker()"
+            >
+              <Loader2 v-if="uploading" class="size-3.5 animate-spin" />
+              <Paperclip v-else class="size-3.5" />
+            </Button>
+            <Button type="submit" size="sm" :disabled="loading || uploading || (!content.trim() && pendingUploads.length === 0)">
+              <Loader2 v-if="loading" class="mr-1.5 size-3.5 animate-spin" />
+              <Send v-else class="mr-1.5 size-3.5" />
+              Comment
+            </Button>
+          </div>
+        </div>
+      </form>
+    </FileDropZone>
   </div>
 </template>

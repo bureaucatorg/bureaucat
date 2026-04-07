@@ -139,6 +139,17 @@ func (s *Server) registerRoutes() {
 				projectGroup.DELETE("/tasks/:taskNum/labels/:labelId", s.taskHandler.RemoveLabel, auth.ProjectRoleMiddleware("member"))
 			}
 
+			// Attachments
+			if s.attachmentHandler != nil {
+				projectGroup.GET("/tasks/:taskNum/attachments", s.attachmentHandler.ListTaskAttachments)
+				projectGroup.POST("/tasks/:taskNum/attachments", s.attachmentHandler.AttachToTask, auth.ProjectRoleMiddleware("member"))
+				projectGroup.DELETE("/tasks/:taskNum/attachments/:attachmentId", s.attachmentHandler.DeleteTaskAttachment, auth.ProjectRoleMiddleware("member"))
+
+				projectGroup.GET("/tasks/:taskNum/comments/:commentId/attachments", s.attachmentHandler.ListCommentAttachments)
+				projectGroup.POST("/tasks/:taskNum/comments/:commentId/attachments", s.attachmentHandler.AttachToComment, auth.ProjectRoleMiddleware("member"))
+				projectGroup.DELETE("/tasks/:taskNum/comments/:commentId/attachments/:attachmentId", s.attachmentHandler.DeleteCommentAttachment, auth.ProjectRoleMiddleware("member"))
+			}
+
 			// Comments and Activity
 			if s.commentHandler != nil {
 				projectGroup.GET("/tasks/:taskNum/comments", s.commentHandler.ListComments)

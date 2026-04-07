@@ -1,8 +1,8 @@
 package handlers
 
 import (
+	"io"
 	"net/http"
-	"os"
 
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v5"
@@ -38,7 +38,7 @@ type UploadResponse struct {
 // Upload handles file uploads.
 //
 //	@Summary		Upload file
-//	@Description	Upload an image file (jpeg, png, gif, webp). Max 5MB.
+//	@Description	Upload a file (images, PDFs, documents). Max 10MB.
 //	@Tags			Uploads
 //	@Accept			multipart/form-data
 //	@Produce		json
@@ -62,14 +62,11 @@ func (h *UploadHandler) Upload(c *echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "file is required")
 	}
 
-	// Save file to disk
+	// Save file to S3
 	result, err := h.uploadService.SaveFile(file)
 	if err != nil {
 		if err == uploads.ErrFileTooLarge {
-			return echo.NewHTTPError(http.StatusBadRequest, "file exceeds maximum size (5MB)")
-		}
-		if err == uploads.ErrInvalidMimeType {
-			return echo.NewHTTPError(http.StatusBadRequest, "file type not allowed (only images: jpeg, png, gif, webp)")
+			return echo.NewHTTPError(http.StatusBadRequest, "file exceeds maximum size (10MB)")
 		}
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to save file")
 	}
@@ -85,7 +82,7 @@ func (h *UploadHandler) Upload(c *echo.Context) error {
 		UploadedBy: userID,
 	})
 	if err != nil {
-		// Clean up the file on database error
+		// Clean up the S3 object on database error
 		h.uploadService.DeleteFile(result.StoredName)
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to save upload record")
 	}
@@ -99,7 +96,7 @@ func (h *UploadHandler) Upload(c *echo.Context) error {
 	})
 }
 
-// Serve serves an uploaded file.
+// Serve serves an uploaded file by streaming it from S3.
 //
 //	@Summary		Serve uploaded file
 //	@Description	Serve a previously uploaded file by its ID.
@@ -125,19 +122,18 @@ func (h *UploadHandler) Serve(c *echo.Context) error {
 		return echo.NewHTTPError(http.StatusNotFound, "upload not found")
 	}
 
-	// Get file path
-	filePath := h.uploadService.GetFilePath(upload.StoredName)
-
-	// Check if file exists
-	if _, err := os.Stat(filePath); os.IsNotExist(err) {
+	// Stream file from S3
+	reader, err := h.uploadService.GetFile(upload.StoredName)
+	if err != nil {
 		return echo.NewHTTPError(http.StatusNotFound, "file not found")
 	}
+	defer reader.Close()
 
-	// Set content type header
+	// Set response headers
 	c.Response().Header().Set("Content-Type", upload.MimeType)
-
-	// Set cache headers (1 hour)
 	c.Response().Header().Set("Cache-Control", "public, max-age=3600")
 
-	return c.File(filePath)
+	c.Response().WriteHeader(http.StatusOK)
+	_, err = io.Copy(c.Response(), reader)
+	return err
 }

@@ -3,6 +3,7 @@ import { MoreHorizontal, Pencil, Trash2, Loader2, Check, X, ChevronDown, Chevron
 import { marked } from "marked";
 import { toast } from "vue-sonner";
 import type { Comment } from "~/types";
+import type { Attachment } from "~/composables/useAttachments";
 
 const renderer = new marked.Renderer();
 renderer.link = ({ href, title, text }) => {
@@ -39,15 +40,47 @@ const emit = defineEmits<{
 }>();
 
 const { updateComment, deleteComment } = useComments();
+const { listAttachments, deleteAttachment } = useAttachments();
 
 const editing = ref(false);
 const editContent = ref("");
 const loading = ref(false);
 const showHistory = ref(false);
 
+// Attachments
+const attachments = ref<Attachment[]>([]);
+const attachmentsLoading = ref(false);
+
 const renderedContent = computed(() => {
   return marked(props.comment.content) as string;
 });
+
+async function loadAttachments() {
+  attachmentsLoading.value = true;
+  const result = await listAttachments(
+    props.projectKey,
+    props.taskNum,
+    "comment",
+    props.comment.id
+  );
+  if (result.success && result.data) {
+    attachments.value = result.data;
+  }
+  attachmentsLoading.value = false;
+}
+
+async function handleDeleteAttachment(attachmentId: string) {
+  const result = await deleteAttachment(
+    props.projectKey,
+    props.taskNum,
+    "comment",
+    attachmentId,
+    props.comment.id
+  );
+  if (result.success) {
+    attachments.value = attachments.value.filter((a) => a.id !== attachmentId);
+  }
+}
 
 function startEdit() {
   editing.value = true;
@@ -112,6 +145,10 @@ function formatDate(dateStr: string): string {
     year: date.getFullYear() !== now.getFullYear() ? "numeric" : undefined,
   });
 }
+
+onMounted(() => {
+  loadAttachments();
+});
 </script>
 
 <template>
@@ -192,6 +229,14 @@ function formatDate(dateStr: string): string {
         <div
           class="prose prose-sm max-w-none overflow-hidden break-words dark:prose-invert"
           v-html="renderedContent"
+        />
+
+        <!-- Attachments -->
+        <AttachmentList
+          :attachments="attachments"
+          :can-delete="canEdit"
+          :loading="attachmentsLoading"
+          @delete="handleDeleteAttachment"
         />
 
         <!-- Edit history toggle -->

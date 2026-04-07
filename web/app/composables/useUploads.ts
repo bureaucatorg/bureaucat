@@ -1,10 +1,9 @@
 interface UploadResponse {
   id: string;
   filename: string;
-  content_type: string;
-  size: number;
+  mime_type: string;
+  size_bytes: number;
   url: string;
-  created_at: string;
 }
 
 export function useUploads() {

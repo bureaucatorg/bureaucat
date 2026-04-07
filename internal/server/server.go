@@ -42,7 +42,8 @@ type Server struct {
 	uploadHandler   *handlers.UploadHandler
 	projectHandler  *handlers.ProjectHandler
 	taskHandler     *handlers.TaskHandler
-	commentHandler  *handlers.CommentHandler
+	commentHandler    *handlers.CommentHandler
+	attachmentHandler *handlers.AttachmentHandler
 	settingsHandler *handlers.SettingsHandler
 	ogHandler       *handlers.OGHandler
 	importHandler   *handlers.ImportHandler
@@ -99,19 +100,18 @@ func New(devMode bool, dbURL string, authConfig AuthConfig, distFS fs.FS) (*Serv
 		srv.authHandler = handlers.NewAuthHandler(srv.store, srv.authManager, devMode)
 		srv.adminHandler = handlers.NewAdminHandler(srv.store, srv.authManager, devMode)
 
-		// Initialize upload service
-		uploadsDir := os.Getenv("UPLOADS_DIR")
-		if uploadsDir == "" {
-			uploadsDir = "./uploads"
-		}
-		maxUploadSize := int64(5 * 1024 * 1024) // 5MB default
+		// Initialize upload service (S3-backed)
+		maxUploadSize := int64(10 * 1024 * 1024) // 10MB default
 		if sizeStr := os.Getenv("MAX_UPLOAD_SIZE"); sizeStr != "" {
 			if size, err := strconv.ParseInt(sizeStr, 10, 64); err == nil {
 				maxUploadSize = size
 			}
 		}
 		uploadService, err := uploads.NewService(uploads.Config{
-			UploadsDir:  uploadsDir,
+			S3Endpoint:  os.Getenv("S3_ENDPOINT"),
+			BucketName:  os.Getenv("FILES_BUCKET_NAME"),
+			AccessKeyID: os.Getenv("FILES_BUCKET_ACCESS_KEY_ID"),
+			SecretKey:   os.Getenv("FILES_BUCKET_SECRET_ACCESS_KEY"),
 			MaxFileSize: maxUploadSize,
 		})
 		if err != nil {
@@ -130,6 +130,7 @@ func New(devMode bool, dbURL string, authConfig AuthConfig, distFS fs.FS) (*Serv
 		srv.projectHandler = handlers.NewProjectHandler(srv.store)
 		srv.taskHandler = handlers.NewTaskHandler(srv.store, srv.activityService, srv.notificationService)
 		srv.commentHandler = handlers.NewCommentHandler(srv.store, srv.activityService, srv.notificationService)
+		srv.attachmentHandler = handlers.NewAttachmentHandler(srv.store, uploadService)
 		srv.settingsHandler = handlers.NewSettingsHandler(srv.store)
 		srv.oauthHandler = handlers.NewOAuthHandler(srv.store, srv.authManager, srv.authHandler, devMode)
 		srv.ogHandler = handlers.NewOGHandler(srv.store)

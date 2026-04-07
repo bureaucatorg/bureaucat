@@ -35,6 +35,7 @@ type Querier interface {
 	CountUsers(ctx context.Context) (int64, error)
 	// ==================== ACTIVITY LOG ====================
 	CreateActivityLog(ctx context.Context, arg CreateActivityLogParams) (ActivityLog, error)
+	CreateAttachment(ctx context.Context, arg CreateAttachmentParams) (Attachment, error)
 	// ==================== COMMENTS ====================
 	CreateComment(ctx context.Context, arg CreateCommentParams) (Comment, error)
 	CreatePersonalAccessToken(ctx context.Context, arg CreatePersonalAccessTokenParams) (PersonalAccessToken, error)
@@ -52,6 +53,8 @@ type Querier interface {
 	CreateTaskTemplate(ctx context.Context, arg CreateTaskTemplateParams) (TaskTemplate, error)
 	CreateUpload(ctx context.Context, arg CreateUploadParams) (Upload, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (CreateUserRow, error)
+	DeleteAttachment(ctx context.Context, id uuid.UUID) error
+	DeleteAttachmentsByEntity(ctx context.Context, arg DeleteAttachmentsByEntityParams) error
 	DeleteExpiredRefreshTokens(ctx context.Context) (int64, error)
 	DeletePersonalAccessToken(ctx context.Context, arg DeletePersonalAccessTokenParams) error
 	DeleteProjectLabel(ctx context.Context, id uuid.UUID) error
@@ -91,6 +94,7 @@ type Querier interface {
 	ListActiveRefreshTokens(ctx context.Context, arg ListActiveRefreshTokensParams) ([]ListActiveRefreshTokensRow, error)
 	ListAllProjects(ctx context.Context, arg ListAllProjectsParams) ([]ListAllProjectsRow, error)
 	ListAllProjectsFiltered(ctx context.Context, arg ListAllProjectsFilteredParams) ([]ListAllProjectsFilteredRow, error)
+	ListAttachmentsByEntity(ctx context.Context, arg ListAttachmentsByEntityParams) ([]ListAttachmentsByEntityRow, error)
 	ListPersonalAccessTokensByUser(ctx context.Context, userID uuid.UUID) ([]ListPersonalAccessTokensByUserRow, error)
 	ListProjectLabels(ctx context.Context, projectID uuid.UUID) ([]ProjectLabel, error)
 	ListProjectMembers(ctx context.Context, projectID uuid.UUID) ([]ListProjectMembersRow, error)

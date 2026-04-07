@@ -50,6 +50,8 @@ const {
 const { currentTask, getTask, updateTask, deleteTask } = useTasks();
 const { comments, loading: commentsLoading, listComments } = useComments();
 const { activities, loading: activitiesLoading, listActivity } = useActivity();
+const { listAttachments, attachFile, deleteAttachment } = useAttachments();
+const { uploadFiles, uploading: descriptionUploading } = useFileAttach();
 
 useHead({
   title: computed(() => {
@@ -129,6 +131,7 @@ async function loadData() {
     listLabels(projectKey.value),
     listComments(projectKey.value, taskNum.value),
     listActivity(projectKey.value, taskNum.value),
+    loadTaskAttachments(),
   ]);
 
   loading.value = false;
@@ -267,6 +270,39 @@ function formatDate(dateStr: string): string {
     month: "short",
     day: "numeric",
   });
+}
+
+// Task attachments
+const taskAttachments = ref<import("~/composables/useAttachments").Attachment[]>([]);
+const taskAttachmentsLoading = ref(false);
+
+async function loadTaskAttachments() {
+  taskAttachmentsLoading.value = true;
+  const result = await listAttachments(projectKey.value, taskNum.value, "task");
+  if (result.success && result.data) {
+    taskAttachments.value = result.data;
+  }
+  taskAttachmentsLoading.value = false;
+}
+
+async function handleDescriptionFilesDropped(files: File[]) {
+  const results = await uploadFiles(files);
+  for (const r of results) {
+    const result = await attachFile(projectKey.value, taskNum.value, "task", r.uploadId);
+    if (result.success && result.data) {
+      taskAttachments.value.push(result.data);
+    }
+  }
+  if (results.length > 0) {
+    toast.success(`${results.length} file${results.length > 1 ? "s" : ""} attached`);
+  }
+}
+
+async function handleDeleteTaskAttachment(attachmentId: string) {
+  const result = await deleteAttachment(projectKey.value, taskNum.value, "task", attachmentId);
+  if (result.success) {
+    taskAttachments.value = taskAttachments.value.filter((a) => a.id !== attachmentId);
+  }
 }
 
 const copiedLink = ref(false);
@@ -419,6 +455,8 @@ onMounted(() => {
                   <TiptapEditor
                     v-model="editDescription"
                     :disabled="updating"
+                    :uploading="descriptionUploading"
+                    @files-dropped="handleDescriptionFilesDropped"
                   />
                   <div class="flex gap-2">
                     <Button size="sm" :disabled="updating" @click="saveDescription">
@@ -466,6 +504,27 @@ onMounted(() => {
                     No description
                   </p>
                 </div>
+
+                <!-- Task attachments -->
+                <FileDropZone
+                  v-if="isMember"
+                  :show-button="false"
+                  :uploading="descriptionUploading"
+                  accept="*/*"
+                  @files-dropped="handleDescriptionFilesDropped"
+                >
+                  <AttachmentList
+                    :attachments="taskAttachments"
+                    :can-delete="isMember"
+                    :loading="taskAttachmentsLoading"
+                    @delete="handleDeleteTaskAttachment"
+                  />
+                </FileDropZone>
+                <AttachmentList
+                  v-else
+                  :attachments="taskAttachments"
+                  :loading="taskAttachmentsLoading"
+                />
               </div>
 
               <Separator />
@@ -635,5 +694,6 @@ onMounted(() => {
         </Dialog>
       </div>
     </main>
+
   </div>
 </template>

@@ -16,16 +16,22 @@ import {
   Minus,
   Undo,
   Redo,
+  Paperclip,
+  Loader2,
 } from "lucide-vue-next";
 
 const props = defineProps<{
   modelValue: string;
   disabled?: boolean;
+  uploading?: boolean;
 }>();
 
 const emit = defineEmits<{
   "update:modelValue": [value: string];
+  "files-dropped": [files: File[]];
 }>();
+
+const fileInputRef = ref<HTMLInputElement | null>(null);
 
 const editor = useEditor({
   content: props.modelValue,
@@ -38,6 +44,21 @@ const editor = useEditor({
   editorProps: {
     attributes: {
       class: "prose prose-sm max-w-none dark:prose-invert focus:outline-none min-h-[200px] px-3 py-2",
+    },
+    handleDrop: (_view, event, _slice, moved) => {
+      if (moved || !event.dataTransfer?.files.length) return false;
+      event.preventDefault();
+      emit("files-dropped", Array.from(event.dataTransfer.files));
+      return true;
+    },
+    handlePaste: (_view, event) => {
+      const files = Array.from(event.clipboardData?.files || []);
+      if (files.length > 0) {
+        event.preventDefault();
+        emit("files-dropped", files);
+        return true;
+      }
+      return false;
     },
   },
   onUpdate: ({ editor }) => {
@@ -58,6 +79,18 @@ onBeforeUnmount(() => {
 
 function isActive(name: string, attrs?: Record<string, unknown>) {
   return editor.value?.isActive(name, attrs) ?? false;
+}
+
+function openFilePicker() {
+  fileInputRef.value?.click();
+}
+
+function handleFileInput(e: Event) {
+  const input = e.target as HTMLInputElement;
+  if (input.files?.length) {
+    emit("files-dropped", Array.from(input.files));
+  }
+  input.value = "";
 }
 </script>
 
@@ -189,6 +222,19 @@ function isActive(name: string, attrs?: Record<string, unknown>) {
 
       <button
         type="button"
+        aria-label="Attach file"
+        class="inline-flex size-7 items-center justify-center rounded-md hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 outline-none"
+        :disabled="uploading"
+        @click="openFilePicker"
+      >
+        <Loader2 v-if="uploading" class="size-3.5 animate-spin" />
+        <Paperclip v-else class="size-3.5" />
+      </button>
+
+      <div class="mx-1 h-4 w-px bg-border" role="separator" />
+
+      <button
+        type="button"
         aria-label="Undo"
         class="inline-flex size-7 items-center justify-center rounded-md hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 outline-none disabled:opacity-40"
         :disabled="!editor!.can().undo()"
@@ -209,6 +255,16 @@ function isActive(name: string, attrs?: Record<string, unknown>) {
 
     <!-- Editor content -->
     <EditorContent :editor="editor" />
+
+    <!-- Hidden file input -->
+    <input
+      ref="fileInputRef"
+      type="file"
+      multiple
+      accept="*/*"
+      class="hidden"
+      @change="handleFileInput"
+    />
   </div>
 </template>
 
