@@ -25,7 +25,6 @@ var NuxtPidFile = filepath.Join(os.TempDir(), "bureaucat-nuxt.pid")
 // DistFS is set by the main package to provide embedded static files
 var DistFS fs.FS
 
-
 func ServeCommand() *cli.Command {
 	return &cli.Command{
 		Name:  "serve",
@@ -94,7 +93,7 @@ func ServeCommand() *cli.Command {
 			nuxtMu <- struct{}{} // Initialize mutex
 
 			startNuxt := func() error {
-				<-nuxtMu // Lock
+				<-nuxtMu                                // Lock
 				defer func() { nuxtMu <- struct{}{} }() // Unlock
 
 				// Stop existing Nuxt if running

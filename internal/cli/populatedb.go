@@ -435,9 +435,9 @@ func PopulateDBCommand() *cli.Command {
 			fmt.Println("Creating task templates...")
 
 			type templateSpec struct {
-				name string
+				name  string
 				title string
-				desc string
+				desc  string
 			}
 
 			projectTemplates := map[string][]templateSpec{
@@ -570,9 +570,9 @@ func PopulateDBCommand() *cli.Command {
 			// realistic activity we create them in default state and then
 			// transition.
 			stateTransitions := map[string][]string{
-				"backlog":   {},                          // already there (default)
-				"unstarted": {"unstarted"},               // backlog -> unstarted
-				"started":   {"unstarted", "started"},    // backlog -> unstarted -> started
+				"backlog":   {},                       // already there (default)
+				"unstarted": {"unstarted"},            // backlog -> unstarted
+				"started":   {"unstarted", "started"}, // backlog -> unstarted -> started
 				"completed": {"unstarted", "started", "completed"},
 				"cancelled": {"unstarted", "started", "cancelled"},
 			}

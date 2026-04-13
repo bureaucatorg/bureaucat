@@ -77,3 +77,11 @@ push:
     docker push {{image}}:${version}
     docker push {{image}}:latest
     echo "Pushed {{image}}:${version} and latest"
+
+# Build the Bureaucat CLI binary locally
+build-cli:
+    go build -o ./bureaucat ./cmd/bureaucat
+
+# Run the Bureaucat CLI without building a binary first
+cli *args:
+    go run ./cmd/bureaucat {{args}}
