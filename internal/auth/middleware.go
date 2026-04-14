@@ -19,13 +19,25 @@ const (
 	HeaderUserType = "X-User-Type"
 	// HeaderAuthMethod is the header name for the authentication method.
 	HeaderAuthMethod = "X-Auth-Method"
+	// HeaderPATScope is the header carrying the PAT's granted scope.
+	HeaderPATScope = "X-PAT-Scope"
 
 	// AuthMethodPAT is the value for PAT authentication.
 	AuthMethodPAT = "pat"
 
+	// PATScopeReadOnly allows only safe HTTP methods (GET/HEAD/OPTIONS).
+	PATScopeReadOnly = "read_only"
+	// PATScopeReadWrite allows all HTTP methods.
+	PATScopeReadWrite = "read_write"
+
 	// patPrefix is the prefix for Personal Access Tokens.
 	patPrefix = "bcat_"
 )
+
+// ValidPATScope reports whether s is a recognized PAT scope.
+func ValidPATScope(s string) bool {
+	return s == PATScopeReadOnly || s == PATScopeReadWrite
+}
 
 // Middleware returns an Echo middleware that validates JWT tokens and Personal Access Tokens.
 func Middleware(manager *Manager, queries store.Querier) echo.MiddlewareFunc {
@@ -67,6 +79,28 @@ func Middleware(manager *Manager, queries store.Querier) echo.MiddlewareFunc {
 	}
 }
 
+// EnforcePATScope returns a middleware that blocks mutating HTTP methods
+// (anything other than GET/HEAD/OPTIONS) when the request is authenticated
+// via a read-only Personal Access Token. JWT-authenticated requests and
+// read_write PATs pass through unchanged.
+func EnforcePATScope() echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c *echo.Context) error {
+			if c.Request().Header.Get(HeaderAuthMethod) != AuthMethodPAT {
+				return next(c)
+			}
+			if c.Request().Header.Get(HeaderPATScope) != PATScopeReadOnly {
+				return next(c)
+			}
+			switch c.Request().Method {
+			case http.MethodGet, http.MethodHead, http.MethodOptions:
+				return next(c)
+			}
+			return echo.NewHTTPError(http.StatusForbidden, "token is read-only")
+		}
+	}
+}
+
 // RejectPAT returns a middleware that rejects requests authenticated via Personal Access Tokens.
 func RejectPAT() echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
@@ -93,6 +127,11 @@ func authenticateWithPAT(c *echo.Context, queries store.Querier, token string, n
 	c.Request().Header.Set(HeaderUsername, pat.Username)
 	c.Request().Header.Set(HeaderUserType, pat.UserType)
 	c.Request().Header.Set(HeaderAuthMethod, AuthMethodPAT)
+	scope := pat.Scope
+	if !ValidPATScope(scope) {
+		scope = PATScopeReadWrite
+	}
+	c.Request().Header.Set(HeaderPATScope, scope)
 
 	// Update last_used_at in the background
 	go func() {

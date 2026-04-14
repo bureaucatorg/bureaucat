@@ -28,12 +28,18 @@ func NewPATHandler(store store.Querier) *PATHandler {
 type createTokenRequest struct {
 	Name      string  `json:"name"`
 	ExpiresAt *string `json:"expires_at"`
+	Scope     string  `json:"scope"`
+}
+
+type updateTokenScopeRequest struct {
+	Scope string `json:"scope"`
 }
 
 type tokenResponse struct {
 	ID         uuid.UUID  `json:"id"`
 	Name       string     `json:"name"`
 	Token      string     `json:"token,omitempty"`
+	Scope      string     `json:"scope"`
 	ExpiresAt  *time.Time `json:"expires_at"`
 	LastUsedAt *time.Time `json:"last_used_at"`
 	CreatedAt  time.Time  `json:"created_at"`
@@ -54,6 +60,14 @@ func (h *PATHandler) CreateToken(c *echo.Context) error {
 	req.Name = strings.TrimSpace(req.Name)
 	if req.Name == "" || len(req.Name) > 100 {
 		return echo.NewHTTPError(http.StatusBadRequest, "name is required and must be 100 characters or less")
+	}
+
+	scope := strings.TrimSpace(req.Scope)
+	if scope == "" {
+		scope = auth.PATScopeReadWrite
+	}
+	if !auth.ValidPATScope(scope) {
+		return echo.NewHTTPError(http.StatusBadRequest, "scope must be 'read_only' or 'read_write'")
 	}
 
 	// Generate token: bcat_ + 64 hex chars (32 random bytes)
@@ -82,6 +96,7 @@ func (h *PATHandler) CreateToken(c *echo.Context) error {
 		Name:      req.Name,
 		TokenHash: tokenHash,
 		ExpiresAt: expiresAt,
+		Scope:     scope,
 	})
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to create token")
@@ -91,6 +106,7 @@ func (h *PATHandler) CreateToken(c *echo.Context) error {
 		ID:        pat.ID,
 		Name:      pat.Name,
 		Token:     plaintext,
+		Scope:     pat.Scope,
 		CreatedAt: pat.CreatedAt.Time,
 	}
 	if pat.ExpiresAt.Valid {
@@ -117,6 +133,7 @@ func (h *PATHandler) ListTokens(c *echo.Context) error {
 		resp[i] = tokenResponse{
 			ID:        t.ID,
 			Name:      t.Name,
+			Scope:     t.Scope,
 			CreatedAt: t.CreatedAt.Time,
 		}
 		if t.ExpiresAt.Valid {
@@ -130,6 +147,51 @@ func (h *PATHandler) ListTokens(c *echo.Context) error {
 	return c.JSON(http.StatusOK, map[string]interface{}{
 		"tokens": resp,
 	})
+}
+
+// UpdateTokenScope updates the scope of an existing Personal Access Token.
+func (h *PATHandler) UpdateTokenScope(c *echo.Context) error {
+	userID, err := uuid.Parse(c.Request().Header.Get("X-User-ID"))
+	if err != nil {
+		return echo.NewHTTPError(http.StatusUnauthorized, "invalid user")
+	}
+
+	tokenID, err := uuid.Parse(c.Param("tokenId"))
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid token ID")
+	}
+
+	var req updateTokenScopeRequest
+	if err := c.Bind(&req); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid request body")
+	}
+	scope := strings.TrimSpace(req.Scope)
+	if !auth.ValidPATScope(scope) {
+		return echo.NewHTTPError(http.StatusBadRequest, "scope must be 'read_only' or 'read_write'")
+	}
+
+	row, err := h.store.UpdatePersonalAccessTokenScope(c.Request().Context(), store.UpdatePersonalAccessTokenScopeParams{
+		ID:     tokenID,
+		UserID: userID,
+		Scope:  scope,
+	})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusNotFound, "token not found")
+	}
+
+	resp := tokenResponse{
+		ID:        row.ID,
+		Name:      row.Name,
+		Scope:     row.Scope,
+		CreatedAt: row.CreatedAt.Time,
+	}
+	if row.ExpiresAt.Valid {
+		resp.ExpiresAt = &row.ExpiresAt.Time
+	}
+	if row.LastUsedAt.Valid {
+		resp.LastUsedAt = &row.LastUsedAt.Time
+	}
+	return c.JSON(http.StatusOK, resp)
 }
 
 // DeleteToken deletes a Personal Access Token.
@@ -156,4 +218,3 @@ func (h *PATHandler) DeleteToken(c *echo.Context) error {
 		"message": "Token deleted",
 	})
 }
-

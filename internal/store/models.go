@@ -233,6 +233,7 @@ type PersonalAccessToken struct {
 	ExpiresAt  pgtype.Timestamptz `json:"expires_at"`
 	LastUsedAt pgtype.Timestamptz `json:"last_used_at"`
 	CreatedAt  pgtype.Timestamptz `json:"created_at"`
+	Scope      string             `json:"scope"`
 }
 
 type Project struct {

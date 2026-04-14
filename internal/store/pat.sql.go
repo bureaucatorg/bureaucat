@@ -13,9 +13,9 @@ import (
 )
 
 const createPersonalAccessToken = `-- name: CreatePersonalAccessToken :one
-INSERT INTO personal_access_tokens (user_id, name, token_hash, expires_at)
-VALUES ($1, $2, $3, $4)
-RETURNING id, user_id, name, token_hash, expires_at, last_used_at, created_at
+INSERT INTO personal_access_tokens (user_id, name, token_hash, expires_at, scope)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING id, user_id, name, token_hash, expires_at, last_used_at, created_at, scope
 `
 
 type CreatePersonalAccessTokenParams struct {
@@ -23,6 +23,7 @@ type CreatePersonalAccessTokenParams struct {
 	Name      string             `json:"name"`
 	TokenHash string             `json:"token_hash"`
 	ExpiresAt pgtype.Timestamptz `json:"expires_at"`
+	Scope     string             `json:"scope"`
 }
 
 func (q *Queries) CreatePersonalAccessToken(ctx context.Context, arg CreatePersonalAccessTokenParams) (PersonalAccessToken, error) {
@@ -31,6 +32,7 @@ func (q *Queries) CreatePersonalAccessToken(ctx context.Context, arg CreatePerso
 		arg.Name,
 		arg.TokenHash,
 		arg.ExpiresAt,
+		arg.Scope,
 	)
 	var i PersonalAccessToken
 	err := row.Scan(
@@ -41,6 +43,7 @@ func (q *Queries) CreatePersonalAccessToken(ctx context.Context, arg CreatePerso
 		&i.ExpiresAt,
 		&i.LastUsedAt,
 		&i.CreatedAt,
+		&i.Scope,
 	)
 	return i, err
 }
@@ -61,7 +64,7 @@ func (q *Queries) DeletePersonalAccessToken(ctx context.Context, arg DeletePerso
 }
 
 const getPersonalAccessTokenByHash = `-- name: GetPersonalAccessTokenByHash :one
-SELECT pat.id, pat.user_id, pat.expires_at, pat.last_used_at, pat.created_at,
+SELECT pat.id, pat.user_id, pat.expires_at, pat.last_used_at, pat.created_at, pat.scope,
        u.username, u.user_type
 FROM personal_access_tokens pat
 JOIN users u ON pat.user_id = u.id
@@ -75,6 +78,7 @@ type GetPersonalAccessTokenByHashRow struct {
 	ExpiresAt  pgtype.Timestamptz `json:"expires_at"`
 	LastUsedAt pgtype.Timestamptz `json:"last_used_at"`
 	CreatedAt  pgtype.Timestamptz `json:"created_at"`
+	Scope      string             `json:"scope"`
 	Username   string             `json:"username"`
 	UserType   string             `json:"user_type"`
 }
@@ -88,6 +92,7 @@ func (q *Queries) GetPersonalAccessTokenByHash(ctx context.Context, tokenHash st
 		&i.ExpiresAt,
 		&i.LastUsedAt,
 		&i.CreatedAt,
+		&i.Scope,
 		&i.Username,
 		&i.UserType,
 	)
@@ -95,7 +100,7 @@ func (q *Queries) GetPersonalAccessTokenByHash(ctx context.Context, tokenHash st
 }
 
 const listPersonalAccessTokensByUser = `-- name: ListPersonalAccessTokensByUser :many
-SELECT id, name, expires_at, last_used_at, created_at
+SELECT id, name, expires_at, last_used_at, created_at, scope
 FROM personal_access_tokens
 WHERE user_id = $1
 ORDER BY created_at DESC
@@ -107,6 +112,7 @@ type ListPersonalAccessTokensByUserRow struct {
 	ExpiresAt  pgtype.Timestamptz `json:"expires_at"`
 	LastUsedAt pgtype.Timestamptz `json:"last_used_at"`
 	CreatedAt  pgtype.Timestamptz `json:"created_at"`
+	Scope      string             `json:"scope"`
 }
 
 func (q *Queries) ListPersonalAccessTokensByUser(ctx context.Context, userID uuid.UUID) ([]ListPersonalAccessTokensByUserRow, error) {
@@ -124,6 +130,7 @@ func (q *Queries) ListPersonalAccessTokensByUser(ctx context.Context, userID uui
 			&i.ExpiresAt,
 			&i.LastUsedAt,
 			&i.CreatedAt,
+			&i.Scope,
 		); err != nil {
 			return nil, err
 		}
@@ -144,4 +151,42 @@ WHERE id = $1
 func (q *Queries) UpdatePersonalAccessTokenLastUsed(ctx context.Context, id uuid.UUID) error {
 	_, err := q.db.Exec(ctx, updatePersonalAccessTokenLastUsed, id)
 	return err
+}
+
+const updatePersonalAccessTokenScope = `-- name: UpdatePersonalAccessTokenScope :one
+UPDATE personal_access_tokens
+SET scope = $3
+WHERE id = $1 AND user_id = $2
+RETURNING id, user_id, name, expires_at, last_used_at, created_at, scope
+`
+
+type UpdatePersonalAccessTokenScopeParams struct {
+	ID     uuid.UUID `json:"id"`
+	UserID uuid.UUID `json:"user_id"`
+	Scope  string    `json:"scope"`
+}
+
+type UpdatePersonalAccessTokenScopeRow struct {
+	ID         uuid.UUID          `json:"id"`
+	UserID     uuid.UUID          `json:"user_id"`
+	Name       string             `json:"name"`
+	ExpiresAt  pgtype.Timestamptz `json:"expires_at"`
+	LastUsedAt pgtype.Timestamptz `json:"last_used_at"`
+	CreatedAt  pgtype.Timestamptz `json:"created_at"`
+	Scope      string             `json:"scope"`
+}
+
+func (q *Queries) UpdatePersonalAccessTokenScope(ctx context.Context, arg UpdatePersonalAccessTokenScopeParams) (UpdatePersonalAccessTokenScopeRow, error) {
+	row := q.db.QueryRow(ctx, updatePersonalAccessTokenScope, arg.ID, arg.UserID, arg.Scope)
+	var i UpdatePersonalAccessTokenScopeRow
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Name,
+		&i.ExpiresAt,
+		&i.LastUsedAt,
+		&i.CreatedAt,
+		&i.Scope,
+	)
+	return i, err
 }

@@ -10,12 +10,15 @@ definePageMeta({
 
 useSeoMeta({ title: "Settings" });
 
-const { listTokens, createToken, deleteToken } = usePAT();
+const { listTokens, createToken, updateTokenScope, deleteToken } = usePAT();
+
+type PATScope = "read_only" | "read_write";
 
 interface TokenInfo {
   id: string;
   name: string;
   token?: string;
+  scope: PATScope;
   expires_at: string | null;
   last_used_at: string | null;
   created_at: string;
@@ -28,11 +31,27 @@ const error = ref<string | null>(null);
 
 // Create form state
 const newTokenName = ref("");
+const newTokenScope = ref<PATScope>("read_write");
 const expiryDate = ref<DateValue>();
 const expiryHour = ref("23");
 const expiryMinute = ref("59");
 const expiryPopoverOpen = ref(false);
 const createLoading = ref(false);
+
+// Per-row scope update state
+const scopeUpdating = ref<Record<string, boolean>>({});
+
+async function handleScopeChange(token: TokenInfo, scope: PATScope) {
+  if (token.scope === scope) return;
+  scopeUpdating.value[token.id] = true;
+  const result = await updateTokenScope(token.id, scope);
+  scopeUpdating.value[token.id] = false;
+  if (result.success) {
+    token.scope = scope;
+  } else {
+    error.value = result.error || "Failed to update scope";
+  }
+}
 
 // Created token dialog
 const showCreatedDialog = ref(false);
@@ -81,7 +100,7 @@ async function handleCreate() {
     expiresAt = `${d.year}-${String(d.month).padStart(2, "0")}-${String(d.day).padStart(2, "0")}T${expiryHour.value}:${expiryMinute.value}:00Z`;
   }
 
-  const result = await createToken(newTokenName.value.trim(), expiresAt);
+  const result = await createToken(newTokenName.value.trim(), newTokenScope.value, expiresAt);
   createLoading.value = false;
 
   if (result.success && result.data?.token) {
@@ -90,6 +109,7 @@ async function handleCreate() {
     tokenRevealed.value = true;
     showCreatedDialog.value = true;
     newTokenName.value = "";
+    newTokenScope.value = "read_write";
     expiryDate.value = undefined;
     expiryHour.value = "23";
     expiryMinute.value = "59";
@@ -177,7 +197,7 @@ onMounted(() => {
               Personal Access Tokens
             </h2>
             <p class="mt-1 text-sm text-muted-foreground">
-              Tokens can be used to authenticate with the API. They have the same permissions as your account.
+              Tokens authenticate API requests. Choose <span class="font-medium">Read only</span> to restrict a token to safe methods (GET), or <span class="font-medium">Read &amp; write</span> for full access. Scope can be changed anytime.
             </p>
           </div>
 
@@ -191,8 +211,8 @@ onMounted(() => {
               <CardTitle class="text-base">Create a new token</CardTitle>
             </CardHeader>
             <CardContent>
-              <form class="flex flex-col gap-4 sm:flex-row sm:items-end" @submit.prevent="handleCreate">
-                <div class="flex-1 space-y-2">
+              <form class="flex flex-col gap-4 sm:flex-row sm:items-end sm:flex-wrap" @submit.prevent="handleCreate">
+                <div class="flex-1 space-y-2 sm:min-w-[14rem]">
                   <Label for="token-name">Name</Label>
                   <Input
                     id="token-name"
@@ -200,6 +220,18 @@ onMounted(() => {
                     placeholder="e.g. CI/CD pipeline"
                     :maxlength="100"
                   />
+                </div>
+                <div class="w-full space-y-2 sm:w-44">
+                  <Label for="token-scope">Permissions</Label>
+                  <Select v-model="newTokenScope">
+                    <SelectTrigger id="token-scope" class="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="read_write">Read &amp; write</SelectItem>
+                      <SelectItem value="read_only">Read only</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div class="w-full space-y-2 sm:w-56">
                   <Label>Expiry (optional)</Label>
@@ -293,6 +325,26 @@ onMounted(() => {
                   >
                     Expired
                   </span>
+                  <Select
+                    :model-value="token.scope"
+                    :disabled="scopeUpdating[token.id]"
+                    @update:model-value="(v) => handleScopeChange(token, v as PATScope)"
+                  >
+                    <SelectTrigger
+                      :class="[
+                        'h-6 w-auto gap-1 rounded-full border-0 px-2 py-0 text-[10px] font-medium shadow-none focus:ring-0',
+                        token.scope === 'read_only'
+                          ? 'bg-muted text-muted-foreground hover:bg-muted/80'
+                          : 'bg-amber-500/15 text-amber-700 hover:bg-amber-500/25 dark:text-amber-400',
+                      ]"
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="read_write">Read &amp; write</SelectItem>
+                      <SelectItem value="read_only">Read only</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div class="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
                   <span class="flex items-center gap-1">

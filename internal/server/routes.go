@@ -64,7 +64,7 @@ func (s *Server) registerRoutes() {
 		}
 
 		// Protected routes
-		protected := api.Group("", auth.Middleware(s.authManager, s.store))
+		protected := api.Group("", auth.Middleware(s.authManager, s.store), auth.EnforcePATScope())
 		protected.GET("/me", s.authHandler.Me)
 		protected.GET("/me/tasks", s.authHandler.MyTasks)
 		protected.GET("/me/notifications", s.authHandler.GetMyNotifications)
@@ -74,6 +74,7 @@ func (s *Server) registerRoutes() {
 			patGroup := protected.Group("", auth.RejectPAT())
 			patGroup.GET("/me/tokens", s.patHandler.ListTokens)
 			patGroup.POST("/me/tokens", s.patHandler.CreateToken)
+			patGroup.PATCH("/me/tokens/:tokenId", s.patHandler.UpdateTokenScope)
 			patGroup.DELETE("/me/tokens/:tokenId", s.patHandler.DeleteToken)
 		}
 		protected.GET("/users/:id", s.authHandler.GetUserProfile)
