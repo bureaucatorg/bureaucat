@@ -22,6 +22,13 @@ const content = ref("");
 const loading = ref(false);
 const dropZoneRef = ref<InstanceType<typeof FileDropZone> | null>(null);
 
+// Tiptap emits `<p></p>` (and variants) for a visually-empty editor.
+// Strip tags and whitespace to test for genuine emptiness.
+const isContentEmpty = computed(() => {
+  const text = content.value.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").trim();
+  return text.length === 0;
+});
+
 // Pending uploads (not yet attached to a comment)
 const pendingUploads = ref<{ uploadId: string; filename: string; mimeType: string }[]>([]);
 
@@ -56,7 +63,7 @@ function isImage(mimeType: string): boolean {
 }
 
 async function handleSubmit() {
-  if (!content.value.trim() && pendingUploads.value.length === 0) return;
+  if (isContentEmpty.value && pendingUploads.value.length === 0) return;
 
   loading.value = true;
   const result = await createComment(props.projectKey, props.taskNum, {
@@ -162,7 +169,7 @@ function handleKeyDown(event: KeyboardEvent) {
               <Loader2 v-if="uploading" class="size-3.5 animate-spin" />
               <Paperclip v-else class="size-3.5" />
             </Button>
-            <Button type="submit" size="sm" :disabled="loading || uploading || (!content.trim() && pendingUploads.length === 0)">
+            <Button type="submit" size="sm" :disabled="loading || uploading || (isContentEmpty && pendingUploads.length === 0)">
               <Loader2 v-if="loading" class="mr-1.5 size-3.5 animate-spin" />
               <Send v-else class="mr-1.5 size-3.5" />
               Comment
