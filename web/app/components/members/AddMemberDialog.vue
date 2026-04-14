@@ -43,19 +43,13 @@ async function searchUsers() {
   }
 
   searchLoading.value = true;
-  const result = await listUsers(1, 20);
+  const result = await listUsers(1, 20, searchQuery.value);
   searchLoading.value = false;
 
   if (result.success && result.data) {
-    // Filter out existing members and search by name/email
-    const query = searchQuery.value.toLowerCase();
+    // Filter out existing members
     searchResults.value = result.data.users.filter(
-      (u) =>
-        !props.existingMemberIds.includes(u.id) &&
-        (u.username.toLowerCase().includes(query) ||
-          u.email.toLowerCase().includes(query) ||
-          u.first_name.toLowerCase().includes(query) ||
-          u.last_name.toLowerCase().includes(query))
+      (u) => !props.existingMemberIds.includes(u.id)
     );
   }
 }
