@@ -95,14 +95,15 @@ function cancelEdit() {
 }
 
 async function handleUpdate() {
-  if (!editContent.value.trim()) return;
+  const trimmed = trimHtmlContent(editContent.value);
+  if (!trimmed) return;
 
   loading.value = true;
   const result = await updateComment(
     props.projectKey,
     props.taskNum,
     props.comment.id,
-    { content: editContent.value }
+    { content: trimmed }
   );
   loading.value = false;
 

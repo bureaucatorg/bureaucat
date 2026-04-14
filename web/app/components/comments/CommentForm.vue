@@ -65,9 +65,11 @@ function isImage(mimeType: string): boolean {
 async function handleSubmit() {
   if (isContentEmpty.value && pendingUploads.value.length === 0) return;
 
+  const trimmed = trimHtmlContent(content.value);
+
   loading.value = true;
   const result = await createComment(props.projectKey, props.taskNum, {
-    content: content.value || "(attachment)",
+    content: trimmed || "(attachment)",
   });
 
   if (result.success && result.data) {
