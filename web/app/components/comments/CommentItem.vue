@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { MoreHorizontal, Pencil, Trash2, Loader2, Check, X, ChevronDown, ChevronUp, History } from "lucide-vue-next";
+import { MoreHorizontal, Pencil, Trash2, Loader2, Check, X, ChevronDown, ChevronUp, History, Link as LinkIcon } from "lucide-vue-next";
 import { marked } from "marked";
 import { toast } from "vue-sonner";
 import type { Comment, ProjectMember } from "~/types";
@@ -48,6 +48,18 @@ const editing = ref(false);
 const editContent = ref("");
 const loading = ref(false);
 const showHistory = ref(false);
+const rootRef = ref<HTMLElement | null>(null);
+const highlighted = ref(false);
+
+async function copyLink() {
+  const url = `${window.location.origin}/projects/${props.projectKey}/tasks/${props.taskNum}#comment-${props.comment.id}`;
+  try {
+    await navigator.clipboard.writeText(url);
+    toast.success("Link copied to clipboard");
+  } catch {
+    toast.error("Failed to copy link");
+  }
+}
 
 // Attachments
 const attachments = ref<Attachment[]>([]);
@@ -151,11 +163,26 @@ function formatDate(dateStr: string): string {
 
 onMounted(() => {
   loadAttachments();
+  // If this comment is the deep-link target, scroll to it and flash a highlight.
+  if (typeof window !== "undefined" && window.location.hash === `#comment-${props.comment.id}`) {
+    nextTick(() => {
+      rootRef.value?.scrollIntoView({ behavior: "smooth", block: "center" });
+      highlighted.value = true;
+      setTimeout(() => {
+        highlighted.value = false;
+      }, 2500);
+    });
+  }
 });
 </script>
 
 <template>
-  <div class="group flex gap-3">
+  <div
+    :id="`comment-${comment.id}`"
+    ref="rootRef"
+    class="group flex gap-3 rounded-md transition-colors duration-500"
+    :class="{ '-mx-2 bg-amber-100/60 px-2 py-1 dark:bg-amber-500/10': highlighted }"
+  >
     <NuxtLink v-if="!compact" :to="`/profile/${comment.created_by}`" class="shrink-0">
       <Avatar class="size-8 hover:opacity-80 transition-opacity">
         <AvatarImage v-if="comment.avatar_url" :src="comment.avatar_url" />
@@ -170,9 +197,14 @@ onMounted(() => {
         <NuxtLink :to="`/profile/${comment.created_by}`" class="text-sm font-medium hover:underline">
           {{ comment.first_name }} {{ comment.last_name }}
         </NuxtLink>
-        <span class="text-xs text-muted-foreground">
+        <button
+          type="button"
+          class="text-xs text-muted-foreground hover:text-foreground hover:underline underline-offset-2 focus-visible:ring-2 focus-visible:ring-ring rounded-sm outline-none"
+          :title="`Copy link to this comment`"
+          @click="copyLink"
+        >
           {{ formatDate(comment.created_at) }}
-        </span>
+        </button>
         <span
           v-if="comment.version > 1"
           class="text-xs text-muted-foreground"
@@ -180,7 +212,7 @@ onMounted(() => {
           (edited)
         </span>
         <span class="flex-1" />
-        <DropdownMenu v-if="canEdit && !editing">
+        <DropdownMenu v-if="!editing">
           <DropdownMenuTrigger as-child>
             <Button
               variant="ghost"
@@ -192,17 +224,23 @@ onMounted(() => {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem @click="startEdit">
-              <Pencil class="mr-2 size-3.5" />
-              Edit
+            <DropdownMenuItem @click="copyLink">
+              <LinkIcon class="mr-2 size-3.5" />
+              Copy link
             </DropdownMenuItem>
-            <DropdownMenuItem
-              class="text-destructive focus:text-destructive"
-              @click="handleDelete"
-            >
-              <Trash2 class="mr-2 size-3.5" />
-              Delete
-            </DropdownMenuItem>
+            <template v-if="canEdit">
+              <DropdownMenuItem @click="startEdit">
+                <Pencil class="mr-2 size-3.5" />
+                Edit
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                class="text-destructive focus:text-destructive"
+                @click="handleDelete"
+              >
+                <Trash2 class="mr-2 size-3.5" />
+                Delete
+              </DropdownMenuItem>
+            </template>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
