@@ -105,8 +105,7 @@ async function handleSubmit() {
             </Button>
             <Button
               v-if="ssoProviders.zitadel"
-              variant="outline"
-              class="w-full"
+              class="w-full bg-gradient-to-r from-pink-700 to-orange-600 text-white border-0 hover:from-pink-800 hover:to-orange-700"
               @click="startSSO('zitadel')"
             >
               <Shield class="mr-2 size-4" />
