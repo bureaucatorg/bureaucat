@@ -2,7 +2,7 @@
 import { User, LogOut, LayoutDashboard, FolderKanban, Shield, Star, Settings } from "lucide-vue-next";
 
 const { user, isAuthenticated, logout } = useAuth();
-const { appName } = useSettings();
+const { appName, signupSettings, fetchSignupSettings } = useSettings();
 const route = useRoute();
 
 const isLandingPage = computed(() => route.path === "/");
@@ -16,6 +16,8 @@ onMounted(async () => {
       appVersion.value = data.version || "";
     }
   } catch {}
+
+  fetchSignupSettings();
 });
 
 async function handleLogout() {
@@ -54,7 +56,7 @@ async function handleLogout() {
           <NuxtLink to="/signin">
             <Button variant="ghost" size="sm">Sign In</Button>
           </NuxtLink>
-          <NuxtLink to="/signup">
+          <NuxtLink v-if="signupSettings.enabled" to="/signup">
             <Button size="sm">Sign Up</Button>
           </NuxtLink>
         </template>
