@@ -436,7 +436,7 @@ onMounted(() => {
                   <NuxtLink :to="`/profile/${currentTask.created_by}`" class="flex items-center gap-1 rounded-md border bg-muted/50 py-0.5 pl-0.5 pr-1.5 w-fit hover:bg-muted transition-colors">
                     <Avatar class="size-4">
                       <AvatarImage v-if="currentTask.creator_avatar_url" :src="currentTask.creator_avatar_url" />
-                      <AvatarFallback class="text-[10px]">
+                      <AvatarFallback class="text-[10px]" :seed="currentTask.created_by">
                         {{ currentTask.creator_first_name?.[0] }}{{ currentTask.creator_last_name?.[0] }}
                       </AvatarFallback>
                     </Avatar>
@@ -623,7 +623,7 @@ onMounted(() => {
                   <NuxtLink :to="`/profile/${currentTask.created_by}`" class="flex items-center gap-1.5 rounded-md border bg-muted/50 py-1 pl-1 pr-2.5 w-fit hover:bg-muted transition-colors">
                     <Avatar class="size-6">
                       <AvatarImage v-if="currentTask.creator_avatar_url" :src="currentTask.creator_avatar_url" />
-                      <AvatarFallback class="text-xs">
+                      <AvatarFallback class="text-xs" :seed="currentTask.created_by">
                         {{ currentTask.creator_first_name?.[0] }}{{ currentTask.creator_last_name?.[0] }}
                       </AvatarFallback>
                     </Avatar>

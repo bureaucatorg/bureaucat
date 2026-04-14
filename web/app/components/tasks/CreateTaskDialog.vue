@@ -233,7 +233,7 @@ function removeLabel(labelId: string) {
               class="flex items-center gap-1.5 rounded-md border bg-muted/50 py-1 pl-1 pr-1"
             >
               <Avatar class="size-5">
-                <AvatarFallback class="text-[10px]">
+                <AvatarFallback class="text-[10px]" :seed="member.user_id">
                   {{ member.first_name[0] }}{{ member.last_name[0] }}
                 </AvatarFallback>
               </Avatar>
@@ -276,7 +276,7 @@ function removeLabel(labelId: string) {
                       @click="addAssignee(member.user_id)"
                     >
                       <Avatar class="size-6">
-                        <AvatarFallback class="text-xs">
+                        <AvatarFallback class="text-xs" :seed="member.user_id">
                           {{ member.first_name[0] }}{{ member.last_name[0] }}
                         </AvatarFallback>
                       </Avatar>

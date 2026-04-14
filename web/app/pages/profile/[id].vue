@@ -299,7 +299,7 @@ onMounted(async () => {
                 :src="user.avatar_url"
                 :alt="`${user.first_name} ${user.last_name}`"
               />
-              <AvatarFallback class="text-2xl">
+              <AvatarFallback class="text-2xl" :seed="user.id">
                 {{ user.first_name?.[0] }}{{ user.last_name?.[0] }}
               </AvatarFallback>
             </Avatar>

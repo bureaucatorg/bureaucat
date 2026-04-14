@@ -102,7 +102,7 @@ function handleClick() {
             @click.stop
           >
             <Avatar class="size-5 border border-background transition-transform hover:scale-110">
-              <AvatarFallback class="text-[10px]">
+              <AvatarFallback class="text-[10px]" :seed="assignee.user_id">
                 {{ assignee.first_name[0] }}{{ assignee.last_name[0] }}
               </AvatarFallback>
             </Avatar>

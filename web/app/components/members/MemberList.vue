@@ -95,7 +95,7 @@ function formatDate(dateStr: string) {
           <TableCell>
             <NuxtLink :to="`/profile/${member.user_id}`" class="flex items-center gap-3 hover:opacity-80 transition-opacity">
               <Avatar>
-                <AvatarFallback>
+                <AvatarFallback :seed="member.user_id">
                   {{ member.first_name[0] }}{{ member.last_name[0] }}
                 </AvatarFallback>
               </Avatar>

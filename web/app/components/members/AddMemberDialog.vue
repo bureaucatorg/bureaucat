@@ -153,7 +153,7 @@ const selectedUserInfo = computed(() =>
             @click="selectedUser = u.id"
           >
             <Avatar class="size-8">
-              <AvatarFallback class="text-xs">
+              <AvatarFallback class="text-xs" :seed="u.id">
                 {{ u.first_name[0] }}{{ u.last_name[0] }}
               </AvatarFallback>
             </Avatar>
@@ -174,7 +174,7 @@ const selectedUserInfo = computed(() =>
           class="flex items-center gap-3 rounded-lg border bg-muted/50 p-3"
         >
           <Avatar>
-            <AvatarFallback>
+            <AvatarFallback :seed="selectedUserInfo.id">
               {{ selectedUserInfo.first_name[0] }}{{ selectedUserInfo.last_name[0] }}
             </AvatarFallback>
           </Avatar>

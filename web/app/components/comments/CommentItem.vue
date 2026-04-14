@@ -156,7 +156,7 @@ onMounted(() => {
     <NuxtLink v-if="!compact" :to="`/profile/${comment.created_by}`" class="shrink-0">
       <Avatar class="size-8 hover:opacity-80 transition-opacity">
         <AvatarImage v-if="comment.avatar_url" :src="comment.avatar_url" />
-        <AvatarFallback class="text-xs">
+        <AvatarFallback class="text-xs" :seed="comment.created_by">
           {{ comment.first_name[0] }}{{ comment.last_name[0] }}
         </AvatarFallback>
       </Avatar>

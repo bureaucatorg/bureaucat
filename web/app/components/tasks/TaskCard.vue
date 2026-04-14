@@ -110,7 +110,7 @@ const involvedPeople = computed(() => {
                 :src="person.avatarUrl"
                 :alt="`${person.firstName} ${person.lastName}`"
               />
-              <AvatarFallback class="text-[10px]">
+              <AvatarFallback class="text-[10px]" :seed="person.id">
                 {{ person.firstName?.[0] || "" }}{{ person.lastName?.[0] || "" }}
               </AvatarFallback>
             </Avatar>

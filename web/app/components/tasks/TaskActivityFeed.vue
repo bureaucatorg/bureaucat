@@ -405,7 +405,7 @@ function getStateChangeDetail(activity: ActivityLogEntry): { from: string; to: s
         <template v-else>
           <Avatar class="relative z-10 size-6 shrink-0">
             <AvatarImage v-if="item.data.avatar_url" :src="item.data.avatar_url" />
-            <AvatarFallback class="text-[10px]">
+            <AvatarFallback class="text-[10px]" :seed="item.data.created_by">
               {{ item.data.first_name?.[0] }}{{ item.data.last_name?.[0] }}
             </AvatarFallback>
           </Avatar>

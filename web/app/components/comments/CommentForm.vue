@@ -103,7 +103,7 @@ function handleKeyDown(event: KeyboardEvent) {
         v-if="user?.avatar_url"
         :src="user.avatar_url"
       />
-      <AvatarFallback class="text-xs">
+      <AvatarFallback class="text-xs" :seed="user?.id">
         {{ user?.first_name?.[0] }}{{ user?.last_name?.[0] }}
       </AvatarFallback>
     </Avatar>

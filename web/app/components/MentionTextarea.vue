@@ -153,7 +153,7 @@ function handleKeydown(event: KeyboardEvent) {
           @mousedown.prevent="selectMember(member)"
         >
           <Avatar class="size-6">
-            <AvatarFallback class="text-xs">
+            <AvatarFallback class="text-xs" :seed="member.user_id">
               {{ member.first_name[0] }}{{ member.last_name[0] }}
             </AvatarFallback>
           </Avatar>

@@ -344,7 +344,7 @@ watch([searchQuery, selectedStateId, selectedPriority, selectedAssignee, fromDat
           >
             <template v-if="item.user_id">
               <Avatar class="size-5">
-                <AvatarFallback class="text-[10px]">
+                <AvatarFallback class="text-[10px]" :seed="item.user_id">
                   {{ item.first_name[0] }}{{ item.last_name[0] }}
                 </AvatarFallback>
               </Avatar>
