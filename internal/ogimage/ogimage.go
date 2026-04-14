@@ -20,10 +20,11 @@ var dmSansBoldTTF []byte
 var dmSansRegularTTF []byte
 
 var (
-	faceBold72   font.Face
-	faceBold28   font.Face
+	faceBold72    font.Face
+	faceBold28    font.Face
 	faceRegular28 font.Face
 	faceRegular26 font.Face
+	faceRegular20 font.Face
 )
 
 func init() {
@@ -52,6 +53,10 @@ func init() {
 	if err != nil {
 		panic("ogimage: regular 26 face: " + err.Error())
 	}
+	faceRegular20, err = opentype.NewFace(regularFont, &opentype.FaceOptions{Size: 20, DPI: 72, Hinting: font.HintingFull})
+	if err != nil {
+		panic("ogimage: regular 20 face: " + err.Error())
+	}
 }
 
 const (
@@ -68,7 +73,9 @@ var (
 )
 
 // Render generates a 1200x630 OG image PNG with the given app name.
-func Render(appName string) ([]byte, error) {
+// When branded is true (custom branding enabled), the headline, subtitle,
+// and footer are adjusted to hide Bureaucat-specific copy.
+func Render(appName string, branded bool) ([]byte, error) {
 	img := image.NewNRGBA(image.Rect(0, 0, imgW, imgH))
 
 	// 1. Dark background with subtle radial vignette.
@@ -107,16 +114,49 @@ func Render(appName string) ([]byte, error) {
 	nameY := 140 + (56-nameTextH)/2 + nameAscent
 	drawText(img, faceRegular28, colWhite, 152, nameY, appName, false)
 
-	// 6. Headline.
-	drawText(img, faceBold72, colWhite, 80, 300, "Bureaucracy", false)
-	drawText(img, faceBold72, colWhite, 80, 390, "That Actually ", false)
+	// 6. Headline — content differs based on branding.
+	var line1, line2Prefix, line2Accent string
+	if branded {
+		line1 = "A No-Nonsense"
+		line2Prefix = ""
+		line2Accent = "Task Manager"
+	} else {
+		line1 = "Bureaucracy"
+		line2Prefix = "That Actually "
+		line2Accent = "Moves"
+	}
 
-	// Measure "That Actually " to position "Moves" in amber.
-	advPx := measureText(faceBold72, "That Actually ")
-	drawText(img, faceBold72, colAmber, 80+advPx, 390, "Moves", false)
+	drawText(img, faceBold72, colWhite, 80, 300, line1, false)
 
-	// 7. Subtitle.
-	drawText(img, faceRegular26, colZinc400, 80, 470, "A no-nonsense task manager for approval workflows.", false)
+	line2X := 80
+	if line2Prefix != "" {
+		drawText(img, faceBold72, colWhite, line2X, 390, line2Prefix, false)
+		line2X += measureText(faceBold72, line2Prefix)
+	}
+	drawText(img, faceBold72, colAmber, line2X, 390, line2Accent, false)
+
+	// 7. Amber curved underline beneath the headline.
+	line2EndX := line2X + measureText(faceBold72, line2Accent)
+	underlineLeft := 80
+	underlineRight := line2EndX
+	drawArcUnderline(img, underlineLeft, underlineRight, 425, 10, 7,
+		color.NRGBA{R: 0xFC, G: 0xD3, B: 0x4D, A: 0xE0}) // lighter amber, soft
+
+	// 8. Footer URL — only shown when not branded.
+	if !branded {
+		const footerBaseline = 562
+		const footerRight = imgW - 80
+		domain := "bureaucat.org"
+		domainW := measureText(faceRegular20, domain)
+		domainX := footerRight - domainW
+		drawText(img, faceRegular20, colZinc400, domainX, footerBaseline, domain, false)
+
+		const iconSize = 18
+		iconCenterY := footerBaseline - 7
+		iconY := iconCenterY - iconSize/2
+		iconX := domainX - iconSize - 8
+		drawLinkIcon(img, iconX, iconY, colAmber)
+	}
 
 	// Encode PNG.
 	var buf bytes.Buffer
@@ -235,6 +275,112 @@ func fillRoundedRect(img *image.NRGBA, x0, y0, w, h, r int, col color.NRGBA) {
 
 			if dx*dx+dy*dy <= r*r {
 				img.SetNRGBA(x, y, col)
+			}
+		}
+	}
+}
+
+// drawArcUnderline draws a gentle curved underline from (x0,y) to (x1,y) with
+// a downward sag at its midpoint. Thickness tapers from thin at the ends to
+// `maxThick` at the middle for a hand-drawn brush feel.
+func drawArcUnderline(img *image.NRGBA, x0, x1, y int, sag, maxThick float64, col color.NRGBA) {
+	if x1 <= x0 {
+		return
+	}
+	span := float64(x1 - x0)
+	for x := x0; x <= x1; x++ {
+		t := float64(x-x0) / span // 0..1
+		bulge := 4 * t * (1 - t)  // peaks at 1 when t=0.5
+		cy := float64(y) - sag*bulge
+		thick := 1.5 + (maxThick-1.5)*bulge
+		half := thick / 2
+		ys := int(math.Floor(cy - half - 1))
+		ye := int(math.Ceil(cy + half + 1))
+		for py := ys; py <= ye; py++ {
+			if py < 0 || py >= imgH || x < 0 || x >= imgW {
+				continue
+			}
+			dist := math.Abs(float64(py) - cy)
+			if dist > half+1 {
+				continue
+			}
+			alpha := 1.0
+			if dist > half {
+				alpha = 1 - (dist - half)
+			}
+			if alpha <= 0 {
+				continue
+			}
+			c := col
+			c.A = uint8(float64(col.A) * alpha)
+			blendPixel(img, x, py, c)
+		}
+	}
+}
+
+// drawLinkIcon draws a small chain-link glyph: two overlapping rings connected
+// by a diagonal bar. (x,y) is the top-left of the ~18x18 icon bounding box.
+func drawLinkIcon(img *image.NRGBA, x, y int, col color.NRGBA) {
+	// Two overlapping rings.
+	strokeCircle(img, x+5, y+13, 5, 1.5, col)
+	strokeCircle(img, x+13, y+5, 5, 1.5, col)
+	// Diagonal connector between the two ring centers.
+	drawThickLine(img, x+5, y+13, x+13, y+5, 1.5, col)
+}
+
+// strokeCircle paints an annulus of given radius and stroke thickness.
+func strokeCircle(img *image.NRGBA, cx, cy, radius int, thickness float64, col color.NRGBA) {
+	outer := float64(radius) + thickness/2
+	inner := float64(radius) - thickness/2
+	outer2 := outer * outer
+	inner2 := inner * inner
+	r := int(outer) + 1
+	for dy := -r; dy <= r; dy++ {
+		for dx := -r; dx <= r; dx++ {
+			d2 := float64(dx*dx + dy*dy)
+			if d2 <= outer2 && d2 >= inner2 {
+				px, py := cx+dx, cy+dy
+				if px < 0 || px >= imgW || py < 0 || py >= imgH {
+					continue
+				}
+				blendPixel(img, px, py, col)
+			}
+		}
+	}
+}
+
+// drawThickLine draws a line with given thickness between two points.
+func drawThickLine(img *image.NRGBA, x0, y0, x1, y1 int, thickness float64, col color.NRGBA) {
+	dx := float64(x1 - x0)
+	dy := float64(y1 - y0)
+	length := math.Sqrt(dx*dx + dy*dy)
+	if length == 0 {
+		return
+	}
+	half := thickness / 2
+	minX := int(math.Min(float64(x0), float64(x1))) - int(thickness) - 1
+	maxX := int(math.Max(float64(x0), float64(x1))) + int(thickness) + 1
+	minY := int(math.Min(float64(y0), float64(y1))) - int(thickness) - 1
+	maxY := int(math.Max(float64(y0), float64(y1))) + int(thickness) + 1
+	for py := minY; py <= maxY; py++ {
+		for px := minX; px <= maxX; px++ {
+			if px < 0 || px >= imgW || py < 0 || py >= imgH {
+				continue
+			}
+			fx := float64(px - x0)
+			fy := float64(py - y0)
+			t := (fx*dx + fy*dy) / (length * length)
+			if t < 0 {
+				t = 0
+			} else if t > 1 {
+				t = 1
+			}
+			projX := float64(x0) + t*dx
+			projY := float64(y0) + t*dy
+			ddx := float64(px) - projX
+			ddy := float64(py) - projY
+			if math.Sqrt(ddx*ddx+ddy*ddy) <= half {
+				blendPixel(img, px, py, col)
 			}
 		}
 	}

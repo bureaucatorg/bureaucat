@@ -33,17 +33,19 @@ func (h *OGHandler) OGImage(c *echo.Context) error {
 	ctx := c.Request().Context()
 
 	appName := "Bureaucat"
+	branded := false
 	setting, err := h.store.GetSetting(ctx, "branding")
 	if err == nil {
 		var branding BrandingSettings
 		if err := json.Unmarshal(setting.Value, &branding); err == nil {
 			if branding.Enabled && branding.AppName != "" {
 				appName = branding.AppName
+				branded = true
 			}
 		}
 	}
 
-	data, err := ogimage.Render(appName)
+	data, err := ogimage.Render(appName, branded)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to render og image"})
 	}

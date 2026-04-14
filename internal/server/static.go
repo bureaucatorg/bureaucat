@@ -1,6 +1,7 @@
 package server
 
 import (
+	"bytes"
 	"io"
 	"io/fs"
 	"mime"
@@ -81,5 +82,36 @@ func serveFile(c *echo.Context, f fs.File, filePath string) error {
 		return echo.ErrInternalServerError
 	}
 
+	if filePath == "index.html" {
+		content = rewriteOGURLs(content, c.Request())
+	}
+
 	return c.Blob(http.StatusOK, contentType, content)
+}
+
+// rewriteOGURLs replaces relative og:image / twitter:image URLs with absolute
+// URLs derived from the incoming request, so social crawlers that require
+// absolute URLs (Facebook, LinkedIn, Slack) can fetch the preview image.
+func rewriteOGURLs(content []byte, r *http.Request) []byte {
+	scheme := "https"
+	if r.TLS == nil && r.Header.Get("X-Forwarded-Proto") != "https" {
+		scheme = "http"
+	}
+	if proto := r.Header.Get("X-Forwarded-Proto"); proto != "" {
+		scheme = proto
+	}
+	host := r.Host
+	if fwd := r.Header.Get("X-Forwarded-Host"); fwd != "" {
+		host = fwd
+	}
+	if host == "" {
+		return content
+	}
+	base := scheme + "://" + host
+
+	for _, rel := range []string{"/api/v1/og-image"} {
+		abs := base + rel
+		content = bytes.ReplaceAll(content, []byte(`content="`+rel+`"`), []byte(`content="`+abs+`"`))
+	}
+	return content
 }
