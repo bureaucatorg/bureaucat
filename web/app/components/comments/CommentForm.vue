@@ -125,6 +125,7 @@ function handleKeyDown(event: KeyboardEvent) {
           v-model="content"
           :disabled="loading || uploading"
           :uploading="uploading"
+          :members="members"
           compact
           @files-dropped="handleFilesDropped"
         />

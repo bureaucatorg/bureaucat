@@ -468,6 +468,7 @@ onMounted(() => {
                     v-model="editDescription"
                     :disabled="updating"
                     :uploading="descriptionUploading"
+                    :members="members"
                     @files-dropped="handleDescriptionFilesDropped"
                   />
                   <div class="flex gap-2">

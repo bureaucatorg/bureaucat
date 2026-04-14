@@ -201,6 +201,7 @@ function removeLabel(labelId: string) {
           <TiptapEditor
             v-model="form.description"
             :disabled="loading"
+            :members="members"
           />
         </div>
 

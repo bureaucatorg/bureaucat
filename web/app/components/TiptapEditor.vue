@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { useEditor, EditorContent } from "@tiptap/vue-3";
 import StarterKit from "@tiptap/starter-kit";
+import Link from "@tiptap/extension-link";
+import type { Editor } from "@tiptap/vue-3";
+import type { ProjectMember } from "~/types";
 import {
   Bold,
   Italic,
@@ -25,6 +28,7 @@ const props = defineProps<{
   disabled?: boolean;
   uploading?: boolean;
   compact?: boolean;
+  members?: ProjectMember[];
 }>();
 
 const emit = defineEmits<{
@@ -33,6 +37,126 @@ const emit = defineEmits<{
 }>();
 
 const fileInputRef = ref<HTMLInputElement | null>(null);
+const wrapperRef = ref<HTMLElement | null>(null);
+
+// --- @mention state ---
+const showMentions = ref(false);
+const mentionQuery = ref("");
+const mentionFrom = ref(0); // ProseMirror position of the "@"
+const mentionTo = ref(0); // ProseMirror position just after the query
+const mentionCoords = ref<{ top: number; left: number }>({ top: 0, left: 0 });
+const highlightedMentionIndex = ref(0);
+
+const filteredMembers = computed(() => {
+  const list = props.members ?? [];
+  if (!list.length) return [];
+  const q = mentionQuery.value.toLowerCase();
+  if (!q) return list;
+  return list.filter(
+    (m) =>
+      m.first_name.toLowerCase().includes(q) ||
+      m.last_name.toLowerCase().includes(q) ||
+      m.username.toLowerCase().includes(q)
+  );
+});
+
+function updateMentionState(editorInstance: Editor) {
+  if (!props.members?.length) {
+    showMentions.value = false;
+    return;
+  }
+  const { from, empty } = editorInstance.state.selection;
+  if (!empty) {
+    showMentions.value = false;
+    return;
+  }
+  // Look back up to 50 chars from cursor to find an in-progress "@query".
+  const lookback = 50;
+  const start = Math.max(0, from - lookback);
+  const before = editorInstance.state.doc.textBetween(start, from, "\n", "\n");
+  const match = before.match(/(?:^|\s)@([\p{L}\p{N}_.-]{0,30})$/u);
+  if (!match) {
+    showMentions.value = false;
+    return;
+  }
+  const query = match[1] ?? "";
+  // Compute ProseMirror pos of the "@" — account for whether match started with whitespace.
+  const matchedLen = match[0].length;
+  const leadingWs = match[0].startsWith("@") ? 0 : 1;
+  const atDocPos = from - (matchedLen - leadingWs);
+  mentionFrom.value = atDocPos;
+  mentionTo.value = from;
+  mentionQuery.value = query;
+  highlightedMentionIndex.value = 0;
+  showMentions.value = true;
+
+  // Position the popup just below the "@".
+  try {
+    const coords = editorInstance.view.coordsAtPos(atDocPos);
+    const wrap = wrapperRef.value?.getBoundingClientRect();
+    if (wrap) {
+      mentionCoords.value = {
+        top: coords.bottom - wrap.top + 4,
+        left: coords.left - wrap.left,
+      };
+    }
+  } catch {
+    // ignore coord errors (can happen mid-transaction)
+  }
+}
+
+function insertMention(member: ProjectMember) {
+  const ed = editor.value;
+  if (!ed) return;
+  const displayName = `${member.first_name} ${member.last_name}`;
+  ed.chain()
+    .focus()
+    .deleteRange({ from: mentionFrom.value, to: mentionTo.value })
+    .insertContent([
+      {
+        type: "text",
+        text: `@${displayName}`,
+        marks: [
+          {
+            type: "link",
+            attrs: { href: `/profile/${member.user_id}` },
+          },
+        ],
+      },
+      { type: "text", text: " " },
+    ])
+    .run();
+  showMentions.value = false;
+}
+
+function handleMentionKeydown(event: KeyboardEvent): boolean {
+  if (!showMentions.value || filteredMembers.value.length === 0) return false;
+  if (event.key === "ArrowDown") {
+    event.preventDefault();
+    highlightedMentionIndex.value =
+      (highlightedMentionIndex.value + 1) % filteredMembers.value.length;
+    return true;
+  }
+  if (event.key === "ArrowUp") {
+    event.preventDefault();
+    highlightedMentionIndex.value =
+      (highlightedMentionIndex.value - 1 + filteredMembers.value.length) %
+      filteredMembers.value.length;
+    return true;
+  }
+  if (event.key === "Enter" || event.key === "Tab") {
+    event.preventDefault();
+    const m = filteredMembers.value[highlightedMentionIndex.value];
+    if (m) insertMention(m);
+    return true;
+  }
+  if (event.key === "Escape") {
+    event.preventDefault();
+    showMentions.value = false;
+    return true;
+  }
+  return false;
+}
 
 const editor = useEditor({
   content: props.modelValue,
@@ -41,10 +165,20 @@ const editor = useEditor({
     StarterKit.configure({
       heading: { levels: [1, 2, 3] },
     }),
+    Link.configure({
+      openOnClick: false,
+      autolink: false,
+      HTMLAttributes: {
+        class: "text-primary underline underline-offset-2",
+      },
+    }),
   ],
   editorProps: {
     attributes: {
       class: `prose prose-sm max-w-none dark:prose-invert focus:outline-none px-3 py-2 ${props.compact ? "min-h-[72px]" : "min-h-[200px]"}`,
+    },
+    handleKeyDown: (_view, event) => {
+      return handleMentionKeydown(event);
     },
     handleDrop: (_view, event, _slice, moved) => {
       if (moved || !event.dataTransfer?.files.length) return false;
@@ -64,6 +198,16 @@ const editor = useEditor({
   },
   onUpdate: ({ editor }) => {
     emit("update:modelValue", editor.getHTML());
+    updateMentionState(editor);
+  },
+  onSelectionUpdate: ({ editor }) => {
+    updateMentionState(editor);
+  },
+  onBlur: () => {
+    // Delay so button mousedown can fire first.
+    setTimeout(() => {
+      showMentions.value = false;
+    }, 150);
   },
 });
 
@@ -107,7 +251,7 @@ function handleFileInput(e: Event) {
 </script>
 
 <template>
-  <div class="tiptap-editor rounded-md border border-input bg-background">
+  <div ref="wrapperRef" class="tiptap-editor relative rounded-md border border-input bg-background">
     <!-- Toolbar -->
     <div
       v-if="editor"
@@ -277,6 +421,33 @@ function handleFileInput(e: Event) {
       class="hidden"
       @change="handleFileInput"
     />
+
+    <!-- @mention dropdown -->
+    <div
+      v-if="showMentions && filteredMembers.length > 0"
+      class="absolute z-50 w-60 rounded-md border bg-popover shadow-md"
+      :style="{ top: `${mentionCoords.top}px`, left: `${mentionCoords.left}px` }"
+    >
+      <div class="max-h-48 overflow-y-auto py-1">
+        <button
+          v-for="(member, idx) in filteredMembers"
+          :key="member.user_id"
+          type="button"
+          class="flex w-full items-center gap-2 px-3 py-1.5 text-sm transition-colors"
+          :class="idx === highlightedMentionIndex ? 'bg-accent text-accent-foreground' : 'hover:bg-accent hover:text-accent-foreground'"
+          @mousedown.prevent="insertMention(member)"
+          @mouseenter="highlightedMentionIndex = idx"
+        >
+          <Avatar class="size-6">
+            <AvatarFallback class="text-xs" :seed="member.user_id">
+              {{ member.first_name[0] }}{{ member.last_name[0] }}
+            </AvatarFallback>
+          </Avatar>
+          <span class="truncate">{{ member.first_name }} {{ member.last_name }}</span>
+          <span class="ml-auto truncate text-xs text-muted-foreground">@{{ member.username }}</span>
+        </button>
+      </div>
+    </div>
   </div>
 </template>
 

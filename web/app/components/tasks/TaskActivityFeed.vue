@@ -416,6 +416,7 @@ function getStateChangeDetail(activity: ActivityLogEntry): { from: string; to: s
               :task-num="taskNum"
               :can-edit="canEditComment(item.data)"
               :edit-history="getCommentHistory(item.data.id)"
+              :members="members"
               compact
               @deleted="emit('refreshComments')"
               @updated="emit('refreshComments')"

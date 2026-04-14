@@ -2,7 +2,7 @@
 import { MoreHorizontal, Pencil, Trash2, Loader2, Check, X, ChevronDown, ChevronUp, History } from "lucide-vue-next";
 import { marked } from "marked";
 import { toast } from "vue-sonner";
-import type { Comment } from "~/types";
+import type { Comment, ProjectMember } from "~/types";
 import type { Attachment } from "~/composables/useAttachments";
 
 const renderer = new marked.Renderer();
@@ -27,10 +27,12 @@ const props = withDefaults(
     canEdit: boolean;
     compact?: boolean;
     editHistory?: CommentVersion[];
+    members?: ProjectMember[];
   }>(),
   {
     compact: false,
     editHistory: () => [],
+    members: () => [],
   }
 );
 
@@ -209,6 +211,7 @@ onMounted(() => {
         <TiptapEditor
           v-model="editContent"
           :disabled="loading"
+          :members="members"
           compact
         />
         <div class="flex gap-2">
