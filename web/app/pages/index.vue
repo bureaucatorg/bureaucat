@@ -2,7 +2,13 @@
 import { Clock, Shield, Eye, Zap, Sparkles } from "lucide-vue-next";
 
 const { isAuthenticated } = useAuth();
-const { appName } = useSettings();
+const { appName, branding, fetchBranding } = useSettings();
+
+if (import.meta.client) {
+  fetchBranding();
+}
+
+const isBranded = computed(() => branding.value.enabled && !!branding.value.app_name);
 
 if (import.meta.client && isAuthenticated.value) {
   navigateTo("/dashboard");
@@ -23,7 +29,8 @@ useSeoMeta({
   twitterImage: "/api/v1/og-image",
 });
 
-const noBS = ref(false);
+const userNoBS = ref(false);
+const noBS = computed(() => isBranded.value || userNoBS.value);
 
 const features = computed(() =>
   noBS.value
@@ -184,16 +191,17 @@ const features = computed(() =>
               </template>
             </p>
 
-            <!-- No BS button -->
+            <!-- No BS button — hidden when custom branding is active -->
             <Button
+              v-if="!isBranded"
               variant="outline"
               size="sm"
               class="animate-fade-in-up mt-6 gap-2 border-amber-500/30 text-amber-700 hover:bg-amber-500/10 hover:text-amber-800 dark:text-amber-400 dark:hover:text-amber-300"
               style="animation-delay: 300ms"
-              @click="noBS = !noBS"
+              @click="userNoBS = !userNoBS"
             >
               <Sparkles class="size-3.5" />
-              {{ noBS ? "Add the BS back" : "Cut the BS" }}
+              {{ userNoBS ? "Add the BS back" : "Cut the BS" }}
             </Button>
           </div>
         </div>
