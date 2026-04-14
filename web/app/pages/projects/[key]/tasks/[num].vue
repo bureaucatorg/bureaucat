@@ -447,10 +447,22 @@ onMounted(() => {
               </div>
 
               <!-- Description -->
-              <div>
-                <h2 class="mb-2 text-sm font-medium text-muted-foreground">
-                  Description
-                </h2>
+              <div class="group">
+                <div class="mb-2 flex items-center justify-between gap-2">
+                  <h2 class="text-sm font-medium text-muted-foreground">
+                    Description
+                  </h2>
+                  <Button
+                    v-if="isMember && !editingDescription && currentTask.description"
+                    variant="ghost"
+                    size="icon"
+                    aria-label="Edit description"
+                    class="size-6 opacity-0 transition-opacity group-hover:opacity-100 focus:opacity-100"
+                    @click="startEditDescription"
+                  >
+                    <Pencil class="size-3.5" />
+                  </Button>
+                </div>
                 <div v-if="editingDescription" class="space-y-2">
                   <TiptapEditor
                     v-model="editDescription"
@@ -475,22 +487,12 @@ onMounted(() => {
                     </Button>
                   </div>
                 </div>
-                <div v-else class="group relative">
+                <div v-else>
                   <div v-if="currentTask.description">
                     <div
                       class="prose prose-sm max-w-none dark:prose-invert"
                       v-html="renderedDescription"
                     />
-                    <Button
-                      v-if="isMember"
-                      variant="ghost"
-                      size="icon"
-                      aria-label="Edit description"
-                      class="absolute top-0 right-0 size-7 opacity-0 transition-opacity group-hover:opacity-100 focus:opacity-100"
-                      @click="startEditDescription"
-                    >
-                      <Pencil class="size-3.5" />
-                    </Button>
                   </div>
                   <button
                     v-else-if="isMember"
