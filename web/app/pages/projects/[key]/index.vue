@@ -74,6 +74,18 @@ const isMember = computed(
   () => currentProject.value?.role === "admin" || currentProject.value?.role === "member"
 );
 
+// Current page from URL query (default: 1)
+const currentPageFromUrl = computed(() => {
+  const p = parseInt(route.query.page as string, 10);
+  return Number.isFinite(p) && p > 0 ? p : 1;
+});
+
+function setPageInUrl(page: number) {
+  router.replace({
+    query: { ...route.query, page: page > 1 ? String(page) : undefined },
+  });
+}
+
 async function loadProject() {
   loading.value = true;
   error.value = null;
@@ -91,7 +103,7 @@ async function loadProject() {
     listStates(projectKey.value),
     listLabels(projectKey.value),
     listTemplates(projectKey.value),
-    loadTasks(),
+    loadTasks(currentPageFromUrl.value),
   ]);
 
   loading.value = false;
@@ -103,10 +115,12 @@ async function loadTasks(page = 1) {
 
 async function handleFilterChange(filters: TaskFilters) {
   taskFilters.value = filters;
+  setPageInUrl(1);
   await loadTasks(1);
 }
 
 async function handleTaskCreated() {
+  setPageInUrl(1);
   await loadTasks(1);
 }
 
@@ -125,15 +139,22 @@ async function handleSettingsRefresh() {
 
 function prevPage() {
   if (tasksPage.value > 1) {
-    loadTasks(tasksPage.value - 1);
+    setPageInUrl(tasksPage.value - 1);
   }
 }
 
 function nextPage() {
   if (tasksPage.value < tasksTotalPages.value) {
-    loadTasks(tasksPage.value + 1);
+    setPageInUrl(tasksPage.value + 1);
   }
 }
+
+// React to URL page changes (including browser back/forward)
+watch(currentPageFromUrl, (newPage) => {
+  if (!loading.value && newPage !== tasksPage.value) {
+    loadTasks(newPage);
+  }
+});
 
 const existingMemberIds = computed(() => members.value.map((m) => m.user_id));
 
