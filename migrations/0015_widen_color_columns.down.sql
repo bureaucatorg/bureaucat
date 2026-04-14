@@ -1,0 +1,2 @@
+ALTER TABLE project_states ALTER COLUMN color TYPE VARCHAR(7);
+ALTER TABLE project_labels ALTER COLUMN color TYPE VARCHAR(7);
