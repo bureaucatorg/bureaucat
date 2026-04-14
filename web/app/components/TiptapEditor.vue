@@ -24,6 +24,7 @@ const props = defineProps<{
   modelValue: string;
   disabled?: boolean;
   uploading?: boolean;
+  compact?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -43,7 +44,7 @@ const editor = useEditor({
   ],
   editorProps: {
     attributes: {
-      class: "prose prose-sm max-w-none dark:prose-invert focus:outline-none min-h-[200px] px-3 py-2",
+      class: `prose prose-sm max-w-none dark:prose-invert focus:outline-none px-3 py-2 ${props.compact ? "min-h-[72px]" : "min-h-[200px]"}`,
     },
     handleDrop: (_view, event, _slice, moved) => {
       if (moved || !event.dataTransfer?.files.length) return false;
@@ -70,6 +71,17 @@ watch(
   () => props.disabled,
   (val) => {
     editor.value?.setEditable(!val);
+  }
+);
+
+// Sync external modelValue changes (e.g., parent resetting content after submit)
+// into the editor. Skip when the value already matches to avoid ping-pong with onUpdate.
+watch(
+  () => props.modelValue,
+  (val) => {
+    if (!editor.value) return;
+    if (editor.value.getHTML() === val) return;
+    editor.value.commands.setContent(val || "", false);
   }
 );
 

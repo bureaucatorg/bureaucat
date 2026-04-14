@@ -20,7 +20,6 @@ const { user } = useAuth();
 
 const content = ref("");
 const loading = ref(false);
-const mentionTextareaRef = ref<InstanceType<typeof MentionTextarea> | null>(null);
 const dropZoneRef = ref<InstanceType<typeof FileDropZone> | null>(null);
 
 // Pending uploads (not yet attached to a comment)
@@ -59,11 +58,9 @@ function isImage(mimeType: string): boolean {
 async function handleSubmit() {
   if (!content.value.trim() && pendingUploads.value.length === 0) return;
 
-  const markdownContent = mentionTextareaRef.value?.getMarkdownContent() ?? content.value;
-
   loading.value = true;
   const result = await createComment(props.projectKey, props.taskNum, {
-    content: markdownContent || "(attachment)",
+    content: content.value || "(attachment)",
   });
 
   if (result.success && result.data) {
@@ -80,7 +77,6 @@ async function handleSubmit() {
 
     content.value = "";
     pendingUploads.value = [];
-    mentionTextareaRef.value?.clearMentions();
     emit("created");
   } else {
     toast.error(result.error || "Failed to add comment");
@@ -117,15 +113,13 @@ function handleKeyDown(event: KeyboardEvent) {
       accept="*/*"
       @files-dropped="handleFilesDropped"
     >
-      <form class="space-y-2" @submit.prevent="handleSubmit" @paste="handlePaste">
-        <MentionTextarea
-          ref="mentionTextareaRef"
+      <form class="space-y-2" @submit.prevent="handleSubmit" @paste="handlePaste" @keydown="handleKeyDown">
+        <TiptapEditor
           v-model="content"
-          placeholder="Add a comment... (drop files to attach)"
-          :rows="2"
           :disabled="loading || uploading"
-          :members="members"
-          @keydown="handleKeyDown"
+          :uploading="uploading"
+          compact
+          @files-dropped="handleFilesDropped"
         />
 
         <!-- Pending uploads -->

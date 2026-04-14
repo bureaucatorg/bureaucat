@@ -206,10 +206,10 @@ onMounted(() => {
 
       <!-- Editing -->
       <div v-if="editing" class="space-y-2">
-        <Textarea
+        <TiptapEditor
           v-model="editContent"
-          rows="3"
           :disabled="loading"
+          compact
         />
         <div class="flex gap-2">
           <Button size="sm" :disabled="loading || !editContent.trim()" @click="handleUpdate">
