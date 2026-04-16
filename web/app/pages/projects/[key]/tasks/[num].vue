@@ -7,7 +7,7 @@ import {
   Trash2,
   Check,
   X,
-  Calendar,
+  Calendar as CalendarIcon,
   Clock,
   Link,
   Circle,
@@ -17,6 +17,7 @@ import {
 } from "lucide-vue-next";
 import { toast } from "vue-sonner";
 import { marked } from "marked";
+import { CalendarDate, type DateValue } from "@internationalized/date";
 import { PRIORITY_LABELS } from "~/types";
 
 const renderer = new marked.Renderer();
@@ -230,6 +231,108 @@ async function handlePriorityChange(priority: number) {
   } else {
     toast.error(result.error || "Failed to update priority");
   }
+}
+
+const startDateOpen = ref(false);
+const dueDateOpen = ref(false);
+const startDateDraft = ref<DateValue | undefined>();
+const startTimeDraft = ref("09:00");
+const dueDateDraft = ref<DateValue | undefined>();
+const dueTimeDraft = ref("17:00");
+
+function isoToCalendarDate(iso: string | undefined): DateValue | undefined {
+  if (!iso) return undefined;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return undefined;
+  return new CalendarDate(d.getFullYear(), d.getMonth() + 1, d.getDate());
+}
+
+function isoToTimeInput(iso: string | undefined, fallback: string): string {
+  if (!iso) return fallback;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return fallback;
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
+
+function combineDateTime(date: DateValue, time: string): string {
+  const [hh, mm] = time.split(":").map((n) => parseInt(n, 10));
+  const d = new Date(date.year, date.month - 1, date.day, hh || 0, mm || 0, 0, 0);
+  return d.toISOString();
+}
+
+function formatDateTime(iso: string): string {
+  return new Date(iso).toLocaleString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+watch(startDateOpen, (open) => {
+  if (!open) return;
+  startDateDraft.value = isoToCalendarDate(currentTask.value?.start_date);
+  startTimeDraft.value = isoToTimeInput(currentTask.value?.start_date, "09:00");
+});
+
+watch(dueDateOpen, (open) => {
+  if (!open) return;
+  dueDateDraft.value = isoToCalendarDate(currentTask.value?.due_date);
+  dueTimeDraft.value = isoToTimeInput(currentTask.value?.due_date, "17:00");
+});
+
+async function updateDate(field: "start_date" | "due_date", value: string | null) {
+  updating.value = true;
+  const result = await updateTask(projectKey.value, taskNum.value, {
+    [field]: value,
+  });
+  updating.value = false;
+
+  const label = field === "start_date" ? "Start date" : "Due date";
+  if (result.success) {
+    toast.success(value === null ? `${label} cleared` : `${label} updated`);
+    await listActivity(projectKey.value, taskNum.value);
+  } else {
+    toast.error(result.error || `Failed to update ${label.toLowerCase()}`);
+  }
+}
+
+const startMaxValue = computed(() => isoToCalendarDate(currentTask.value?.due_date));
+const dueMinValue = computed(() => isoToCalendarDate(currentTask.value?.start_date));
+
+async function saveStartDate() {
+  if (!startDateDraft.value) return;
+  const iso = combineDateTime(startDateDraft.value, startTimeDraft.value);
+  const due = currentTask.value?.due_date;
+  if (due && new Date(iso) > new Date(due)) {
+    toast.error("Start date cannot be after due date");
+    return;
+  }
+  startDateOpen.value = false;
+  await updateDate("start_date", iso);
+}
+
+async function saveDueDate() {
+  if (!dueDateDraft.value) return;
+  const iso = combineDateTime(dueDateDraft.value, dueTimeDraft.value);
+  const start = currentTask.value?.start_date;
+  if (start && new Date(iso) < new Date(start)) {
+    toast.error("Due date cannot be before start date");
+    return;
+  }
+  dueDateOpen.value = false;
+  await updateDate("due_date", iso);
+}
+
+async function clearStartDate() {
+  startDateOpen.value = false;
+  await updateDate("start_date", null);
+}
+
+async function clearDueDate() {
+  dueDateOpen.value = false;
+  await updateDate("due_date", null);
 }
 
 async function handleDelete() {
@@ -596,6 +699,124 @@ onMounted(() => {
                   </DropdownMenu>
                 </div>
 
+                <!-- Start date -->
+                <div
+                  class="py-3"
+                  :class="currentTask.start_date ? 'space-y-2' : 'flex items-center justify-between gap-2'"
+                >
+                  <p class="text-xs text-muted-foreground">Start date</p>
+                  <Popover v-model:open="startDateOpen">
+                    <PopoverTrigger as-child>
+                      <Button
+                        variant="ghost"
+                        class="h-auto gap-1.5 px-0 py-0 font-medium hover:bg-transparent"
+                        :class="[
+                          currentTask.start_date ? 'w-full justify-start' : '',
+                          !currentTask.start_date ? 'text-muted-foreground' : '',
+                        ]"
+                        :disabled="!isMember || updating"
+                      >
+                        <CalendarIcon class="size-3.5 opacity-70" />
+                        <span>{{ currentTask.start_date ? formatDateTime(currentTask.start_date) : "Set date" }}</span>
+                        <ChevronDown class="size-3.5 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent class="w-auto p-0" align="end">
+                      <Calendar
+                        v-model="startDateDraft"
+                        layout="month-and-year"
+                        :max-value="startMaxValue"
+                      />
+                      <div class="flex items-center gap-2 border-t px-3 py-2">
+                        <CalendarIcon class="size-3.5 text-muted-foreground" />
+                        <Input
+                          v-model="startTimeDraft"
+                          type="time"
+                          class="h-8 flex-1 text-sm"
+                        />
+                        <Button
+                          size="sm"
+                          :disabled="!startDateDraft || updating"
+                          @click="saveStartDate"
+                        >
+                          Save
+                        </Button>
+                      </div>
+                      <div v-if="currentTask.start_date" class="border-t px-3 py-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          class="w-full"
+                          :disabled="updating"
+                          @click="clearStartDate"
+                        >
+                          <X class="mr-1.5 size-3.5" />
+                          Clear
+                        </Button>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                </div>
+
+                <!-- Due date -->
+                <div
+                  class="py-3"
+                  :class="currentTask.due_date ? 'space-y-2' : 'flex items-center justify-between gap-2'"
+                >
+                  <p class="text-xs text-muted-foreground">Due date</p>
+                  <Popover v-model:open="dueDateOpen">
+                    <PopoverTrigger as-child>
+                      <Button
+                        variant="ghost"
+                        class="h-auto gap-1.5 px-0 py-0 font-medium hover:bg-transparent"
+                        :class="[
+                          currentTask.due_date ? 'w-full justify-start' : '',
+                          !currentTask.due_date ? 'text-muted-foreground' : '',
+                        ]"
+                        :disabled="!isMember || updating"
+                      >
+                        <CalendarIcon class="size-3.5 opacity-70" />
+                        <span>{{ currentTask.due_date ? formatDateTime(currentTask.due_date) : "Set date" }}</span>
+                        <ChevronDown class="size-3.5 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent class="w-auto p-0" align="end">
+                      <Calendar
+                        v-model="dueDateDraft"
+                        layout="month-and-year"
+                        :min-value="dueMinValue"
+                      />
+                      <div class="flex items-center gap-2 border-t px-3 py-2">
+                        <CalendarIcon class="size-3.5 text-muted-foreground" />
+                        <Input
+                          v-model="dueTimeDraft"
+                          type="time"
+                          class="h-8 flex-1 text-sm"
+                        />
+                        <Button
+                          size="sm"
+                          :disabled="!dueDateDraft || updating"
+                          @click="saveDueDate"
+                        >
+                          Save
+                        </Button>
+                      </div>
+                      <div v-if="currentTask.due_date" class="border-t px-3 py-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          class="w-full"
+                          :disabled="updating"
+                          @click="clearDueDate"
+                        >
+                          <X class="mr-1.5 size-3.5" />
+                          Clear
+                        </Button>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                </div>
+
                 <!-- Assignees -->
                 <div class="py-3">
                   <TaskAssignees
@@ -639,7 +860,7 @@ onMounted(() => {
                 <!-- Dates -->
                 <div class="space-y-1.5 py-3 text-xs text-muted-foreground">
                   <div class="flex items-center gap-2">
-                    <Calendar class="size-3.5" />
+                    <CalendarIcon class="size-3.5" />
                     <span>Created {{ formatDate(currentTask.created_at) }}</span>
                   </div>
                   <div class="flex items-center gap-2">

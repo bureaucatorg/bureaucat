@@ -10,6 +10,8 @@ export interface Task {
   state_type: string;
   state_color: string;
   priority: number;
+  start_date?: string;
+  due_date?: string;
   created_by: string;
   creator_username: string;
   creator_first_name: string;
@@ -51,6 +53,8 @@ export interface CreateTaskRequest {
   description?: string;
   state_id?: string;
   priority?: number;
+  start_date?: string;
+  due_date?: string;
   assignees?: string[];
   labels?: string[];
 }
@@ -60,6 +64,9 @@ export interface UpdateTaskRequest {
   description?: string;
   state_id?: string;
   priority?: number;
+  // Use `null` to clear; omit to leave unchanged.
+  start_date?: string | null;
+  due_date?: string | null;
 }
 
 export interface TaskFilters {

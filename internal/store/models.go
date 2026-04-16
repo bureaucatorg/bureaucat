@@ -303,6 +303,8 @@ type Task struct {
 	CreatedAt   pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
 	DeletedAt   pgtype.Timestamptz `json:"deleted_at"`
+	StartDate   pgtype.Timestamptz `json:"start_date"`
+	DueDate     pgtype.Timestamptz `json:"due_date"`
 }
 
 type TaskAssignee struct {

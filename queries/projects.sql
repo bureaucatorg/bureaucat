@@ -205,9 +205,9 @@ ORDER BY name ASC;
 -- ==================== TASKS ====================
 
 -- name: CreateTask :one
-INSERT INTO tasks (project_id, task_number, title, description, state_id, priority, created_by)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
-RETURNING id, project_id, task_number, title, description, state_id, priority, created_by, created_at, updated_at, deleted_at;
+INSERT INTO tasks (project_id, task_number, title, description, state_id, priority, created_by, start_date, due_date)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+RETURNING id, project_id, task_number, title, description, state_id, priority, created_by, start_date, due_date, created_at, updated_at, deleted_at;
 
 -- name: GetNextTaskNumber :one
 SELECT COALESCE(MAX(task_number), 0) + 1 AS next_number
@@ -215,7 +215,7 @@ FROM tasks
 WHERE project_id = $1;
 
 -- name: GetTaskByID :one
-SELECT t.id, t.project_id, t.task_number, t.title, t.description, t.state_id, t.priority, t.created_by, t.created_at, t.updated_at, t.deleted_at,
+SELECT t.id, t.project_id, t.task_number, t.title, t.description, t.state_id, t.priority, t.created_by, t.start_date, t.due_date, t.created_at, t.updated_at, t.deleted_at,
        p.project_key,
        ps.name as state_name, ps.state_type, ps.color as state_color,
        u.username as creator_username, u.first_name as creator_first_name, u.last_name as creator_last_name, u.avatar_url as creator_avatar_url
@@ -226,7 +226,7 @@ JOIN users u ON t.created_by = u.id
 WHERE t.id = $1 AND t.deleted_at IS NULL;
 
 -- name: GetTaskByProjectAndNumber :one
-SELECT t.id, t.project_id, t.task_number, t.title, t.description, t.state_id, t.priority, t.created_by, t.created_at, t.updated_at, t.deleted_at,
+SELECT t.id, t.project_id, t.task_number, t.title, t.description, t.state_id, t.priority, t.created_by, t.start_date, t.due_date, t.created_at, t.updated_at, t.deleted_at,
        p.project_key,
        ps.name as state_name, ps.state_type, ps.color as state_color,
        u.username as creator_username, u.first_name as creator_first_name, u.last_name as creator_last_name, u.avatar_url as creator_avatar_url
@@ -242,9 +242,11 @@ SET title = COALESCE(sqlc.narg('title'), title),
     description = COALESCE(sqlc.narg('description'), description),
     state_id = COALESCE(sqlc.narg('state_id'), state_id),
     priority = COALESCE(sqlc.narg('priority'), priority),
+    start_date = CASE WHEN sqlc.arg('update_start_date')::bool THEN sqlc.narg('start_date') ELSE start_date END,
+    due_date = CASE WHEN sqlc.arg('update_due_date')::bool THEN sqlc.narg('due_date') ELSE due_date END,
     updated_at = NOW()
 WHERE id = $1 AND deleted_at IS NULL
-RETURNING id, project_id, task_number, title, description, state_id, priority, created_by, created_at, updated_at, deleted_at;
+RETURNING id, project_id, task_number, title, description, state_id, priority, created_by, start_date, due_date, created_at, updated_at, deleted_at;
 
 -- name: SoftDeleteTask :exec
 UPDATE tasks
@@ -265,7 +267,7 @@ ORDER BY t.created_at DESC
 LIMIT $2 OFFSET $3;
 
 -- name: ListProjectTasksFiltered :many
-SELECT t.id, t.project_id, t.task_number, t.title, t.description, t.state_id, t.priority, t.created_by, t.created_at, t.updated_at, t.deleted_at,
+SELECT t.id, t.project_id, t.task_number, t.title, t.description, t.state_id, t.priority, t.created_by, t.start_date, t.due_date, t.created_at, t.updated_at, t.deleted_at,
        p.project_key,
        ps.name as state_name, ps.state_type, ps.color as state_color,
        u.username as creator_username, u.first_name as creator_first_name, u.last_name as creator_last_name, u.avatar_url as creator_avatar_url,

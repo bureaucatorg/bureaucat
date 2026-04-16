@@ -48,7 +48,7 @@ type Querier interface {
 	CreateRefreshToken(ctx context.Context, arg CreateRefreshTokenParams) (RefreshToken, error)
 	CreateSSOUser(ctx context.Context, arg CreateSSOUserParams) (CreateSSOUserRow, error)
 	// ==================== TASKS ====================
-	CreateTask(ctx context.Context, arg CreateTaskParams) (Task, error)
+	CreateTask(ctx context.Context, arg CreateTaskParams) (CreateTaskRow, error)
 	// ==================== TASK TEMPLATES ====================
 	CreateTaskTemplate(ctx context.Context, arg CreateTaskTemplateParams) (TaskTemplate, error)
 	CreateUpload(ctx context.Context, arg CreateUploadParams) (Upload, error)
@@ -136,7 +136,7 @@ type Querier interface {
 	UpdateProjectLabel(ctx context.Context, arg UpdateProjectLabelParams) (ProjectLabel, error)
 	UpdateProjectMemberRole(ctx context.Context, arg UpdateProjectMemberRoleParams) error
 	UpdateProjectState(ctx context.Context, arg UpdateProjectStateParams) (ProjectState, error)
-	UpdateTask(ctx context.Context, arg UpdateTaskParams) (Task, error)
+	UpdateTask(ctx context.Context, arg UpdateTaskParams) (UpdateTaskRow, error)
 	UpdateTaskTemplate(ctx context.Context, arg UpdateTaskTemplateParams) (TaskTemplate, error)
 	UpdateUserAvatarURL(ctx context.Context, arg UpdateUserAvatarURLParams) error
 	UpdateUserPassword(ctx context.Context, arg UpdateUserPasswordParams) error

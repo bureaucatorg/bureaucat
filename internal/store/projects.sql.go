@@ -498,23 +498,41 @@ func (q *Queries) CreateProjectState(ctx context.Context, arg CreateProjectState
 
 const createTask = `-- name: CreateTask :one
 
-INSERT INTO tasks (project_id, task_number, title, description, state_id, priority, created_by)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
-RETURNING id, project_id, task_number, title, description, state_id, priority, created_by, created_at, updated_at, deleted_at
+INSERT INTO tasks (project_id, task_number, title, description, state_id, priority, created_by, start_date, due_date)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+RETURNING id, project_id, task_number, title, description, state_id, priority, created_by, start_date, due_date, created_at, updated_at, deleted_at
 `
 
 type CreateTaskParams struct {
-	ProjectID   uuid.UUID   `json:"project_id"`
-	TaskNumber  int32       `json:"task_number"`
-	Title       string      `json:"title"`
-	Description pgtype.Text `json:"description"`
-	StateID     uuid.UUID   `json:"state_id"`
-	Priority    int32       `json:"priority"`
-	CreatedBy   uuid.UUID   `json:"created_by"`
+	ProjectID   uuid.UUID          `json:"project_id"`
+	TaskNumber  int32              `json:"task_number"`
+	Title       string             `json:"title"`
+	Description pgtype.Text        `json:"description"`
+	StateID     uuid.UUID          `json:"state_id"`
+	Priority    int32              `json:"priority"`
+	CreatedBy   uuid.UUID          `json:"created_by"`
+	StartDate   pgtype.Timestamptz `json:"start_date"`
+	DueDate     pgtype.Timestamptz `json:"due_date"`
+}
+
+type CreateTaskRow struct {
+	ID          uuid.UUID          `json:"id"`
+	ProjectID   uuid.UUID          `json:"project_id"`
+	TaskNumber  int32              `json:"task_number"`
+	Title       string             `json:"title"`
+	Description pgtype.Text        `json:"description"`
+	StateID     uuid.UUID          `json:"state_id"`
+	Priority    int32              `json:"priority"`
+	CreatedBy   uuid.UUID          `json:"created_by"`
+	StartDate   pgtype.Timestamptz `json:"start_date"`
+	DueDate     pgtype.Timestamptz `json:"due_date"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+	DeletedAt   pgtype.Timestamptz `json:"deleted_at"`
 }
 
 // ==================== TASKS ====================
-func (q *Queries) CreateTask(ctx context.Context, arg CreateTaskParams) (Task, error) {
+func (q *Queries) CreateTask(ctx context.Context, arg CreateTaskParams) (CreateTaskRow, error) {
 	row := q.db.QueryRow(ctx, createTask,
 		arg.ProjectID,
 		arg.TaskNumber,
@@ -523,8 +541,10 @@ func (q *Queries) CreateTask(ctx context.Context, arg CreateTaskParams) (Task, e
 		arg.StateID,
 		arg.Priority,
 		arg.CreatedBy,
+		arg.StartDate,
+		arg.DueDate,
 	)
-	var i Task
+	var i CreateTaskRow
 	err := row.Scan(
 		&i.ID,
 		&i.ProjectID,
@@ -534,6 +554,8 @@ func (q *Queries) CreateTask(ctx context.Context, arg CreateTaskParams) (Task, e
 		&i.StateID,
 		&i.Priority,
 		&i.CreatedBy,
+		&i.StartDate,
+		&i.DueDate,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
@@ -904,7 +926,7 @@ func (q *Queries) GetProjectStateByProjectAndName(ctx context.Context, arg GetPr
 }
 
 const getTaskByID = `-- name: GetTaskByID :one
-SELECT t.id, t.project_id, t.task_number, t.title, t.description, t.state_id, t.priority, t.created_by, t.created_at, t.updated_at, t.deleted_at,
+SELECT t.id, t.project_id, t.task_number, t.title, t.description, t.state_id, t.priority, t.created_by, t.start_date, t.due_date, t.created_at, t.updated_at, t.deleted_at,
        p.project_key,
        ps.name as state_name, ps.state_type, ps.color as state_color,
        u.username as creator_username, u.first_name as creator_first_name, u.last_name as creator_last_name, u.avatar_url as creator_avatar_url
@@ -924,6 +946,8 @@ type GetTaskByIDRow struct {
 	StateID          uuid.UUID          `json:"state_id"`
 	Priority         int32              `json:"priority"`
 	CreatedBy        uuid.UUID          `json:"created_by"`
+	StartDate        pgtype.Timestamptz `json:"start_date"`
+	DueDate          pgtype.Timestamptz `json:"due_date"`
 	CreatedAt        pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
 	DeletedAt        pgtype.Timestamptz `json:"deleted_at"`
@@ -949,6 +973,8 @@ func (q *Queries) GetTaskByID(ctx context.Context, id uuid.UUID) (GetTaskByIDRow
 		&i.StateID,
 		&i.Priority,
 		&i.CreatedBy,
+		&i.StartDate,
+		&i.DueDate,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
@@ -965,7 +991,7 @@ func (q *Queries) GetTaskByID(ctx context.Context, id uuid.UUID) (GetTaskByIDRow
 }
 
 const getTaskByProjectAndNumber = `-- name: GetTaskByProjectAndNumber :one
-SELECT t.id, t.project_id, t.task_number, t.title, t.description, t.state_id, t.priority, t.created_by, t.created_at, t.updated_at, t.deleted_at,
+SELECT t.id, t.project_id, t.task_number, t.title, t.description, t.state_id, t.priority, t.created_by, t.start_date, t.due_date, t.created_at, t.updated_at, t.deleted_at,
        p.project_key,
        ps.name as state_name, ps.state_type, ps.color as state_color,
        u.username as creator_username, u.first_name as creator_first_name, u.last_name as creator_last_name, u.avatar_url as creator_avatar_url
@@ -990,6 +1016,8 @@ type GetTaskByProjectAndNumberRow struct {
 	StateID          uuid.UUID          `json:"state_id"`
 	Priority         int32              `json:"priority"`
 	CreatedBy        uuid.UUID          `json:"created_by"`
+	StartDate        pgtype.Timestamptz `json:"start_date"`
+	DueDate          pgtype.Timestamptz `json:"due_date"`
 	CreatedAt        pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
 	DeletedAt        pgtype.Timestamptz `json:"deleted_at"`
@@ -1015,6 +1043,8 @@ func (q *Queries) GetTaskByProjectAndNumber(ctx context.Context, arg GetTaskByPr
 		&i.StateID,
 		&i.Priority,
 		&i.CreatedBy,
+		&i.StartDate,
+		&i.DueDate,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
@@ -1426,7 +1456,7 @@ func (q *Queries) ListProjectTasks(ctx context.Context, arg ListProjectTasksPara
 }
 
 const listProjectTasksFiltered = `-- name: ListProjectTasksFiltered :many
-SELECT t.id, t.project_id, t.task_number, t.title, t.description, t.state_id, t.priority, t.created_by, t.created_at, t.updated_at, t.deleted_at,
+SELECT t.id, t.project_id, t.task_number, t.title, t.description, t.state_id, t.priority, t.created_by, t.start_date, t.due_date, t.created_at, t.updated_at, t.deleted_at,
        p.project_key,
        ps.name as state_name, ps.state_type, ps.color as state_color,
        u.username as creator_username, u.first_name as creator_first_name, u.last_name as creator_last_name, u.avatar_url as creator_avatar_url,
@@ -1472,6 +1502,8 @@ type ListProjectTasksFilteredRow struct {
 	StateID          uuid.UUID          `json:"state_id"`
 	Priority         int32              `json:"priority"`
 	CreatedBy        uuid.UUID          `json:"created_by"`
+	StartDate        pgtype.Timestamptz `json:"start_date"`
+	DueDate          pgtype.Timestamptz `json:"due_date"`
 	CreatedAt        pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
 	DeletedAt        pgtype.Timestamptz `json:"deleted_at"`
@@ -1516,6 +1548,8 @@ func (q *Queries) ListProjectTasksFiltered(ctx context.Context, arg ListProjectT
 			&i.StateID,
 			&i.Priority,
 			&i.CreatedBy,
+			&i.StartDate,
+			&i.DueDate,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.DeletedAt,
@@ -2489,28 +2523,54 @@ SET title = COALESCE($2, title),
     description = COALESCE($3, description),
     state_id = COALESCE($4, state_id),
     priority = COALESCE($5, priority),
+    start_date = CASE WHEN $6::bool THEN $7 ELSE start_date END,
+    due_date = CASE WHEN $8::bool THEN $9 ELSE due_date END,
     updated_at = NOW()
 WHERE id = $1 AND deleted_at IS NULL
-RETURNING id, project_id, task_number, title, description, state_id, priority, created_by, created_at, updated_at, deleted_at
+RETURNING id, project_id, task_number, title, description, state_id, priority, created_by, start_date, due_date, created_at, updated_at, deleted_at
 `
 
 type UpdateTaskParams struct {
-	ID          uuid.UUID   `json:"id"`
-	Title       pgtype.Text `json:"title"`
-	Description pgtype.Text `json:"description"`
-	StateID     pgtype.UUID `json:"state_id"`
-	Priority    pgtype.Int4 `json:"priority"`
+	ID              uuid.UUID          `json:"id"`
+	Title           pgtype.Text        `json:"title"`
+	Description     pgtype.Text        `json:"description"`
+	StateID         pgtype.UUID        `json:"state_id"`
+	Priority        pgtype.Int4        `json:"priority"`
+	UpdateStartDate bool               `json:"update_start_date"`
+	StartDate       pgtype.Timestamptz `json:"start_date"`
+	UpdateDueDate   bool               `json:"update_due_date"`
+	DueDate         pgtype.Timestamptz `json:"due_date"`
 }
 
-func (q *Queries) UpdateTask(ctx context.Context, arg UpdateTaskParams) (Task, error) {
+type UpdateTaskRow struct {
+	ID          uuid.UUID          `json:"id"`
+	ProjectID   uuid.UUID          `json:"project_id"`
+	TaskNumber  int32              `json:"task_number"`
+	Title       string             `json:"title"`
+	Description pgtype.Text        `json:"description"`
+	StateID     uuid.UUID          `json:"state_id"`
+	Priority    int32              `json:"priority"`
+	CreatedBy   uuid.UUID          `json:"created_by"`
+	StartDate   pgtype.Timestamptz `json:"start_date"`
+	DueDate     pgtype.Timestamptz `json:"due_date"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+	DeletedAt   pgtype.Timestamptz `json:"deleted_at"`
+}
+
+func (q *Queries) UpdateTask(ctx context.Context, arg UpdateTaskParams) (UpdateTaskRow, error) {
 	row := q.db.QueryRow(ctx, updateTask,
 		arg.ID,
 		arg.Title,
 		arg.Description,
 		arg.StateID,
 		arg.Priority,
+		arg.UpdateStartDate,
+		arg.StartDate,
+		arg.UpdateDueDate,
+		arg.DueDate,
 	)
-	var i Task
+	var i UpdateTaskRow
 	err := row.Scan(
 		&i.ID,
 		&i.ProjectID,
@@ -2520,6 +2580,8 @@ func (q *Queries) UpdateTask(ctx context.Context, arg UpdateTaskParams) (Task, e
 		&i.StateID,
 		&i.Priority,
 		&i.CreatedBy,
+		&i.StartDate,
+		&i.DueDate,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,

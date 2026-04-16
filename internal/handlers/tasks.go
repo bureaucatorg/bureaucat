@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"strconv"
 	"time"
@@ -15,6 +16,51 @@ import (
 	"bereaucat/internal/notifier"
 	"bereaucat/internal/store"
 )
+
+// NullableTime distinguishes between an absent JSON field, an explicit null
+// (clear the value), and a provided time value.
+type NullableTime struct {
+	Set   bool
+	Value *time.Time
+}
+
+func (n *NullableTime) UnmarshalJSON(data []byte) error {
+	n.Set = true
+	if string(data) == "null" {
+		return nil
+	}
+	var t time.Time
+	if err := json.Unmarshal(data, &t); err != nil {
+		return err
+	}
+	n.Value = &t
+	return nil
+}
+
+func timestamptzToTimePtr(t pgtype.Timestamptz) *time.Time {
+	if !t.Valid {
+		return nil
+	}
+	tt := t.Time
+	return &tt
+}
+
+func timePtrToTimestamptz(t *time.Time) pgtype.Timestamptz {
+	if t == nil {
+		return pgtype.Timestamptz{Valid: false}
+	}
+	return pgtype.Timestamptz{Time: *t, Valid: true}
+}
+
+func timePtrEqual(a, b *time.Time) bool {
+	if a == nil && b == nil {
+		return true
+	}
+	if a == nil || b == nil {
+		return false
+	}
+	return a.Equal(*b)
+}
 
 // TaskHandler handles task-related endpoints.
 type TaskHandler struct {
@@ -45,6 +91,8 @@ type TaskResponse struct {
 	StateType       string             `json:"state_type"`
 	StateColor      string             `json:"state_color"`
 	Priority        int                `json:"priority"`
+	StartDate        *time.Time         `json:"start_date,omitempty"`
+	DueDate          *time.Time         `json:"due_date,omitempty"`
 	CreatedBy        uuid.UUID          `json:"created_by"`
 	CreatorUsername  string             `json:"creator_username"`
 	CreatorFirstName string            `json:"creator_first_name"`
@@ -77,20 +125,24 @@ type TaskLabelInfo struct {
 
 // CreateTaskRequest represents the request to create a task.
 type CreateTaskRequest struct {
-	Title       string   `json:"title"`
-	Description *string  `json:"description"`
-	StateID     *string  `json:"state_id"`
-	Priority    *int     `json:"priority"`
-	Assignees   []string `json:"assignees"`
-	Labels      []string `json:"labels"`
+	Title       string     `json:"title"`
+	Description *string    `json:"description"`
+	StateID     *string    `json:"state_id"`
+	Priority    *int       `json:"priority"`
+	StartDate   *time.Time `json:"start_date"`
+	DueDate     *time.Time `json:"due_date"`
+	Assignees   []string   `json:"assignees"`
+	Labels      []string   `json:"labels"`
 }
 
 // UpdateTaskRequest represents the request to update a task.
 type UpdateTaskRequest struct {
-	Title       *string `json:"title"`
-	Description *string `json:"description"`
-	StateID     *string `json:"state_id"`
-	Priority    *int    `json:"priority"`
+	Title       *string      `json:"title"`
+	Description *string      `json:"description"`
+	StateID     *string      `json:"state_id"`
+	Priority    *int         `json:"priority"`
+	StartDate   NullableTime `json:"start_date"`
+	DueDate     NullableTime `json:"due_date"`
 }
 
 // PaginatedTasksResponse represents a paginated list of tasks.
@@ -237,6 +289,8 @@ func (h *TaskHandler) ListTasks(c *echo.Context) error {
 			StateType:        t.StateType,
 			StateColor:       textToString(t.StateColor, "#6B7280"),
 			Priority:         int(t.Priority),
+			StartDate:        timestamptzToTimePtr(t.StartDate),
+			DueDate:          timestamptzToTimePtr(t.DueDate),
 			CreatedBy:        t.CreatedBy,
 			CreatorUsername:   t.CreatorUsername,
 			CreatorFirstName: t.CreatorFirstName,
@@ -325,6 +379,10 @@ func (h *TaskHandler) CreateTask(c *echo.Context) error {
 		priority = int32(*req.Priority)
 	}
 
+	if req.StartDate != nil && req.DueDate != nil && req.DueDate.Before(*req.StartDate) {
+		return echo.NewHTTPError(http.StatusBadRequest, "due date cannot be before start date")
+	}
+
 	// Get next task number
 	nextNumber, err := h.store.GetNextTaskNumber(ctx, projectID)
 	if err != nil {
@@ -340,6 +398,8 @@ func (h *TaskHandler) CreateTask(c *echo.Context) error {
 		StateID:     stateID,
 		Priority:    priority,
 		CreatedBy:   userID,
+		StartDate:   timePtrToTimestamptz(req.StartDate),
+		DueDate:     timePtrToTimestamptz(req.DueDate),
 	})
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to create task")
@@ -488,6 +548,8 @@ func (h *TaskHandler) CreateTask(c *echo.Context) error {
 		StateType:       fullTask.StateType,
 		StateColor:      textToString(fullTask.StateColor, "#6B7280"),
 		Priority:        int(fullTask.Priority),
+		StartDate:       timestamptzToTimePtr(fullTask.StartDate),
+		DueDate:         timestamptzToTimePtr(fullTask.DueDate),
 		CreatedBy:        fullTask.CreatedBy,
 		CreatorUsername:  fullTask.CreatorUsername,
 		CreatorFirstName: fullTask.CreatorFirstName,
@@ -554,6 +616,8 @@ func (h *TaskHandler) GetTask(c *echo.Context) error {
 		StateType:       task.StateType,
 		StateColor:      textToString(task.StateColor, "#6B7280"),
 		Priority:        int(task.Priority),
+		StartDate:       timestamptzToTimePtr(task.StartDate),
+		DueDate:         timestamptzToTimePtr(task.DueDate),
 		CreatedBy:        task.CreatedBy,
 		CreatorUsername:  task.CreatorUsername,
 		CreatorFirstName: task.CreatorFirstName,
@@ -629,13 +693,39 @@ func (h *TaskHandler) UpdateTask(c *echo.Context) error {
 		stateID = pgtype.UUID{Bytes: id, Valid: true}
 	}
 
+	// Build nullable date args: only applied when the field was present in the request.
+	var startDateArg, dueDateArg pgtype.Timestamptz
+	if req.StartDate.Set && req.StartDate.Value != nil {
+		startDateArg = pgtype.Timestamptz{Time: *req.StartDate.Value, Valid: true}
+	}
+	if req.DueDate.Set && req.DueDate.Value != nil {
+		dueDateArg = pgtype.Timestamptz{Time: *req.DueDate.Value, Valid: true}
+	}
+
+	// Validate against the task's post-update state: start must not be after due.
+	effectiveStart := timestamptzToTimePtr(oldTask.StartDate)
+	if req.StartDate.Set {
+		effectiveStart = req.StartDate.Value
+	}
+	effectiveDue := timestamptzToTimePtr(oldTask.DueDate)
+	if req.DueDate.Set {
+		effectiveDue = req.DueDate.Value
+	}
+	if effectiveStart != nil && effectiveDue != nil && effectiveDue.Before(*effectiveStart) {
+		return echo.NewHTTPError(http.StatusBadRequest, "due date cannot be before start date")
+	}
+
 	// Update task
 	task, err := h.store.UpdateTask(ctx, store.UpdateTaskParams{
-		ID:          oldTask.ID,
-		Title:       stringToPgtypeText(req.Title),
-		Description: stringToPgtypeText(req.Description),
-		StateID:     stateID,
-		Priority:    intToPgtypeInt4(req.Priority),
+		ID:              oldTask.ID,
+		Title:           stringToPgtypeText(req.Title),
+		Description:     stringToPgtypeText(req.Description),
+		StateID:         stateID,
+		Priority:        intToPgtypeInt4(req.Priority),
+		UpdateStartDate: req.StartDate.Set,
+		StartDate:       startDateArg,
+		UpdateDueDate:   req.DueDate.Set,
+		DueDate:         dueDateArg,
 	})
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to update task")
@@ -691,6 +781,32 @@ func (h *TaskHandler) UpdateTask(c *echo.Context) error {
 			NewValue:     *req.Priority,
 		})
 	}
+	if req.StartDate.Set {
+		oldStart := timestamptzToTimePtr(oldTask.StartDate)
+		if !timePtrEqual(oldStart, req.StartDate.Value) {
+			h.activityService.LogActivity(ctx, activity.LogActivityParams{
+				TaskID:       task.ID,
+				ActivityType: activity.TaskUpdated,
+				ActorID:      userID,
+				FieldName:    activity.StringPtr("start_date"),
+				OldValue:     oldStart,
+				NewValue:     req.StartDate.Value,
+			})
+		}
+	}
+	if req.DueDate.Set {
+		oldDue := timestamptzToTimePtr(oldTask.DueDate)
+		if !timePtrEqual(oldDue, req.DueDate.Value) {
+			h.activityService.LogActivity(ctx, activity.LogActivityParams{
+				TaskID:       task.ID,
+				ActivityType: activity.TaskUpdated,
+				ActorID:      userID,
+				FieldName:    activity.StringPtr("due_date"),
+				OldValue:     oldDue,
+				NewValue:     req.DueDate.Value,
+			})
+		}
+	}
 
 	// Send mention notifications for newly added mentions in description
 	if h.notificationService != nil && req.Description != nil {
@@ -745,6 +861,8 @@ func (h *TaskHandler) UpdateTask(c *echo.Context) error {
 		StateType:       fullTask.StateType,
 		StateColor:      textToString(fullTask.StateColor, "#6B7280"),
 		Priority:        int(fullTask.Priority),
+		StartDate:       timestamptzToTimePtr(fullTask.StartDate),
+		DueDate:         timestamptzToTimePtr(fullTask.DueDate),
 		CreatedBy:        fullTask.CreatedBy,
 		CreatorUsername:  fullTask.CreatorUsername,
 		CreatorFirstName: fullTask.CreatorFirstName,

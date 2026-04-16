@@ -1,0 +1,3 @@
+ALTER TABLE tasks
+    ADD COLUMN start_date TIMESTAMPTZ,
+    ADD COLUMN due_date TIMESTAMPTZ;
