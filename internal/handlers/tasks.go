@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"net/http"
 	"strconv"
@@ -65,14 +66,16 @@ func timePtrEqual(a, b *time.Time) bool {
 // TaskHandler handles task-related endpoints.
 type TaskHandler struct {
 	store               store.Querier
+	filterRunner        *store.FilterRunner
 	activityService     *activity.Service
 	notificationService *notifier.Service
 }
 
 // NewTaskHandler creates a new task handler.
-func NewTaskHandler(store store.Querier, activityService *activity.Service, notificationService *notifier.Service) *TaskHandler {
+func NewTaskHandler(s store.Querier, filterRunner *store.FilterRunner, activityService *activity.Service, notificationService *notifier.Service) *TaskHandler {
 	return &TaskHandler{
-		store:               store,
+		store:               s,
+		filterRunner:        filterRunner,
 		activityService:     activityService,
 		notificationService: notificationService,
 	}
@@ -157,18 +160,18 @@ type PaginatedTasksResponse struct {
 // ListTasks returns paginated list of tasks.
 //
 //	@Summary		List tasks
-//	@Description	Returns a paginated list of tasks with optional filters.
+//	@Description	Returns a paginated list of tasks. Filters are expressed as a base64url(JSON) FilterTree in ?f=. Legacy scalar params are translated server-side.
 //	@Tags			Tasks
 //	@Produce		json
 //	@Param			projectKey	path		string	true	"Project key"
 //	@Param			page		query		int		false	"Page number"		default(1)
 //	@Param			per_page	query		int		false	"Items per page"	default(20)
-//	@Param			state_id	query		string	false	"Filter by state ID"
-//	@Param			state_type	query		string	false	"Filter by state type"
-//	@Param			created_by	query		string	false	"Filter by creator ID"
-//	@Param			priority	query		int		false	"Filter by priority"
-//	@Param			q			query		string	false	"Search by title"
+//	@Param			f			query		string	false	"FilterTree as base64url(JSON)"
+//	@Param			view		query		string	false	"Saved view slug; used when f is omitted"
+//	@Param			sort_by		query		string	false	"One of: created_at, updated_at, priority, due_date, start_date, title"
+//	@Param			sort_dir	query		string	false	"asc or desc"
 //	@Success		200			{object}	PaginatedTasksResponse
+//	@Failure		400			{object}	ErrorResponse
 //	@Failure		500			{object}	ErrorResponse
 //	@Security		BearerAuth
 //	@Router			/projects/{projectKey}/tasks [get]
@@ -177,6 +180,12 @@ func (h *TaskHandler) ListTasks(c *echo.Context) error {
 	projectID, err := uuid.Parse(projectIDStr)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "invalid project ID in context")
+	}
+
+	callerIDStr := c.Request().Header.Get(auth.HeaderUserID)
+	callerID, err := uuid.Parse(callerIDStr)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusUnauthorized, "invalid user ID")
 	}
 
 	page, _ := strconv.Atoi(c.QueryParam("page"))
@@ -191,92 +200,43 @@ func (h *TaskHandler) ListTasks(c *echo.Context) error {
 
 	ctx := c.Request().Context()
 
-	// Parse optional filter parameters
-	var stateID, createdByID, assignedToID pgtype.UUID
-	var stateType store.NullStateType
-	var priority pgtype.Int4
-	var search pgtype.Text
-
-	if s := c.QueryParam("state_id"); s != "" {
-		if id, err := uuid.Parse(s); err == nil {
-			stateID = pgtype.UUID{Bytes: id, Valid: true}
-		}
-	}
-	if s := c.QueryParam("state_type"); s != "" {
-		stateType = store.NullStateType{StateType: store.StateType(s), Valid: true}
-	}
-	if s := c.QueryParam("created_by"); s != "" {
-		if id, err := uuid.Parse(s); err == nil {
-			createdByID = pgtype.UUID{Bytes: id, Valid: true}
-		}
-	}
-	if s := c.QueryParam("assigned_to"); s != "" {
-		if id, err := uuid.Parse(s); err == nil {
-			assignedToID = pgtype.UUID{Bytes: id, Valid: true}
-		}
-	}
-	if s := c.QueryParam("priority"); s != "" {
-		if p, err := strconv.Atoi(s); err == nil {
-			priority = pgtype.Int4{Int32: int32(p), Valid: true}
-		}
-	}
-	if s := c.QueryParam("q"); s != "" {
-		search = pgtype.Text{String: s, Valid: true}
-	}
-
-	var fromDate, toDate pgtype.Timestamptz
-	if s := c.QueryParam("from_date"); s != "" {
-		if t, err := time.Parse("2006-01-02", s); err == nil {
-			fromDate = pgtype.Timestamptz{Time: t, Valid: true}
-		}
-	}
-	if s := c.QueryParam("to_date"); s != "" {
-		if t, err := time.Parse("2006-01-02", s); err == nil {
-			// Set to end of day
-			toDate = pgtype.Timestamptz{Time: t.Add(24*time.Hour - time.Nanosecond), Valid: true}
-		}
-	}
-
-	// Get filtered tasks
-	tasks, err := h.store.ListProjectTasksFiltered(ctx, store.ListProjectTasksFilteredParams{
-		ProjectID:  projectID,
-		Limit:      int32(perPage),
-		Offset:     int32(offset),
-		StateID:    stateID,
-		StateType:  stateType,
-		CreatedBy:  createdByID,
-		AssignedTo: assignedToID,
-		Priority:   priority,
-		Search:     search,
-		FromDate:   fromDate,
-		ToDate:     toDate,
-	})
+	// Resolve the filter tree. Precedence: ?f= (explicit tree) > ?view= (saved view) > legacy scalars.
+	tree, err := h.resolveListFilter(ctx, c, projectID, callerID)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, "failed to list tasks")
+		return err
 	}
 
-	// Get total count with same filters
-	total, err := h.store.CountProjectTasksFiltered(ctx, store.CountProjectTasksFilteredParams{
-		ProjectID:  projectID,
-		StateID:    stateID,
-		StateType:  stateType,
-		CreatedBy:  createdByID,
-		AssignedTo: assignedToID,
-		Priority:   priority,
-		Search:     search,
-		FromDate:   fromDate,
-		ToDate:     toDate,
-	})
+	sortBy := c.QueryParam("sort_by")
+	sortDir := c.QueryParam("sort_dir")
+
+	params := store.FilterListParams{
+		ProjectID: projectID,
+		CallerID:  callerID,
+		Tree:      tree,
+		SortBy:    sortBy,
+		SortDir:   sortDir,
+		Limit:     int32(perPage),
+		Offset:    int32(offset),
+	}
+
+	tasks, err := h.filterRunner.ListTasks(ctx, params)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "failed to list tasks: "+err.Error())
+	}
+
+	total, err := h.filterRunner.CountTasks(ctx, params)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to count tasks")
 	}
 
-	// Convert to response format with enrichment
+	// Batch-decorate assignees and labels in two queries total.
+	assigneesByTask, labelsByTask, err := h.decorateTasks(ctx, tasks)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to load task associations")
+	}
+
 	taskResponses := make([]TaskResponse, len(tasks))
 	for i, t := range tasks {
-		assignees := h.getTaskAssignees(ctx, t.ID)
-		labels := h.getTaskLabels(ctx, t.ID)
-
 		taskResponses[i] = TaskResponse{
 			ID:               t.ID,
 			ProjectKey:       t.ProjectKey,
@@ -292,15 +252,21 @@ func (h *TaskHandler) ListTasks(c *echo.Context) error {
 			StartDate:        timestamptzToTimePtr(t.StartDate),
 			DueDate:          timestamptzToTimePtr(t.DueDate),
 			CreatedBy:        t.CreatedBy,
-			CreatorUsername:   t.CreatorUsername,
+			CreatorUsername:  t.CreatorUsername,
 			CreatorFirstName: t.CreatorFirstName,
 			CreatorLastName:  t.CreatorLastName,
 			CreatorAvatarURL: textToStringPtr(t.CreatorAvatarUrl),
-			Assignees:        assignees,
-			Labels:           labels,
+			Assignees:        assigneesByTask[t.ID],
+			Labels:           labelsByTask[t.ID],
 			CommentCount:     int(t.CommentCount),
 			CreatedAt:        t.CreatedAt.Time,
 			UpdatedAt:        t.UpdatedAt.Time,
+		}
+		if taskResponses[i].Assignees == nil {
+			taskResponses[i].Assignees = []AssigneeResponse{}
+		}
+		if taskResponses[i].Labels == nil {
+			taskResponses[i].Labels = []TaskLabelInfo{}
 		}
 	}
 
@@ -316,6 +282,90 @@ func (h *TaskHandler) ListTasks(c *echo.Context) error {
 		PerPage:    perPage,
 		TotalPages: totalPages,
 	})
+}
+
+// resolveListFilter picks the filter tree for a list request. Precedence:
+// explicit ?f= base64url(JSON) tree, then a saved view referenced by ?view=.
+// Absent both, the filter is empty.
+func (h *TaskHandler) resolveListFilter(ctx context.Context, c *echo.Context, projectID, callerID uuid.UUID) (store.FilterTree, error) {
+	if raw := c.QueryParam("f"); raw != "" {
+		data, err := base64.RawURLEncoding.DecodeString(raw)
+		if err != nil {
+			// Accept either raw or padded encodings from the wild.
+			data, err = base64.StdEncoding.DecodeString(raw)
+			if err != nil {
+				return store.FilterTree{}, echo.NewHTTPError(http.StatusBadRequest, "invalid filter encoding")
+			}
+		}
+		tree, err := store.ParseFilterTree(data)
+		if err != nil {
+			return store.FilterTree{}, echo.NewHTTPError(http.StatusBadRequest, err.Error())
+		}
+		return tree, nil
+	}
+
+	if slug := c.QueryParam("view"); slug != "" {
+		view, err := h.store.GetProjectViewBySlug(ctx, store.GetProjectViewBySlugParams{
+			ProjectID: projectID,
+			Slug:      slug,
+		})
+		if err != nil {
+			return store.FilterTree{}, echo.NewHTTPError(http.StatusNotFound, "view not found")
+		}
+		if view.Visibility == "private" && view.OwnerID != callerID {
+			return store.FilterTree{}, echo.NewHTTPError(http.StatusForbidden, "view not accessible")
+		}
+		tree, err := store.ParseFilterTree(view.FilterTree)
+		if err != nil {
+			return store.FilterTree{}, echo.NewHTTPError(http.StatusInternalServerError, "stored view has invalid filter")
+		}
+		return tree, nil
+	}
+
+	return store.FilterTree{}, nil
+}
+
+// decorateTasks loads assignees and labels for the given rows in two queries.
+func (h *TaskHandler) decorateTasks(ctx context.Context, tasks []store.FilteredTaskRow) (map[uuid.UUID][]AssigneeResponse, map[uuid.UUID][]TaskLabelInfo, error) {
+	if len(tasks) == 0 {
+		return map[uuid.UUID][]AssigneeResponse{}, map[uuid.UUID][]TaskLabelInfo{}, nil
+	}
+	ids := make([]uuid.UUID, len(tasks))
+	for i, t := range tasks {
+		ids[i] = t.ID
+	}
+
+	assignees, err := h.store.ListAssigneesForTasks(ctx, ids)
+	if err != nil {
+		return nil, nil, err
+	}
+	assigneesByTask := make(map[uuid.UUID][]AssigneeResponse, len(tasks))
+	for _, a := range assignees {
+		assigneesByTask[a.TaskID] = append(assigneesByTask[a.TaskID], AssigneeResponse{
+			ID:        a.ID,
+			UserID:    a.UserID,
+			Username:  a.Username,
+			Email:     a.Email,
+			FirstName: a.FirstName,
+			LastName:  a.LastName,
+			AvatarURL: textToStringPtr(a.AvatarUrl),
+		})
+	}
+
+	labels, err := h.store.ListLabelsForTasks(ctx, ids)
+	if err != nil {
+		return nil, nil, err
+	}
+	labelsByTask := make(map[uuid.UUID][]TaskLabelInfo, len(tasks))
+	for _, l := range labels {
+		labelsByTask[l.TaskID] = append(labelsByTask[l.TaskID], TaskLabelInfo{
+			ID:    l.LabelID,
+			Name:  l.Name,
+			Color: textToString(l.Color, "#3B82F6"),
+		})
+	}
+
+	return assigneesByTask, labelsByTask, nil
 }
 
 // CreateTask creates a new task.

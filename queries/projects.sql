@@ -266,48 +266,29 @@ WHERE t.project_id = $1 AND t.deleted_at IS NULL
 ORDER BY t.created_at DESC
 LIMIT $2 OFFSET $3;
 
--- name: ListProjectTasksFiltered :many
-SELECT t.id, t.project_id, t.task_number, t.title, t.description, t.state_id, t.priority, t.created_by, t.start_date, t.due_date, t.created_at, t.updated_at, t.deleted_at,
-       p.project_key,
-       ps.name as state_name, ps.state_type, ps.color as state_color,
-       u.username as creator_username, u.first_name as creator_first_name, u.last_name as creator_last_name, u.avatar_url as creator_avatar_url,
-       (SELECT COUNT(*) FROM comments c WHERE c.task_id = t.id AND c.deleted_at IS NULL)::bigint as comment_count
-FROM tasks t
-JOIN projects p ON t.project_id = p.id
-JOIN project_states ps ON t.state_id = ps.id
-JOIN users u ON t.created_by = u.id
-WHERE t.project_id = $1
-  AND t.deleted_at IS NULL
-  AND (sqlc.narg('state_id')::uuid IS NULL OR t.state_id = sqlc.narg('state_id'))
-  AND (sqlc.narg('state_type')::state_type IS NULL OR ps.state_type = sqlc.narg('state_type'))
-  AND (sqlc.narg('priority')::int IS NULL OR t.priority = sqlc.narg('priority'))
-  AND (sqlc.narg('created_by')::uuid IS NULL OR t.created_by = sqlc.narg('created_by'))
-  AND (sqlc.narg('assigned_to')::uuid IS NULL OR EXISTS (SELECT 1 FROM task_assignees ta WHERE ta.task_id = t.id AND ta.user_id = sqlc.narg('assigned_to')))
-  AND (sqlc.narg('search')::text IS NULL OR t.title ILIKE '%' || sqlc.narg('search') || '%' OR t.description ILIKE '%' || sqlc.narg('search') || '%')
-  AND (sqlc.narg('from_date')::timestamptz IS NULL OR t.created_at >= sqlc.narg('from_date'))
-  AND (sqlc.narg('to_date')::timestamptz IS NULL OR t.created_at <= sqlc.narg('to_date'))
-ORDER BY t.created_at DESC
-LIMIT $2 OFFSET $3;
-
 -- name: CountProjectTasks :one
 SELECT COUNT(*)
 FROM tasks
 WHERE project_id = $1 AND deleted_at IS NULL;
 
--- name: CountProjectTasksFiltered :one
-SELECT COUNT(*)
-FROM tasks t
-JOIN project_states ps ON t.state_id = ps.id
-WHERE t.project_id = $1
-  AND t.deleted_at IS NULL
-  AND (sqlc.narg('state_id')::uuid IS NULL OR t.state_id = sqlc.narg('state_id'))
-  AND (sqlc.narg('state_type')::state_type IS NULL OR ps.state_type = sqlc.narg('state_type'))
-  AND (sqlc.narg('priority')::int IS NULL OR t.priority = sqlc.narg('priority'))
-  AND (sqlc.narg('created_by')::uuid IS NULL OR t.created_by = sqlc.narg('created_by'))
-  AND (sqlc.narg('assigned_to')::uuid IS NULL OR EXISTS (SELECT 1 FROM task_assignees ta WHERE ta.task_id = t.id AND ta.user_id = sqlc.narg('assigned_to')))
-  AND (sqlc.narg('search')::text IS NULL OR t.title ILIKE '%' || sqlc.narg('search') || '%' OR t.description ILIKE '%' || sqlc.narg('search') || '%')
-  AND (sqlc.narg('from_date')::timestamptz IS NULL OR t.created_at >= sqlc.narg('from_date'))
-  AND (sqlc.narg('to_date')::timestamptz IS NULL OR t.created_at <= sqlc.narg('to_date'));
+-- Filtered list and count are now built dynamically by internal/store/tasks_filter.go
+-- from a FilterTree. The projection here is documented for reference by that runner.
+
+-- name: ListAssigneesForTasks :many
+SELECT ta.task_id, ta.id, ta.user_id, ta.assigned_at,
+       u.username, u.email, u.first_name, u.last_name, u.avatar_url
+FROM task_assignees ta
+JOIN users u ON ta.user_id = u.id
+WHERE ta.task_id = ANY(@task_ids::uuid[])
+ORDER BY ta.assigned_at ASC;
+
+-- name: ListLabelsForTasks :many
+SELECT tl.task_id, tl.label_id, tl.added_at,
+       pl.name, pl.color
+FROM task_labels tl
+JOIN project_labels pl ON tl.label_id = pl.id
+WHERE tl.task_id = ANY(@task_ids::uuid[])
+ORDER BY pl.name ASC;
 
 -- name: ListTasksByAssignee :many
 SELECT t.id, t.project_id, t.task_number, t.title, t.state_id, t.priority,

@@ -123,6 +123,16 @@ func (s *Server) registerRoutes() {
 			projectGroup.PATCH("/templates/:templateId", s.projectHandler.UpdateTemplate, auth.ProjectRoleMiddleware("admin"))
 			projectGroup.DELETE("/templates/:templateId", s.projectHandler.DeleteTemplate, auth.ProjectRoleMiddleware("admin"))
 
+			// Views (saved filter combinations)
+			if s.viewHandler != nil {
+				projectGroup.GET("/views", s.viewHandler.ListViews)
+				projectGroup.POST("/views", s.viewHandler.CreateView, auth.ProjectRoleMiddleware("member"))
+				projectGroup.PATCH("/views/reorder", s.viewHandler.ReorderViews, auth.ProjectRoleMiddleware("member"))
+				projectGroup.GET("/views/:slug", s.viewHandler.GetView)
+				projectGroup.PATCH("/views/:slug", s.viewHandler.UpdateView, auth.ProjectRoleMiddleware("member"))
+				projectGroup.DELETE("/views/:slug", s.viewHandler.DeleteView, auth.ProjectRoleMiddleware("member"))
+			}
+
 			// Tasks
 			if s.taskHandler != nil {
 				projectGroup.GET("/tasks", s.taskHandler.ListTasks)

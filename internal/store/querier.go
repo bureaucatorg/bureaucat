@@ -23,7 +23,6 @@ type Querier interface {
 	CountAllProjectsFiltered(ctx context.Context, search pgtype.Text) (int64, error)
 	CountProjectMembers(ctx context.Context, projectID uuid.UUID) (int64, error)
 	CountProjectTasks(ctx context.Context, projectID uuid.UUID) (int64, error)
-	CountProjectTasksFiltered(ctx context.Context, arg CountProjectTasksFilteredParams) (int64, error)
 	CountSearchUsers(ctx context.Context, dollar_1 pgtype.Text) (int64, error)
 	CountTaskComments(ctx context.Context, taskID uuid.UUID) (int64, error)
 	CountTasksByAssignee(ctx context.Context, userID uuid.UUID) (int64, error)
@@ -45,6 +44,8 @@ type Querier interface {
 	CreateProjectLabel(ctx context.Context, arg CreateProjectLabelParams) (ProjectLabel, error)
 	// ==================== PROJECT STATES ====================
 	CreateProjectState(ctx context.Context, arg CreateProjectStateParams) (ProjectState, error)
+	// ==================== PROJECT VIEWS ====================
+	CreateProjectView(ctx context.Context, arg CreateProjectViewParams) (ProjectView, error)
 	CreateRefreshToken(ctx context.Context, arg CreateRefreshTokenParams) (RefreshToken, error)
 	CreateSSOUser(ctx context.Context, arg CreateSSOUserParams) (CreateSSOUserRow, error)
 	// ==================== TASKS ====================
@@ -76,6 +77,8 @@ type Querier interface {
 	GetProjectStateByID(ctx context.Context, id uuid.UUID) (ProjectState, error)
 	// ==================== IMPORT HELPERS ====================
 	GetProjectStateByProjectAndName(ctx context.Context, arg GetProjectStateByProjectAndNameParams) (ProjectState, error)
+	GetProjectViewByID(ctx context.Context, id uuid.UUID) (ProjectView, error)
+	GetProjectViewBySlug(ctx context.Context, arg GetProjectViewBySlugParams) (ProjectView, error)
 	GetRefreshTokenByHash(ctx context.Context, tokenHash string) (RefreshToken, error)
 	GetRefreshTokenByID(ctx context.Context, id uuid.UUID) (RefreshToken, error)
 	GetSetting(ctx context.Context, key string) (Setting, error)
@@ -94,13 +97,18 @@ type Querier interface {
 	ListActiveRefreshTokens(ctx context.Context, arg ListActiveRefreshTokensParams) ([]ListActiveRefreshTokensRow, error)
 	ListAllProjects(ctx context.Context, arg ListAllProjectsParams) ([]ListAllProjectsRow, error)
 	ListAllProjectsFiltered(ctx context.Context, arg ListAllProjectsFilteredParams) ([]ListAllProjectsFilteredRow, error)
+	// Filtered list and count are now built dynamically by internal/store/tasks_filter.go
+	// from a FilterTree. The projection here is documented for reference by that runner.
+	ListAssigneesForTasks(ctx context.Context, taskIds []uuid.UUID) ([]ListAssigneesForTasksRow, error)
 	ListAttachmentsByEntity(ctx context.Context, arg ListAttachmentsByEntityParams) ([]ListAttachmentsByEntityRow, error)
+	ListLabelsForTasks(ctx context.Context, taskIds []uuid.UUID) ([]ListLabelsForTasksRow, error)
 	ListPersonalAccessTokensByUser(ctx context.Context, userID uuid.UUID) ([]ListPersonalAccessTokensByUserRow, error)
 	ListProjectLabels(ctx context.Context, projectID uuid.UUID) ([]ProjectLabel, error)
 	ListProjectMembers(ctx context.Context, projectID uuid.UUID) ([]ListProjectMembersRow, error)
 	ListProjectStates(ctx context.Context, projectID uuid.UUID) ([]ProjectState, error)
 	ListProjectTasks(ctx context.Context, arg ListProjectTasksParams) ([]ListProjectTasksRow, error)
-	ListProjectTasksFiltered(ctx context.Context, arg ListProjectTasksFilteredParams) ([]ListProjectTasksFilteredRow, error)
+	// Returns every shared view in the project plus private views owned by the caller.
+	ListProjectViews(ctx context.Context, arg ListProjectViewsParams) ([]ProjectView, error)
 	ListSettings(ctx context.Context) ([]Setting, error)
 	ListTaskActivity(ctx context.Context, taskID uuid.UUID) ([]ListTaskActivityRow, error)
 	ListTaskAssignees(ctx context.Context, taskID uuid.UUID) ([]ListTaskAssigneesRow, error)
@@ -120,15 +128,23 @@ type Querier interface {
 	ListUserProjectsFiltered(ctx context.Context, arg ListUserProjectsFilteredParams) ([]ListUserProjectsFilteredRow, error)
 	ListUsersPaginated(ctx context.Context, arg ListUsersPaginatedParams) ([]ListUsersPaginatedRow, error)
 	ProjectKeyExists(ctx context.Context, projectKey string) (bool, error)
+	ProjectViewSlugExists(ctx context.Context, arg ProjectViewSlugExistsParams) (bool, error)
 	RemoveProjectMember(ctx context.Context, arg RemoveProjectMemberParams) error
 	RemoveTaskAssignee(ctx context.Context, arg RemoveTaskAssigneeParams) error
 	RemoveTaskLabel(ctx context.Context, arg RemoveTaskLabelParams) error
+	// Pass a JSON array of {id, new_position} objects.
+	ReorderProjectViews(ctx context.Context, arg ReorderProjectViewsParams) error
 	RevokeAllUserRefreshTokens(ctx context.Context, userID uuid.UUID) error
 	RevokeRefreshToken(ctx context.Context, id uuid.UUID) error
 	SearchUsersPaginated(ctx context.Context, arg SearchUsersPaginatedParams) ([]SearchUsersPaginatedRow, error)
 	SoftDeleteComment(ctx context.Context, id uuid.UUID) error
+	// When a member leaves a project, their private views are soft-deleted.
+	SoftDeleteOwnedPrivateViews(ctx context.Context, arg SoftDeleteOwnedPrivateViewsParams) error
 	SoftDeleteProject(ctx context.Context, id uuid.UUID) error
+	SoftDeleteProjectView(ctx context.Context, id uuid.UUID) error
 	SoftDeleteTask(ctx context.Context, id uuid.UUID) error
+	// When a member leaves a project, keep their shared views alive by reassigning ownership.
+	TransferOwnedSharedViews(ctx context.Context, arg TransferOwnedSharedViewsParams) error
 	UpdateComment(ctx context.Context, arg UpdateCommentParams) (Comment, error)
 	UpdatePersonalAccessTokenLastUsed(ctx context.Context, id uuid.UUID) error
 	UpdatePersonalAccessTokenScope(ctx context.Context, arg UpdatePersonalAccessTokenScopeParams) (UpdatePersonalAccessTokenScopeRow, error)
@@ -136,6 +152,7 @@ type Querier interface {
 	UpdateProjectLabel(ctx context.Context, arg UpdateProjectLabelParams) (ProjectLabel, error)
 	UpdateProjectMemberRole(ctx context.Context, arg UpdateProjectMemberRoleParams) error
 	UpdateProjectState(ctx context.Context, arg UpdateProjectStateParams) (ProjectState, error)
+	UpdateProjectView(ctx context.Context, arg UpdateProjectViewParams) (ProjectView, error)
 	UpdateTask(ctx context.Context, arg UpdateTaskParams) (UpdateTaskRow, error)
 	UpdateTaskTemplate(ctx context.Context, arg UpdateTaskTemplateParams) (TaskTemplate, error)
 	UpdateUserAvatarURL(ctx context.Context, arg UpdateUserAvatarURLParams) error

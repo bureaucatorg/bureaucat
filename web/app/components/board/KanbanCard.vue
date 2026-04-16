@@ -6,6 +6,8 @@ const props = defineProps<{
   task: Task;
   projectKey: string;
   isMember: boolean;
+  /** The id of the column this card is currently rendered inside. */
+  columnId?: string;
 }>();
 
 const router = useRouter();
@@ -19,7 +21,10 @@ function handleDragStart(event: DragEvent) {
   }
   isDragging.value = true;
   event.dataTransfer!.effectAllowed = "move";
-  event.dataTransfer!.setData("application/json", JSON.stringify(props.task));
+  event.dataTransfer!.setData(
+    "application/json",
+    JSON.stringify({ task: props.task, fromColumnId: props.columnId ?? "" })
+  );
 }
 
 function handleDragEnd() {

@@ -193,6 +193,48 @@ func (ns NullUserType) Value() (driver.Value, error) {
 	return string(ns.UserType), nil
 }
 
+type ViewVisibility string
+
+const (
+	ViewVisibilityPrivate ViewVisibility = "private"
+	ViewVisibilityShared  ViewVisibility = "shared"
+)
+
+func (e *ViewVisibility) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = ViewVisibility(s)
+	case string:
+		*e = ViewVisibility(s)
+	default:
+		return fmt.Errorf("unsupported scan type for ViewVisibility: %T", src)
+	}
+	return nil
+}
+
+type NullViewVisibility struct {
+	ViewVisibility ViewVisibility `json:"view_visibility"`
+	Valid          bool           `json:"valid"` // Valid is true if ViewVisibility is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullViewVisibility) Scan(value interface{}) error {
+	if value == nil {
+		ns.ViewVisibility, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.ViewVisibility.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullViewVisibility) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.ViewVisibility), nil
+}
+
 type ActivityLog struct {
 	ID           uuid.UUID          `json:"id"`
 	TaskID       uuid.UUID          `json:"task_id"`
@@ -274,6 +316,24 @@ type ProjectState struct {
 	Position  int32              `json:"position"`
 	IsDefault bool               `json:"is_default"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}
+
+type ProjectView struct {
+	ID          uuid.UUID          `json:"id"`
+	ProjectID   uuid.UUID          `json:"project_id"`
+	Slug        string             `json:"slug"`
+	Name        string             `json:"name"`
+	Description pgtype.Text        `json:"description"`
+	Visibility  ViewVisibility     `json:"visibility"`
+	OwnerID     uuid.UUID          `json:"owner_id"`
+	FilterTree  []byte             `json:"filter_tree"`
+	GroupBy     string             `json:"group_by"`
+	SortBy      string             `json:"sort_by"`
+	SortDir     string             `json:"sort_dir"`
+	Position    int32              `json:"position"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+	DeletedAt   pgtype.Timestamptz `json:"deleted_at"`
 }
 
 type RefreshToken struct {

@@ -687,6 +687,18 @@ func (h *ProjectHandler) RemoveMember(c *echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to remove member")
 	}
 
+	// Reassign the departing member's shared views to the acting admin so they
+	// don't get orphaned, and soft-delete their private views.
+	_ = h.store.TransferOwnedSharedViews(ctx, store.TransferOwnedSharedViewsParams{
+		ProjectID: projectID,
+		OwnerID:   userID,
+		OwnerID_2: currentUserID,
+	})
+	_ = h.store.SoftDeleteOwnedPrivateViews(ctx, store.SoftDeleteOwnedPrivateViewsParams{
+		ProjectID: projectID,
+		OwnerID:   userID,
+	})
+
 	return c.JSON(http.StatusOK, map[string]string{"message": "member removed"})
 }
 

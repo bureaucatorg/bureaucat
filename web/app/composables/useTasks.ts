@@ -3,7 +3,9 @@ import type {
   PaginatedTasksResponse,
   CreateTaskRequest,
   UpdateTaskRequest,
-  TaskFilters,
+  FilterTree,
+  SortKey,
+  SortDir,
 } from "~/types";
 
 interface TasksState {
@@ -14,7 +16,6 @@ interface TasksState {
   page: number;
   perPage: number;
   totalPages: number;
-  filters: TaskFilters;
 }
 
 const state = reactive<TasksState>({
@@ -25,26 +26,43 @@ const state = reactive<TasksState>({
   page: 1,
   perPage: 20,
   totalPages: 0,
-  filters: {},
 });
+
+function encodeTreeParam(tree: FilterTree): string {
+  const bytes = new TextEncoder().encode(JSON.stringify(tree));
+  let bin = "";
+  for (const b of bytes) bin += String.fromCharCode(b);
+  return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+export interface ListTasksOptions {
+  tree?: FilterTree;
+  sortBy?: SortKey;
+  sortDir?: SortDir;
+  /**
+   * When provided, the server hydrates the filter from this saved view if
+   * `tree` is empty. Safe to set alongside a tree for informational purposes.
+   */
+  viewSlug?: string | null;
+}
 
 export function useTasks() {
   const { getAuthHeader } = useAuth();
 
-  function buildQueryString(page: number, perPage: number, filters: TaskFilters): string {
+  function buildQueryString(
+    page: number,
+    perPage: number,
+    opts: ListTasksOptions
+  ): string {
     const params = new URLSearchParams();
     params.set("page", page.toString());
     params.set("per_page", perPage.toString());
-
-    if (filters.state_id) params.set("state_id", filters.state_id);
-    if (filters.state_type) params.set("state_type", filters.state_type);
-    if (filters.created_by) params.set("created_by", filters.created_by);
-    if (filters.assigned_to) params.set("assigned_to", filters.assigned_to);
-    if (filters.priority !== undefined) params.set("priority", filters.priority.toString());
-    if (filters.q) params.set("q", filters.q);
-    if (filters.from_date) params.set("from_date", filters.from_date);
-    if (filters.to_date) params.set("to_date", filters.to_date);
-
+    if (opts.tree && opts.tree.children.length > 0) {
+      params.set("f", encodeTreeParam(opts.tree));
+    }
+    if (opts.sortBy) params.set("sort_by", opts.sortBy);
+    if (opts.sortDir) params.set("sort_dir", opts.sortDir);
+    if (opts.viewSlug) params.set("view", opts.viewSlug);
     return params.toString();
   }
 
@@ -52,19 +70,18 @@ export function useTasks() {
     projectKey: string,
     page = 1,
     perPage = 20,
-    filters: TaskFilters = {}
+    opts: ListTasksOptions = {}
   ): Promise<{ success: boolean; data?: PaginatedTasksResponse; error?: string }> {
     try {
       state.loading = true;
-      state.filters = filters;
-      const queryString = buildQueryString(page, perPage, filters);
+      const queryString = buildQueryString(page, perPage, opts);
       const response = await fetch(
         `/api/v1/projects/${projectKey}/tasks?${queryString}`,
         { headers: getAuthHeader() }
       );
 
       if (!response.ok) {
-        const error = await response.json();
+        const error = await response.json().catch(() => ({}));
         return { success: false, error: error.message || "Failed to fetch tasks" };
       }
 
@@ -300,14 +317,6 @@ export function useTasks() {
     state.currentTask = null;
   }
 
-  function setFilters(filters: TaskFilters) {
-    state.filters = filters;
-  }
-
-  function clearFilters() {
-    state.filters = {};
-  }
-
   return {
     // State (readonly)
     tasks: computed(() => state.tasks),
@@ -317,7 +326,6 @@ export function useTasks() {
     page: computed(() => state.page),
     perPage: computed(() => state.perPage),
     totalPages: computed(() => state.totalPages),
-    filters: computed(() => state.filters),
 
     // Tasks CRUD
     listTasks,
@@ -336,7 +344,5 @@ export function useTasks() {
 
     // Utils
     clearCurrentTask,
-    setFilters,
-    clearFilters,
   };
 }

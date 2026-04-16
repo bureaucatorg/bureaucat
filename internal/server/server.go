@@ -42,6 +42,7 @@ type Server struct {
 	uploadHandler   *handlers.UploadHandler
 	projectHandler  *handlers.ProjectHandler
 	taskHandler     *handlers.TaskHandler
+	viewHandler     *handlers.ViewHandler
 	commentHandler    *handlers.CommentHandler
 	attachmentHandler *handlers.AttachmentHandler
 	settingsHandler *handlers.SettingsHandler
@@ -128,7 +129,8 @@ func New(devMode bool, dbURL string, authConfig AuthConfig, distFS fs.FS) (*Serv
 
 		// Initialize project and task handlers
 		srv.projectHandler = handlers.NewProjectHandler(srv.store)
-		srv.taskHandler = handlers.NewTaskHandler(srv.store, srv.activityService, srv.notificationService)
+		srv.taskHandler = handlers.NewTaskHandler(srv.store, store.NewFilterRunner(srv.pool), srv.activityService, srv.notificationService)
+		srv.viewHandler = handlers.NewViewHandler(srv.store)
 		srv.commentHandler = handlers.NewCommentHandler(srv.store, srv.activityService, srv.notificationService)
 		srv.attachmentHandler = handlers.NewAttachmentHandler(srv.store, uploadService)
 		srv.settingsHandler = handlers.NewSettingsHandler(srv.store)

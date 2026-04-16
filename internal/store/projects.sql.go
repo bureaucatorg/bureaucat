@@ -135,51 +135,6 @@ func (q *Queries) CountProjectTasks(ctx context.Context, projectID uuid.UUID) (i
 	return count, err
 }
 
-const countProjectTasksFiltered = `-- name: CountProjectTasksFiltered :one
-SELECT COUNT(*)
-FROM tasks t
-JOIN project_states ps ON t.state_id = ps.id
-WHERE t.project_id = $1
-  AND t.deleted_at IS NULL
-  AND ($2::uuid IS NULL OR t.state_id = $2)
-  AND ($3::state_type IS NULL OR ps.state_type = $3)
-  AND ($4::int IS NULL OR t.priority = $4)
-  AND ($5::uuid IS NULL OR t.created_by = $5)
-  AND ($6::uuid IS NULL OR EXISTS (SELECT 1 FROM task_assignees ta WHERE ta.task_id = t.id AND ta.user_id = $6))
-  AND ($7::text IS NULL OR t.title ILIKE '%' || $7 || '%' OR t.description ILIKE '%' || $7 || '%')
-  AND ($8::timestamptz IS NULL OR t.created_at >= $8)
-  AND ($9::timestamptz IS NULL OR t.created_at <= $9)
-`
-
-type CountProjectTasksFilteredParams struct {
-	ProjectID  uuid.UUID          `json:"project_id"`
-	StateID    pgtype.UUID        `json:"state_id"`
-	StateType  NullStateType      `json:"state_type"`
-	Priority   pgtype.Int4        `json:"priority"`
-	CreatedBy  pgtype.UUID        `json:"created_by"`
-	AssignedTo pgtype.UUID        `json:"assigned_to"`
-	Search     pgtype.Text        `json:"search"`
-	FromDate   pgtype.Timestamptz `json:"from_date"`
-	ToDate     pgtype.Timestamptz `json:"to_date"`
-}
-
-func (q *Queries) CountProjectTasksFiltered(ctx context.Context, arg CountProjectTasksFilteredParams) (int64, error) {
-	row := q.db.QueryRow(ctx, countProjectTasksFiltered,
-		arg.ProjectID,
-		arg.StateID,
-		arg.StateType,
-		arg.Priority,
-		arg.CreatedBy,
-		arg.AssignedTo,
-		arg.Search,
-		arg.FromDate,
-		arg.ToDate,
-	)
-	var count int64
-	err := row.Scan(&count)
-	return count, err
-}
-
 const countTaskComments = `-- name: CountTaskComments :one
 SELECT COUNT(*) FROM comments WHERE task_id = $1 AND deleted_at IS NULL
 `
@@ -1257,6 +1212,103 @@ func (q *Queries) ListAllProjectsFiltered(ctx context.Context, arg ListAllProjec
 	return items, nil
 }
 
+const listAssigneesForTasks = `-- name: ListAssigneesForTasks :many
+
+SELECT ta.task_id, ta.id, ta.user_id, ta.assigned_at,
+       u.username, u.email, u.first_name, u.last_name, u.avatar_url
+FROM task_assignees ta
+JOIN users u ON ta.user_id = u.id
+WHERE ta.task_id = ANY($1::uuid[])
+ORDER BY ta.assigned_at ASC
+`
+
+type ListAssigneesForTasksRow struct {
+	TaskID     uuid.UUID          `json:"task_id"`
+	ID         uuid.UUID          `json:"id"`
+	UserID     uuid.UUID          `json:"user_id"`
+	AssignedAt pgtype.Timestamptz `json:"assigned_at"`
+	Username   string             `json:"username"`
+	Email      string             `json:"email"`
+	FirstName  string             `json:"first_name"`
+	LastName   string             `json:"last_name"`
+	AvatarUrl  pgtype.Text        `json:"avatar_url"`
+}
+
+// Filtered list and count are now built dynamically by internal/store/tasks_filter.go
+// from a FilterTree. The projection here is documented for reference by that runner.
+func (q *Queries) ListAssigneesForTasks(ctx context.Context, taskIds []uuid.UUID) ([]ListAssigneesForTasksRow, error) {
+	rows, err := q.db.Query(ctx, listAssigneesForTasks, taskIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListAssigneesForTasksRow{}
+	for rows.Next() {
+		var i ListAssigneesForTasksRow
+		if err := rows.Scan(
+			&i.TaskID,
+			&i.ID,
+			&i.UserID,
+			&i.AssignedAt,
+			&i.Username,
+			&i.Email,
+			&i.FirstName,
+			&i.LastName,
+			&i.AvatarUrl,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listLabelsForTasks = `-- name: ListLabelsForTasks :many
+SELECT tl.task_id, tl.label_id, tl.added_at,
+       pl.name, pl.color
+FROM task_labels tl
+JOIN project_labels pl ON tl.label_id = pl.id
+WHERE tl.task_id = ANY($1::uuid[])
+ORDER BY pl.name ASC
+`
+
+type ListLabelsForTasksRow struct {
+	TaskID  uuid.UUID          `json:"task_id"`
+	LabelID uuid.UUID          `json:"label_id"`
+	AddedAt pgtype.Timestamptz `json:"added_at"`
+	Name    string             `json:"name"`
+	Color   pgtype.Text        `json:"color"`
+}
+
+func (q *Queries) ListLabelsForTasks(ctx context.Context, taskIds []uuid.UUID) ([]ListLabelsForTasksRow, error) {
+	rows, err := q.db.Query(ctx, listLabelsForTasks, taskIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListLabelsForTasksRow{}
+	for rows.Next() {
+		var i ListLabelsForTasksRow
+		if err := rows.Scan(
+			&i.TaskID,
+			&i.LabelID,
+			&i.AddedAt,
+			&i.Name,
+			&i.Color,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listProjectLabels = `-- name: ListProjectLabels :many
 SELECT id, project_id, name, color, created_at
 FROM project_labels
@@ -1444,124 +1496,6 @@ func (q *Queries) ListProjectTasks(ctx context.Context, arg ListProjectTasksPara
 			&i.StateType,
 			&i.StateColor,
 			&i.CreatorUsername,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const listProjectTasksFiltered = `-- name: ListProjectTasksFiltered :many
-SELECT t.id, t.project_id, t.task_number, t.title, t.description, t.state_id, t.priority, t.created_by, t.start_date, t.due_date, t.created_at, t.updated_at, t.deleted_at,
-       p.project_key,
-       ps.name as state_name, ps.state_type, ps.color as state_color,
-       u.username as creator_username, u.first_name as creator_first_name, u.last_name as creator_last_name, u.avatar_url as creator_avatar_url,
-       (SELECT COUNT(*) FROM comments c WHERE c.task_id = t.id AND c.deleted_at IS NULL)::bigint as comment_count
-FROM tasks t
-JOIN projects p ON t.project_id = p.id
-JOIN project_states ps ON t.state_id = ps.id
-JOIN users u ON t.created_by = u.id
-WHERE t.project_id = $1
-  AND t.deleted_at IS NULL
-  AND ($4::uuid IS NULL OR t.state_id = $4)
-  AND ($5::state_type IS NULL OR ps.state_type = $5)
-  AND ($6::int IS NULL OR t.priority = $6)
-  AND ($7::uuid IS NULL OR t.created_by = $7)
-  AND ($8::uuid IS NULL OR EXISTS (SELECT 1 FROM task_assignees ta WHERE ta.task_id = t.id AND ta.user_id = $8))
-  AND ($9::text IS NULL OR t.title ILIKE '%' || $9 || '%' OR t.description ILIKE '%' || $9 || '%')
-  AND ($10::timestamptz IS NULL OR t.created_at >= $10)
-  AND ($11::timestamptz IS NULL OR t.created_at <= $11)
-ORDER BY t.created_at DESC
-LIMIT $2 OFFSET $3
-`
-
-type ListProjectTasksFilteredParams struct {
-	ProjectID  uuid.UUID          `json:"project_id"`
-	Limit      int32              `json:"limit"`
-	Offset     int32              `json:"offset"`
-	StateID    pgtype.UUID        `json:"state_id"`
-	StateType  NullStateType      `json:"state_type"`
-	Priority   pgtype.Int4        `json:"priority"`
-	CreatedBy  pgtype.UUID        `json:"created_by"`
-	AssignedTo pgtype.UUID        `json:"assigned_to"`
-	Search     pgtype.Text        `json:"search"`
-	FromDate   pgtype.Timestamptz `json:"from_date"`
-	ToDate     pgtype.Timestamptz `json:"to_date"`
-}
-
-type ListProjectTasksFilteredRow struct {
-	ID               uuid.UUID          `json:"id"`
-	ProjectID        uuid.UUID          `json:"project_id"`
-	TaskNumber       int32              `json:"task_number"`
-	Title            string             `json:"title"`
-	Description      pgtype.Text        `json:"description"`
-	StateID          uuid.UUID          `json:"state_id"`
-	Priority         int32              `json:"priority"`
-	CreatedBy        uuid.UUID          `json:"created_by"`
-	StartDate        pgtype.Timestamptz `json:"start_date"`
-	DueDate          pgtype.Timestamptz `json:"due_date"`
-	CreatedAt        pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
-	DeletedAt        pgtype.Timestamptz `json:"deleted_at"`
-	ProjectKey       string             `json:"project_key"`
-	StateName        string             `json:"state_name"`
-	StateType        string             `json:"state_type"`
-	StateColor       pgtype.Text        `json:"state_color"`
-	CreatorUsername  string             `json:"creator_username"`
-	CreatorFirstName string             `json:"creator_first_name"`
-	CreatorLastName  string             `json:"creator_last_name"`
-	CreatorAvatarUrl pgtype.Text        `json:"creator_avatar_url"`
-	CommentCount     int64              `json:"comment_count"`
-}
-
-func (q *Queries) ListProjectTasksFiltered(ctx context.Context, arg ListProjectTasksFilteredParams) ([]ListProjectTasksFilteredRow, error) {
-	rows, err := q.db.Query(ctx, listProjectTasksFiltered,
-		arg.ProjectID,
-		arg.Limit,
-		arg.Offset,
-		arg.StateID,
-		arg.StateType,
-		arg.Priority,
-		arg.CreatedBy,
-		arg.AssignedTo,
-		arg.Search,
-		arg.FromDate,
-		arg.ToDate,
-	)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []ListProjectTasksFilteredRow{}
-	for rows.Next() {
-		var i ListProjectTasksFilteredRow
-		if err := rows.Scan(
-			&i.ID,
-			&i.ProjectID,
-			&i.TaskNumber,
-			&i.Title,
-			&i.Description,
-			&i.StateID,
-			&i.Priority,
-			&i.CreatedBy,
-			&i.StartDate,
-			&i.DueDate,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-			&i.DeletedAt,
-			&i.ProjectKey,
-			&i.StateName,
-			&i.StateType,
-			&i.StateColor,
-			&i.CreatorUsername,
-			&i.CreatorFirstName,
-			&i.CreatorLastName,
-			&i.CreatorAvatarUrl,
-			&i.CommentCount,
 		); err != nil {
 			return nil, err
 		}

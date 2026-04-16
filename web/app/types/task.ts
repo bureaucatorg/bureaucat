@@ -69,6 +69,7 @@ export interface UpdateTaskRequest {
   due_date?: string | null;
 }
 
+/** @deprecated — retained so legacy URL migration can parse old bookmarks. */
 export interface TaskFilters {
   state_id?: string;
   state_type?: string;
@@ -79,6 +80,122 @@ export interface TaskFilters {
   from_date?: string;
   to_date?: string;
 }
+
+// ================ FilterTree DSL ================
+// Every child is a single Predicate. All predicates are joined with AND;
+// the DSL has no OR opcode. `search` is a special internal field emitted
+// by the search box and matches title+description in one SQL predicate.
+
+export type FilterField =
+  | "search"
+  | "title"
+  | "description"
+  | "state"
+  | "state_type"
+  | "priority"
+  | "assignees"
+  | "created_by"
+  | "labels"
+  | "start_date"
+  | "due_date"
+  | "created_at"
+  | "updated_at"
+  | "comment_count";
+
+export type FilterOp =
+  | "contains"
+  | "not_contains"
+  | "is"
+  | "is_not"
+  | "in"
+  | "not_in"
+  | "has_any"
+  | "has_all"
+  | "has_none"
+  | "is_empty"
+  | "is_set"
+  | "before"
+  | "after"
+  | "between"
+  | "overdue"
+  | "is_me"
+  | "is_not_me"
+  | "eq"
+  | "ne"
+  | "gt"
+  | "gte"
+  | "lt"
+  | "lte";
+
+/**
+ * FilterValue is a generic JSON value whose shape depends on the (field, op).
+ * - Text ops: string
+ * - Number ops: number
+ * - *in / has_*: string[] (UUIDs) or number[] (ints)
+ * - between: { from: string; to: string } where strings are ISO dates or relative keywords
+ * - before / after: string (ISO date or relative keyword)
+ * - is_me / is_not_me / is_empty / is_set / overdue: no value (omit or undefined)
+ *
+ * The literal string "@me" in any id-array means "the currently-signed-in user".
+ */
+export type FilterValue =
+  | string
+  | number
+  | string[]
+  | number[]
+  | { from: string; to: string };
+
+export interface Predicate {
+  field: FilterField;
+  op: FilterOp;
+  value?: FilterValue;
+}
+
+export interface FilterNode {
+  predicate?: Predicate;
+}
+
+export interface FilterTree {
+  children: FilterNode[];
+}
+
+// ================ View grouping and sorting ================
+
+export type ViewGroupBy =
+  | "state"
+  | "state_type"
+  | "priority"
+  | "assignee"
+  | "label"
+  | "due_bucket";
+
+export type SortKey =
+  | "created_at"
+  | "updated_at"
+  | "priority"
+  | "due_date"
+  | "start_date"
+  | "title";
+
+export type SortDir = "asc" | "desc";
+
+// Relative date keywords accepted by date predicates. Evaluated server-side.
+export const RELATIVE_DATE_KEYWORDS = [
+  "today",
+  "yesterday",
+  "tomorrow",
+  "this_week",
+  "last_week",
+  "next_week",
+  "this_month",
+  "last_month",
+  "next_month",
+  "last_7_days",
+  "last_30_days",
+  "last_90_days",
+] as const;
+
+export type RelativeDateKeyword = (typeof RELATIVE_DATE_KEYWORDS)[number];
 
 export const PRIORITY_LABELS: Record<number, { label: string; color: string }> = {
   0: { label: "No priority", color: "#6B7280" },
