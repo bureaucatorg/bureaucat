@@ -17,6 +17,9 @@ const OPTIONS: { id: ViewGroupBy; label: string; hint?: string }[] = [
   { id: "assignee", label: "Assignee" },
   { id: "label", label: "Label", hint: "Tasks appear in every column they're labelled with" },
   { id: "due_bucket", label: "Due date", hint: "Overdue / Today / This week / Later" },
+  { id: "start_bucket", label: "Start date", hint: "Started / Today / This week / Later" },
+  { id: "created_bucket", label: "Created at", hint: "Today / This week / This month / Older" },
+  { id: "updated_bucket", label: "Updated at", hint: "Today / This week / This month / Older" },
 ];
 </script>
 

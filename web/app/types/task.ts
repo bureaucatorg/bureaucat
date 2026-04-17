@@ -167,7 +167,10 @@ export type ViewGroupBy =
   | "priority"
   | "assignee"
   | "label"
-  | "due_bucket";
+  | "due_bucket"
+  | "start_bucket"
+  | "created_bucket"
+  | "updated_bucket";
 
 export type SortKey =
   | "created_at"

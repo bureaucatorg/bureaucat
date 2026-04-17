@@ -87,6 +87,7 @@ var (
 	validGroupBy = map[string]struct{}{
 		"state": {}, "state_type": {}, "priority": {}, "assignee": {},
 		"label": {}, "due_bucket": {},
+		"start_bucket": {}, "created_bucket": {}, "updated_bucket": {},
 	}
 	validSortBy = map[string]struct{}{
 		"created_at": {}, "updated_at": {}, "priority": {},

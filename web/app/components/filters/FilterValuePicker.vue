@@ -72,6 +72,43 @@ const calendarValue = computed<DateValue | undefined>(() => parseCalendarDate(as
 const calendarFromValue = computed<DateValue | undefined>(() => parseCalendarDate(asRange.value.from));
 const calendarToValue = computed<DateValue | undefined>(() => parseCalendarDate(asRange.value.to));
 
+/**
+ * Lower bound for the "to" calendar when "from" is a concrete date. If "from"
+ * is a relative keyword or unset we leave the bound open so users can still
+ * pick any date.
+ */
+const toMinValue = computed<DateValue | undefined>(() => calendarFromValue.value);
+
+function commitRangeFrom(newFrom: string) {
+  let nextTo = asRange.value.to;
+  // If both sides are concrete ISO dates and `to` now precedes `from`, clear
+  // `to` to force the user to repick — keeping a stale out-of-range value
+  // would be confusing.
+  if (
+    nextTo &&
+    !isRelativeDate(newFrom) &&
+    !isRelativeDate(nextTo) &&
+    newFrom > nextTo
+  ) {
+    nextTo = "";
+  }
+  emit("update:value", { from: newFrom, to: nextTo });
+}
+
+function commitRangeTo(newTo: string) {
+  // Block selections earlier than `from` for the concrete-date case.
+  const from = asRange.value.from;
+  if (
+    from &&
+    !isRelativeDate(from) &&
+    !isRelativeDate(newTo) &&
+    newTo < from
+  ) {
+    return;
+  }
+  emit("update:value", { from, to: newTo });
+}
+
 /** Which section is active: 'calendar' for picking a date, 'relative' for keywords. */
 const dateMode = ref<"calendar" | "relative">(
   asDateValue.value && isRelativeDate(asDateValue.value) ? "relative" : "calendar"
@@ -260,103 +297,106 @@ function updateIntArray(next: string[]) {
 
     <!-- date range -->
     <div v-else-if="valueKind === 'date-range'" class="w-full">
-      <!-- From date -->
-      <div class="border-b">
-        <div class="flex items-center justify-between bg-muted/30 px-3 py-1.5">
-          <Label class="text-xs font-medium">From</Label>
-          <div class="flex gap-1">
-            <button
-              type="button"
-              class="rounded px-1.5 py-0.5 text-[10px] font-medium transition-colors"
-              :class="rangeDateMode.from === 'calendar' ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground'"
-              @click="rangeDateMode.from = 'calendar'"
-            >
-              Date
-            </button>
-            <button
-              type="button"
-              class="rounded px-1.5 py-0.5 text-[10px] font-medium transition-colors"
-              :class="rangeDateMode.from === 'relative' ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground'"
-              @click="rangeDateMode.from = 'relative'"
-            >
-              Relative
-            </button>
+      <div class="grid grid-cols-2 divide-x">
+        <!-- From date -->
+        <div class="min-w-0">
+          <div class="flex items-center justify-between bg-muted/30 px-3 py-1.5">
+            <Label class="text-xs font-medium">From</Label>
+            <div class="flex gap-1">
+              <button
+                type="button"
+                class="rounded px-1.5 py-0.5 text-[10px] font-medium transition-colors"
+                :class="rangeDateMode.from === 'calendar' ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground'"
+                @click="rangeDateMode.from = 'calendar'"
+              >
+                Date
+              </button>
+              <button
+                type="button"
+                class="rounded px-1.5 py-0.5 text-[10px] font-medium transition-colors"
+                :class="rangeDateMode.from === 'relative' ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground'"
+                @click="rangeDateMode.from = 'relative'"
+              >
+                Relative
+              </button>
+            </div>
+          </div>
+          <div v-if="rangeDateMode.from === 'calendar'" class="flex justify-center p-1">
+            <Calendar
+              :model-value="calendarFromValue"
+              layout="month-and-year"
+              class="p-2"
+              @update:model-value="(d: DateValue | undefined) => { if (d) commitRangeFrom(calendarDateToString(d)) }"
+            />
+          </div>
+          <div v-else class="max-h-64 overflow-y-auto p-2">
+            <div class="grid grid-cols-2 gap-1">
+              <button
+                v-for="opt in RELATIVE_DATE_OPTIONS"
+                :key="opt.id"
+                type="button"
+                class="rounded-md px-2 py-1 text-left text-xs transition-colors hover:bg-accent"
+                :class="asRange.from === opt.id ? 'bg-primary/10 font-medium text-primary' : 'text-muted-foreground'"
+                @click="commitRangeFrom(opt.id)"
+              >
+                {{ opt.label }}
+              </button>
+            </div>
+          </div>
+          <div v-if="asRange.from" class="border-t px-3 py-1">
+            <p class="text-[11px] text-muted-foreground">From: <span class="font-medium text-foreground">{{ asRange.from }}</span></p>
           </div>
         </div>
-        <div v-if="rangeDateMode.from === 'calendar'" class="flex justify-center p-1">
-          <Calendar
-            :model-value="calendarFromValue"
-            layout="month-and-year"
-            class="p-2"
-            @update:model-value="(d: DateValue | undefined) => { if (d) emit('update:value', { from: calendarDateToString(d), to: asRange.to }) }"
-          />
-        </div>
-        <div v-else class="max-h-36 overflow-y-auto p-2">
-          <div class="grid grid-cols-2 gap-1">
-            <button
-              v-for="opt in RELATIVE_DATE_OPTIONS"
-              :key="opt.id"
-              type="button"
-              class="rounded-md px-2 py-1 text-left text-xs transition-colors hover:bg-accent"
-              :class="asRange.from === opt.id ? 'bg-primary/10 font-medium text-primary' : 'text-muted-foreground'"
-              @click="emit('update:value', { from: opt.id, to: asRange.to })"
-            >
-              {{ opt.label }}
-            </button>
-          </div>
-        </div>
-        <div v-if="asRange.from" class="border-t px-3 py-1">
-          <p class="text-[11px] text-muted-foreground">From: <span class="font-medium text-foreground">{{ asRange.from }}</span></p>
-        </div>
-      </div>
 
-      <!-- To date -->
-      <div>
-        <div class="flex items-center justify-between bg-muted/30 px-3 py-1.5">
-          <Label class="text-xs font-medium">To</Label>
-          <div class="flex gap-1">
-            <button
-              type="button"
-              class="rounded px-1.5 py-0.5 text-[10px] font-medium transition-colors"
-              :class="rangeDateMode.to === 'calendar' ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground'"
-              @click="rangeDateMode.to = 'calendar'"
-            >
-              Date
-            </button>
-            <button
-              type="button"
-              class="rounded px-1.5 py-0.5 text-[10px] font-medium transition-colors"
-              :class="rangeDateMode.to === 'relative' ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground'"
-              @click="rangeDateMode.to = 'relative'"
-            >
-              Relative
-            </button>
+        <!-- To date -->
+        <div class="min-w-0">
+          <div class="flex items-center justify-between bg-muted/30 px-3 py-1.5">
+            <Label class="text-xs font-medium">To</Label>
+            <div class="flex gap-1">
+              <button
+                type="button"
+                class="rounded px-1.5 py-0.5 text-[10px] font-medium transition-colors"
+                :class="rangeDateMode.to === 'calendar' ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground'"
+                @click="rangeDateMode.to = 'calendar'"
+              >
+                Date
+              </button>
+              <button
+                type="button"
+                class="rounded px-1.5 py-0.5 text-[10px] font-medium transition-colors"
+                :class="rangeDateMode.to === 'relative' ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground'"
+                @click="rangeDateMode.to = 'relative'"
+              >
+                Relative
+              </button>
+            </div>
           </div>
-        </div>
-        <div v-if="rangeDateMode.to === 'calendar'" class="flex justify-center p-1">
-          <Calendar
-            :model-value="calendarToValue"
-            layout="month-and-year"
-            class="p-2"
-            @update:model-value="(d: DateValue | undefined) => { if (d) emit('update:value', { from: asRange.from, to: calendarDateToString(d) }) }"
-          />
-        </div>
-        <div v-else class="max-h-36 overflow-y-auto p-2">
-          <div class="grid grid-cols-2 gap-1">
-            <button
-              v-for="opt in RELATIVE_DATE_OPTIONS"
-              :key="opt.id"
-              type="button"
-              class="rounded-md px-2 py-1 text-left text-xs transition-colors hover:bg-accent"
-              :class="asRange.to === opt.id ? 'bg-primary/10 font-medium text-primary' : 'text-muted-foreground'"
-              @click="emit('update:value', { from: asRange.from, to: opt.id })"
-            >
-              {{ opt.label }}
-            </button>
+          <div v-if="rangeDateMode.to === 'calendar'" class="flex justify-center p-1">
+            <Calendar
+              :model-value="calendarToValue"
+              :min-value="toMinValue"
+              layout="month-and-year"
+              class="p-2"
+              @update:model-value="(d: DateValue | undefined) => { if (d) commitRangeTo(calendarDateToString(d)) }"
+            />
           </div>
-        </div>
-        <div v-if="asRange.to" class="border-t px-3 py-1">
-          <p class="text-[11px] text-muted-foreground">To: <span class="font-medium text-foreground">{{ asRange.to }}</span></p>
+          <div v-else class="max-h-64 overflow-y-auto p-2">
+            <div class="grid grid-cols-2 gap-1">
+              <button
+                v-for="opt in RELATIVE_DATE_OPTIONS"
+                :key="opt.id"
+                type="button"
+                class="rounded-md px-2 py-1 text-left text-xs transition-colors hover:bg-accent"
+                :class="asRange.to === opt.id ? 'bg-primary/10 font-medium text-primary' : 'text-muted-foreground'"
+                @click="commitRangeTo(opt.id)"
+              >
+                {{ opt.label }}
+              </button>
+            </div>
+          </div>
+          <div v-if="asRange.to" class="border-t px-3 py-1">
+            <p class="text-[11px] text-muted-foreground">To: <span class="font-medium text-foreground">{{ asRange.to }}</span></p>
+          </div>
         </div>
       </div>
     </div>

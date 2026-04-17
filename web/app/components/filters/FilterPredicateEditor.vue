@@ -86,6 +86,7 @@ const isDateValue = computed(() => {
   if (!currentOpDef.value) return false;
   return currentOpDef.value.valueKind === "date" || currentOpDef.value.valueKind === "date-range";
 });
+const isDateRangeValue = computed(() => currentOpDef.value?.valueKind === "date-range");
 const canConfirm = computed(() => {
   if (!field.value || !op.value) return false;
   const def = findOpDef(field.value, op.value);
@@ -99,7 +100,16 @@ const canConfirm = computed(() => {
 </script>
 
 <template>
-  <div class="overflow-hidden" :class="step === 'value' && isDateValue ? 'w-80' : 'w-72'">
+  <div
+    class="overflow-hidden"
+    :class="
+      step === 'value' && isDateRangeValue
+        ? 'w-[38rem]'
+        : step === 'value' && isDateValue
+          ? 'w-80'
+          : 'w-72'
+    "
+  >
     <!-- step header with back button when applicable -->
     <header class="flex items-center justify-between gap-2 border-b bg-muted/30 px-3 py-2">
       <button

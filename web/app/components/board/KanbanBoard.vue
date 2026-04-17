@@ -106,6 +106,18 @@ const columns = computed<BoardColumn[]>(() => {
     case "due_bucket": {
       return dueBucketColumns(props.tasks);
     }
+
+    case "start_bucket": {
+      return startBucketColumns(props.tasks);
+    }
+
+    case "created_bucket": {
+      return activityBucketColumns(props.tasks, "created_at");
+    }
+
+    case "updated_bucket": {
+      return activityBucketColumns(props.tasks, "updated_at");
+    }
   }
 });
 
@@ -148,6 +160,90 @@ function dueBucketColumns(tasks: Task[]): BoardColumn[] {
     { id: "due:next_week", label: "Next week", color: "#3B82F6", tasks: buckets.next_week, dropLocked: true },
     { id: "due:later", label: "Later", color: "#6B7280", tasks: buckets.later, dropLocked: true },
     { id: "due:none", label: "No due date", color: "#9CA3AF", tasks: buckets.none, dropLocked: true },
+  ];
+}
+
+function startBucketColumns(tasks: Task[]): BoardColumn[] {
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const startOfTomorrow = startOfToday + 24 * 60 * 60 * 1000;
+  const weekday = (now.getDay() + 6) % 7;
+  const startOfWeek = startOfToday - weekday * 24 * 60 * 60 * 1000;
+  const startOfNextWeek = startOfWeek + 7 * 24 * 60 * 60 * 1000;
+  const startOfWeekAfter = startOfNextWeek + 7 * 24 * 60 * 60 * 1000;
+
+  const buckets: Record<string, Task[]> = {
+    started: [], today: [], this_week: [], next_week: [], later: [], none: [],
+  };
+
+  for (const t of tasks) {
+    if (!t.start_date) {
+      buckets.none.push(t);
+      continue;
+    }
+    const ts = new Date(t.start_date).getTime();
+    if (ts < startOfToday) {
+      buckets.started.push(t);
+    } else if (ts < startOfTomorrow) {
+      buckets.today.push(t);
+    } else if (ts < startOfNextWeek) {
+      buckets.this_week.push(t);
+    } else if (ts < startOfWeekAfter) {
+      buckets.next_week.push(t);
+    } else {
+      buckets.later.push(t);
+    }
+  }
+
+  return [
+    { id: "start:started", label: "Already started", color: "#10B981", tasks: buckets.started, dropLocked: true },
+    { id: "start:today", label: "Today", color: "#F97316", tasks: buckets.today, dropLocked: true },
+    { id: "start:this_week", label: "This week", color: "#EAB308", tasks: buckets.this_week, dropLocked: true },
+    { id: "start:next_week", label: "Next week", color: "#3B82F6", tasks: buckets.next_week, dropLocked: true },
+    { id: "start:later", label: "Later", color: "#6B7280", tasks: buckets.later, dropLocked: true },
+    { id: "start:none", label: "No start date", color: "#9CA3AF", tasks: buckets.none, dropLocked: true },
+  ];
+}
+
+function activityBucketColumns(tasks: Task[], field: "created_at" | "updated_at"): BoardColumn[] {
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const startOfTomorrow = startOfToday + 24 * 60 * 60 * 1000;
+  const weekday = (now.getDay() + 6) % 7;
+  const startOfWeek = startOfToday - weekday * 24 * 60 * 60 * 1000;
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+
+  const buckets: Record<string, Task[]> = {
+    today: [], yesterday: [], this_week: [], this_month: [], older: [],
+  };
+
+  for (const t of tasks) {
+    const raw = t[field];
+    if (!raw) {
+      buckets.older.push(t);
+      continue;
+    }
+    const ts = new Date(raw).getTime();
+    if (ts >= startOfToday && ts < startOfTomorrow) {
+      buckets.today.push(t);
+    } else if (ts >= startOfToday - 24 * 60 * 60 * 1000 && ts < startOfToday) {
+      buckets.yesterday.push(t);
+    } else if (ts >= startOfWeek) {
+      buckets.this_week.push(t);
+    } else if (ts >= startOfMonth) {
+      buckets.this_month.push(t);
+    } else {
+      buckets.older.push(t);
+    }
+  }
+
+  const prefix = field === "created_at" ? "created" : "updated";
+  return [
+    { id: `${prefix}:today`, label: "Today", color: "#F97316", tasks: buckets.today, dropLocked: true },
+    { id: `${prefix}:yesterday`, label: "Yesterday", color: "#EAB308", tasks: buckets.yesterday, dropLocked: true },
+    { id: `${prefix}:this_week`, label: "This week", color: "#3B82F6", tasks: buckets.this_week, dropLocked: true },
+    { id: `${prefix}:this_month`, label: "This month", color: "#8B5CF6", tasks: buckets.this_month, dropLocked: true },
+    { id: `${prefix}:older`, label: "Older", color: "#6B7280", tasks: buckets.older, dropLocked: true },
   ];
 }
 
@@ -209,6 +305,9 @@ async function handleDrop(task: Task, fromColumnId: string, toColumnId: string) 
         break;
       }
       case "due_bucket":
+      case "start_bucket":
+      case "created_bucket":
+      case "updated_bucket":
         // Locked — drop not allowed.
         return;
     }
