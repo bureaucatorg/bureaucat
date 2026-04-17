@@ -25,4 +25,4 @@ RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/
 WORKDIR /app
 COPY --from=backend /app/bureaucat .
 EXPOSE 1341
-CMD ["./bureaucat", "serve"]
+CMD ["./bureaucat", "serve", "--migrate"]
