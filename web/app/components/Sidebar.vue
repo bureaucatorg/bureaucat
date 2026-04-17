@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { LayoutDashboard, FolderKanban, Settings } from "lucide-vue-next";
+import { LayoutDashboard, FolderKanban, Eye, Settings } from "lucide-vue-next";
 
 const { user } = useAuth();
 const route = useRoute();
@@ -55,6 +55,15 @@ function isActive(path: string): boolean {
         :class="isActive('/projects') && 'bg-amber-500/15 text-amber-700 dark:text-amber-400'"
       >
         <FolderKanban class="size-4.5" />
+      </NuxtLink>
+
+      <NuxtLink
+        to="/views"
+        title="Views"
+        class="flex size-9 items-center justify-center rounded-md text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+        :class="isActive('/views') && 'bg-amber-500/15 text-amber-700 dark:text-amber-400'"
+      >
+        <Eye class="size-4.5" />
       </NuxtLink>
     </nav>
 
