@@ -17,20 +17,20 @@ services:
     env_file:
       - .env
 
-
-  app-migrate:
-    image: docker.io/codingcoffee/bureaucat:${VERSION:-latest}
-    build:
-      context: ./
-      dockerfile: Dockerfile
-      args:
-        VERSION: ${VERSION:-dev}
-    command: ["./bureaucat", "migrate", "up"]
-    depends_on:
-      postgres:
-        condition: service_healthy
-    env_file:
-      - .env
+  garage:
+    image: dxflrs/garage:v2.2.0
+    restart: unless-stopped
+    container_name: bureaucat-garage
+    volumes:
+      - ./garage/garage.toml:/etc/garage.toml
+      - ./garage/meta:/var/lib/garage/meta
+      - ./garage/data:/var/lib/garage/data
+    healthcheck:
+      test: ["CMD", "/garage", "status"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
   postgres:
     image: postgres:18.1-alpine3.23
