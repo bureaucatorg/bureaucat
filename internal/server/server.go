@@ -52,6 +52,7 @@ type Server struct {
 	oauthHandler    *handlers.OAuthHandler
 	patHandler      *handlers.PATHandler
 	feedbackHandler *handlers.FeedbackHandler
+	searchHandler   *handlers.SearchHandler
 	activityService     *activity.Service
 	notificationService *notifier.Service
 	uploadService       *uploads.Service
@@ -142,6 +143,7 @@ func New(devMode bool, dbURL string, authConfig AuthConfig, distFS fs.FS) (*Serv
 		srv.importHandler = handlers.NewImportHandler(srv.pool)
 		srv.patHandler = handlers.NewPATHandler(srv.store)
 		srv.feedbackHandler = handlers.NewFeedbackHandler(srv.pool, srv.store)
+		srv.searchHandler = handlers.NewSearchHandler(srv.store)
 	}
 
 	// Register routes

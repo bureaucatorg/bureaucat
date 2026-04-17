@@ -2264,6 +2264,275 @@ func (q *Queries) RemoveTaskLabel(ctx context.Context, arg RemoveTaskLabelParams
 	return err
 }
 
+const searchAllProjects = `-- name: SearchAllProjects :many
+SELECT p.id, p.project_key, p.name, p.description, p.icon_id
+FROM projects p
+WHERE p.deleted_at IS NULL
+  AND (
+    p.project_key ILIKE '%' || $1::text || '%'
+    OR p.name ILIKE '%' || $1::text || '%'
+    OR p.description ILIKE '%' || $1::text || '%'
+  )
+ORDER BY
+  CASE WHEN p.project_key ILIKE $1::text || '%' THEN 0
+       WHEN p.name ILIKE $1::text || '%' THEN 1
+       ELSE 2 END,
+  p.name ASC
+LIMIT $2
+`
+
+type SearchAllProjectsParams struct {
+	Query      string `json:"query"`
+	LimitCount int32  `json:"limit_count"`
+}
+
+type SearchAllProjectsRow struct {
+	ID          uuid.UUID   `json:"id"`
+	ProjectKey  string      `json:"project_key"`
+	Name        string      `json:"name"`
+	Description pgtype.Text `json:"description"`
+	IconID      pgtype.UUID `json:"icon_id"`
+}
+
+// Admin variant: matches across all projects.
+func (q *Queries) SearchAllProjects(ctx context.Context, arg SearchAllProjectsParams) ([]SearchAllProjectsRow, error) {
+	rows, err := q.db.Query(ctx, searchAllProjects, arg.Query, arg.LimitCount)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []SearchAllProjectsRow{}
+	for rows.Next() {
+		var i SearchAllProjectsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.ProjectKey,
+			&i.Name,
+			&i.Description,
+			&i.IconID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const searchAllTasks = `-- name: SearchAllTasks :many
+SELECT t.id, t.task_number, t.title, t.description,
+       p.id AS project_id, p.project_key, p.name AS project_name,
+       ps.name AS state_name, ps.state_type, ps.color AS state_color,
+       t.updated_at
+FROM tasks t
+JOIN projects p ON t.project_id = p.id
+JOIN project_states ps ON t.state_id = ps.id
+WHERE t.deleted_at IS NULL AND p.deleted_at IS NULL
+  AND (
+    t.title ILIKE '%' || $1::text || '%'
+    OR t.description ILIKE '%' || $1::text || '%'
+    OR (p.project_key || '-' || t.task_number::text) ILIKE '%' || $1::text || '%'
+  )
+ORDER BY
+  CASE WHEN (p.project_key || '-' || t.task_number::text) ILIKE $1::text || '%' THEN 0
+       WHEN t.title ILIKE $1::text || '%' THEN 1
+       ELSE 2 END,
+  t.updated_at DESC
+LIMIT $2
+`
+
+type SearchAllTasksParams struct {
+	Query      string `json:"query"`
+	LimitCount int32  `json:"limit_count"`
+}
+
+type SearchAllTasksRow struct {
+	ID          uuid.UUID          `json:"id"`
+	TaskNumber  int32              `json:"task_number"`
+	Title       string             `json:"title"`
+	Description pgtype.Text        `json:"description"`
+	ProjectID   uuid.UUID          `json:"project_id"`
+	ProjectKey  string             `json:"project_key"`
+	ProjectName string             `json:"project_name"`
+	StateName   string             `json:"state_name"`
+	StateType   string             `json:"state_type"`
+	StateColor  pgtype.Text        `json:"state_color"`
+	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+}
+
+// Admin variant: matches across all projects.
+func (q *Queries) SearchAllTasks(ctx context.Context, arg SearchAllTasksParams) ([]SearchAllTasksRow, error) {
+	rows, err := q.db.Query(ctx, searchAllTasks, arg.Query, arg.LimitCount)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []SearchAllTasksRow{}
+	for rows.Next() {
+		var i SearchAllTasksRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.TaskNumber,
+			&i.Title,
+			&i.Description,
+			&i.ProjectID,
+			&i.ProjectKey,
+			&i.ProjectName,
+			&i.StateName,
+			&i.StateType,
+			&i.StateColor,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const searchUserProjects = `-- name: SearchUserProjects :many
+SELECT p.id, p.project_key, p.name, p.description, p.icon_id
+FROM projects p
+JOIN project_members pm ON pm.project_id = p.id
+WHERE pm.user_id = $1 AND p.deleted_at IS NULL
+  AND (
+    p.project_key ILIKE '%' || $2::text || '%'
+    OR p.name ILIKE '%' || $2::text || '%'
+    OR p.description ILIKE '%' || $2::text || '%'
+  )
+ORDER BY
+  CASE WHEN p.project_key ILIKE $2::text || '%' THEN 0
+       WHEN p.name ILIKE $2::text || '%' THEN 1
+       ELSE 2 END,
+  p.name ASC
+LIMIT $3
+`
+
+type SearchUserProjectsParams struct {
+	UserID     uuid.UUID `json:"user_id"`
+	Query      string    `json:"query"`
+	LimitCount int32     `json:"limit_count"`
+}
+
+type SearchUserProjectsRow struct {
+	ID          uuid.UUID   `json:"id"`
+	ProjectKey  string      `json:"project_key"`
+	Name        string      `json:"name"`
+	Description pgtype.Text `json:"description"`
+	IconID      pgtype.UUID `json:"icon_id"`
+}
+
+// Matches projects by key, name, or description across projects the user is a member of.
+func (q *Queries) SearchUserProjects(ctx context.Context, arg SearchUserProjectsParams) ([]SearchUserProjectsRow, error) {
+	rows, err := q.db.Query(ctx, searchUserProjects, arg.UserID, arg.Query, arg.LimitCount)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []SearchUserProjectsRow{}
+	for rows.Next() {
+		var i SearchUserProjectsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.ProjectKey,
+			&i.Name,
+			&i.Description,
+			&i.IconID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const searchUserTasks = `-- name: SearchUserTasks :many
+
+SELECT t.id, t.task_number, t.title, t.description,
+       p.id AS project_id, p.project_key, p.name AS project_name,
+       ps.name AS state_name, ps.state_type, ps.color AS state_color,
+       t.updated_at
+FROM tasks t
+JOIN projects p ON t.project_id = p.id
+JOIN project_states ps ON t.state_id = ps.id
+WHERE EXISTS (SELECT 1 FROM project_members pm WHERE pm.project_id = p.id AND pm.user_id = $1)
+  AND t.deleted_at IS NULL AND p.deleted_at IS NULL
+  AND (
+    t.title ILIKE '%' || $2::text || '%'
+    OR t.description ILIKE '%' || $2::text || '%'
+    OR (p.project_key || '-' || t.task_number::text) ILIKE '%' || $2::text || '%'
+  )
+ORDER BY
+  CASE WHEN (p.project_key || '-' || t.task_number::text) ILIKE $2::text || '%' THEN 0
+       WHEN t.title ILIKE $2::text || '%' THEN 1
+       ELSE 2 END,
+  t.updated_at DESC
+LIMIT $3
+`
+
+type SearchUserTasksParams struct {
+	UserID     uuid.UUID `json:"user_id"`
+	Query      string    `json:"query"`
+	LimitCount int32     `json:"limit_count"`
+}
+
+type SearchUserTasksRow struct {
+	ID          uuid.UUID          `json:"id"`
+	TaskNumber  int32              `json:"task_number"`
+	Title       string             `json:"title"`
+	Description pgtype.Text        `json:"description"`
+	ProjectID   uuid.UUID          `json:"project_id"`
+	ProjectKey  string             `json:"project_key"`
+	ProjectName string             `json:"project_name"`
+	StateName   string             `json:"state_name"`
+	StateType   string             `json:"state_type"`
+	StateColor  pgtype.Text        `json:"state_color"`
+	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+}
+
+// ==================== GLOBAL SEARCH ====================
+// Matches tasks by title, description, or composed task key ("KEY-123") across
+// projects the user is a member of.
+func (q *Queries) SearchUserTasks(ctx context.Context, arg SearchUserTasksParams) ([]SearchUserTasksRow, error) {
+	rows, err := q.db.Query(ctx, searchUserTasks, arg.UserID, arg.Query, arg.LimitCount)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []SearchUserTasksRow{}
+	for rows.Next() {
+		var i SearchUserTasksRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.TaskNumber,
+			&i.Title,
+			&i.Description,
+			&i.ProjectID,
+			&i.ProjectKey,
+			&i.ProjectName,
+			&i.StateName,
+			&i.StateType,
+			&i.StateColor,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const softDeleteComment = `-- name: SoftDeleteComment :exec
 UPDATE comments
 SET deleted_at = NOW(), updated_at = NOW()

@@ -163,3 +163,32 @@ JOIN users u ON ta.user_id = u.id
 WHERE ct.cycle_id = $1
 GROUP BY u.id, u.username, u.first_name, u.last_name, u.avatar_url
 ORDER BY task_count DESC, u.first_name ASC;
+
+-- ==================== GLOBAL SEARCH ====================
+
+-- name: SearchUserCycles :many
+-- Matches cycles by title across projects the user is a member of.
+SELECT c.id, c.title, c.start_date, c.end_date,
+       p.id AS project_id, p.project_key, p.name AS project_name
+FROM cycles c
+JOIN projects p ON c.project_id = p.id
+WHERE EXISTS (SELECT 1 FROM project_members pm WHERE pm.project_id = p.id AND pm.user_id = @user_id)
+  AND c.deleted_at IS NULL AND p.deleted_at IS NULL
+  AND c.title ILIKE '%' || @query::text || '%'
+ORDER BY
+  CASE WHEN c.title ILIKE @query::text || '%' THEN 0 ELSE 1 END,
+  c.start_date DESC
+LIMIT @limit_count;
+
+-- name: SearchAllCycles :many
+-- Admin variant: matches across all projects.
+SELECT c.id, c.title, c.start_date, c.end_date,
+       p.id AS project_id, p.project_key, p.name AS project_name
+FROM cycles c
+JOIN projects p ON c.project_id = p.id
+WHERE c.deleted_at IS NULL AND p.deleted_at IS NULL
+  AND c.title ILIKE '%' || @query::text || '%'
+ORDER BY
+  CASE WHEN c.title ILIKE @query::text || '%' THEN 0 ELSE 1 END,
+  c.start_date DESC
+LIMIT @limit_count;

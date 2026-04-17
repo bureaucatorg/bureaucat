@@ -1,11 +1,18 @@
 <script setup lang="ts">
-import { User, LogOut, LayoutDashboard, FolderKanban, Shield, Star, Settings } from "lucide-vue-next";
+import { User, LogOut, LayoutDashboard, FolderKanban, Shield, Star, Settings, Search } from "lucide-vue-next";
 
 const { user, isAuthenticated, logout } = useAuth();
 const { appName, signupSettings, fetchSignupSettings } = useSettings();
 const route = useRoute();
 
 const isLandingPage = computed(() => route.path === "/");
+
+const searchOpen = ref(false);
+
+const isMac = computed(() => {
+  if (typeof navigator === "undefined") return false;
+  return /Mac|iPhone|iPad/.test(navigator.platform);
+});
 
 const appVersion = ref("");
 onMounted(async () => {
@@ -49,6 +56,24 @@ async function handleLogout() {
         </a>
 
         <ThemeToggle />
+
+        <button
+          v-if="isAuthenticated"
+          type="button"
+          aria-label="Search"
+          class="group inline-flex items-center gap-2 rounded-md border border-border/60 bg-background/40 px-2 py-1 text-xs text-muted-foreground transition-colors hover:border-border hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 outline-none"
+          @click="searchOpen = true"
+        >
+          <Search class="size-3.5" />
+          <span class="hidden lg:inline">Search</span>
+          <kbd
+            class="hidden lg:inline-flex h-4 items-center gap-0.5 rounded border border-border/60 bg-muted/50 px-1 font-mono text-[10px] font-medium tracking-wider text-muted-foreground group-hover:text-foreground"
+          >
+            <span v-if="isMac">⌘</span><span v-else>Ctrl</span>K
+          </kbd>
+        </button>
+
+        <GlobalSearch v-if="isAuthenticated" v-model:open="searchOpen" />
 
         <NotificationPopover v-if="isAuthenticated" />
 

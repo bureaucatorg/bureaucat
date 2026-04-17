@@ -117,6 +117,11 @@ func (s *Server) registerRoutes() {
 			protected.GET("/cycles/active", s.cycleHandler.ListActiveCycles)
 		}
 
+		// Global search across tasks, cycles, projects the user can see.
+		if s.searchHandler != nil {
+			protected.GET("/search", s.searchHandler.Search)
+		}
+
 		protected.GET("/users/:id", s.authHandler.GetUserProfile)
 		protected.GET("/users/:id/activity", s.authHandler.GetUserActivity)
 		protected.GET("/users/:id/activity/graph", s.authHandler.GetUserActivityGraph)

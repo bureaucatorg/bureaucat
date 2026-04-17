@@ -153,6 +153,21 @@ type Querier interface {
 	ReorderProjectViews(ctx context.Context, arg ReorderProjectViewsParams) error
 	RevokeAllUserRefreshTokens(ctx context.Context, userID uuid.UUID) error
 	RevokeRefreshToken(ctx context.Context, id uuid.UUID) error
+	// Admin variant: matches across all projects.
+	SearchAllCycles(ctx context.Context, arg SearchAllCyclesParams) ([]SearchAllCyclesRow, error)
+	// Admin variant: matches across all projects.
+	SearchAllProjects(ctx context.Context, arg SearchAllProjectsParams) ([]SearchAllProjectsRow, error)
+	// Admin variant: matches across all projects.
+	SearchAllTasks(ctx context.Context, arg SearchAllTasksParams) ([]SearchAllTasksRow, error)
+	// ==================== GLOBAL SEARCH ====================
+	// Matches cycles by title across projects the user is a member of.
+	SearchUserCycles(ctx context.Context, arg SearchUserCyclesParams) ([]SearchUserCyclesRow, error)
+	// Matches projects by key, name, or description across projects the user is a member of.
+	SearchUserProjects(ctx context.Context, arg SearchUserProjectsParams) ([]SearchUserProjectsRow, error)
+	// ==================== GLOBAL SEARCH ====================
+	// Matches tasks by title, description, or composed task key ("KEY-123") across
+	// projects the user is a member of.
+	SearchUserTasks(ctx context.Context, arg SearchUserTasksParams) ([]SearchUserTasksRow, error)
 	SearchUsersPaginated(ctx context.Context, arg SearchUsersPaginatedParams) ([]SearchUsersPaginatedRow, error)
 	SoftDeleteComment(ctx context.Context, id uuid.UUID) error
 	SoftDeleteCycle(ctx context.Context, id uuid.UUID) error

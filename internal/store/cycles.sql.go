@@ -639,6 +639,124 @@ func (q *Queries) RemoveTaskFromCycle(ctx context.Context, arg RemoveTaskFromCyc
 	return err
 }
 
+const searchAllCycles = `-- name: SearchAllCycles :many
+SELECT c.id, c.title, c.start_date, c.end_date,
+       p.id AS project_id, p.project_key, p.name AS project_name
+FROM cycles c
+JOIN projects p ON c.project_id = p.id
+WHERE c.deleted_at IS NULL AND p.deleted_at IS NULL
+  AND c.title ILIKE '%' || $1::text || '%'
+ORDER BY
+  CASE WHEN c.title ILIKE $1::text || '%' THEN 0 ELSE 1 END,
+  c.start_date DESC
+LIMIT $2
+`
+
+type SearchAllCyclesParams struct {
+	Query      string `json:"query"`
+	LimitCount int32  `json:"limit_count"`
+}
+
+type SearchAllCyclesRow struct {
+	ID          uuid.UUID   `json:"id"`
+	Title       string      `json:"title"`
+	StartDate   pgtype.Date `json:"start_date"`
+	EndDate     pgtype.Date `json:"end_date"`
+	ProjectID   uuid.UUID   `json:"project_id"`
+	ProjectKey  string      `json:"project_key"`
+	ProjectName string      `json:"project_name"`
+}
+
+// Admin variant: matches across all projects.
+func (q *Queries) SearchAllCycles(ctx context.Context, arg SearchAllCyclesParams) ([]SearchAllCyclesRow, error) {
+	rows, err := q.db.Query(ctx, searchAllCycles, arg.Query, arg.LimitCount)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []SearchAllCyclesRow{}
+	for rows.Next() {
+		var i SearchAllCyclesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Title,
+			&i.StartDate,
+			&i.EndDate,
+			&i.ProjectID,
+			&i.ProjectKey,
+			&i.ProjectName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const searchUserCycles = `-- name: SearchUserCycles :many
+
+SELECT c.id, c.title, c.start_date, c.end_date,
+       p.id AS project_id, p.project_key, p.name AS project_name
+FROM cycles c
+JOIN projects p ON c.project_id = p.id
+WHERE EXISTS (SELECT 1 FROM project_members pm WHERE pm.project_id = p.id AND pm.user_id = $1)
+  AND c.deleted_at IS NULL AND p.deleted_at IS NULL
+  AND c.title ILIKE '%' || $2::text || '%'
+ORDER BY
+  CASE WHEN c.title ILIKE $2::text || '%' THEN 0 ELSE 1 END,
+  c.start_date DESC
+LIMIT $3
+`
+
+type SearchUserCyclesParams struct {
+	UserID     uuid.UUID `json:"user_id"`
+	Query      string    `json:"query"`
+	LimitCount int32     `json:"limit_count"`
+}
+
+type SearchUserCyclesRow struct {
+	ID          uuid.UUID   `json:"id"`
+	Title       string      `json:"title"`
+	StartDate   pgtype.Date `json:"start_date"`
+	EndDate     pgtype.Date `json:"end_date"`
+	ProjectID   uuid.UUID   `json:"project_id"`
+	ProjectKey  string      `json:"project_key"`
+	ProjectName string      `json:"project_name"`
+}
+
+// ==================== GLOBAL SEARCH ====================
+// Matches cycles by title across projects the user is a member of.
+func (q *Queries) SearchUserCycles(ctx context.Context, arg SearchUserCyclesParams) ([]SearchUserCyclesRow, error) {
+	rows, err := q.db.Query(ctx, searchUserCycles, arg.UserID, arg.Query, arg.LimitCount)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []SearchUserCyclesRow{}
+	for rows.Next() {
+		var i SearchUserCyclesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Title,
+			&i.StartDate,
+			&i.EndDate,
+			&i.ProjectID,
+			&i.ProjectKey,
+			&i.ProjectName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const softDeleteCycle = `-- name: SoftDeleteCycle :exec
 UPDATE cycles
 SET deleted_at = NOW(), updated_at = NOW()

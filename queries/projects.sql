@@ -311,6 +311,89 @@ JOIN task_assignees ta ON t.id = ta.task_id
 WHERE ta.user_id = $1 AND t.deleted_at IS NULL AND p.deleted_at IS NULL
   AND ps.state_type NOT IN ('completed', 'cancelled');
 
+-- ==================== GLOBAL SEARCH ====================
+
+-- name: SearchUserTasks :many
+-- Matches tasks by title, description, or composed task key ("KEY-123") across
+-- projects the user is a member of.
+SELECT t.id, t.task_number, t.title, t.description,
+       p.id AS project_id, p.project_key, p.name AS project_name,
+       ps.name AS state_name, ps.state_type, ps.color AS state_color,
+       t.updated_at
+FROM tasks t
+JOIN projects p ON t.project_id = p.id
+JOIN project_states ps ON t.state_id = ps.id
+WHERE EXISTS (SELECT 1 FROM project_members pm WHERE pm.project_id = p.id AND pm.user_id = @user_id)
+  AND t.deleted_at IS NULL AND p.deleted_at IS NULL
+  AND (
+    t.title ILIKE '%' || @query::text || '%'
+    OR t.description ILIKE '%' || @query::text || '%'
+    OR (p.project_key || '-' || t.task_number::text) ILIKE '%' || @query::text || '%'
+  )
+ORDER BY
+  CASE WHEN (p.project_key || '-' || t.task_number::text) ILIKE @query::text || '%' THEN 0
+       WHEN t.title ILIKE @query::text || '%' THEN 1
+       ELSE 2 END,
+  t.updated_at DESC
+LIMIT @limit_count;
+
+-- name: SearchAllTasks :many
+-- Admin variant: matches across all projects.
+SELECT t.id, t.task_number, t.title, t.description,
+       p.id AS project_id, p.project_key, p.name AS project_name,
+       ps.name AS state_name, ps.state_type, ps.color AS state_color,
+       t.updated_at
+FROM tasks t
+JOIN projects p ON t.project_id = p.id
+JOIN project_states ps ON t.state_id = ps.id
+WHERE t.deleted_at IS NULL AND p.deleted_at IS NULL
+  AND (
+    t.title ILIKE '%' || @query::text || '%'
+    OR t.description ILIKE '%' || @query::text || '%'
+    OR (p.project_key || '-' || t.task_number::text) ILIKE '%' || @query::text || '%'
+  )
+ORDER BY
+  CASE WHEN (p.project_key || '-' || t.task_number::text) ILIKE @query::text || '%' THEN 0
+       WHEN t.title ILIKE @query::text || '%' THEN 1
+       ELSE 2 END,
+  t.updated_at DESC
+LIMIT @limit_count;
+
+-- name: SearchUserProjects :many
+-- Matches projects by key, name, or description across projects the user is a member of.
+SELECT p.id, p.project_key, p.name, p.description, p.icon_id
+FROM projects p
+JOIN project_members pm ON pm.project_id = p.id
+WHERE pm.user_id = @user_id AND p.deleted_at IS NULL
+  AND (
+    p.project_key ILIKE '%' || @query::text || '%'
+    OR p.name ILIKE '%' || @query::text || '%'
+    OR p.description ILIKE '%' || @query::text || '%'
+  )
+ORDER BY
+  CASE WHEN p.project_key ILIKE @query::text || '%' THEN 0
+       WHEN p.name ILIKE @query::text || '%' THEN 1
+       ELSE 2 END,
+  p.name ASC
+LIMIT @limit_count;
+
+-- name: SearchAllProjects :many
+-- Admin variant: matches across all projects.
+SELECT p.id, p.project_key, p.name, p.description, p.icon_id
+FROM projects p
+WHERE p.deleted_at IS NULL
+  AND (
+    p.project_key ILIKE '%' || @query::text || '%'
+    OR p.name ILIKE '%' || @query::text || '%'
+    OR p.description ILIKE '%' || @query::text || '%'
+  )
+ORDER BY
+  CASE WHEN p.project_key ILIKE @query::text || '%' THEN 0
+       WHEN p.name ILIKE @query::text || '%' THEN 1
+       ELSE 2 END,
+  p.name ASC
+LIMIT @limit_count;
+
 -- ==================== TASK ASSIGNEES ====================
 
 -- name: AddTaskAssignee :one
