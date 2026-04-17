@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { LayoutDashboard, FolderKanban, Eye, MessageCircle, Settings } from "lucide-vue-next";
+import { LayoutDashboard, FolderKanban, Eye, Repeat, MessageCircle, Settings } from "lucide-vue-next";
 
 const { user } = useAuth();
 const route = useRoute();
@@ -71,6 +71,15 @@ onMounted(() => {
         :class="isActive('/views') && 'bg-amber-500/15 text-amber-700 dark:text-amber-400'"
       >
         <Eye class="size-4.5" />
+      </NuxtLink>
+
+      <NuxtLink
+        to="/cycles/active"
+        title="Cycles"
+        class="flex size-9 items-center justify-center rounded-md text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+        :class="route.path === '/cycles/active' && 'bg-amber-500/15 text-amber-700 dark:text-amber-400'"
+      >
+        <Repeat class="size-4.5" />
       </NuxtLink>
     </nav>
 

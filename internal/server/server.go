@@ -45,6 +45,7 @@ type Server struct {
 	viewHandler     *handlers.ViewHandler
 	commentHandler    *handlers.CommentHandler
 	attachmentHandler *handlers.AttachmentHandler
+	cycleHandler      *handlers.CycleHandler
 	settingsHandler *handlers.SettingsHandler
 	ogHandler       *handlers.OGHandler
 	importHandler   *handlers.ImportHandler
@@ -134,6 +135,7 @@ func New(devMode bool, dbURL string, authConfig AuthConfig, distFS fs.FS) (*Serv
 		srv.viewHandler = handlers.NewViewHandler(srv.store)
 		srv.commentHandler = handlers.NewCommentHandler(srv.store, srv.activityService, srv.notificationService)
 		srv.attachmentHandler = handlers.NewAttachmentHandler(srv.store, uploadService)
+		srv.cycleHandler = handlers.NewCycleHandler(srv.store)
 		srv.settingsHandler = handlers.NewSettingsHandler(srv.store)
 		srv.oauthHandler = handlers.NewOAuthHandler(srv.store, srv.authManager, srv.authHandler, devMode)
 		srv.ogHandler = handlers.NewOGHandler(srv.store)

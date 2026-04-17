@@ -18,9 +18,13 @@ type Querier interface {
 	AddTaskAssignee(ctx context.Context, arg AddTaskAssigneeParams) (TaskAssignee, error)
 	// ==================== TASK LABELS ====================
 	AddTaskLabel(ctx context.Context, arg AddTaskLabelParams) error
+	// ==================== CYCLE TASKS ====================
+	AddTasksToCycle(ctx context.Context, arg AddTasksToCycleParams) error
+	CheckCycleOverlap(ctx context.Context, arg CheckCycleOverlapParams) (int32, error)
 	CountActiveRefreshTokens(ctx context.Context) (int64, error)
 	CountAllProjects(ctx context.Context) (int64, error)
 	CountAllProjectsFiltered(ctx context.Context, search pgtype.Text) (int64, error)
+	CountProjectCycles(ctx context.Context, projectID uuid.UUID) (int64, error)
 	CountProjectMembers(ctx context.Context, projectID uuid.UUID) (int64, error)
 	CountProjectTasks(ctx context.Context, projectID uuid.UUID) (int64, error)
 	CountSearchUsers(ctx context.Context, dollar_1 pgtype.Text) (int64, error)
@@ -37,6 +41,8 @@ type Querier interface {
 	CreateAttachment(ctx context.Context, arg CreateAttachmentParams) (Attachment, error)
 	// ==================== COMMENTS ====================
 	CreateComment(ctx context.Context, arg CreateCommentParams) (Comment, error)
+	// ==================== CYCLES ====================
+	CreateCycle(ctx context.Context, arg CreateCycleParams) (Cycle, error)
 	CreatePersonalAccessToken(ctx context.Context, arg CreatePersonalAccessTokenParams) (PersonalAccessToken, error)
 	// ==================== PROJECTS ====================
 	CreateProject(ctx context.Context, arg CreateProjectParams) (Project, error)
@@ -64,6 +70,9 @@ type Querier interface {
 	DeleteUpload(ctx context.Context, id uuid.UUID) error
 	DeleteUserByID(ctx context.Context, id uuid.UUID) error
 	GetCommentByID(ctx context.Context, id uuid.UUID) (GetCommentByIDRow, error)
+	GetCycleByID(ctx context.Context, id uuid.UUID) (GetCycleByIDRow, error)
+	GetCycleMetrics(ctx context.Context, cycleID uuid.UUID) (GetCycleMetricsRow, error)
+	GetCycleStateBreakdown(ctx context.Context, cycleID uuid.UUID) ([]GetCycleStateBreakdownRow, error)
 	GetDefaultProjectState(ctx context.Context, projectID uuid.UUID) (ProjectState, error)
 	GetLastActivityChecksum(ctx context.Context, taskID uuid.UUID) (string, error)
 	GetNextTaskNumber(ctx context.Context, projectID uuid.UUID) (int32, error)
@@ -84,6 +93,7 @@ type Querier interface {
 	GetSetting(ctx context.Context, key string) (Setting, error)
 	GetTaskByID(ctx context.Context, id uuid.UUID) (GetTaskByIDRow, error)
 	GetTaskByProjectAndNumber(ctx context.Context, arg GetTaskByProjectAndNumberParams) (GetTaskByProjectAndNumberRow, error)
+	GetTaskCycleID(ctx context.Context, taskID uuid.UUID) (uuid.UUID, error)
 	GetTaskTemplateByID(ctx context.Context, id uuid.UUID) (TaskTemplate, error)
 	GetUploadByID(ctx context.Context, id uuid.UUID) (Upload, error)
 	GetUserByEmail(ctx context.Context, email string) (GetUserByEmailRow, error)
@@ -94,6 +104,7 @@ type Querier interface {
 	IsProjectMember(ctx context.Context, arg IsProjectMemberParams) (bool, error)
 	IsTaskAssignee(ctx context.Context, arg IsTaskAssigneeParams) (bool, error)
 	LinkProviderToUser(ctx context.Context, arg LinkProviderToUserParams) error
+	ListActiveCyclesForUser(ctx context.Context, userID uuid.UUID) ([]ListActiveCyclesForUserRow, error)
 	ListActiveRefreshTokens(ctx context.Context, arg ListActiveRefreshTokensParams) ([]ListActiveRefreshTokensRow, error)
 	ListAllProjects(ctx context.Context, arg ListAllProjectsParams) ([]ListAllProjectsRow, error)
 	ListAllProjectsFiltered(ctx context.Context, arg ListAllProjectsFilteredParams) ([]ListAllProjectsFilteredRow, error)
@@ -101,8 +112,12 @@ type Querier interface {
 	// from a FilterTree. The projection here is documented for reference by that runner.
 	ListAssigneesForTasks(ctx context.Context, taskIds []uuid.UUID) ([]ListAssigneesForTasksRow, error)
 	ListAttachmentsByEntity(ctx context.Context, arg ListAttachmentsByEntityParams) ([]ListAttachmentsByEntityRow, error)
+	ListCycleAssignees(ctx context.Context, cycleID uuid.UUID) ([]ListCycleAssigneesRow, error)
+	ListCycleTasks(ctx context.Context, arg ListCycleTasksParams) ([]ListCycleTasksRow, error)
 	ListLabelsForTasks(ctx context.Context, taskIds []uuid.UUID) ([]ListLabelsForTasksRow, error)
 	ListPersonalAccessTokensByUser(ctx context.Context, userID uuid.UUID) ([]ListPersonalAccessTokensByUserRow, error)
+	ListProjectCycles(ctx context.Context, arg ListProjectCyclesParams) ([]ListProjectCyclesRow, error)
+	ListProjectCyclesAll(ctx context.Context, projectID uuid.UUID) ([]ListProjectCyclesAllRow, error)
 	ListProjectLabels(ctx context.Context, projectID uuid.UUID) ([]ProjectLabel, error)
 	ListProjectMembers(ctx context.Context, projectID uuid.UUID) ([]ListProjectMembersRow, error)
 	ListProjectStates(ctx context.Context, projectID uuid.UUID) ([]ProjectState, error)
@@ -116,6 +131,7 @@ type Querier interface {
 	ListTaskLabels(ctx context.Context, taskID uuid.UUID) ([]ListTaskLabelsRow, error)
 	ListTaskTemplates(ctx context.Context, projectID uuid.UUID) ([]TaskTemplate, error)
 	ListTasksByAssignee(ctx context.Context, arg ListTasksByAssigneeParams) ([]ListTasksByAssigneeRow, error)
+	ListUnassignedProjectTasks(ctx context.Context, arg ListUnassignedProjectTasksParams) ([]ListUnassignedProjectTasksRow, error)
 	ListUploadsByUser(ctx context.Context, arg ListUploadsByUserParams) ([]Upload, error)
 	// ==================== USER ACTIVITY ====================
 	ListUserActivity(ctx context.Context, arg ListUserActivityParams) ([]ListUserActivityRow, error)
@@ -131,6 +147,7 @@ type Querier interface {
 	ProjectViewSlugExists(ctx context.Context, arg ProjectViewSlugExistsParams) (bool, error)
 	RemoveProjectMember(ctx context.Context, arg RemoveProjectMemberParams) error
 	RemoveTaskAssignee(ctx context.Context, arg RemoveTaskAssigneeParams) error
+	RemoveTaskFromCycle(ctx context.Context, arg RemoveTaskFromCycleParams) error
 	RemoveTaskLabel(ctx context.Context, arg RemoveTaskLabelParams) error
 	// Pass a JSON array of {id, new_position} objects.
 	ReorderProjectViews(ctx context.Context, arg ReorderProjectViewsParams) error
@@ -138,6 +155,7 @@ type Querier interface {
 	RevokeRefreshToken(ctx context.Context, id uuid.UUID) error
 	SearchUsersPaginated(ctx context.Context, arg SearchUsersPaginatedParams) ([]SearchUsersPaginatedRow, error)
 	SoftDeleteComment(ctx context.Context, id uuid.UUID) error
+	SoftDeleteCycle(ctx context.Context, id uuid.UUID) error
 	// When a member leaves a project, their private views are soft-deleted.
 	SoftDeleteOwnedPrivateViews(ctx context.Context, arg SoftDeleteOwnedPrivateViewsParams) error
 	SoftDeleteProject(ctx context.Context, id uuid.UUID) error
@@ -146,6 +164,7 @@ type Querier interface {
 	// When a member leaves a project, keep their shared views alive by reassigning ownership.
 	TransferOwnedSharedViews(ctx context.Context, arg TransferOwnedSharedViewsParams) error
 	UpdateComment(ctx context.Context, arg UpdateCommentParams) (Comment, error)
+	UpdateCycle(ctx context.Context, arg UpdateCycleParams) (Cycle, error)
 	UpdatePersonalAccessTokenLastUsed(ctx context.Context, id uuid.UUID) error
 	UpdatePersonalAccessTokenScope(ctx context.Context, arg UpdatePersonalAccessTokenScopeParams) (UpdatePersonalAccessTokenScopeRow, error)
 	UpdateProject(ctx context.Context, arg UpdateProjectParams) (Project, error)

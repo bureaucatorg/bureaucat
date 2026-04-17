@@ -267,6 +267,26 @@ type Comment struct {
 	DeletedAt pgtype.Timestamptz `json:"deleted_at"`
 }
 
+type Cycle struct {
+	ID          uuid.UUID          `json:"id"`
+	ProjectID   uuid.UUID          `json:"project_id"`
+	Title       string             `json:"title"`
+	Description pgtype.Text        `json:"description"`
+	StartDate   pgtype.Date        `json:"start_date"`
+	EndDate     pgtype.Date        `json:"end_date"`
+	CreatedBy   uuid.UUID          `json:"created_by"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+	DeletedAt   pgtype.Timestamptz `json:"deleted_at"`
+}
+
+type CycleTask struct {
+	CycleID uuid.UUID          `json:"cycle_id"`
+	TaskID  uuid.UUID          `json:"task_id"`
+	AddedAt pgtype.Timestamptz `json:"added_at"`
+	AddedBy uuid.UUID          `json:"added_by"`
+}
+
 type Feedback struct {
 	ID           uuid.UUID          `json:"id"`
 	Message      string             `json:"message"`

@@ -112,6 +112,11 @@ func (s *Server) registerRoutes() {
 			patGroup.PATCH("/me/tokens/:tokenId", s.patHandler.UpdateTokenScope)
 			patGroup.DELETE("/me/tokens/:tokenId", s.patHandler.DeleteToken)
 		}
+		// Workspace-level active cycles dashboard (across all projects)
+		if s.cycleHandler != nil {
+			protected.GET("/cycles/active", s.cycleHandler.ListActiveCycles)
+		}
+
 		protected.GET("/users/:id", s.authHandler.GetUserProfile)
 		protected.GET("/users/:id/activity", s.authHandler.GetUserActivity)
 		protected.GET("/users/:id/activity/graph", s.authHandler.GetUserActivityGraph)
@@ -166,6 +171,21 @@ func (s *Server) registerRoutes() {
 				projectGroup.GET("/views/:slug", s.viewHandler.GetView)
 				projectGroup.PATCH("/views/:slug", s.viewHandler.UpdateView, auth.ProjectRoleMiddleware("member"))
 				projectGroup.DELETE("/views/:slug", s.viewHandler.DeleteView, auth.ProjectRoleMiddleware("member"))
+			}
+
+			// Cycles
+			if s.cycleHandler != nil {
+				projectGroup.GET("/cycles", s.cycleHandler.ListCycles)
+				projectGroup.GET("/cycles/all", s.cycleHandler.ListAllProjectCycles)
+				projectGroup.POST("/cycles", s.cycleHandler.CreateCycle, auth.ProjectRoleMiddleware("admin"))
+				projectGroup.GET("/cycles/unassigned-tasks", s.cycleHandler.ListUnassignedTasks)
+				projectGroup.GET("/cycles/:cycleId", s.cycleHandler.GetCycle)
+				projectGroup.PATCH("/cycles/:cycleId", s.cycleHandler.UpdateCycle, auth.ProjectRoleMiddleware("admin"))
+				projectGroup.DELETE("/cycles/:cycleId", s.cycleHandler.DeleteCycle, auth.ProjectRoleMiddleware("admin"))
+				projectGroup.GET("/cycles/:cycleId/tasks", s.cycleHandler.ListCycleTasks)
+				projectGroup.POST("/cycles/:cycleId/tasks", s.cycleHandler.AddCycleTasks, auth.ProjectRoleMiddleware("admin"))
+				projectGroup.DELETE("/cycles/:cycleId/tasks/:taskId", s.cycleHandler.RemoveCycleTask, auth.ProjectRoleMiddleware("admin"))
+				projectGroup.GET("/cycles/:cycleId/metrics", s.cycleHandler.GetCycleMetrics)
 			}
 
 			// Tasks

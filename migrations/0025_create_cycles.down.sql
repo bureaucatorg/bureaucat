@@ -1,0 +1,2 @@
+DROP TABLE IF EXISTS cycle_tasks;
+DROP TABLE IF EXISTS cycles;
