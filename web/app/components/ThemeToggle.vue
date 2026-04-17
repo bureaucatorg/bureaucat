@@ -22,7 +22,7 @@ function setMode(value: "light" | "dark" | "system") {
 <template>
   <DropdownMenu>
     <DropdownMenuTrigger as-child>
-      <Button variant="outline" size="icon">
+      <Button variant="ghost" size="icon" class="size-9" aria-label="Toggle theme">
         <component :is="currentIcon" class="size-4" />
         <span class="sr-only">Toggle theme</span>
       </Button>
