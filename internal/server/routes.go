@@ -12,6 +12,24 @@ import (
 	"bereaucat/internal/buildinfo"
 )
 
+// feedbackCORS opens the feedback endpoints to any origin so users on
+// self-hosted instances can POST to the main bureaucat.org from their browser.
+// Written inline rather than pulling in echo's CORS middleware so this stays
+// compatible with echo v5's moving API surface.
+func feedbackCORS(next echo.HandlerFunc) echo.HandlerFunc {
+	return func(c *echo.Context) error {
+		h := c.Response().Header()
+		h.Set("Access-Control-Allow-Origin", "*")
+		h.Set("Access-Control-Allow-Methods", "POST, OPTIONS")
+		h.Set("Access-Control-Allow-Headers", "Content-Type")
+		h.Set("Access-Control-Max-Age", "86400")
+		if c.Request().Method == http.MethodOptions {
+			return c.NoContent(http.StatusNoContent)
+		}
+		return next(c)
+	}
+}
+
 // HealthResponse represents the health check response
 type HealthResponse struct {
 	All     bool   `json:"all"`
@@ -38,6 +56,16 @@ func (s *Server) registerRoutes() {
 		api.GET("/settings/branding", s.settingsHandler.GetBranding)
 		api.GET("/settings/sso", s.settingsHandler.GetSSOProviders)
 		api.GET("/settings/signup", s.settingsHandler.GetSignupSettings)
+	}
+
+	// Public feedback endpoint — accepts cross-origin submissions from other
+	// self-hosted Bureaucat instances, so CORS is explicitly opened.
+	if s.feedbackHandler != nil {
+		api.POST("/feedback", s.feedbackHandler.SubmitFeedback, feedbackCORS)
+		api.OPTIONS("/feedback", func(c *echo.Context) error {
+			return c.NoContent(http.StatusNoContent)
+		}, feedbackCORS)
+		api.GET("/settings/feedback", s.feedbackHandler.GetPublicSettings)
 	}
 
 	// SSO auth routes (public)
@@ -68,6 +96,13 @@ func (s *Server) registerRoutes() {
 		protected.GET("/me", s.authHandler.Me)
 		protected.GET("/me/tasks", s.authHandler.MyTasks)
 		protected.GET("/me/notifications", s.authHandler.GetMyNotifications)
+
+		// Local mirror of outbound feedback. Authenticated — the sidebar
+		// dialog calls this alongside the cross-origin POST to bureaucat.org
+		// so admins can see what their own users submitted.
+		if s.feedbackHandler != nil {
+			protected.POST("/me/feedback", s.feedbackHandler.SubmitLocalFeedback)
+		}
 
 		// Personal Access Token routes (not accessible via PAT)
 		if s.patHandler != nil {
@@ -199,6 +234,14 @@ func (s *Server) registerRoutes() {
 		// Admin data import
 		if s.importHandler != nil {
 			admin.POST("/import/plane", s.importHandler.ImportPlane)
+		}
+
+		// Admin feedback (list / delete / settings)
+		if s.feedbackHandler != nil {
+			admin.GET("/feedback", s.feedbackHandler.ListFeedback)
+			admin.DELETE("/feedback/:id", s.feedbackHandler.DeleteFeedback)
+			admin.GET("/settings/feedback", s.feedbackHandler.GetAdminSettings)
+			admin.PUT("/settings/feedback", s.feedbackHandler.UpdateAdminSettings)
 		}
 	}
 }

@@ -267,6 +267,14 @@ type Comment struct {
 	DeletedAt pgtype.Timestamptz `json:"deleted_at"`
 }
 
+type Feedback struct {
+	ID           uuid.UUID          `json:"id"`
+	Message      string             `json:"message"`
+	SourceOrigin pgtype.Text        `json:"source_origin"`
+	UserAgent    pgtype.Text        `json:"user_agent"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+}
+
 type PersonalAccessToken struct {
 	ID         uuid.UUID          `json:"id"`
 	UserID     uuid.UUID          `json:"user_id"`

@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { LayoutDashboard, FolderKanban, Eye, Settings } from "lucide-vue-next";
+import { LayoutDashboard, FolderKanban, Eye, MessageCircle, Settings } from "lucide-vue-next";
 
 const { user } = useAuth();
 const route = useRoute();
+const { feedbackPublic, fetchFeedbackPublicSettings } = useSettings();
 
 const profilePath = computed(() => (user.value ? `/profile/${user.value.id}` : "/"));
 
@@ -12,6 +13,12 @@ function isActive(path: string): boolean {
   }
   return route.path === path || route.path.startsWith(`${path}/`);
 }
+
+const showFeedback = ref(false);
+
+onMounted(() => {
+  fetchFeedbackPublicSettings();
+});
 </script>
 
 <template>
@@ -67,14 +74,29 @@ function isActive(path: string): boolean {
       </NuxtLink>
     </nav>
 
-    <!-- Settings at bottom -->
-    <NuxtLink
-      to="/settings"
-      title="Settings"
-      class="mt-auto flex size-9 items-center justify-center rounded-md text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
-      :class="isActive('/settings') && 'bg-amber-500/15 text-amber-700 dark:text-amber-400'"
-    >
-      <Settings class="size-4.5" />
-    </NuxtLink>
+    <!-- Feedback + settings at bottom -->
+    <div class="mt-auto flex flex-col items-center gap-1">
+      <button
+        v-if="feedbackPublic.send_to_main_enabled"
+        type="button"
+        title="Feedback"
+        aria-label="Send feedback"
+        class="flex size-9 items-center justify-center rounded-md text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+        @click="showFeedback = true"
+      >
+        <MessageCircle class="size-4.5" />
+      </button>
+
+      <NuxtLink
+        to="/settings"
+        title="Settings"
+        class="flex size-9 items-center justify-center rounded-md text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+        :class="isActive('/settings') && 'bg-amber-500/15 text-amber-700 dark:text-amber-400'"
+      >
+        <Settings class="size-4.5" />
+      </NuxtLink>
+    </div>
+
+    <FeedbackDialog v-model:open="showFeedback" />
   </aside>
 </template>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Users, Key, Shield, ArrowRight, Loader2, Upload, CheckCircle2, Copy, Check, MessageSquare, UserPlus } from "lucide-vue-next";
+import { Users, Key, Shield, ArrowRight, Loader2, Upload, CheckCircle2, Copy, Check, MessageSquare, MessageCircle, UserPlus } from "lucide-vue-next";
 import { toast } from "vue-sonner";
 import type { SSOSettings, MattermostSettings } from "~/composables/useSettings";
 
@@ -710,6 +710,39 @@ const adminModels = [
               </div>
             </CardContent>
           </Card>
+        </div>
+
+        <!-- Feedback panel (links to the dedicated management page) -->
+        <div class="mt-12">
+          <div class="mb-4">
+            <h2 class="text-xl font-semibold">Feedback</h2>
+            <p class="text-sm text-muted-foreground">
+              Review anonymous feedback sent to this instance and control whether
+              users here can send feedback to bureaucat.org.
+            </p>
+          </div>
+
+          <NuxtLink to="/admin/feedback" class="group block">
+            <Card class="transition-all hover:border-foreground/20 hover:shadow-lg">
+              <CardHeader>
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-3">
+                    <div class="flex size-12 items-center justify-center rounded-lg bg-pink-500/10">
+                      <MessageCircle class="size-6 text-pink-500" />
+                    </div>
+                    <div>
+                      <CardTitle>Manage feedback</CardTitle>
+                      <CardDescription>
+                        View received feedback, toggle receiving, and control
+                        outbound submissions.
+                      </CardDescription>
+                    </div>
+                  </div>
+                  <ArrowRight class="size-5 text-muted-foreground transition-transform group-hover:translate-x-1" />
+                </div>
+              </CardHeader>
+            </Card>
+          </NuxtLink>
         </div>
       </div>
     </main>

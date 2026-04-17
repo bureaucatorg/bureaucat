@@ -32,6 +32,17 @@ export interface MattermostSettings {
   bot_token: string;
 }
 
+export interface FeedbackSettings {
+  receive_enabled: boolean;
+  send_to_main_enabled: boolean;
+  store_sent_locally: boolean;
+}
+
+export interface FeedbackPublicSettings {
+  send_to_main_enabled: boolean;
+  store_sent_locally: boolean;
+}
+
 const branding = ref<BrandingSettings>({
   enabled: false,
   app_name: "Bureaucat",
@@ -44,6 +55,12 @@ const signupSettingsLoaded = ref(false);
 
 const ssoProviders = ref<SSOProvidersPublic>({ google: false, zitadel: false });
 const ssoProvidersLoaded = ref(false);
+
+const feedbackPublic = ref<FeedbackPublicSettings>({
+  send_to_main_enabled: false,
+  store_sent_locally: true,
+});
+const feedbackPublicLoaded = ref(false);
 
 export function useSettings() {
   const { getAuthHeader } = useAuth();
@@ -259,6 +276,67 @@ export function useSettings() {
     }
   }
 
+  // --- Feedback Settings ---
+
+  async function fetchFeedbackPublicSettings(): Promise<void> {
+    if (feedbackPublicLoaded.value) return;
+    try {
+      const response = await fetch("/api/v1/settings/feedback");
+      if (response.ok) {
+        feedbackPublic.value = await response.json();
+      }
+    } catch {
+      // Stay with defaults.
+    } finally {
+      feedbackPublicLoaded.value = true;
+    }
+  }
+
+  async function fetchFeedbackSettings(): Promise<{ success: boolean; data?: FeedbackSettings; error?: string }> {
+    try {
+      const response = await fetch("/api/v1/admin/settings/feedback", {
+        headers: { ...getAuthHeader() },
+        credentials: "include",
+      });
+      if (!response.ok) {
+        const data = await response.json();
+        return { success: false, error: data.message || "Failed to fetch feedback settings" };
+      }
+      return { success: true, data: await response.json() };
+    } catch {
+      return { success: false, error: "Network error" };
+    }
+  }
+
+  async function updateFeedbackSettings(
+    settings: FeedbackSettings
+  ): Promise<{ success: boolean; data?: FeedbackSettings; error?: string }> {
+    try {
+      const response = await fetch("/api/v1/admin/settings/feedback", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          ...getAuthHeader(),
+        },
+        credentials: "include",
+        body: JSON.stringify(settings),
+      });
+      if (!response.ok) {
+        const data = await response.json();
+        return { success: false, error: data.message || "Failed to update feedback settings" };
+      }
+      const data = await response.json();
+      // Keep the public-facing cache in sync so the sidebar updates without reload.
+      feedbackPublic.value = {
+        send_to_main_enabled: data.send_to_main_enabled,
+        store_sent_locally: data.store_sent_locally,
+      };
+      return { success: true, data };
+    } catch {
+      return { success: false, error: "Network error" };
+    }
+  }
+
   async function testMattermostConnection(): Promise<{ success: boolean; error?: string }> {
     try {
       const response = await fetch("/api/v1/admin/settings/mattermost/test", {
@@ -296,5 +374,10 @@ export function useSettings() {
     fetchMattermostSettings,
     updateMattermostSettings,
     testMattermostConnection,
+    feedbackPublic,
+    feedbackPublicLoaded,
+    fetchFeedbackPublicSettings,
+    fetchFeedbackSettings,
+    updateFeedbackSettings,
   };
 }
