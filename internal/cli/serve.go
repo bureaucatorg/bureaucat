@@ -70,6 +70,11 @@ func ServeCommand() *cli.Command {
 				Value:   7,
 				Usage:   "Refresh token expiry time in days",
 			},
+			&cli.BoolFlag{
+				Name:  "migrate",
+				Value: false,
+				Usage: "Run pending database migrations before starting the server (equivalent to `./bureaucat migrate up`)",
+			},
 		},
 		Action: func(ctx context.Context, cmd *cli.Command) error {
 			host := cmd.String("api-host")
@@ -79,8 +84,30 @@ func ServeCommand() *cli.Command {
 			jwtSecret := cmd.String("jwt-secret")
 			accessTokenExpiryMins := int(cmd.Int("access-token-expiry-mins"))
 			refreshTokenExpiryDays := int(cmd.Int("refresh-token-expiry-days"))
+			runMigrations := cmd.Bool("migrate")
 
 			addr := fmt.Sprintf("%s:%d", host, port)
+
+			// Run pending migrations before opening the main server pool, so a
+			// failed migration aborts startup cleanly with a visible error
+			// instead of leaving the server running against an out-of-date schema.
+			// Reuses the same helper that backs `./bureaucat migrate up`.
+			if runMigrations {
+				if dbURL == "" {
+					return fmt.Errorf("--migrate requires --database-url (or DATABASE_URL)")
+				}
+				fmt.Println("Running database migrations...")
+				migrator, err := createMigrator(dbURL, "migrations")
+				if err != nil {
+					return fmt.Errorf("failed to create migrator: %w", err)
+				}
+				if err := migrator.Up(); err != nil {
+					migrator.Close()
+					return fmt.Errorf("migration failed: %w", err)
+				}
+				migrator.Close()
+				fmt.Println("Migrations complete.")
+			}
 
 			// Write serve PID file
 			if err := os.WriteFile(PidFile, []byte(strconv.Itoa(os.Getpid())), 0644); err != nil {
