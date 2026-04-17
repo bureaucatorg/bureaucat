@@ -1,7 +1,230 @@
 <script setup lang="ts">
 import { Play, Pause, RotateCcw, Timer, Settings2 } from "lucide-vue-next";
 
-useSeoMeta({ title: "Pomodoro" });
+const CANONICAL = "https://bureaucat.org/pomodoro";
+const OG_IMAGE = "https://bureaucat.org/pomodoro-og.svg";
+const SEO_TITLE = "Pomodoro Timer — Focus, one tick at a time · Bureaucat";
+const SEO_DESC =
+  "A minimal, keyboard-driven Pomodoro timer by Bureaucat. Custom focus and break durations, beautiful watch-dial interface, desktop notifications, zero tracking. Free and ready in your browser.";
+const SEO_KEYWORDS = [
+  "pomodoro timer",
+  "pomodoro technique",
+  "focus timer",
+  "productivity timer",
+  "deep work timer",
+  "tomato timer",
+  "25 minute timer",
+  "work timer",
+  "study timer",
+  "bureaucat",
+  "minimal pomodoro",
+  "browser pomodoro",
+].join(", ");
+
+useSeoMeta({
+  title: SEO_TITLE,
+  description: SEO_DESC,
+  keywords: SEO_KEYWORDS,
+  author: "Bureaucat",
+  robots: "index, follow, max-image-preview:large, max-snippet:-1",
+  themeColor: "#F59E0B",
+  applicationName: "Bureaucat Pomodoro",
+
+  ogTitle: "Pomodoro Timer — Bureaucat",
+  ogDescription: SEO_DESC,
+  ogType: "website",
+  ogUrl: CANONICAL,
+  ogSiteName: "Bureaucat",
+  ogLocale: "en_US",
+  ogImage: OG_IMAGE,
+  ogImageUrl: OG_IMAGE,
+  ogImageSecureUrl: OG_IMAGE,
+  ogImageType: "image/svg+xml",
+  ogImageWidth: 1200,
+  ogImageHeight: 630,
+  ogImageAlt: "A watch-style Pomodoro timer dial showing 20:00, with progress arc and session indicators — Bureaucat Pomodoro.",
+
+  twitterCard: "summary_large_image",
+  twitterTitle: "Pomodoro Timer — Bureaucat",
+  twitterDescription: SEO_DESC,
+  twitterImage: OG_IMAGE,
+  twitterImageAlt: "Bureaucat Pomodoro — a minimal, watch-dial focus timer.",
+
+  appleMobileWebAppCapable: "yes",
+  appleMobileWebAppTitle: "Pomodoro",
+  appleMobileWebAppStatusBarStyle: "black-translucent",
+});
+
+useHead({
+  htmlAttrs: { lang: "en" },
+  link: [
+    { rel: "canonical", href: CANONICAL },
+    { rel: "alternate", hreflang: "en", href: CANONICAL },
+    { rel: "alternate", hreflang: "x-default", href: CANONICAL },
+    { rel: "preload", as: "image", href: "/pomodoro-og.svg", type: "image/svg+xml" },
+  ],
+  meta: [
+    { name: "format-detection", content: "telephone=no" },
+    { name: "color-scheme", content: "light dark" },
+    { name: "referrer", content: "strict-origin-when-cross-origin" },
+    { name: "category", content: "Productivity" },
+    { property: "og:image:alt", content: "Bureaucat Pomodoro — minimal focus timer" },
+  ],
+  script: [
+    {
+      type: "application/ld+json",
+      innerHTML: JSON.stringify({
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "WebApplication",
+            "@id": `${CANONICAL}#webapp`,
+            name: "Bureaucat Pomodoro",
+            alternateName: "Pomodoro Timer",
+            url: CANONICAL,
+            description: SEO_DESC,
+            image: OG_IMAGE,
+            applicationCategory: "ProductivityApplication",
+            applicationSubCategory: "Time Management",
+            operatingSystem: "Web",
+            browserRequirements: "Requires JavaScript. Modern browser recommended.",
+            isAccessibleForFree: true,
+            offers: {
+              "@type": "Offer",
+              price: "0",
+              priceCurrency: "USD",
+              availability: "https://schema.org/InStock",
+            },
+            featureList: [
+              "Adjustable focus, short break, and long break durations",
+              "Keyboard shortcuts (Space to toggle, R to reset)",
+              "Desktop notifications on session end",
+              "Session counter with 4-cycle grouping",
+              "Watch-dial interface with amber progress arc",
+              "Works offline after first load",
+              "Zero tracking, zero account required",
+            ],
+            publisher: {
+              "@type": "Organization",
+              "@id": "https://bureaucat.org/#org",
+              name: "Bureaucat",
+              url: "https://bureaucat.org",
+              logo: "https://bureaucat.org/logo.svg",
+            },
+            inLanguage: "en-US",
+          },
+          {
+            "@type": "WebPage",
+            "@id": CANONICAL,
+            url: CANONICAL,
+            name: SEO_TITLE,
+            description: SEO_DESC,
+            isPartOf: { "@id": "https://bureaucat.org/#website" },
+            primaryImageOfPage: OG_IMAGE,
+            breadcrumb: { "@id": `${CANONICAL}#breadcrumb` },
+            inLanguage: "en-US",
+          },
+          {
+            "@type": "BreadcrumbList",
+            "@id": `${CANONICAL}#breadcrumb`,
+            itemListElement: [
+              {
+                "@type": "ListItem",
+                position: 1,
+                name: "Home",
+                item: "https://bureaucat.org/",
+              },
+              {
+                "@type": "ListItem",
+                position: 2,
+                name: "Pomodoro",
+                item: CANONICAL,
+              },
+            ],
+          },
+          {
+            "@type": "HowTo",
+            "@id": `${CANONICAL}#howto`,
+            name: "How to use the Pomodoro technique with Bureaucat",
+            description:
+              "Use 20-minute focus intervals followed by short breaks to sustain deep work throughout the day.",
+            totalTime: "PT2H",
+            step: [
+              {
+                "@type": "HowToStep",
+                position: 1,
+                name: "Pick a task",
+                text: "Choose a single task to focus on for the next session.",
+              },
+              {
+                "@type": "HowToStep",
+                position: 2,
+                name: "Start Focus",
+                text: "Press Space or Start. The timer counts down from 20 minutes by default.",
+              },
+              {
+                "@type": "HowToStep",
+                position: 3,
+                name: "Work without interruption",
+                text: "Stay on the chosen task. Note distractions to handle after the session.",
+              },
+              {
+                "@type": "HowToStep",
+                position: 4,
+                name: "Short Break",
+                text: "When the bell rings, switch to Short Break (5 min). Step away from the screen.",
+              },
+              {
+                "@type": "HowToStep",
+                position: 5,
+                name: "Long Break every 4",
+                text: "After four focus sessions, take a Long Break (15 min) to fully recover.",
+              },
+            ],
+          },
+          {
+            "@type": "FAQPage",
+            "@id": `${CANONICAL}#faq`,
+            mainEntity: [
+              {
+                "@type": "Question",
+                name: "What is the Pomodoro Technique?",
+                acceptedAnswer: {
+                  "@type": "Answer",
+                  text: "A time-management method that breaks work into focused intervals (traditionally 25 minutes) separated by short breaks, helping sustain concentration across a day.",
+                },
+              },
+              {
+                "@type": "Question",
+                name: "Can I customize the durations?",
+                acceptedAnswer: {
+                  "@type": "Answer",
+                  text: "Yes. Click the settings icon next to the mode selector to set any duration between the allowed limits. Preferences are saved locally in your browser.",
+                },
+              },
+              {
+                "@type": "Question",
+                name: "Does Bureaucat Pomodoro track or send my data anywhere?",
+                acceptedAnswer: {
+                  "@type": "Answer",
+                  text: "No. The timer runs entirely in your browser. Nothing is recorded or transmitted.",
+                },
+              },
+              {
+                "@type": "Question",
+                name: "Do I need to sign up?",
+                acceptedAnswer: {
+                  "@type": "Answer",
+                  text: "No. /pomodoro is accessible without an account.",
+                },
+              },
+            ],
+          },
+        ],
+      }),
+    },
+  ],
+});
 
 type Mode = "focus" | "short" | "long";
 
@@ -366,9 +589,8 @@ function bezelTickStyle(i: number): Record<string, string> {
                   rx="28"
                   ry="28"
                   fill="none"
-                  stroke="currentColor"
+                  stroke="var(--w-rim-soft)"
                   stroke-width="2"
-                  class="text-border/50"
                 />
                 <rect
                   x="6"
@@ -378,11 +600,11 @@ function bezelTickStyle(i: number): Record<string, string> {
                   rx="28"
                   ry="28"
                   fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
+                  stroke="#F59E0B"
+                  stroke-width="2.5"
                   stroke-linecap="round"
                   pathLength="1"
-                  class="text-amber-500 transition-[stroke-dashoffset] duration-500 ease-out"
+                  class="transition-[stroke-dashoffset] duration-500 ease-out"
                   stroke-dasharray="1 1"
                   :stroke-dashoffset="1 - progress"
                 />
@@ -393,17 +615,23 @@ function bezelTickStyle(i: number): Record<string, string> {
               <div class="crosshair crosshair-h" />
 
               <!-- Brand -->
-              <div class="absolute top-4 left-1/2 -translate-x-1/2 text-[0.6rem] font-semibold uppercase tracking-[0.32em] text-foreground/80">
+              <div
+                class="absolute top-4 left-1/2 -translate-x-1/2 text-[0.6rem] font-semibold uppercase tracking-[0.32em]"
+                style="color: var(--w-ink-strong)"
+              >
                 Bureaucat
               </div>
-              <div class="absolute top-[34px] left-1/2 -translate-x-1/2 text-[0.5rem] uppercase tracking-[0.35em] text-muted-foreground/70">
+              <div
+                class="absolute top-[34px] left-1/2 -translate-x-1/2 text-[0.5rem] uppercase tracking-[0.35em]"
+                style="color: var(--w-ink-soft)"
+              >
                 Chrono · Pomodoro
               </div>
 
               <!-- Mode window (top-right sub window) -->
               <div class="mode-window">
-                <div class="text-[0.45rem] uppercase tracking-[0.25em] text-muted-foreground/80">Mode</div>
-                <div class="font-mono text-[0.8rem] font-semibold leading-none tracking-wider text-foreground">
+                <div class="text-[0.45rem] uppercase tracking-[0.25em]" style="color: var(--w-ink-soft)">Mode</div>
+                <div class="font-mono text-[0.8rem] font-semibold leading-none tracking-wider" style="color: var(--w-ink-strong)">
                   {{ mode === "focus" ? "FOC" : mode === "short" ? "BRK" : "LNG" }}
                 </div>
               </div>
@@ -423,9 +651,10 @@ function bezelTickStyle(i: number): Record<string, string> {
               <div class="flex flex-col items-center">
                 <div
                   class="flex items-baseline font-mono text-[5rem] font-extralight tabular-nums leading-none tracking-tight"
+                  style="color: var(--w-ink-strong)"
                 >
                   <span>{{ minutes }}</span>
-                  <span class="mx-0.5 text-muted-foreground/60" :class="running && 'animate-pulse'">:</span>
+                  <span class="mx-0.5" :class="running && 'animate-pulse'" style="color: var(--w-ink-soft)">:</span>
                   <span>{{ seconds }}</span>
                 </div>
               </div>
@@ -456,7 +685,10 @@ function bezelTickStyle(i: number): Record<string, string> {
               </div>
 
               <!-- Bottom engraving -->
-              <div class="absolute bottom-[18px] left-1/2 -translate-x-1/2 font-mono text-[0.55rem] uppercase tracking-[0.28em] text-muted-foreground/60 tabular-nums">
+              <div
+                class="absolute bottom-[18px] left-1/2 -translate-x-1/2 font-mono text-[0.55rem] uppercase tracking-[0.28em] tabular-nums"
+                style="color: var(--w-ink-soft)"
+              >
                 {{ minutesByMode[mode].toString().padStart(2, "0") }}:00 · {{ labels[mode] }}
               </div>
             </div>
@@ -514,66 +746,151 @@ function bezelTickStyle(i: number): Record<string, string> {
             <kbd class="rounded border border-border/60 bg-muted/40 px-1.5 py-0.5 font-mono text-[0.65rem] normal-case tracking-normal">R</kbd>
             Reset
           </div>
+          <div class="flex items-center gap-1.5">
+            <kbd class="rounded border border-border/60 bg-muted/40 px-1.5 py-0.5 font-mono text-[0.65rem] normal-case tracking-normal">Crown</kbd>
+            Settings
+          </div>
         </div>
+
+        <!-- About / SEO content -->
+        <section class="mt-24 w-full max-w-2xl border-t border-border/50 pt-12">
+          <header class="mb-6 flex items-center gap-2 text-[0.65rem] uppercase tracking-[0.25em] text-muted-foreground">
+            <span class="inline-block h-px w-4 bg-amber-500" />
+            Notes on the technique
+          </header>
+
+          <h2 class="text-xl font-semibold tracking-tight">
+            A minimal Pomodoro timer, built for focused work.
+          </h2>
+
+          <div class="mt-4 space-y-4 text-sm leading-relaxed text-muted-foreground">
+            <p>
+              The Pomodoro technique splits work into short, focused intervals separated by deliberate breaks.
+              Bureaucat's timer keeps the method simple: a 20-minute focus session by default,
+              a five-minute break to breathe, and a longer 15-minute break every four cycles.
+              Durations are yours to change from the crown on the right.
+            </p>
+            <p>
+              Everything runs in your browser. No account, no tracking, no data leaves this tab.
+              Your preferred durations are stored locally; clear your site data to reset them.
+            </p>
+          </div>
+
+          <h3 class="mt-10 text-sm font-semibold tracking-tight">How to use it</h3>
+          <ol class="mt-3 space-y-2 text-sm text-muted-foreground list-decimal list-inside">
+            <li>Pick a single task to focus on.</li>
+            <li>Press <kbd class="rounded border border-border/60 bg-muted/40 px-1 font-mono text-xs">Space</kbd> or the Start button to begin.</li>
+            <li>Work uninterrupted until the bell — note any distractions for later.</li>
+            <li>When the focus session ends, switch to a short break.</li>
+            <li>After four focus sessions, take a longer break to reset.</li>
+          </ol>
+
+          <h3 class="mt-10 text-sm font-semibold tracking-tight">FAQ</h3>
+          <dl class="mt-3 space-y-4 text-sm">
+            <div>
+              <dt class="font-medium text-foreground">Can I adjust the durations?</dt>
+              <dd class="mt-1 text-muted-foreground">
+                Yes — open the crown or the settings icon to set any focus or break length within reasonable limits.
+                Changes save automatically to your browser.
+              </dd>
+            </div>
+            <div>
+              <dt class="font-medium text-foreground">Does it track anything?</dt>
+              <dd class="mt-1 text-muted-foreground">
+                No. The timer runs locally. There is no analytics pixel, no server round-trip, no account requirement.
+              </dd>
+            </div>
+            <div>
+              <dt class="font-medium text-foreground">Will it notify me when a session ends?</dt>
+              <dd class="mt-1 text-muted-foreground">
+                Yes — if you grant notification permission, you'll get a desktop alert along with a soft chime.
+              </dd>
+            </div>
+            <div>
+              <dt class="font-medium text-foreground">Do I need to sign up?</dt>
+              <dd class="mt-1 text-muted-foreground">
+                No. <NuxtLink to="/pomodoro" class="text-amber-600 underline underline-offset-2 hover:text-amber-700 dark:text-amber-400">/pomodoro</NuxtLink> is free and works without an account.
+              </dd>
+            </div>
+          </dl>
+        </section>
       </div>
     </main>
   </div>
 </template>
 
 <style scoped>
-/* ---------- Assembly wrapper ---------- */
+/* ---------- Watch palette (scoped, theme-aware) ---------- */
 .watch-assembly {
+  /* Light: warm light-gray bezel, near-white dial, defined rim */
+  --w-bezel-top: hsl(32 10% 91%);
+  --w-bezel-bottom: hsl(32 10% 78%);
+  --w-dial-top: hsl(32 6% 99%);
+  --w-dial-bottom: hsl(32 10% 88%);
+  --w-rim: hsl(32 12% 42%);
+  --w-rim-soft: hsl(32 10% 68%);
+  --w-ink-strong: hsl(32 12% 28%);
+  --w-ink-soft: hsl(32 6% 52%);
+  --w-window-bg: hsl(0 0% 100%);
+  --w-crown-ridge: hsl(32 10% 38%);
+  --w-shadow: 0 30px 40px rgba(40, 30, 20, 0.18);
+
   width: 340px;
   height: 340px;
   display: flex;
   align-items: center;
   justify-content: center;
-  filter: drop-shadow(0 30px 40px rgba(0, 0, 0, 0.18));
+  filter: drop-shadow(var(--w-shadow));
 }
 :global(.dark) .watch-assembly {
-  filter: drop-shadow(0 30px 50px rgba(0, 0, 0, 0.6));
+  --w-bezel-top: hsl(30 10% 15%);
+  --w-bezel-bottom: hsl(30 8% 7%);
+  --w-dial-top: hsl(30 8% 10%);
+  --w-dial-bottom: hsl(0 0% 4%);
+  --w-rim: hsl(30 10% 30%);
+  --w-rim-soft: hsl(30 8% 18%);
+  --w-ink-strong: hsl(30 14% 72%);
+  --w-ink-soft: hsl(30 6% 45%);
+  --w-window-bg: hsl(30 6% 4%);
+  --w-crown-ridge: hsl(30 6% 38%);
+  --w-shadow: 0 30px 50px rgba(0, 0, 0, 0.6);
 }
 
 /* ---------- Bezel ---------- */
 .watch-bezel {
-  background: linear-gradient(155deg, hsl(var(--muted) / 0.55), hsl(var(--background)) 55%, hsl(var(--muted) / 0.35));
-  border: 1px solid hsl(var(--border) / 0.7);
+  background: linear-gradient(155deg, var(--w-bezel-top), var(--w-bezel-bottom));
+  border: 1.5px solid var(--w-rim);
   box-shadow:
-    0 1px 0 hsl(var(--background) / 0.9) inset,
-    0 -1px 0 hsl(var(--border) / 0.5) inset,
-    0 0 0 1px hsl(var(--border) / 0.15),
-    0 2px 4px rgba(0, 0, 0, 0.04);
+    inset 0 1px 0 hsl(0 0% 100% / 0.5),
+    inset 0 -1px 0 hsl(0 0% 0% / 0.15),
+    0 0 0 1px hsl(0 0% 0% / 0.04);
 }
 :global(.dark) .watch-bezel {
-  background: linear-gradient(155deg, hsl(var(--muted) / 0.65), hsl(var(--background)) 60%, hsl(0 0% 5%));
   box-shadow:
-    0 1px 0 hsl(0 0% 100% / 0.05) inset,
-    0 -1px 0 hsl(0 0% 0% / 0.6) inset,
-    0 0 0 1px hsl(0 0% 0% / 0.3);
+    inset 0 1px 0 hsl(0 0% 100% / 0.05),
+    inset 0 -1px 0 hsl(0 0% 0% / 0.6),
+    0 0 0 1px hsl(0 0% 0% / 0.4);
 }
 
 /* ---------- Dial ---------- */
 .watch-dial {
-  background:
-    radial-gradient(circle at 30% 18%, hsl(var(--background)) 0%, hsl(var(--muted) / 0.4) 85%);
+  background: radial-gradient(circle at 30% 18%, var(--w-dial-top) 0%, var(--w-dial-bottom) 90%);
   box-shadow:
-    inset 0 2px 4px hsl(0 0% 0% / 0.1),
-    inset 0 -1px 2px hsl(var(--background) / 0.8),
-    inset 0 0 0 1px hsl(var(--border) / 0.7);
+    inset 0 2px 5px hsl(0 0% 0% / 0.12),
+    inset 0 -1px 2px hsl(0 0% 100% / 0.4),
+    inset 0 0 0 1.5px var(--w-rim);
 }
 :global(.dark) .watch-dial {
-  background:
-    radial-gradient(circle at 30% 18%, hsl(var(--muted) / 0.5) 0%, hsl(0 0% 3%) 80%);
   box-shadow:
-    inset 0 2px 4px hsl(0 0% 0% / 0.6),
+    inset 0 2px 5px hsl(0 0% 0% / 0.7),
     inset 0 -1px 2px hsl(0 0% 100% / 0.03),
-    inset 0 0 0 1px hsl(var(--border) / 0.5);
+    inset 0 0 0 1.5px var(--w-rim);
 }
 
 /* ---------- Cardinal ticks ---------- */
 .watch-tick {
   position: absolute;
-  background: hsl(var(--foreground) / 0.55);
+  background: var(--w-ink-strong);
   border-radius: 9999px;
   pointer-events: none;
 }
@@ -598,7 +915,7 @@ function bezelTickStyle(i: number): Record<string, string> {
 
 .bezel-minute-tick {
   position: absolute;
-  background: hsl(var(--muted-foreground) / 0.35);
+  background: var(--w-ink-soft);
   pointer-events: none;
   border-radius: 1px;
 }
@@ -609,23 +926,22 @@ function bezelTickStyle(i: number): Record<string, string> {
   width: 10px;
   height: 10px;
   border-radius: 9999px;
-  background:
-    radial-gradient(circle at 35% 35%, hsl(var(--background)), hsl(var(--muted))) ;
+  background: radial-gradient(circle at 35% 35%, var(--w-bezel-top), var(--w-bezel-bottom));
   box-shadow:
-    inset 0 1px 1px hsl(0 0% 0% / 0.15),
-    inset 0 0 0 1px hsl(var(--border) / 0.8);
+    inset 0 1px 1px hsl(0 0% 0% / 0.25),
+    inset 0 0 0 1px var(--w-rim);
   pointer-events: none;
 }
 .screw::after {
   content: "";
   position: absolute;
   inset: 2px;
-  border-top: 1px solid hsl(var(--muted-foreground) / 0.5);
+  border-top: 1.2px solid var(--w-ink-strong);
   transform: rotate(40deg);
   transform-origin: center;
 }
 :global(.dark) .screw {
-  background: radial-gradient(circle at 35% 35%, hsl(0 0% 18%), hsl(0 0% 6%));
+  background: radial-gradient(circle at 35% 35%, hsl(30 6% 14%), hsl(0 0% 4%));
   box-shadow:
     inset 0 1px 1px hsl(0 0% 0% / 0.8),
     inset 0 0 0 1px hsl(0 0% 0% / 0.6);
@@ -641,15 +957,14 @@ function bezelTickStyle(i: number): Record<string, string> {
   width: 46px;
   height: 22px;
   border-radius: 8px;
-  background: linear-gradient(180deg, hsl(var(--muted) / 0.7), hsl(var(--background)));
-  border: 1px solid hsl(var(--border) / 0.7);
+  background: linear-gradient(180deg, var(--w-bezel-top), var(--w-bezel-bottom));
+  border: 1px solid var(--w-rim);
   box-shadow:
-    inset 0 1px 0 hsl(var(--background) / 0.9),
-    0 4px 6px -4px rgba(0, 0, 0, 0.18);
+    inset 0 1px 0 hsl(0 0% 100% / 0.3),
+    0 4px 6px -4px rgba(0, 0, 0, 0.22);
   z-index: 0;
 }
 :global(.dark) .lug {
-  background: linear-gradient(180deg, hsl(var(--muted) / 0.6), hsl(0 0% 4%));
   box-shadow:
     inset 0 1px 0 hsl(0 0% 100% / 0.04),
     0 4px 8px -4px rgba(0, 0, 0, 0.7);
@@ -659,7 +974,7 @@ function bezelTickStyle(i: number): Record<string, string> {
   position: absolute;
   inset: 6px 10px;
   border-radius: 2px;
-  background: hsl(var(--border) / 0.5);
+  background: var(--w-rim-soft);
 }
 .lug-top-left { top: -14px; left: 28px; }
 .lug-top-right { top: -14px; right: 28px; }
@@ -669,31 +984,30 @@ function bezelTickStyle(i: number): Record<string, string> {
 /* ---------- Side engraving plate (left) ---------- */
 .side-plate-left {
   position: absolute;
-  left: -10px;
+  left: -12px;
   top: 50%;
   transform: translateY(-50%);
-  width: 10px;
+  width: 14px;
   height: 96px;
   border-radius: 3px 0 0 3px;
-  background: linear-gradient(90deg, hsl(var(--muted) / 0.8), hsl(var(--background)));
-  border: 1px solid hsl(var(--border) / 0.7);
+  background: linear-gradient(90deg, var(--w-bezel-bottom), var(--w-bezel-top));
+  border: 1px solid var(--w-rim);
   border-right: none;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: inset 0 1px 0 hsl(var(--background) / 0.9);
+  box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.25);
 }
 :global(.dark) .side-plate-left {
-  background: linear-gradient(90deg, hsl(0 0% 6%), hsl(var(--muted) / 0.4));
-  box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.03);
+  box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.04);
 }
 .side-engrave {
   writing-mode: vertical-rl;
   transform: rotate(180deg);
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 7px;
-  letter-spacing: 0.25em;
-  color: hsl(var(--muted-foreground) / 0.7);
+  font-size: 8px;
+  letter-spacing: 0.28em;
+  color: var(--w-ink-soft);
   text-transform: uppercase;
   white-space: nowrap;
 }
@@ -712,14 +1026,14 @@ function bezelTickStyle(i: number): Record<string, string> {
 }
 .pusher {
   width: 12px;
-  height: 22px;
+  height: 24px;
   border-radius: 3px;
-  border: 1px solid hsl(var(--border) / 0.8);
+  border: 1px solid var(--w-rim);
   border-left: none;
-  background: linear-gradient(90deg, hsl(var(--muted)), hsl(var(--background)) 80%);
+  background: linear-gradient(90deg, var(--w-bezel-bottom), var(--w-bezel-top) 80%);
   box-shadow:
-    inset 0 1px 0 hsl(var(--background) / 0.9),
-    0 2px 3px rgba(0, 0, 0, 0.12);
+    inset 0 1px 0 hsl(0 0% 100% / 0.3),
+    0 2px 3px rgba(0, 0, 0, 0.18);
   cursor: pointer;
   transition: transform 0.12s ease, filter 0.12s ease;
   outline: none;
@@ -727,26 +1041,24 @@ function bezelTickStyle(i: number): Record<string, string> {
 .pusher:hover { filter: brightness(1.05); }
 .pusher:active { transform: translateX(-2px); filter: brightness(0.95); }
 .pusher:focus-visible { box-shadow: 0 0 0 2px hsl(var(--ring)); }
-:global(.dark) .pusher {
-  background: linear-gradient(90deg, hsl(0 0% 12%), hsl(0 0% 4%) 80%);
-}
+
 .crown {
-  width: 16px;
-  height: 40px;
+  width: 18px;
+  height: 44px;
   border-radius: 4px;
-  border: 1px solid hsl(var(--border) / 0.8);
+  border: 1px solid var(--w-rim);
   border-left: none;
   background:
     repeating-linear-gradient(
       0deg,
-      hsl(var(--muted-foreground) / 0.2) 0,
-      hsl(var(--muted-foreground) / 0.2) 1px,
-      hsl(var(--muted) / 0.8) 1px,
-      hsl(var(--muted) / 0.8) 3px
+      var(--w-crown-ridge) 0,
+      var(--w-crown-ridge) 1.2px,
+      var(--w-bezel-top) 1.2px,
+      var(--w-bezel-top) 3.5px
     );
   box-shadow:
-    inset 0 1px 0 hsl(var(--background) / 0.5),
-    0 2px 4px rgba(0, 0, 0, 0.14);
+    inset 0 1px 0 hsl(0 0% 100% / 0.25),
+    0 2px 4px rgba(0, 0, 0, 0.22);
   cursor: pointer;
   transition: transform 0.12s ease;
   outline: none;
@@ -754,22 +1066,13 @@ function bezelTickStyle(i: number): Record<string, string> {
 .crown:hover { transform: translateX(-1px); }
 .crown:active { transform: translateX(-3px); }
 .crown:focus-visible { box-shadow: 0 0 0 2px hsl(var(--ring)); }
-:global(.dark) .crown {
-  background:
-    repeating-linear-gradient(
-      0deg,
-      hsl(0 0% 0%) 0,
-      hsl(0 0% 0%) 1px,
-      hsl(0 0% 14%) 1px,
-      hsl(0 0% 14%) 3px
-    );
-}
 
 /* ---------- Dial crosshair ---------- */
 .crosshair {
   position: absolute;
-  background: hsl(var(--border) / 0.3);
+  background: var(--w-rim-soft);
   pointer-events: none;
+  opacity: 0.5;
 }
 .crosshair-v {
   left: 50%;
@@ -798,16 +1101,10 @@ function bezelTickStyle(i: number): Record<string, string> {
   flex-direction: column;
   align-items: center;
   gap: 2px;
-  background: hsl(var(--background));
+  background: var(--w-window-bg);
   box-shadow:
-    inset 0 1px 2px hsl(0 0% 0% / 0.15),
-    inset 0 0 0 1px hsl(var(--border) / 0.7);
-}
-:global(.dark) .mode-window {
-  background: hsl(0 0% 4%);
-  box-shadow:
-    inset 0 1px 2px hsl(0 0% 0% / 0.8),
-    inset 0 0 0 1px hsl(var(--border) / 0.6);
+    inset 0 1px 2px hsl(0 0% 0% / 0.18),
+    inset 0 0 0 1px var(--w-rim);
 }
 
 /* ---------- Status window (top-left) ---------- */
@@ -820,17 +1117,11 @@ function bezelTickStyle(i: number): Record<string, string> {
   gap: 4px;
   padding: 3px 7px;
   border-radius: 999px;
-  background: hsl(var(--background));
-  color: hsl(var(--muted-foreground));
+  background: var(--w-window-bg);
+  color: var(--w-ink-strong);
   box-shadow:
-    inset 0 1px 2px hsl(0 0% 0% / 0.12),
-    inset 0 0 0 1px hsl(var(--border) / 0.6);
-}
-:global(.dark) .status-window {
-  background: hsl(0 0% 4%);
-  box-shadow:
-    inset 0 1px 2px hsl(0 0% 0% / 0.7),
-    inset 0 0 0 1px hsl(var(--border) / 0.5);
+    inset 0 1px 2px hsl(0 0% 0% / 0.15),
+    inset 0 0 0 1px var(--w-rim);
 }
 
 /* ---------- Subdials ---------- */
@@ -845,26 +1136,20 @@ function bezelTickStyle(i: number): Record<string, string> {
   flex-direction: column;
   align-items: center;
   gap: 4px;
-  background: hsl(var(--background) / 0.6);
+  background: var(--w-window-bg);
   box-shadow:
-    inset 0 1px 2px hsl(0 0% 0% / 0.12),
-    inset 0 0 0 1px hsl(var(--border) / 0.55);
+    inset 0 1px 2px hsl(0 0% 0% / 0.18),
+    inset 0 0 0 1px var(--w-rim);
 }
 .subdial-right {
   left: auto;
   right: 34px;
 }
-:global(.dark) .subdial {
-  background: hsl(0 0% 3%);
-  box-shadow:
-    inset 0 1px 2px hsl(0 0% 0% / 0.7),
-    inset 0 0 0 1px hsl(var(--border) / 0.5);
-}
 .subdial-label {
   font-size: 7px;
   letter-spacing: 0.22em;
   text-transform: uppercase;
-  color: hsl(var(--muted-foreground) / 0.8);
+  color: var(--w-ink-soft);
 }
 .subdial-pips {
   display: flex;
@@ -874,7 +1159,7 @@ function bezelTickStyle(i: number): Record<string, string> {
   width: 6px;
   height: 6px;
   border-radius: 9999px;
-  background: hsl(var(--border));
+  background: var(--w-rim-soft);
   transition: background 0.2s;
 }
 .subdial-pip-on {
@@ -884,13 +1169,13 @@ function bezelTickStyle(i: number): Record<string, string> {
 .subdial-count {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 9px;
-  color: hsl(var(--foreground) / 0.75);
+  color: var(--w-ink-strong);
 }
 .subdial-meter {
   width: 100%;
   height: 4px;
   border-radius: 2px;
-  background: hsl(var(--border) / 0.7);
+  background: var(--w-rim-soft);
   overflow: hidden;
 }
 .subdial-meter-fill {

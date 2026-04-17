@@ -81,7 +81,10 @@ onMounted(() => {
       >
         <Repeat class="size-4.5" />
       </NuxtLink>
+    </nav>
 
+    <!-- Pomodoro + feedback + settings at bottom -->
+    <div class="mt-auto flex flex-col items-center gap-1">
       <NuxtLink
         to="/pomodoro"
         title="Pomodoro"
@@ -90,10 +93,7 @@ onMounted(() => {
       >
         <Timer class="size-4.5" />
       </NuxtLink>
-    </nav>
 
-    <!-- Feedback + settings at bottom -->
-    <div class="mt-auto flex flex-col items-center gap-1">
       <button
         v-if="feedbackPublic.send_to_main_enabled"
         type="button"

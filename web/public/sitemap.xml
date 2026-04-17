@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset
+  xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+  xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+  <url>
+    <loc>https://bureaucat.org/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+    <image:image>
+      <image:loc>https://bureaucat.org/og.svg</image:loc>
+      <image:title>Bureaucat — Bureaucracy That Actually Moves</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://bureaucat.org/pomodoro</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
+    <image:image>
+      <image:loc>https://bureaucat.org/pomodoro-og.svg</image:loc>
+      <image:title>Bureaucat Pomodoro — Focus, one tick at a time</image:title>
+      <image:caption>A minimal, watch-dial Pomodoro timer with customizable focus and break durations.</image:caption>
+    </image:image>
+  </url>
+</urlset>
