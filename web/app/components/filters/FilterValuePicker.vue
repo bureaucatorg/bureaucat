@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type { DateValue } from "reka-ui";
+import { CalendarDate } from "@internationalized/date";
 import type { FilterField, FilterOp, FilterValue, ProjectState, ProjectMember, ProjectLabel } from "~/types";
 import type { ValueKind } from "./filterCatalog";
 import {
@@ -41,6 +43,44 @@ const asRange = computed<{ from: string; to: string }>(() => {
     return props.value as { from: string; to: string };
   }
   return { from: "", to: "" };
+});
+
+// ----- date picker helpers -----
+
+/** Check if a string is a relative date keyword (not an ISO date). */
+function isRelativeDate(v: string): boolean {
+  return RELATIVE_DATE_OPTIONS.some((o) => o.id === v);
+}
+
+/** Parse an ISO date string (YYYY-MM-DD) into a CalendarDate, or return undefined. */
+function parseCalendarDate(v: string): DateValue | undefined {
+  if (!v || isRelativeDate(v)) return undefined;
+  const m = v.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return undefined;
+  return new CalendarDate(parseInt(m[1]), parseInt(m[2]), parseInt(m[3]));
+}
+
+/** Format a CalendarDate to ISO date string. */
+function calendarDateToString(d: DateValue): string {
+  const y = String(d.year).padStart(4, "0");
+  const m = String(d.month).padStart(2, "0");
+  const day = String(d.day).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+const calendarValue = computed<DateValue | undefined>(() => parseCalendarDate(asDateValue.value));
+const calendarFromValue = computed<DateValue | undefined>(() => parseCalendarDate(asRange.value.from));
+const calendarToValue = computed<DateValue | undefined>(() => parseCalendarDate(asRange.value.to));
+
+/** Which section is active: 'calendar' for picking a date, 'relative' for keywords. */
+const dateMode = ref<"calendar" | "relative">(
+  asDateValue.value && isRelativeDate(asDateValue.value) ? "relative" : "calendar"
+);
+
+// For date-range, track which field is picking: 'from' or 'to'
+const rangeDateMode = ref<{ from: "calendar" | "relative"; to: "calendar" | "relative" }>({
+  from: asRange.value.from && isRelativeDate(asRange.value.from) ? "relative" : "calendar",
+  to: asRange.value.to && isRelativeDate(asRange.value.to) ? "relative" : "calendar",
 });
 
 // ----- entity pickers -----
@@ -165,49 +205,159 @@ function updateIntArray(next: string[]) {
     </EntityMultiSelect>
 
     <!-- date (single keyword or ISO) -->
-    <div v-else-if="valueKind === 'date'" class="space-y-1 p-2">
-      <Input
-        :model-value="asDateValue"
-        type="text"
-        placeholder="YYYY-MM-DD or today, this_week…"
-        class="h-8 text-sm"
-        @update:model-value="(v) => emit('update:value', String(v ?? ''))"
-      />
-      <div class="flex flex-wrap gap-1 pt-1">
+    <div v-else-if="valueKind === 'date'" class="w-full">
+      <!-- Tabs: Calendar / Relative -->
+      <div class="flex border-b">
         <button
-          v-for="opt in RELATIVE_DATE_OPTIONS"
-          :key="opt.id"
           type="button"
-          class="rounded-full border px-2 py-0.5 text-xs text-muted-foreground transition hover:border-primary hover:text-primary"
-          :class="asDateValue === opt.id ? 'border-primary bg-primary/10 text-primary' : ''"
-          @click="emit('update:value', opt.id)"
+          class="flex-1 px-3 py-1.5 text-xs font-medium transition-colors"
+          :class="dateMode === 'calendar' ? 'border-b-2 border-primary text-primary' : 'text-muted-foreground hover:text-foreground'"
+          @click="dateMode = 'calendar'"
         >
-          {{ opt.label }}
+          Pick date
         </button>
+        <button
+          type="button"
+          class="flex-1 px-3 py-1.5 text-xs font-medium transition-colors"
+          :class="dateMode === 'relative' ? 'border-b-2 border-primary text-primary' : 'text-muted-foreground hover:text-foreground'"
+          @click="dateMode = 'relative'"
+        >
+          Relative
+        </button>
+      </div>
+
+      <div v-if="dateMode === 'calendar'" class="flex justify-center p-1">
+        <Calendar
+          :model-value="calendarValue"
+          layout="month-and-year"
+          class="p-2"
+          @update:model-value="(d: DateValue | undefined) => { if (d) emit('update:value', calendarDateToString(d)) }"
+        />
+      </div>
+
+      <div v-else class="max-h-52 overflow-y-auto p-2">
+        <div class="grid grid-cols-2 gap-1">
+          <button
+            v-for="opt in RELATIVE_DATE_OPTIONS"
+            :key="opt.id"
+            type="button"
+            class="rounded-md px-2.5 py-1.5 text-left text-xs transition-colors hover:bg-accent hover:text-accent-foreground"
+            :class="asDateValue === opt.id ? 'bg-primary/10 font-medium text-primary' : 'text-muted-foreground'"
+            @click="emit('update:value', opt.id)"
+          >
+            {{ opt.label }}
+          </button>
+        </div>
+      </div>
+
+      <!-- Show current selection -->
+      <div v-if="asDateValue" class="border-t px-3 py-1.5">
+        <p class="text-xs text-muted-foreground">
+          Selected: <span class="font-medium text-foreground">{{ asDateValue }}</span>
+        </p>
       </div>
     </div>
 
     <!-- date range -->
-    <div v-else-if="valueKind === 'date-range'" class="space-y-2 p-2">
-      <div class="space-y-1">
-        <Label class="text-xs text-muted-foreground">From</Label>
-        <Input
-          :model-value="asRange.from"
-          type="text"
-          placeholder="YYYY-MM-DD or keyword"
-          class="h-8 text-sm"
-          @update:model-value="(v) => emit('update:value', { from: String(v ?? ''), to: asRange.to })"
-        />
+    <div v-else-if="valueKind === 'date-range'" class="w-full">
+      <!-- From date -->
+      <div class="border-b">
+        <div class="flex items-center justify-between bg-muted/30 px-3 py-1.5">
+          <Label class="text-xs font-medium">From</Label>
+          <div class="flex gap-1">
+            <button
+              type="button"
+              class="rounded px-1.5 py-0.5 text-[10px] font-medium transition-colors"
+              :class="rangeDateMode.from === 'calendar' ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground'"
+              @click="rangeDateMode.from = 'calendar'"
+            >
+              Date
+            </button>
+            <button
+              type="button"
+              class="rounded px-1.5 py-0.5 text-[10px] font-medium transition-colors"
+              :class="rangeDateMode.from === 'relative' ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground'"
+              @click="rangeDateMode.from = 'relative'"
+            >
+              Relative
+            </button>
+          </div>
+        </div>
+        <div v-if="rangeDateMode.from === 'calendar'" class="flex justify-center p-1">
+          <Calendar
+            :model-value="calendarFromValue"
+            layout="month-and-year"
+            class="p-2"
+            @update:model-value="(d: DateValue | undefined) => { if (d) emit('update:value', { from: calendarDateToString(d), to: asRange.to }) }"
+          />
+        </div>
+        <div v-else class="max-h-36 overflow-y-auto p-2">
+          <div class="grid grid-cols-2 gap-1">
+            <button
+              v-for="opt in RELATIVE_DATE_OPTIONS"
+              :key="opt.id"
+              type="button"
+              class="rounded-md px-2 py-1 text-left text-xs transition-colors hover:bg-accent"
+              :class="asRange.from === opt.id ? 'bg-primary/10 font-medium text-primary' : 'text-muted-foreground'"
+              @click="emit('update:value', { from: opt.id, to: asRange.to })"
+            >
+              {{ opt.label }}
+            </button>
+          </div>
+        </div>
+        <div v-if="asRange.from" class="border-t px-3 py-1">
+          <p class="text-[11px] text-muted-foreground">From: <span class="font-medium text-foreground">{{ asRange.from }}</span></p>
+        </div>
       </div>
-      <div class="space-y-1">
-        <Label class="text-xs text-muted-foreground">To</Label>
-        <Input
-          :model-value="asRange.to"
-          type="text"
-          placeholder="YYYY-MM-DD or keyword"
-          class="h-8 text-sm"
-          @update:model-value="(v) => emit('update:value', { from: asRange.from, to: String(v ?? '') })"
-        />
+
+      <!-- To date -->
+      <div>
+        <div class="flex items-center justify-between bg-muted/30 px-3 py-1.5">
+          <Label class="text-xs font-medium">To</Label>
+          <div class="flex gap-1">
+            <button
+              type="button"
+              class="rounded px-1.5 py-0.5 text-[10px] font-medium transition-colors"
+              :class="rangeDateMode.to === 'calendar' ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground'"
+              @click="rangeDateMode.to = 'calendar'"
+            >
+              Date
+            </button>
+            <button
+              type="button"
+              class="rounded px-1.5 py-0.5 text-[10px] font-medium transition-colors"
+              :class="rangeDateMode.to === 'relative' ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground'"
+              @click="rangeDateMode.to = 'relative'"
+            >
+              Relative
+            </button>
+          </div>
+        </div>
+        <div v-if="rangeDateMode.to === 'calendar'" class="flex justify-center p-1">
+          <Calendar
+            :model-value="calendarToValue"
+            layout="month-and-year"
+            class="p-2"
+            @update:model-value="(d: DateValue | undefined) => { if (d) emit('update:value', { from: asRange.from, to: calendarDateToString(d) }) }"
+          />
+        </div>
+        <div v-else class="max-h-36 overflow-y-auto p-2">
+          <div class="grid grid-cols-2 gap-1">
+            <button
+              v-for="opt in RELATIVE_DATE_OPTIONS"
+              :key="opt.id"
+              type="button"
+              class="rounded-md px-2 py-1 text-left text-xs transition-colors hover:bg-accent"
+              :class="asRange.to === opt.id ? 'bg-primary/10 font-medium text-primary' : 'text-muted-foreground'"
+              @click="emit('update:value', { from: asRange.from, to: opt.id })"
+            >
+              {{ opt.label }}
+            </button>
+          </div>
+        </div>
+        <div v-if="asRange.to" class="border-t px-3 py-1">
+          <p class="text-[11px] text-muted-foreground">To: <span class="font-medium text-foreground">{{ asRange.to }}</span></p>
+        </div>
       </div>
     </div>
 

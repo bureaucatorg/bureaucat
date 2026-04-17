@@ -114,7 +114,7 @@ void handleValueUpdate;
         </button>
       </button>
     </PopoverTrigger>
-    <PopoverContent align="start" class="p-0">
+    <PopoverContent align="start" class="w-auto p-0">
       <FilterPredicateEditor
         :initial="predicate"
         :states="states"

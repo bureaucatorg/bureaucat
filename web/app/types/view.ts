@@ -1,6 +1,7 @@
 import type { FilterTree, ViewGroupBy, SortKey, SortDir } from "./task";
 
 export type ViewVisibility = "private" | "shared";
+export type ViewDefaultTab = "tasks" | "board";
 
 /** A saved view returned by the API. */
 export interface ProjectView {
@@ -15,6 +16,7 @@ export interface ProjectView {
   group_by: ViewGroupBy;
   sort_by: SortKey;
   sort_dir: SortDir;
+  default_tab: ViewDefaultTab;
   position: number;
   created_at: string;
   updated_at: string;
@@ -28,6 +30,7 @@ export interface CreateViewInput {
   group_by?: ViewGroupBy;
   sort_by?: SortKey;
   sort_dir?: SortDir;
+  default_tab?: ViewDefaultTab;
 }
 
 export interface UpdateViewInput {
@@ -38,6 +41,7 @@ export interface UpdateViewInput {
   group_by?: ViewGroupBy;
   sort_by?: SortKey;
   sort_dir?: SortDir;
+  default_tab?: ViewDefaultTab;
   position?: number;
 }
 

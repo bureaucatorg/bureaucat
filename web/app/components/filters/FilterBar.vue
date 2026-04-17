@@ -86,7 +86,7 @@ function updatePredicate(index: number, p: Predicate) {
             Filter
           </Button>
         </PopoverTrigger>
-        <PopoverContent align="start" class="p-0">
+        <PopoverContent align="start" class="w-auto p-0">
           <FilterPredicateEditor
             :states="states"
             :labels="labels"

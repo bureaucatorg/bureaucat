@@ -45,7 +45,7 @@ type Querier interface {
 	// ==================== PROJECT STATES ====================
 	CreateProjectState(ctx context.Context, arg CreateProjectStateParams) (ProjectState, error)
 	// ==================== PROJECT VIEWS ====================
-	CreateProjectView(ctx context.Context, arg CreateProjectViewParams) (ProjectView, error)
+	CreateProjectView(ctx context.Context, arg CreateProjectViewParams) (CreateProjectViewRow, error)
 	CreateRefreshToken(ctx context.Context, arg CreateRefreshTokenParams) (RefreshToken, error)
 	CreateSSOUser(ctx context.Context, arg CreateSSOUserParams) (CreateSSOUserRow, error)
 	// ==================== TASKS ====================
@@ -77,8 +77,8 @@ type Querier interface {
 	GetProjectStateByID(ctx context.Context, id uuid.UUID) (ProjectState, error)
 	// ==================== IMPORT HELPERS ====================
 	GetProjectStateByProjectAndName(ctx context.Context, arg GetProjectStateByProjectAndNameParams) (ProjectState, error)
-	GetProjectViewByID(ctx context.Context, id uuid.UUID) (ProjectView, error)
-	GetProjectViewBySlug(ctx context.Context, arg GetProjectViewBySlugParams) (ProjectView, error)
+	GetProjectViewByID(ctx context.Context, id uuid.UUID) (GetProjectViewByIDRow, error)
+	GetProjectViewBySlug(ctx context.Context, arg GetProjectViewBySlugParams) (GetProjectViewBySlugRow, error)
 	GetRefreshTokenByHash(ctx context.Context, tokenHash string) (RefreshToken, error)
 	GetRefreshTokenByID(ctx context.Context, id uuid.UUID) (RefreshToken, error)
 	GetSetting(ctx context.Context, key string) (Setting, error)
@@ -108,7 +108,7 @@ type Querier interface {
 	ListProjectStates(ctx context.Context, projectID uuid.UUID) ([]ProjectState, error)
 	ListProjectTasks(ctx context.Context, arg ListProjectTasksParams) ([]ListProjectTasksRow, error)
 	// Returns every shared view in the project plus private views owned by the caller.
-	ListProjectViews(ctx context.Context, arg ListProjectViewsParams) ([]ProjectView, error)
+	ListProjectViews(ctx context.Context, arg ListProjectViewsParams) ([]ListProjectViewsRow, error)
 	ListSettings(ctx context.Context) ([]Setting, error)
 	ListTaskActivity(ctx context.Context, taskID uuid.UUID) ([]ListTaskActivityRow, error)
 	ListTaskAssignees(ctx context.Context, taskID uuid.UUID) ([]ListTaskAssigneesRow, error)
@@ -152,7 +152,7 @@ type Querier interface {
 	UpdateProjectLabel(ctx context.Context, arg UpdateProjectLabelParams) (ProjectLabel, error)
 	UpdateProjectMemberRole(ctx context.Context, arg UpdateProjectMemberRoleParams) error
 	UpdateProjectState(ctx context.Context, arg UpdateProjectStateParams) (ProjectState, error)
-	UpdateProjectView(ctx context.Context, arg UpdateProjectViewParams) (ProjectView, error)
+	UpdateProjectView(ctx context.Context, arg UpdateProjectViewParams) (UpdateProjectViewRow, error)
 	UpdateTask(ctx context.Context, arg UpdateTaskParams) (UpdateTaskRow, error)
 	UpdateTaskTemplate(ctx context.Context, arg UpdateTaskTemplateParams) (TaskTemplate, error)
 	UpdateUserAvatarURL(ctx context.Context, arg UpdateUserAvatarURLParams) error

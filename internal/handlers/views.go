@@ -41,6 +41,7 @@ type ViewResponse struct {
 	GroupBy     string          `json:"group_by"`
 	SortBy      string          `json:"sort_by"`
 	SortDir     string          `json:"sort_dir"`
+	DefaultTab  string          `json:"default_tab"`
 	Position    int             `json:"position"`
 	CreatedAt   time.Time       `json:"created_at"`
 	UpdatedAt   time.Time       `json:"updated_at"`
@@ -55,6 +56,7 @@ type CreateViewRequest struct {
 	GroupBy     string          `json:"group_by"`
 	SortBy      string          `json:"sort_by"`
 	SortDir     string          `json:"sort_dir"`
+	DefaultTab  string          `json:"default_tab"` // "tasks" or "board"
 }
 
 // UpdateViewRequest is the body for PATCH /views/:slug. All fields optional.
@@ -66,6 +68,7 @@ type UpdateViewRequest struct {
 	GroupBy     *string          `json:"group_by"`
 	SortBy      *string          `json:"sort_by"`
 	SortDir     *string          `json:"sort_dir"`
+	DefaultTab  *string          `json:"default_tab"`
 	Position    *int             `json:"position"`
 }
 
@@ -95,9 +98,52 @@ var (
 	validVisibility = map[string]struct{}{
 		"private": {}, "shared": {},
 	}
+	validDefaultTab = map[string]struct{}{
+		"tasks": {}, "board": {},
+	}
 )
 
-func viewToResponse(v store.ProjectView) ViewResponse {
+// viewData holds the common fields needed by viewToResponse and access checks.
+// Each sqlc-generated Row type is converted to this before use.
+type viewData struct {
+	ID          uuid.UUID
+	ProjectID   uuid.UUID
+	Slug        string
+	Name        string
+	Description pgtype.Text
+	Visibility  store.ViewVisibility
+	OwnerID     uuid.UUID
+	FilterTree  []byte
+	GroupBy     string
+	SortBy      string
+	SortDir     string
+	DefaultTab  string
+	Position    int32
+	CreatedAt   pgtype.Timestamptz
+	UpdatedAt   pgtype.Timestamptz
+}
+
+func fromListRow(v store.ListProjectViewsRow) viewData {
+	return viewData{ID: v.ID, ProjectID: v.ProjectID, Slug: v.Slug, Name: v.Name, Description: v.Description, Visibility: v.Visibility, OwnerID: v.OwnerID, FilterTree: v.FilterTree, GroupBy: v.GroupBy, SortBy: v.SortBy, SortDir: v.SortDir, DefaultTab: v.DefaultTab, Position: v.Position, CreatedAt: v.CreatedAt, UpdatedAt: v.UpdatedAt}
+}
+
+func fromCreateRow(v store.CreateProjectViewRow) viewData {
+	return viewData{ID: v.ID, ProjectID: v.ProjectID, Slug: v.Slug, Name: v.Name, Description: v.Description, Visibility: v.Visibility, OwnerID: v.OwnerID, FilterTree: v.FilterTree, GroupBy: v.GroupBy, SortBy: v.SortBy, SortDir: v.SortDir, DefaultTab: v.DefaultTab, Position: v.Position, CreatedAt: v.CreatedAt, UpdatedAt: v.UpdatedAt}
+}
+
+func fromSlugRow(v store.GetProjectViewBySlugRow) viewData {
+	return viewData{ID: v.ID, ProjectID: v.ProjectID, Slug: v.Slug, Name: v.Name, Description: v.Description, Visibility: v.Visibility, OwnerID: v.OwnerID, FilterTree: v.FilterTree, GroupBy: v.GroupBy, SortBy: v.SortBy, SortDir: v.SortDir, DefaultTab: v.DefaultTab, Position: v.Position, CreatedAt: v.CreatedAt, UpdatedAt: v.UpdatedAt}
+}
+
+func fromIDRow(v store.GetProjectViewByIDRow) viewData {
+	return viewData{ID: v.ID, ProjectID: v.ProjectID, Slug: v.Slug, Name: v.Name, Description: v.Description, Visibility: v.Visibility, OwnerID: v.OwnerID, FilterTree: v.FilterTree, GroupBy: v.GroupBy, SortBy: v.SortBy, SortDir: v.SortDir, DefaultTab: v.DefaultTab, Position: v.Position, CreatedAt: v.CreatedAt, UpdatedAt: v.UpdatedAt}
+}
+
+func fromUpdateRow(v store.UpdateProjectViewRow) viewData {
+	return viewData{ID: v.ID, ProjectID: v.ProjectID, Slug: v.Slug, Name: v.Name, Description: v.Description, Visibility: v.Visibility, OwnerID: v.OwnerID, FilterTree: v.FilterTree, GroupBy: v.GroupBy, SortBy: v.SortBy, SortDir: v.SortDir, DefaultTab: v.DefaultTab, Position: v.Position, CreatedAt: v.CreatedAt, UpdatedAt: v.UpdatedAt}
+}
+
+func viewToResponse(v viewData) ViewResponse {
 	resp := ViewResponse{
 		ID:         v.ID,
 		ProjectID:  v.ProjectID,
@@ -109,6 +155,7 @@ func viewToResponse(v store.ProjectView) ViewResponse {
 		GroupBy:    v.GroupBy,
 		SortBy:     v.SortBy,
 		SortDir:    v.SortDir,
+		DefaultTab: v.DefaultTab,
 		Position:   int(v.Position),
 		CreatedAt:  v.CreatedAt.Time,
 		UpdatedAt:  v.UpdatedAt.Time,
@@ -118,6 +165,16 @@ func viewToResponse(v store.ProjectView) ViewResponse {
 		resp.Description = &s
 	}
 	return resp
+}
+
+func assertViewWriteAccess(v viewData, callerID uuid.UUID, role string) error {
+	if v.OwnerID == callerID {
+		return nil
+	}
+	if v.Visibility == "shared" && role == "admin" {
+		return nil
+	}
+	return echo.NewHTTPError(http.StatusForbidden, "not allowed to edit this view")
 }
 
 // ListViews returns all views visible to the caller in the project (owner's
@@ -145,7 +202,7 @@ func (h *ViewHandler) ListViews(c *echo.Context) error {
 	}
 	out := make([]ViewResponse, len(rows))
 	for i, v := range rows {
-		out[i] = viewToResponse(v)
+		out[i] = viewToResponse(fromListRow(v))
 	}
 	return c.JSON(http.StatusOK, out)
 }
@@ -197,6 +254,12 @@ func (h *ViewHandler) CreateView(c *echo.Context) error {
 	if _, ok := validSortDir[req.SortDir]; !ok {
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid sort_dir")
 	}
+	if req.DefaultTab == "" {
+		req.DefaultTab = "tasks"
+	}
+	if _, ok := validDefaultTab[req.DefaultTab]; !ok {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid default_tab")
+	}
 	if len(req.FilterTree) == 0 {
 		req.FilterTree = []byte(`{"children":[]}`)
 	}
@@ -226,12 +289,13 @@ func (h *ViewHandler) CreateView(c *echo.Context) error {
 		GroupBy:     req.GroupBy,
 		SortBy:      req.SortBy,
 		SortDir:     req.SortDir,
+		DefaultTab:  req.DefaultTab,
 		Position:    0,
 	})
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to create view")
 	}
-	return c.JSON(http.StatusCreated, viewToResponse(view))
+	return c.JSON(http.StatusCreated, viewToResponse(fromCreateRow(view)))
 }
 
 // GetView returns a single view.
@@ -277,13 +341,14 @@ func (h *ViewHandler) UpdateView(c *echo.Context) error {
 	role := c.Request().Header.Get(auth.HeaderProjectRole)
 	ctx := c.Request().Context()
 
-	view, err := h.store.GetProjectViewBySlug(ctx, store.GetProjectViewBySlugParams{
+	slugRow, err := h.store.GetProjectViewBySlug(ctx, store.GetProjectViewBySlugParams{
 		ProjectID: projectID,
 		Slug:      c.Param("slug"),
 	})
 	if err != nil {
 		return echo.NewHTTPError(http.StatusNotFound, "view not found")
 	}
+	view := fromSlugRow(slugRow)
 	if err := assertViewWriteAccess(view, callerID, role); err != nil {
 		return err
 	}
@@ -334,6 +399,12 @@ func (h *ViewHandler) UpdateView(c *echo.Context) error {
 		}
 		params.SortDir = pgtype.Text{String: *req.SortDir, Valid: true}
 	}
+	if req.DefaultTab != nil {
+		if _, ok := validDefaultTab[*req.DefaultTab]; !ok {
+			return echo.NewHTTPError(http.StatusBadRequest, "invalid default_tab")
+		}
+		params.DefaultTab = pgtype.Text{String: *req.DefaultTab, Valid: true}
+	}
 	if req.Position != nil {
 		params.Position = pgtype.Int4{Int32: int32(*req.Position), Valid: true}
 	}
@@ -342,7 +413,7 @@ func (h *ViewHandler) UpdateView(c *echo.Context) error {
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to update view")
 	}
-	return c.JSON(http.StatusOK, viewToResponse(updated))
+	return c.JSON(http.StatusOK, viewToResponse(fromUpdateRow(updated)))
 }
 
 // DeleteView soft-deletes a view.
@@ -362,17 +433,18 @@ func (h *ViewHandler) DeleteView(c *echo.Context) error {
 	}
 	role := c.Request().Header.Get(auth.HeaderProjectRole)
 	ctx := c.Request().Context()
-	view, err := h.store.GetProjectViewBySlug(ctx, store.GetProjectViewBySlugParams{
+	slugRow, err := h.store.GetProjectViewBySlug(ctx, store.GetProjectViewBySlugParams{
 		ProjectID: projectID,
 		Slug:      c.Param("slug"),
 	})
 	if err != nil {
 		return echo.NewHTTPError(http.StatusNotFound, "view not found")
 	}
-	if err := assertViewWriteAccess(view, callerID, role); err != nil {
+	vd := fromSlugRow(slugRow)
+	if err := assertViewWriteAccess(vd, callerID, role); err != nil {
 		return err
 	}
-	if err := h.store.SoftDeleteProjectView(ctx, view.ID); err != nil {
+	if err := h.store.SoftDeleteProjectView(ctx, vd.ID); err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to delete view")
 	}
 	return c.JSON(http.StatusOK, map[string]string{"message": "view deleted"})
@@ -412,10 +484,11 @@ func (h *ViewHandler) ReorderViews(c *echo.Context) error {
 	}
 	allowed := make([]reorderRow, 0, len(req.Items))
 	for _, item := range req.Items {
-		v, err := h.store.GetProjectViewByID(ctx, item.ID)
+		idRow, err := h.store.GetProjectViewByID(ctx, item.ID)
 		if err != nil {
 			continue
 		}
+		v := fromIDRow(idRow)
 		if v.ProjectID != projectID {
 			continue
 		}
@@ -456,30 +529,19 @@ func projectAndCaller(c *echo.Context) (uuid.UUID, uuid.UUID, error) {
 }
 
 // loadViewForRead fetches a view and rejects private views the caller doesn't own.
-func (h *ViewHandler) loadViewForRead(ctx context.Context, projectID, callerID uuid.UUID, slug string) (store.ProjectView, error) {
+func (h *ViewHandler) loadViewForRead(ctx context.Context, projectID, callerID uuid.UUID, slug string) (viewData, error) {
 	v, err := h.store.GetProjectViewBySlug(ctx, store.GetProjectViewBySlugParams{
 		ProjectID: projectID,
 		Slug:      slug,
 	})
 	if err != nil {
-		return store.ProjectView{}, echo.NewHTTPError(http.StatusNotFound, "view not found")
+		return viewData{}, echo.NewHTTPError(http.StatusNotFound, "view not found")
 	}
+	vd := fromSlugRow(v)
 	if v.Visibility == "private" && v.OwnerID != callerID {
-		return store.ProjectView{}, echo.NewHTTPError(http.StatusForbidden, "view not accessible")
+		return viewData{}, echo.NewHTTPError(http.StatusForbidden, "view not accessible")
 	}
-	return v, nil
-}
-
-// assertViewWriteAccess enforces the edit rules: owner always; project admins
-// may edit shared views only.
-func assertViewWriteAccess(v store.ProjectView, callerID uuid.UUID, role string) error {
-	if v.OwnerID == callerID {
-		return nil
-	}
-	if v.Visibility == "shared" && role == "admin" {
-		return nil
-	}
-	return echo.NewHTTPError(http.StatusForbidden, "not allowed to edit this view")
+	return vd, nil
 }
 
 // slug generation — lowercase-alphanumeric-dashes, 64 chars max, with a random

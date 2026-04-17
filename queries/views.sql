@@ -3,23 +3,23 @@
 -- name: CreateProjectView :one
 INSERT INTO project_views (
     project_id, slug, name, description, visibility, owner_id,
-    filter_tree, group_by, sort_by, sort_dir, position
+    filter_tree, group_by, sort_by, sort_dir, default_tab, position
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 RETURNING id, project_id, slug, name, description, visibility, owner_id,
-          filter_tree, group_by, sort_by, sort_dir, position,
+          filter_tree, group_by, sort_by, sort_dir, default_tab, position,
           created_at, updated_at, deleted_at;
 
 -- name: GetProjectViewBySlug :one
 SELECT id, project_id, slug, name, description, visibility, owner_id,
-       filter_tree, group_by, sort_by, sort_dir, position,
+       filter_tree, group_by, sort_by, sort_dir, default_tab, position,
        created_at, updated_at, deleted_at
 FROM project_views
 WHERE project_id = $1 AND slug = $2 AND deleted_at IS NULL;
 
 -- name: GetProjectViewByID :one
 SELECT id, project_id, slug, name, description, visibility, owner_id,
-       filter_tree, group_by, sort_by, sort_dir, position,
+       filter_tree, group_by, sort_by, sort_dir, default_tab, position,
        created_at, updated_at, deleted_at
 FROM project_views
 WHERE id = $1 AND deleted_at IS NULL;
@@ -27,7 +27,7 @@ WHERE id = $1 AND deleted_at IS NULL;
 -- name: ListProjectViews :many
 -- Returns every shared view in the project plus private views owned by the caller.
 SELECT id, project_id, slug, name, description, visibility, owner_id,
-       filter_tree, group_by, sort_by, sort_dir, position,
+       filter_tree, group_by, sort_by, sort_dir, default_tab, position,
        created_at, updated_at, deleted_at
 FROM project_views
 WHERE project_id = $1
@@ -50,11 +50,12 @@ SET name        = COALESCE(sqlc.narg('name'), name),
     group_by    = COALESCE(sqlc.narg('group_by'), group_by),
     sort_by     = COALESCE(sqlc.narg('sort_by'), sort_by),
     sort_dir    = COALESCE(sqlc.narg('sort_dir'), sort_dir),
+    default_tab = COALESCE(sqlc.narg('default_tab'), default_tab),
     position    = COALESCE(sqlc.narg('position'), position),
     updated_at  = NOW()
 WHERE id = $1 AND deleted_at IS NULL
 RETURNING id, project_id, slug, name, description, visibility, owner_id,
-          filter_tree, group_by, sort_by, sort_dir, position,
+          filter_tree, group_by, sort_by, sort_dir, default_tab, position,
           created_at, updated_at, deleted_at;
 
 -- name: SoftDeleteProjectView :exec

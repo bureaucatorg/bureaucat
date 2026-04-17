@@ -16,11 +16,11 @@ const createProjectView = `-- name: CreateProjectView :one
 
 INSERT INTO project_views (
     project_id, slug, name, description, visibility, owner_id,
-    filter_tree, group_by, sort_by, sort_dir, position
+    filter_tree, group_by, sort_by, sort_dir, default_tab, position
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 RETURNING id, project_id, slug, name, description, visibility, owner_id,
-          filter_tree, group_by, sort_by, sort_dir, position,
+          filter_tree, group_by, sort_by, sort_dir, default_tab, position,
           created_at, updated_at, deleted_at
 `
 
@@ -35,11 +35,31 @@ type CreateProjectViewParams struct {
 	GroupBy     string         `json:"group_by"`
 	SortBy      string         `json:"sort_by"`
 	SortDir     string         `json:"sort_dir"`
+	DefaultTab  string         `json:"default_tab"`
 	Position    int32          `json:"position"`
 }
 
+type CreateProjectViewRow struct {
+	ID          uuid.UUID          `json:"id"`
+	ProjectID   uuid.UUID          `json:"project_id"`
+	Slug        string             `json:"slug"`
+	Name        string             `json:"name"`
+	Description pgtype.Text        `json:"description"`
+	Visibility  ViewVisibility     `json:"visibility"`
+	OwnerID     uuid.UUID          `json:"owner_id"`
+	FilterTree  []byte             `json:"filter_tree"`
+	GroupBy     string             `json:"group_by"`
+	SortBy      string             `json:"sort_by"`
+	SortDir     string             `json:"sort_dir"`
+	DefaultTab  string             `json:"default_tab"`
+	Position    int32              `json:"position"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+	DeletedAt   pgtype.Timestamptz `json:"deleted_at"`
+}
+
 // ==================== PROJECT VIEWS ====================
-func (q *Queries) CreateProjectView(ctx context.Context, arg CreateProjectViewParams) (ProjectView, error) {
+func (q *Queries) CreateProjectView(ctx context.Context, arg CreateProjectViewParams) (CreateProjectViewRow, error) {
 	row := q.db.QueryRow(ctx, createProjectView,
 		arg.ProjectID,
 		arg.Slug,
@@ -51,9 +71,10 @@ func (q *Queries) CreateProjectView(ctx context.Context, arg CreateProjectViewPa
 		arg.GroupBy,
 		arg.SortBy,
 		arg.SortDir,
+		arg.DefaultTab,
 		arg.Position,
 	)
-	var i ProjectView
+	var i CreateProjectViewRow
 	err := row.Scan(
 		&i.ID,
 		&i.ProjectID,
@@ -66,6 +87,7 @@ func (q *Queries) CreateProjectView(ctx context.Context, arg CreateProjectViewPa
 		&i.GroupBy,
 		&i.SortBy,
 		&i.SortDir,
+		&i.DefaultTab,
 		&i.Position,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -76,15 +98,34 @@ func (q *Queries) CreateProjectView(ctx context.Context, arg CreateProjectViewPa
 
 const getProjectViewByID = `-- name: GetProjectViewByID :one
 SELECT id, project_id, slug, name, description, visibility, owner_id,
-       filter_tree, group_by, sort_by, sort_dir, position,
+       filter_tree, group_by, sort_by, sort_dir, default_tab, position,
        created_at, updated_at, deleted_at
 FROM project_views
 WHERE id = $1 AND deleted_at IS NULL
 `
 
-func (q *Queries) GetProjectViewByID(ctx context.Context, id uuid.UUID) (ProjectView, error) {
+type GetProjectViewByIDRow struct {
+	ID          uuid.UUID          `json:"id"`
+	ProjectID   uuid.UUID          `json:"project_id"`
+	Slug        string             `json:"slug"`
+	Name        string             `json:"name"`
+	Description pgtype.Text        `json:"description"`
+	Visibility  ViewVisibility     `json:"visibility"`
+	OwnerID     uuid.UUID          `json:"owner_id"`
+	FilterTree  []byte             `json:"filter_tree"`
+	GroupBy     string             `json:"group_by"`
+	SortBy      string             `json:"sort_by"`
+	SortDir     string             `json:"sort_dir"`
+	DefaultTab  string             `json:"default_tab"`
+	Position    int32              `json:"position"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+	DeletedAt   pgtype.Timestamptz `json:"deleted_at"`
+}
+
+func (q *Queries) GetProjectViewByID(ctx context.Context, id uuid.UUID) (GetProjectViewByIDRow, error) {
 	row := q.db.QueryRow(ctx, getProjectViewByID, id)
-	var i ProjectView
+	var i GetProjectViewByIDRow
 	err := row.Scan(
 		&i.ID,
 		&i.ProjectID,
@@ -97,6 +138,7 @@ func (q *Queries) GetProjectViewByID(ctx context.Context, id uuid.UUID) (Project
 		&i.GroupBy,
 		&i.SortBy,
 		&i.SortDir,
+		&i.DefaultTab,
 		&i.Position,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -107,7 +149,7 @@ func (q *Queries) GetProjectViewByID(ctx context.Context, id uuid.UUID) (Project
 
 const getProjectViewBySlug = `-- name: GetProjectViewBySlug :one
 SELECT id, project_id, slug, name, description, visibility, owner_id,
-       filter_tree, group_by, sort_by, sort_dir, position,
+       filter_tree, group_by, sort_by, sort_dir, default_tab, position,
        created_at, updated_at, deleted_at
 FROM project_views
 WHERE project_id = $1 AND slug = $2 AND deleted_at IS NULL
@@ -118,9 +160,28 @@ type GetProjectViewBySlugParams struct {
 	Slug      string    `json:"slug"`
 }
 
-func (q *Queries) GetProjectViewBySlug(ctx context.Context, arg GetProjectViewBySlugParams) (ProjectView, error) {
+type GetProjectViewBySlugRow struct {
+	ID          uuid.UUID          `json:"id"`
+	ProjectID   uuid.UUID          `json:"project_id"`
+	Slug        string             `json:"slug"`
+	Name        string             `json:"name"`
+	Description pgtype.Text        `json:"description"`
+	Visibility  ViewVisibility     `json:"visibility"`
+	OwnerID     uuid.UUID          `json:"owner_id"`
+	FilterTree  []byte             `json:"filter_tree"`
+	GroupBy     string             `json:"group_by"`
+	SortBy      string             `json:"sort_by"`
+	SortDir     string             `json:"sort_dir"`
+	DefaultTab  string             `json:"default_tab"`
+	Position    int32              `json:"position"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+	DeletedAt   pgtype.Timestamptz `json:"deleted_at"`
+}
+
+func (q *Queries) GetProjectViewBySlug(ctx context.Context, arg GetProjectViewBySlugParams) (GetProjectViewBySlugRow, error) {
 	row := q.db.QueryRow(ctx, getProjectViewBySlug, arg.ProjectID, arg.Slug)
-	var i ProjectView
+	var i GetProjectViewBySlugRow
 	err := row.Scan(
 		&i.ID,
 		&i.ProjectID,
@@ -133,6 +194,7 @@ func (q *Queries) GetProjectViewBySlug(ctx context.Context, arg GetProjectViewBy
 		&i.GroupBy,
 		&i.SortBy,
 		&i.SortDir,
+		&i.DefaultTab,
 		&i.Position,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -143,7 +205,7 @@ func (q *Queries) GetProjectViewBySlug(ctx context.Context, arg GetProjectViewBy
 
 const listProjectViews = `-- name: ListProjectViews :many
 SELECT id, project_id, slug, name, description, visibility, owner_id,
-       filter_tree, group_by, sort_by, sort_dir, position,
+       filter_tree, group_by, sort_by, sort_dir, default_tab, position,
        created_at, updated_at, deleted_at
 FROM project_views
 WHERE project_id = $1
@@ -157,16 +219,35 @@ type ListProjectViewsParams struct {
 	OwnerID   uuid.UUID `json:"owner_id"`
 }
 
+type ListProjectViewsRow struct {
+	ID          uuid.UUID          `json:"id"`
+	ProjectID   uuid.UUID          `json:"project_id"`
+	Slug        string             `json:"slug"`
+	Name        string             `json:"name"`
+	Description pgtype.Text        `json:"description"`
+	Visibility  ViewVisibility     `json:"visibility"`
+	OwnerID     uuid.UUID          `json:"owner_id"`
+	FilterTree  []byte             `json:"filter_tree"`
+	GroupBy     string             `json:"group_by"`
+	SortBy      string             `json:"sort_by"`
+	SortDir     string             `json:"sort_dir"`
+	DefaultTab  string             `json:"default_tab"`
+	Position    int32              `json:"position"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+	DeletedAt   pgtype.Timestamptz `json:"deleted_at"`
+}
+
 // Returns every shared view in the project plus private views owned by the caller.
-func (q *Queries) ListProjectViews(ctx context.Context, arg ListProjectViewsParams) ([]ProjectView, error) {
+func (q *Queries) ListProjectViews(ctx context.Context, arg ListProjectViewsParams) ([]ListProjectViewsRow, error) {
 	rows, err := q.db.Query(ctx, listProjectViews, arg.ProjectID, arg.OwnerID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []ProjectView{}
+	items := []ListProjectViewsRow{}
 	for rows.Next() {
-		var i ProjectView
+		var i ListProjectViewsRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.ProjectID,
@@ -179,6 +260,7 @@ func (q *Queries) ListProjectViews(ctx context.Context, arg ListProjectViewsPara
 			&i.GroupBy,
 			&i.SortBy,
 			&i.SortDir,
+			&i.DefaultTab,
 			&i.Position,
 			&i.CreatedAt,
 			&i.UpdatedAt,
@@ -286,11 +368,12 @@ SET name        = COALESCE($2, name),
     group_by    = COALESCE($6, group_by),
     sort_by     = COALESCE($7, sort_by),
     sort_dir    = COALESCE($8, sort_dir),
-    position    = COALESCE($9, position),
+    default_tab = COALESCE($9, default_tab),
+    position    = COALESCE($10, position),
     updated_at  = NOW()
 WHERE id = $1 AND deleted_at IS NULL
 RETURNING id, project_id, slug, name, description, visibility, owner_id,
-          filter_tree, group_by, sort_by, sort_dir, position,
+          filter_tree, group_by, sort_by, sort_dir, default_tab, position,
           created_at, updated_at, deleted_at
 `
 
@@ -303,10 +386,30 @@ type UpdateProjectViewParams struct {
 	GroupBy     pgtype.Text        `json:"group_by"`
 	SortBy      pgtype.Text        `json:"sort_by"`
 	SortDir     pgtype.Text        `json:"sort_dir"`
+	DefaultTab  pgtype.Text        `json:"default_tab"`
 	Position    pgtype.Int4        `json:"position"`
 }
 
-func (q *Queries) UpdateProjectView(ctx context.Context, arg UpdateProjectViewParams) (ProjectView, error) {
+type UpdateProjectViewRow struct {
+	ID          uuid.UUID          `json:"id"`
+	ProjectID   uuid.UUID          `json:"project_id"`
+	Slug        string             `json:"slug"`
+	Name        string             `json:"name"`
+	Description pgtype.Text        `json:"description"`
+	Visibility  ViewVisibility     `json:"visibility"`
+	OwnerID     uuid.UUID          `json:"owner_id"`
+	FilterTree  []byte             `json:"filter_tree"`
+	GroupBy     string             `json:"group_by"`
+	SortBy      string             `json:"sort_by"`
+	SortDir     string             `json:"sort_dir"`
+	DefaultTab  string             `json:"default_tab"`
+	Position    int32              `json:"position"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+	DeletedAt   pgtype.Timestamptz `json:"deleted_at"`
+}
+
+func (q *Queries) UpdateProjectView(ctx context.Context, arg UpdateProjectViewParams) (UpdateProjectViewRow, error) {
 	row := q.db.QueryRow(ctx, updateProjectView,
 		arg.ID,
 		arg.Name,
@@ -316,9 +419,10 @@ func (q *Queries) UpdateProjectView(ctx context.Context, arg UpdateProjectViewPa
 		arg.GroupBy,
 		arg.SortBy,
 		arg.SortDir,
+		arg.DefaultTab,
 		arg.Position,
 	)
-	var i ProjectView
+	var i UpdateProjectViewRow
 	err := row.Scan(
 		&i.ID,
 		&i.ProjectID,
@@ -331,6 +435,7 @@ func (q *Queries) UpdateProjectView(ctx context.Context, arg UpdateProjectViewPa
 		&i.GroupBy,
 		&i.SortBy,
 		&i.SortDir,
+		&i.DefaultTab,
 		&i.Position,
 		&i.CreatedAt,
 		&i.UpdatedAt,

@@ -81,6 +81,11 @@ const currentFieldDef = computed(() => (field.value ? findFieldDef(field.value) 
 const currentOpDef = computed(() =>
   field.value && op.value ? findOpDef(field.value, op.value) : null
 );
+
+const isDateValue = computed(() => {
+  if (!currentOpDef.value) return false;
+  return currentOpDef.value.valueKind === "date" || currentOpDef.value.valueKind === "date-range";
+});
 const canConfirm = computed(() => {
   if (!field.value || !op.value) return false;
   const def = findOpDef(field.value, op.value);
@@ -94,50 +99,52 @@ const canConfirm = computed(() => {
 </script>
 
 <template>
-  <div class="w-72 overflow-hidden">
+  <div class="overflow-hidden" :class="step === 'value' && isDateValue ? 'w-80' : 'w-72'">
     <!-- step header with back button when applicable -->
-    <header class="flex items-center justify-between gap-2 border-b px-3 py-2">
+    <header class="flex items-center justify-between gap-2 border-b bg-muted/30 px-3 py-2">
       <button
         v-if="step !== 'field' && !(lockField && step === 'op')"
         type="button"
-        class="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+        class="flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
         @click="back"
       >
         <ChevronLeft class="size-3.5" />
         Back
       </button>
-      <span class="ml-auto truncate text-xs font-medium">
-        <template v-if="step === 'field'">Filter by…</template>
+      <span class="ml-auto truncate text-xs font-medium text-muted-foreground">
+        <template v-if="step === 'field'">Filter by&hellip;</template>
         <template v-else-if="step === 'op' && currentFieldDef">
           {{ currentFieldDef.label }}
         </template>
         <template v-else-if="step === 'value' && currentFieldDef && currentOpDef">
-          {{ currentFieldDef.label }} {{ currentOpDef.label }}
+          {{ currentFieldDef.label }} <span class="text-foreground">{{ currentOpDef.label }}</span>
         </template>
       </span>
     </header>
 
     <!-- STEP 1: field -->
-    <div v-if="step === 'field'" class="max-h-72 overflow-y-auto p-1">
+    <div v-if="step === 'field'" class="max-h-72 overflow-y-auto p-1.5">
       <button
         v-for="def in FILTER_CATALOG"
         :key="def.field"
         type="button"
-        class="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground"
+        class="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-sm transition-colors hover:bg-accent hover:text-accent-foreground"
         @click="chooseField(def.field)"
       >
-        <component :is="def.icon" class="size-4 text-muted-foreground" />
+        <div class="flex size-6 items-center justify-center rounded bg-muted/60">
+          <component :is="def.icon" class="size-3.5 text-muted-foreground" />
+        </div>
         {{ def.label }}
       </button>
     </div>
 
     <!-- STEP 2: op -->
-    <div v-else-if="step === 'op' && currentFieldDef" class="max-h-72 overflow-y-auto p-1">
+    <div v-else-if="step === 'op' && currentFieldDef" class="max-h-72 overflow-y-auto p-1.5">
       <button
         v-for="o in currentFieldDef.ops"
         :key="o.op"
         type="button"
-        class="block w-full rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent hover:text-accent-foreground"
+        class="block w-full rounded-md px-2.5 py-2 text-left text-sm transition-colors hover:bg-accent hover:text-accent-foreground"
         @click="chooseOp(o.op)"
       >
         {{ o.label }}
@@ -155,7 +162,7 @@ const canConfirm = computed(() => {
         :members="members"
         @update:value="(v) => (value = v)"
       />
-      <div class="flex items-center justify-end gap-2 border-t px-2 py-2">
+      <div class="flex items-center justify-end gap-2 border-t px-3 py-2.5">
         <Button type="button" variant="ghost" size="sm" @click="emit('cancel')">Cancel</Button>
         <Button type="button" size="sm" :disabled="!canConfirm" @click="confirm">
           <Check class="mr-1 size-3.5" />

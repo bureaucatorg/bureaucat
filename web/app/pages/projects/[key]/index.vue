@@ -85,6 +85,7 @@ const {
   searchQuery,
   effectiveTree,
   hydrateFromUrl,
+  encodeTree,
 } = useFilterTree();
 
 const loading = ref(true);
@@ -186,15 +187,39 @@ async function applyView(slug: string) {
   const res = await getView(projectKey.value, slug);
   if (!res.success || !res.data) return;
   const v: ProjectView = res.data;
-  setActiveView(v.slug);
-  setTree(v.filter_tree);
-  sortBy.value = v.sort_by;
-  sortDir.value = v.sort_dir;
-  groupBy.value = v.group_by;
-  // Jump to Tasks tab so the applied filter has somewhere to render.
-  if (activeTab.value === "views") {
-    activeTab.value = "tasks";
+
+  // Build all query params in one go to avoid race conditions from
+  // multiple router.replace() calls overwriting each other.
+  const q: Record<string, string | undefined> = { ...route.query };
+
+  // View slug
+  q.view = v.slug;
+
+  // Filter tree
+  if (v.filter_tree && v.filter_tree.children.length > 0) {
+    q.f = encodeTree(v.filter_tree);
+  } else {
+    delete q.f;
   }
+
+  // Sort
+  q.sort_by = v.sort_by === "created_at" ? undefined : v.sort_by;
+  q.sort_dir = v.sort_dir === "desc" ? undefined : v.sort_dir;
+
+  // Group by
+  q.group_by = v.group_by === "state_type" ? undefined : v.group_by;
+
+  // Switch to the view's default tab
+  const targetTab = v.default_tab || "tasks";
+  q.tab = targetTab === "tasks" ? undefined : targetTab;
+
+  // Reset page
+  delete q.page;
+
+  await router.replace({ query: q });
+
+  // Sync local tree state after the route has updated
+  setTree(v.filter_tree, { resetPage: false });
 }
 
 function openRenameView(view: ProjectView) {
@@ -557,6 +582,7 @@ onMounted(() => {
             name: renameViewTarget.name,
             description: renameViewTarget.description,
             visibility: renameViewTarget.visibility,
+            default_tab: renameViewTarget.default_tab,
           } : undefined"
           :current-tree="tree"
           :current-group-by="groupBy"

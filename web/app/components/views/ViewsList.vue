@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Lock, Users as UsersIcon, Play, Pencil, Trash2, MoreHorizontal, Copy } from "lucide-vue-next";
+import { Lock, Users as UsersIcon, Play, Pencil, Trash2, MoreHorizontal, Copy, Filter, Layers, Calendar } from "lucide-vue-next";
 import type { ProjectView } from "~/types";
 
 const props = defineProps<{
@@ -49,6 +49,11 @@ function formatDate(iso: string): string {
 function predicateCount(v: ProjectView): number {
   return (v.filter_tree?.children ?? []).filter((c) => c.predicate).length;
 }
+
+function groupByLabel(groupBy: string): string {
+  if (!groupBy || groupBy === "none") return "None";
+  return groupBy.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
 </script>
 
 <template>
@@ -65,101 +70,97 @@ function predicateCount(v: ProjectView): number {
       </p>
     </div>
 
-    <Card v-else>
-      <CardContent class="p-0">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead class="w-10"></TableHead>
-              <TableHead>Name</TableHead>
-              <TableHead class="hidden sm:table-cell">Filters</TableHead>
-              <TableHead class="hidden md:table-cell">Grouping</TableHead>
-              <TableHead class="hidden md:table-cell">Created</TableHead>
-              <TableHead class="w-28 text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            <TableRow
-              v-for="v in views"
-              :key="v.id"
-              class="group"
-              :class="activeSlug === v.slug ? 'bg-amber-500/5' : ''"
+    <div v-else class="space-y-2">
+      <div
+        v-for="v in views"
+        :key="v.id"
+        class="group relative rounded-lg border bg-card transition-colors hover:border-border/80 hover:bg-accent/30"
+        :class="activeSlug === v.slug ? 'border-amber-500/40 bg-amber-500/5' : ''"
+      >
+        <div class="flex items-center gap-4 px-4 py-3">
+          <!-- Visibility icon -->
+          <div class="flex size-8 shrink-0 items-center justify-center rounded-md bg-muted/50">
+            <component
+              :is="v.visibility === 'shared' ? UsersIcon : Lock"
+              class="size-3.5 text-muted-foreground"
+            />
+          </div>
+
+          <!-- Name & description -->
+          <div class="min-w-0 flex-1">
+            <div class="flex items-center gap-2">
+              <button
+                type="button"
+                class="text-left font-medium hover:underline"
+                @click="emit('apply:view', v.slug)"
+              >
+                {{ v.name }}
+              </button>
+              <span
+                v-if="activeSlug === v.slug"
+                class="rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-amber-700 dark:text-amber-300"
+              >
+                active
+              </span>
+            </div>
+            <p
+              v-if="v.description"
+              class="mt-0.5 line-clamp-1 text-xs text-muted-foreground"
             >
-              <TableCell class="pr-0">
-                <component
-                  :is="v.visibility === 'shared' ? UsersIcon : Lock"
-                  class="size-3.5 text-muted-foreground"
-                />
-              </TableCell>
-              <TableCell>
-                <button
-                  type="button"
-                  class="text-left"
-                  @click="emit('apply:view', v.slug)"
-                >
-                  <div class="flex items-center gap-2">
-                    <span class="font-medium hover:underline">{{ v.name }}</span>
-                    <span
-                      v-if="activeSlug === v.slug"
-                      class="rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-amber-700 dark:text-amber-300"
-                    >
-                      active
-                    </span>
-                  </div>
-                  <p
-                    v-if="v.description"
-                    class="mt-0.5 line-clamp-1 text-xs text-muted-foreground"
-                  >
-                    {{ v.description }}
-                  </p>
-                </button>
-              </TableCell>
-              <TableCell class="hidden text-xs text-muted-foreground sm:table-cell">
-                {{ predicateCount(v) }} predicate{{ predicateCount(v) === 1 ? "" : "s" }}
-              </TableCell>
-              <TableCell class="hidden text-xs text-muted-foreground md:table-cell">
-                {{ v.group_by.replace("_", " ") }}
-              </TableCell>
-              <TableCell class="hidden text-xs text-muted-foreground md:table-cell">
-                {{ formatDate(v.created_at) }}
-              </TableCell>
-              <TableCell class="text-right">
-                <div class="flex items-center justify-end gap-1">
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    class="h-7 px-2 text-xs"
-                    @click="emit('apply:view', v.slug)"
-                  >
-                    <Play class="mr-1 size-3" />
-                    Apply
-                  </Button>
-                  <DropdownMenu v-if="canEdit(v)">
-                    <DropdownMenuTrigger as-child>
-                      <Button size="sm" variant="ghost" class="h-7 px-2">
-                        <MoreHorizontal class="size-3.5" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" class="w-44">
-                      <DropdownMenuItem @click="emit('rename:view', v)">
-                        <Pencil class="mr-2 size-3.5" /> Rename
-                      </DropdownMenuItem>
-                      <DropdownMenuItem v-if="isOwner(v)" @click="toggleVisibility(v)">
-                        <Copy class="mr-2 size-3.5" />
-                        {{ v.visibility === "shared" ? "Make private" : "Share with project" }}
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem class="text-destructive" @click="handleDelete(v)">
-                        <Trash2 class="mr-2 size-3.5" /> Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              </TableCell>
-            </TableRow>
-          </TableBody>
-        </Table>
-      </CardContent>
-    </Card>
+              {{ v.description }}
+            </p>
+          </div>
+
+          <!-- Meta pills -->
+          <div class="hidden items-center gap-3 sm:flex">
+            <div class="flex items-center gap-1.5 text-xs text-muted-foreground" :title="`${predicateCount(v)} filter${predicateCount(v) === 1 ? '' : 's'}`">
+              <Filter class="size-3" />
+              <span>{{ predicateCount(v) }}</span>
+            </div>
+            <div v-if="v.group_by && v.group_by !== 'none'" class="flex items-center gap-1.5 text-xs text-muted-foreground" :title="`Grouped by ${groupByLabel(v.group_by)}`">
+              <Layers class="size-3" />
+              <span>{{ groupByLabel(v.group_by) }}</span>
+            </div>
+            <div class="hidden items-center gap-1.5 text-xs text-muted-foreground md:flex" :title="formatDate(v.created_at)">
+              <Calendar class="size-3" />
+              <span>{{ formatDate(v.created_at) }}</span>
+            </div>
+          </div>
+
+          <!-- Actions -->
+          <div class="flex items-center gap-1">
+            <Button
+              size="sm"
+              variant="outline"
+              class="h-7 gap-1.5 px-3 text-xs"
+              @click="emit('apply:view', v.slug)"
+            >
+              <Play class="size-3" />
+              Apply
+            </Button>
+            <DropdownMenu v-if="canEdit(v)">
+              <DropdownMenuTrigger as-child>
+                <Button size="sm" variant="ghost" class="h-7 w-7 p-0 opacity-0 transition-opacity group-hover:opacity-100">
+                  <MoreHorizontal class="size-3.5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" class="w-44">
+                <DropdownMenuItem @click="emit('rename:view', v)">
+                  <Pencil class="mr-2 size-3.5" /> Rename
+                </DropdownMenuItem>
+                <DropdownMenuItem v-if="isOwner(v)" @click="toggleVisibility(v)">
+                  <Copy class="mr-2 size-3.5" />
+                  {{ v.visibility === "shared" ? "Make private" : "Share with project" }}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem class="text-destructive" @click="handleDelete(v)">
+                  <Trash2 class="mr-2 size-3.5" /> Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>

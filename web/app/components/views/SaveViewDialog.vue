@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import type { ViewVisibility, FilterTree, ViewGroupBy, SortKey, SortDir } from "~/types";
+import { ListTodo, Kanban } from "lucide-vue-next";
+import type { ViewVisibility, ViewDefaultTab, FilterTree, ViewGroupBy, SortKey, SortDir } from "~/types";
 
 const props = defineProps<{
   open: boolean;
@@ -10,6 +11,7 @@ const props = defineProps<{
     name: string;
     description?: string;
     visibility: ViewVisibility;
+    default_tab?: ViewDefaultTab;
   };
   /** Filters to snapshot into the view (create-mode only). */
   currentTree: FilterTree;
@@ -28,6 +30,7 @@ const { createView, updateView } = useViews();
 const name = ref("");
 const description = ref("");
 const visibility = ref<ViewVisibility>("private");
+const defaultTab = ref<ViewDefaultTab>("tasks");
 const saving = ref(false);
 const error = ref<string | null>(null);
 
@@ -38,6 +41,7 @@ watch(
       name.value = props.initial?.name ?? suggestName(props.currentTree);
       description.value = props.initial?.description ?? "";
       visibility.value = props.initial?.visibility ?? "private";
+      defaultTab.value = props.initial?.default_tab ?? "tasks";
       error.value = null;
     }
   }
@@ -60,6 +64,7 @@ async function save() {
         name: name.value.trim(),
         description: description.value.trim() || null,
         visibility: visibility.value,
+        default_tab: defaultTab.value,
       });
       if (!result.success) {
         error.value = result.error || "Failed to update view";
@@ -75,6 +80,7 @@ async function save() {
         group_by: props.currentGroupBy,
         sort_by: props.currentSortBy,
         sort_dir: props.currentSortDir,
+        default_tab: defaultTab.value,
       });
       if (!result.success || !result.data) {
         error.value = result.error || "Failed to create view";
@@ -132,6 +138,35 @@ async function save() {
             >
               <div class="font-medium">Shared</div>
               <div class="text-xs text-muted-foreground">Everyone in the project</div>
+            </button>
+          </div>
+        </div>
+        <div class="space-y-1.5">
+          <Label>Opens in</Label>
+          <div class="flex gap-2">
+            <button
+              type="button"
+              class="flex flex-1 items-center gap-2 rounded-md border px-3 py-2 text-left text-sm transition-colors"
+              :class="defaultTab === 'tasks' ? 'border-primary bg-primary/5' : 'hover:border-muted-foreground/50'"
+              @click="defaultTab = 'tasks'"
+            >
+              <ListTodo class="size-4 text-muted-foreground" />
+              <div>
+                <div class="font-medium">Tasks</div>
+                <div class="text-xs text-muted-foreground">List view</div>
+              </div>
+            </button>
+            <button
+              type="button"
+              class="flex flex-1 items-center gap-2 rounded-md border px-3 py-2 text-left text-sm transition-colors"
+              :class="defaultTab === 'board' ? 'border-primary bg-primary/5' : 'hover:border-muted-foreground/50'"
+              @click="defaultTab = 'board'"
+            >
+              <Kanban class="size-4 text-muted-foreground" />
+              <div>
+                <div class="font-medium">Board</div>
+                <div class="text-xs text-muted-foreground">Kanban view</div>
+              </div>
             </button>
           </div>
         </div>
