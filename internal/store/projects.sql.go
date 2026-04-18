@@ -771,7 +771,7 @@ func (q *Queries) GetProjectLabelByProjectAndName(ctx context.Context, arg GetPr
 
 const getProjectMember = `-- name: GetProjectMember :one
 SELECT pm.id, pm.project_id, pm.user_id, pm.role, pm.joined_at,
-       u.username, u.email, u.first_name, u.last_name
+       u.username, u.email, u.first_name, u.last_name, u.avatar_url
 FROM project_members pm
 JOIN users u ON pm.user_id = u.id
 WHERE pm.project_id = $1 AND pm.user_id = $2
@@ -792,6 +792,7 @@ type GetProjectMemberRow struct {
 	Email     string             `json:"email"`
 	FirstName string             `json:"first_name"`
 	LastName  string             `json:"last_name"`
+	AvatarUrl pgtype.Text        `json:"avatar_url"`
 }
 
 func (q *Queries) GetProjectMember(ctx context.Context, arg GetProjectMemberParams) (GetProjectMemberRow, error) {
@@ -807,6 +808,7 @@ func (q *Queries) GetProjectMember(ctx context.Context, arg GetProjectMemberPara
 		&i.Email,
 		&i.FirstName,
 		&i.LastName,
+		&i.AvatarUrl,
 	)
 	return i, err
 }

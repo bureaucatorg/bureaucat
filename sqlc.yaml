@@ -22,3 +22,5 @@ sql:
             go_type: "string"
           - db_type: "activity_type"
             go_type: "string"
+          - db_type: "module_status"
+            go_type: "string"

@@ -3,6 +3,7 @@ import {
   ListTodo,
   Kanban,
   Repeat,
+  Layers,
   Users,
   Settings,
   Plus,
@@ -24,7 +25,7 @@ const router = useRouter();
 const projectKey = computed(() => route.params.key as string);
 
 // Valid tab values
-const validTabs = ["tasks", "board", "cycles", "views", "members", "settings"] as const;
+const validTabs = ["tasks", "board", "cycles", "modules", "views", "members", "settings"] as const;
 type TabValue = (typeof validTabs)[number];
 
 const activeTab = computed({
@@ -306,6 +307,10 @@ onMounted(() => {
                   <Repeat class="size-4" />
                   Cycles
                 </TabsTrigger>
+                <TabsTrigger value="modules" class="gap-2">
+                  <Layers class="size-4" />
+                  Modules
+                </TabsTrigger>
                 <TabsTrigger value="members" class="gap-2">
                   <Users class="size-4" />
                   Members
@@ -465,6 +470,11 @@ onMounted(() => {
             <!-- Cycles Tab -->
             <TabsContent value="cycles" class="mt-6">
               <ProjectCyclesTab :project-key="projectKey" :is-admin="isAdmin" />
+            </TabsContent>
+
+            <!-- Modules Tab -->
+            <TabsContent value="modules" class="mt-6">
+              <ProjectModulesTab :project-key="projectKey" :is-admin="isAdmin" />
             </TabsContent>
 
             <!-- Members Tab -->

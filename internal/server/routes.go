@@ -116,6 +116,10 @@ func (s *Server) registerRoutes() {
 		if s.cycleHandler != nil {
 			protected.GET("/cycles/active", s.cycleHandler.ListActiveCycles)
 		}
+		// Workspace-level active modules dashboard (across all projects)
+		if s.moduleHandler != nil {
+			protected.GET("/modules/active", s.moduleHandler.ListActiveModules)
+		}
 
 		// Global search across tasks, cycles, projects the user can see.
 		if s.searchHandler != nil {
@@ -191,6 +195,24 @@ func (s *Server) registerRoutes() {
 				projectGroup.POST("/cycles/:cycleId/tasks", s.cycleHandler.AddCycleTasks, auth.ProjectRoleMiddleware("admin"))
 				projectGroup.DELETE("/cycles/:cycleId/tasks/:taskId", s.cycleHandler.RemoveCycleTask, auth.ProjectRoleMiddleware("admin"))
 				projectGroup.GET("/cycles/:cycleId/metrics", s.cycleHandler.GetCycleMetrics)
+			}
+
+			// Modules
+			if s.moduleHandler != nil {
+				projectGroup.GET("/modules", s.moduleHandler.ListModules)
+				projectGroup.POST("/modules", s.moduleHandler.CreateModule, auth.ProjectRoleMiddleware("admin"))
+				projectGroup.GET("/modules/tasks-picker", s.moduleHandler.ListProjectTasksNotInModule)
+				projectGroup.GET("/modules/:moduleId", s.moduleHandler.GetModule)
+				projectGroup.PATCH("/modules/:moduleId", s.moduleHandler.UpdateModule, auth.ProjectRoleMiddleware("admin"))
+				projectGroup.DELETE("/modules/:moduleId", s.moduleHandler.DeleteModule, auth.ProjectRoleMiddleware("admin"))
+				projectGroup.POST("/modules/:moduleId/duplicate", s.moduleHandler.DuplicateModule, auth.ProjectRoleMiddleware("admin"))
+				projectGroup.GET("/modules/:moduleId/tasks", s.moduleHandler.ListModuleTasks)
+				projectGroup.POST("/modules/:moduleId/tasks", s.moduleHandler.AddModuleTasks, auth.ProjectRoleMiddleware("admin"))
+				projectGroup.DELETE("/modules/:moduleId/tasks/:taskId", s.moduleHandler.RemoveModuleTask, auth.ProjectRoleMiddleware("admin"))
+				projectGroup.GET("/modules/:moduleId/members", s.moduleHandler.ListModuleMembers)
+				projectGroup.POST("/modules/:moduleId/members", s.moduleHandler.AddModuleMember, auth.ProjectRoleMiddleware("admin"))
+				projectGroup.DELETE("/modules/:moduleId/members/:userId", s.moduleHandler.RemoveModuleMember, auth.ProjectRoleMiddleware("admin"))
+				projectGroup.GET("/modules/:moduleId/metrics", s.moduleHandler.GetModuleMetrics)
 			}
 
 			// Tasks

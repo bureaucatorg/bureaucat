@@ -63,6 +63,52 @@ func (ns NullActivityType) Value() (driver.Value, error) {
 	return string(ns.ActivityType), nil
 }
 
+type ModuleStatus string
+
+const (
+	ModuleStatusBacklog    ModuleStatus = "backlog"
+	ModuleStatusPlanned    ModuleStatus = "planned"
+	ModuleStatusInProgress ModuleStatus = "in_progress"
+	ModuleStatusPaused     ModuleStatus = "paused"
+	ModuleStatusCompleted  ModuleStatus = "completed"
+	ModuleStatusCancelled  ModuleStatus = "cancelled"
+)
+
+func (e *ModuleStatus) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = ModuleStatus(s)
+	case string:
+		*e = ModuleStatus(s)
+	default:
+		return fmt.Errorf("unsupported scan type for ModuleStatus: %T", src)
+	}
+	return nil
+}
+
+type NullModuleStatus struct {
+	ModuleStatus ModuleStatus `json:"module_status"`
+	Valid        bool         `json:"valid"` // Valid is true if ModuleStatus is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullModuleStatus) Scan(value interface{}) error {
+	if value == nil {
+		ns.ModuleStatus, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.ModuleStatus.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullModuleStatus) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.ModuleStatus), nil
+}
+
 type ProjectRole string
 
 const (
@@ -293,6 +339,35 @@ type Feedback struct {
 	SourceOrigin pgtype.Text        `json:"source_origin"`
 	UserAgent    pgtype.Text        `json:"user_agent"`
 	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+}
+
+type Module struct {
+	ID          uuid.UUID          `json:"id"`
+	ProjectID   uuid.UUID          `json:"project_id"`
+	Title       string             `json:"title"`
+	Description pgtype.Text        `json:"description"`
+	Status      string             `json:"status"`
+	StartDate   pgtype.Date        `json:"start_date"`
+	EndDate     pgtype.Date        `json:"end_date"`
+	LeadID      pgtype.UUID        `json:"lead_id"`
+	CreatedBy   uuid.UUID          `json:"created_by"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+	DeletedAt   pgtype.Timestamptz `json:"deleted_at"`
+}
+
+type ModuleMember struct {
+	ModuleID uuid.UUID          `json:"module_id"`
+	UserID   uuid.UUID          `json:"user_id"`
+	AddedAt  pgtype.Timestamptz `json:"added_at"`
+	AddedBy  uuid.UUID          `json:"added_by"`
+}
+
+type ModuleTask struct {
+	ModuleID uuid.UUID          `json:"module_id"`
+	TaskID   uuid.UUID          `json:"task_id"`
+	AddedAt  pgtype.Timestamptz `json:"added_at"`
+	AddedBy  uuid.UUID          `json:"added_by"`
 }
 
 type PersonalAccessToken struct {

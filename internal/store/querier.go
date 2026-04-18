@@ -12,6 +12,11 @@ import (
 )
 
 type Querier interface {
+	// ==================== MODULE MEMBERS ====================
+	AddModuleMember(ctx context.Context, arg AddModuleMemberParams) error
+	AddModuleMembersBulk(ctx context.Context, arg AddModuleMembersBulkParams) error
+	// ==================== MODULE TASKS ====================
+	AddModuleTasksBulk(ctx context.Context, arg AddModuleTasksBulkParams) error
 	// ==================== PROJECT MEMBERS ====================
 	AddProjectMember(ctx context.Context, arg AddProjectMemberParams) (ProjectMember, error)
 	// ==================== TASK ASSIGNEES ====================
@@ -26,6 +31,7 @@ type Querier interface {
 	CountAllProjectsFiltered(ctx context.Context, search pgtype.Text) (int64, error)
 	CountProjectCycles(ctx context.Context, projectID uuid.UUID) (int64, error)
 	CountProjectMembers(ctx context.Context, projectID uuid.UUID) (int64, error)
+	CountProjectModules(ctx context.Context, arg CountProjectModulesParams) (int64, error)
 	CountProjectTasks(ctx context.Context, projectID uuid.UUID) (int64, error)
 	CountSearchUsers(ctx context.Context, dollar_1 pgtype.Text) (int64, error)
 	CountTaskComments(ctx context.Context, taskID uuid.UUID) (int64, error)
@@ -43,6 +49,11 @@ type Querier interface {
 	CreateComment(ctx context.Context, arg CreateCommentParams) (Comment, error)
 	// ==================== CYCLES ====================
 	CreateCycle(ctx context.Context, arg CreateCycleParams) (Cycle, error)
+	// ==================== MODULES ====================
+	// The handler is responsible for defaulting `status` to 'backlog' when the
+	// caller doesn't supply one, so the SQL can keep the arg non-nullable. This
+	// sidesteps sqlc's handling of nullable enum args under a string override.
+	CreateModule(ctx context.Context, arg CreateModuleParams) (Module, error)
 	CreatePersonalAccessToken(ctx context.Context, arg CreatePersonalAccessTokenParams) (PersonalAccessToken, error)
 	// ==================== PROJECTS ====================
 	CreateProject(ctx context.Context, arg CreateProjectParams) (Project, error)
@@ -75,6 +86,12 @@ type Querier interface {
 	GetCycleStateBreakdown(ctx context.Context, cycleID uuid.UUID) ([]GetCycleStateBreakdownRow, error)
 	GetDefaultProjectState(ctx context.Context, projectID uuid.UUID) (ProjectState, error)
 	GetLastActivityChecksum(ctx context.Context, taskID uuid.UUID) (string, error)
+	// COALESCE the joined user fields because LEFT JOIN on nullable lead_id would
+	// otherwise trip sqlc's (column-nullability-based) assumption that the fields
+	// are non-null.
+	GetModuleByID(ctx context.Context, id uuid.UUID) (GetModuleByIDRow, error)
+	GetModuleMetrics(ctx context.Context, moduleID uuid.UUID) (GetModuleMetricsRow, error)
+	GetModuleStateBreakdown(ctx context.Context, moduleID uuid.UUID) ([]GetModuleStateBreakdownRow, error)
 	GetNextTaskNumber(ctx context.Context, projectID uuid.UUID) (int32, error)
 	GetPersonalAccessTokenByHash(ctx context.Context, tokenHash string) (GetPersonalAccessTokenByHashRow, error)
 	GetProjectByID(ctx context.Context, id uuid.UUID) (Project, error)
@@ -91,6 +108,9 @@ type Querier interface {
 	GetRefreshTokenByHash(ctx context.Context, tokenHash string) (RefreshToken, error)
 	GetRefreshTokenByID(ctx context.Context, id uuid.UUID) (RefreshToken, error)
 	GetSetting(ctx context.Context, key string) (Setting, error)
+	// Given a set of task IDs, return the distinct user IDs of their assignees.
+	// Used to auto-seed module members when tasks are linked to a module.
+	GetTaskAssigneesForSeeding(ctx context.Context, taskIds []uuid.UUID) ([]uuid.UUID, error)
 	GetTaskByID(ctx context.Context, id uuid.UUID) (GetTaskByIDRow, error)
 	GetTaskByProjectAndNumber(ctx context.Context, arg GetTaskByProjectAndNumberParams) (GetTaskByProjectAndNumberRow, error)
 	GetTaskCycleID(ctx context.Context, taskID uuid.UUID) (uuid.UUID, error)
@@ -105,6 +125,10 @@ type Querier interface {
 	IsTaskAssignee(ctx context.Context, arg IsTaskAssigneeParams) (bool, error)
 	LinkProviderToUser(ctx context.Context, arg LinkProviderToUserParams) error
 	ListActiveCyclesForUser(ctx context.Context, userID uuid.UUID) ([]ListActiveCyclesForUserRow, error)
+	// "Active" modules across all projects the user is a member of. Uses the
+	// explicit status enum (modules don't derive status from dates the way cycles
+	// do). in_progress is the natural "currently being worked on" state.
+	ListActiveModulesForUser(ctx context.Context, userID uuid.UUID) ([]ListActiveModulesForUserRow, error)
 	ListActiveRefreshTokens(ctx context.Context, arg ListActiveRefreshTokensParams) ([]ListActiveRefreshTokensRow, error)
 	ListAllProjects(ctx context.Context, arg ListAllProjectsParams) ([]ListAllProjectsRow, error)
 	ListAllProjectsFiltered(ctx context.Context, arg ListAllProjectsFilteredParams) ([]ListAllProjectsFilteredRow, error)
@@ -115,13 +139,24 @@ type Querier interface {
 	ListCycleAssignees(ctx context.Context, cycleID uuid.UUID) ([]ListCycleAssigneesRow, error)
 	ListCycleTasks(ctx context.Context, arg ListCycleTasksParams) ([]ListCycleTasksRow, error)
 	ListLabelsForTasks(ctx context.Context, taskIds []uuid.UUID) ([]ListLabelsForTasksRow, error)
+	ListModuleMembers(ctx context.Context, moduleID uuid.UUID) ([]ListModuleMembersRow, error)
+	// Used for hydrating the list view with member avatars. Returns up to 4 members
+	// per module so the card can show 3 + "+N more".
+	ListModuleMembersForModules(ctx context.Context, moduleIds []uuid.UUID) ([]ListModuleMembersForModulesRow, error)
+	// Used by the duplicate dialog to pre-populate the issues checklist.
+	ListModuleTaskIDs(ctx context.Context, moduleID uuid.UUID) ([]uuid.UUID, error)
+	ListModuleTasks(ctx context.Context, arg ListModuleTasksParams) ([]ListModuleTasksRow, error)
 	ListPersonalAccessTokensByUser(ctx context.Context, userID uuid.UUID) ([]ListPersonalAccessTokensByUserRow, error)
 	ListProjectCycles(ctx context.Context, arg ListProjectCyclesParams) ([]ListProjectCyclesRow, error)
 	ListProjectCyclesAll(ctx context.Context, projectID uuid.UUID) ([]ListProjectCyclesAllRow, error)
 	ListProjectLabels(ctx context.Context, projectID uuid.UUID) ([]ProjectLabel, error)
 	ListProjectMembers(ctx context.Context, projectID uuid.UUID) ([]ListProjectMembersRow, error)
+	ListProjectModules(ctx context.Context, arg ListProjectModulesParams) ([]ListProjectModulesRow, error)
 	ListProjectStates(ctx context.Context, projectID uuid.UUID) ([]ProjectState, error)
 	ListProjectTasks(ctx context.Context, arg ListProjectTasksParams) ([]ListProjectTasksRow, error)
+	// Picker source: project tasks that are NOT already in the given module. A task
+	// can belong to many modules, so we only exclude by the target module.
+	ListProjectTasksNotInModule(ctx context.Context, arg ListProjectTasksNotInModuleParams) ([]ListProjectTasksNotInModuleRow, error)
 	// Returns every shared view in the project plus private views owned by the caller.
 	ListProjectViews(ctx context.Context, arg ListProjectViewsParams) ([]ListProjectViewsRow, error)
 	ListSettings(ctx context.Context) ([]Setting, error)
@@ -145,6 +180,8 @@ type Querier interface {
 	ListUsersPaginated(ctx context.Context, arg ListUsersPaginatedParams) ([]ListUsersPaginatedRow, error)
 	ProjectKeyExists(ctx context.Context, projectKey string) (bool, error)
 	ProjectViewSlugExists(ctx context.Context, arg ProjectViewSlugExistsParams) (bool, error)
+	RemoveModuleMember(ctx context.Context, arg RemoveModuleMemberParams) error
+	RemoveModuleTask(ctx context.Context, arg RemoveModuleTaskParams) error
 	RemoveProjectMember(ctx context.Context, arg RemoveProjectMemberParams) error
 	RemoveTaskAssignee(ctx context.Context, arg RemoveTaskAssigneeParams) error
 	RemoveTaskFromCycle(ctx context.Context, arg RemoveTaskFromCycleParams) error
@@ -171,6 +208,7 @@ type Querier interface {
 	SearchUsersPaginated(ctx context.Context, arg SearchUsersPaginatedParams) ([]SearchUsersPaginatedRow, error)
 	SoftDeleteComment(ctx context.Context, id uuid.UUID) error
 	SoftDeleteCycle(ctx context.Context, id uuid.UUID) error
+	SoftDeleteModule(ctx context.Context, id uuid.UUID) error
 	// When a member leaves a project, their private views are soft-deleted.
 	SoftDeleteOwnedPrivateViews(ctx context.Context, arg SoftDeleteOwnedPrivateViewsParams) error
 	SoftDeleteProject(ctx context.Context, id uuid.UUID) error
@@ -180,6 +218,9 @@ type Querier interface {
 	TransferOwnedSharedViews(ctx context.Context, arg TransferOwnedSharedViewsParams) error
 	UpdateComment(ctx context.Context, arg UpdateCommentParams) (Comment, error)
 	UpdateCycle(ctx context.Context, arg UpdateCycleParams) (Cycle, error)
+	// `status` is passed as plain text; when empty string, no change. Avoids narg
+	// around the enum type under the string override.
+	UpdateModule(ctx context.Context, arg UpdateModuleParams) (Module, error)
 	UpdatePersonalAccessTokenLastUsed(ctx context.Context, id uuid.UUID) error
 	UpdatePersonalAccessTokenScope(ctx context.Context, arg UpdatePersonalAccessTokenScopeParams) (UpdatePersonalAccessTokenScopeRow, error)
 	UpdateProject(ctx context.Context, arg UpdateProjectParams) (Project, error)

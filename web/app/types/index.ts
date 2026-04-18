@@ -4,3 +4,4 @@ export * from "./view";
 export * from "./comment";
 export * from "./activity";
 export * from "./cycle";
+export * from "./module";

@@ -3,11 +3,11 @@ import {
   ChevronLeft,
   Loader2,
   Plus,
+  Pencil,
   Repeat,
   Trash2,
   CalendarDays,
   X,
-  ChevronDown,
 } from "lucide-vue-next";
 import { toast } from "vue-sonner";
 import type { CycleAssigneeSummary } from "~/types";
@@ -24,15 +24,22 @@ const {
   currentCycle,
   tasks,
   metrics,
-  siblings,
   getCycle,
   listCycleTasks,
   getCycleMetrics,
   deleteCycle,
   removeTaskFromCycle,
-  listSiblings,
+  listUnassignedTasks,
+  addTasksToCycle,
   clearCurrent,
 } = useCycles();
+
+async function loadCyclePickerTasks(search: string, limit: number) {
+  return await listUnassignedTasks(projectKey.value, search, limit);
+}
+async function addTasksToCurrentCycle(taskIds: string[]) {
+  return await addTasksToCycle(projectKey.value, cycleId.value, taskIds);
+}
 const { currentProject, getProject } = useProjects();
 
 const isAdmin = computed(() => currentProject.value?.role === "admin");
@@ -40,10 +47,10 @@ const isAdmin = computed(() => currentProject.value?.role === "admin");
 const loading = ref(true);
 const error = ref<string | null>(null);
 const showAddTask = ref(false);
+const showEdit = ref(false);
 const showDeleteConfirm = ref(false);
 const deleting = ref(false);
 const assigneeFilter = ref<string | null>(null);
-const switcherOpen = ref(false);
 
 useHead({
   title: computed(
@@ -63,18 +70,6 @@ function formatDate(d: string): string {
   return dt.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
-const tableGridStyle = computed(() =>
-  isAdmin.value
-    ? "grid-template-columns: 140px minmax(0, 1fr) 90px 28px;"
-    : "grid-template-columns: 140px minmax(0, 1fr) 90px;"
-);
-
-const progressPct = computed(() => {
-  const m = metrics.value;
-  if (!m || m.total === 0) return 0;
-  return Math.round((m.completed / m.total) * 100);
-});
-
 const filteredAssigneeName = computed(() => {
   if (!assigneeFilter.value || !metrics.value) return null;
   const a = metrics.value.assignees.find(
@@ -86,16 +81,14 @@ const filteredAssigneeName = computed(() => {
 async function loadAll() {
   loading.value = true;
   error.value = null;
-  const [c, m, t, s] = await Promise.all([
+  const [c, m, t] = await Promise.all([
     getCycle(projectKey.value, cycleId.value),
     getCycleMetrics(projectKey.value, cycleId.value),
     listCycleTasks(projectKey.value, cycleId.value, assigneeFilter.value),
-    listSiblings(projectKey.value),
   ]);
   if (!c.success) error.value = c.error || "Failed to load cycle";
   if (!m.success && !error.value) error.value = m.error || "Failed to load metrics";
   if (!t.success && !error.value) error.value = t.error || "Failed to load tasks";
-  void s;
   loading.value = false;
 }
 
@@ -225,34 +218,15 @@ watch(cycleId, async () => {
             </div>
 
             <div class="flex shrink-0 items-center gap-2">
-              <!-- Cycle switcher -->
-              <DropdownMenu v-model:open="switcherOpen">
-                <DropdownMenuTrigger as-child>
-                  <Button variant="outline" size="sm">
-                    Switch cycle
-                    <ChevronDown class="ml-1 size-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" class="w-64 max-h-80 overflow-y-auto">
-                  <DropdownMenuItem
-                    v-for="s in siblings"
-                    :key="s.id"
-                    :disabled="s.id === cycleId"
-                    @click="
-                      s.id !== cycleId &&
-                        router.push(`/projects/${projectKey}/cycles/${s.id}`)
-                    "
-                  >
-                    <div class="flex min-w-0 flex-1 flex-col">
-                      <span class="truncate">{{ s.title }}</span>
-                      <span class="text-[10px] uppercase tracking-wide text-muted-foreground">
-                        {{ s.status }} · {{ s.start_date }} → {{ s.end_date }}
-                      </span>
-                    </div>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-
+              <Button
+                v-if="isAdmin"
+                variant="outline"
+                size="sm"
+                @click="showEdit = true"
+              >
+                <Pencil class="mr-1.5 size-4" />
+                Edit
+              </Button>
               <Button
                 v-if="isAdmin"
                 variant="outline"
@@ -305,124 +279,24 @@ watch(cycleId, async () => {
                 </Button>
               </div>
 
-              <div v-else class="overflow-hidden rounded-lg border bg-background">
-                <div
-                  class="grid items-center gap-3 border-b bg-muted/40 px-4 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"
-                  :style="tableGridStyle"
-                >
-                  <span>State</span>
-                  <span>Title</span>
-                  <span>ID</span>
-                  <span v-if="isAdmin"></span>
-                </div>
-
-                <div class="max-h-[70vh] overflow-y-auto [scrollbar-gutter:stable]">
-                  <div
-                    v-for="task in tasks"
-                    :key="task.id"
-                    class="group grid items-center gap-3 border-b border-border/40 px-4 py-2.5 text-sm transition-colors last:border-0 hover:bg-muted/40"
-                    :style="tableGridStyle"
-                  >
-                    <span
-                      class="inline-flex w-fit max-w-full items-center truncate rounded px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-wider"
-                      :style="{
-                        backgroundColor: (task.state_color || '#6B7280') + '22',
-                        color: task.state_color || '#6B7280',
-                      }"
-                    >
-                      {{ task.state_name }}
-                    </span>
-
-                    <NuxtLink
-                      :to="`/projects/${projectKey}/tasks/${task.task_number}`"
-                      class="min-w-0 truncate font-medium text-foreground hover:text-amber-600 hover:underline dark:hover:text-amber-500"
-                    >
-                      {{ task.title }}
-                    </NuxtLink>
-
-                    <span class="font-mono text-[11px] text-muted-foreground">
-                      {{ task.task_id }}
-                    </span>
-
-                    <button
-                      v-if="isAdmin"
-                      class="rounded p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-muted hover:text-destructive focus-visible:opacity-100 group-hover:opacity-100"
-                      :aria-label="`Remove ${task.title} from cycle`"
-                      @click.prevent="handleRemoveTask(task.id)"
-                    >
-                      <X class="size-3.5" />
-                    </button>
-                  </div>
-                </div>
-              </div>
+              <CollectionTaskTable
+                v-else
+                :tasks="tasks"
+                :project-key="projectKey"
+                :is-admin="isAdmin"
+                remove-label="Remove from cycle:"
+                @remove="handleRemoveTask"
+              />
             </section>
 
             <!-- RIGHT: Overview -->
             <aside class="space-y-6">
-              <!-- Progress -->
-              <section class="rounded-lg border p-4">
-                <h3 class="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Progress
-                </h3>
-                <div class="flex items-baseline gap-2">
-                  <span class="text-3xl font-bold tabular-nums">{{ progressPct }}%</span>
-                  <span class="text-sm text-muted-foreground">
-                    {{ metrics?.completed ?? 0 }} / {{ metrics?.total ?? 0 }} done
-                  </span>
-                </div>
-                <div class="mt-3 h-2 w-full overflow-hidden rounded-full bg-muted">
-                  <div
-                    class="h-full rounded-full bg-amber-500 transition-all"
-                    :style="{ width: progressPct + '%' }"
-                  />
-                </div>
-                <dl class="mt-4 grid grid-cols-2 gap-2 text-xs">
-                  <div class="flex justify-between">
-                    <dt class="text-muted-foreground">Todo</dt>
-                    <dd class="font-medium tabular-nums">{{ metrics?.todo ?? 0 }}</dd>
-                  </div>
-                  <div class="flex justify-between">
-                    <dt class="text-muted-foreground">In progress</dt>
-                    <dd class="font-medium tabular-nums">{{ metrics?.in_progress ?? 0 }}</dd>
-                  </div>
-                  <div class="flex justify-between">
-                    <dt class="text-muted-foreground">Done</dt>
-                    <dd class="font-medium tabular-nums">{{ metrics?.completed ?? 0 }}</dd>
-                  </div>
-                  <div class="flex justify-between">
-                    <dt class="text-muted-foreground">Cancelled</dt>
-                    <dd class="font-medium tabular-nums">{{ metrics?.cancelled ?? 0 }}</dd>
-                  </div>
-                </dl>
-              </section>
+              <ProgressCard :metrics="metrics" />
 
-              <!-- State breakdown -->
-              <section
-                v-if="metrics && metrics.state_breakdown.length"
-                class="rounded-lg border p-4"
-              >
-                <h3 class="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  By state
-                </h3>
-                <ul class="space-y-1.5">
-                  <li
-                    v-for="b in metrics.state_breakdown"
-                    :key="b.state_id"
-                    class="flex items-center justify-between gap-2 text-sm"
-                  >
-                    <span class="flex items-center gap-2 truncate">
-                      <span
-                        class="size-2 rounded-full"
-                        :style="{ backgroundColor: b.state_color || '#6B7280' }"
-                      />
-                      <span class="truncate">{{ b.state_name }}</span>
-                    </span>
-                    <span class="font-medium tabular-nums text-muted-foreground">
-                      {{ b.count }}
-                    </span>
-                  </li>
-                </ul>
-              </section>
+              <StateBreakdownCard
+                v-if="metrics"
+                :buckets="metrics.state_breakdown"
+              />
 
               <!-- Assignees -->
               <section
@@ -471,11 +345,23 @@ watch(cycleId, async () => {
             </aside>
           </div>
 
-          <AddTaskToCycleDialog
+          <AddTasksDialog
             v-model:open="showAddTask"
             :project-key="projectKey"
-            :cycle-id="cycleId"
+            :collection-id="cycleId"
+            title="Add tasks to cycle"
+            description="Pick tasks that aren't yet in a cycle, or create a brand new one."
+            empty-hint="No unassigned tasks found."
+            :load-tasks="loadCyclePickerTasks"
+            :add-tasks="addTasksToCurrentCycle"
             @added="reloadTasksAndMetrics"
+          />
+
+          <CreateCycleDialog
+            v-model:open="showEdit"
+            :project-key="projectKey"
+            :cycle="currentCycle"
+            @saved="() => getCycle(projectKey, cycleId)"
           />
 
           <Dialog v-model:open="showDeleteConfirm">

@@ -441,6 +441,7 @@ type MemberResponse struct {
 	Email     string    `json:"email"`
 	FirstName string    `json:"first_name"`
 	LastName  string    `json:"last_name"`
+	AvatarURL *string   `json:"avatar_url,omitempty"`
 	Role      string    `json:"role"`
 	JoinedAt  time.Time `json:"joined_at"`
 }
@@ -490,6 +491,7 @@ func (h *ProjectHandler) ListMembers(c *echo.Context) error {
 			Email:     m.Email,
 			FirstName: m.FirstName,
 			LastName:  m.LastName,
+			AvatarURL: textToStringPtr(m.AvatarUrl),
 			Role:      m.Role,
 			JoinedAt:  m.JoinedAt.Time,
 		}
@@ -574,6 +576,7 @@ func (h *ProjectHandler) AddMember(c *echo.Context) error {
 		Email:     fullMember.Email,
 		FirstName: fullMember.FirstName,
 		LastName:  fullMember.LastName,
+		AvatarURL: textToStringPtr(fullMember.AvatarUrl),
 		Role:      fullMember.Role,
 		JoinedAt:  member.JoinedAt.Time,
 	})

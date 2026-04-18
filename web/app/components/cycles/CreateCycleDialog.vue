@@ -2,12 +2,19 @@
 import { Loader2, Calendar as CalendarIcon } from "lucide-vue-next";
 import { toast } from "vue-sonner";
 import { CalendarDate, type DateValue } from "@internationalized/date";
+import type { Cycle } from "~/types";
 
-const props = defineProps<{ projectKey: string }>();
+const props = defineProps<{
+  projectKey: string;
+  // If provided, dialog behaves as an edit form for this cycle.
+  cycle?: Cycle | null;
+}>();
 const open = defineModel<boolean>("open", { default: false });
-const emit = defineEmits<{ created: [] }>();
+const emit = defineEmits<{ created: []; saved: [Cycle] }>();
 
-const { createCycle } = useCycles();
+const { createCycle, updateCycle } = useCycles();
+
+const isEdit = computed(() => !!props.cycle);
 
 const loading = ref(false);
 const error = ref<string | null>(null);
@@ -26,13 +33,34 @@ const form = ref<{
 const startOpen = ref(false);
 const endOpen = ref(false);
 
-function resetForm() {
-  form.value = { title: "", description: "", startDate: undefined, endDate: undefined };
+function isoToCalendar(s?: string): DateValue | undefined {
+  if (!s) return undefined;
+  const [y, m, d] = s.split("-").map(Number);
+  if (!y || !m || !d) return undefined;
+  return new CalendarDate(y, m, d);
+}
+
+function hydrate() {
   error.value = null;
+  if (props.cycle) {
+    form.value = {
+      title: props.cycle.title,
+      description: props.cycle.description ?? "",
+      startDate: isoToCalendar(props.cycle.start_date),
+      endDate: isoToCalendar(props.cycle.end_date),
+    };
+  } else {
+    form.value = {
+      title: "",
+      description: "",
+      startDate: undefined,
+      endDate: undefined,
+    };
+  }
 }
 
 watch(open, (isOpen) => {
-  if (isOpen) resetForm();
+  if (isOpen) hydrate();
 });
 
 function formatDateValue(d: DateValue | undefined): string {
@@ -60,20 +88,24 @@ async function handleSubmit() {
   }
 
   loading.value = true;
-  const result = await createCycle(props.projectKey, {
+  const payload = {
     title: form.value.title.trim(),
     description: form.value.description.trim() || undefined,
     start_date: toIsoDate(start),
     end_date: toIsoDate(end),
-  });
+  };
+  const result = isEdit.value
+    ? await updateCycle(props.projectKey, props.cycle!.id, payload)
+    : await createCycle(props.projectKey, payload);
   loading.value = false;
 
   if (result.success) {
-    toast.success("Cycle created");
+    toast.success(isEdit.value ? "Cycle updated" : "Cycle created");
     open.value = false;
-    emit("created");
+    if (isEdit.value && result.data) emit("saved", result.data);
+    else emit("created");
   } else {
-    error.value = result.error || "Failed to create cycle";
+    error.value = result.error || (isEdit.value ? "Failed to update cycle" : "Failed to create cycle");
   }
 }
 </script>
@@ -82,7 +114,7 @@ async function handleSubmit() {
   <Dialog v-model:open="open">
     <DialogContent class="sm:max-w-md">
       <DialogHeader>
-        <DialogTitle>New Cycle</DialogTitle>
+        <DialogTitle>{{ isEdit ? "Edit cycle" : "New Cycle" }}</DialogTitle>
         <DialogDescription>
           A cycle groups tasks into a time-boxed window, like a sprint.
         </DialogDescription>
@@ -175,7 +207,7 @@ async function handleSubmit() {
           </Button>
           <Button type="submit" :disabled="loading || !canSubmit">
             <Loader2 v-if="loading" class="mr-2 size-4 animate-spin" />
-            Create Cycle
+            {{ isEdit ? "Save changes" : "Create Cycle" }}
           </Button>
         </DialogFooter>
       </form>

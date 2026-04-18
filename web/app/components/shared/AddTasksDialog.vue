@@ -1,13 +1,38 @@
-<script setup lang="ts">
+<script setup lang="ts" generic="T extends PickerTask">
 import { Loader2, Search } from "lucide-vue-next";
 import { toast } from "vue-sonner";
-import type { CycleTask, ProjectState } from "~/types";
+import type { ProjectState } from "~/types";
 
-const props = defineProps<{ projectKey: string; cycleId: string }>();
+// Minimum shape the picker needs from each task row.
+interface PickerTask {
+  id: string;
+  title: string;
+  task_id: string;
+  state_name: string;
+  state_color: string;
+}
+
+type PickResult<R> = { success: boolean; data?: R; error?: string };
+type AckResult = { success: boolean; error?: string };
+
+const props = defineProps<{
+  projectKey: string;
+  collectionId: string;
+  title?: string;
+  description?: string;
+  emptyHint?: string;
+  // Data loader: return picker tasks matching `search`.
+  loadTasks: (search: string, limit: number) => Promise<PickResult<T[]>>;
+  // Bulk add: attach existing tasks to the collection.
+  addTasks: (taskIds: string[]) => Promise<AckResult>;
+  // Create-and-add flow. Called with the new task's id after creation succeeds.
+  // Kept separate from addTasks so consumers can run side-effects (e.g. toasts)
+  // between the two steps if they like.
+}>();
+
 const open = defineModel<boolean>("open", { default: false });
 const emit = defineEmits<{ added: [] }>();
 
-const { listUnassignedTasks, addTasksToCycle } = useCycles();
 const { createTask } = useTasks();
 const { states, listStates } = useProjects();
 
@@ -15,19 +40,17 @@ const tab = ref<"existing" | "new">("existing");
 const loading = ref(false);
 const error = ref<string | null>(null);
 
-// Existing-tab state
 const search = ref("");
-const existingTasks = ref<CycleTask[]>([]);
+const existingTasks = ref<T[]>([]);
 const existingLoading = ref(false);
 const selectedIds = ref<Set<string>>(new Set());
 let searchDebounce: ReturnType<typeof setTimeout> | null = null;
 
-// New-tab state
 const newForm = ref({ title: "", state_id: "" as string });
 
 async function loadExisting() {
   existingLoading.value = true;
-  const result = await listUnassignedTasks(props.projectKey, search.value, 100);
+  const result = await props.loadTasks(search.value, 100);
   existingLoading.value = false;
   if (result.success) existingTasks.value = result.data || [];
 }
@@ -65,7 +88,7 @@ async function handleAddExisting() {
   loading.value = true;
   error.value = null;
   const ids = Array.from(selectedIds.value);
-  const result = await addTasksToCycle(props.projectKey, props.cycleId, ids);
+  const result = await props.addTasks(ids);
   loading.value = false;
   if (result.success) {
     toast.success(`Added ${ids.length} task${ids.length === 1 ? "" : "s"}`);
@@ -89,14 +112,14 @@ async function handleCreateNew() {
     error.value = created.error || "Failed to create task";
     return;
   }
-  const added = await addTasksToCycle(props.projectKey, props.cycleId, [created.data.id]);
+  const added = await props.addTasks([created.data.id]);
   loading.value = false;
   if (added.success) {
-    toast.success("Task created and added to cycle");
+    toast.success("Task created and added");
     open.value = false;
     emit("added");
   } else {
-    error.value = added.error || "Task created but failed to add to cycle";
+    error.value = added.error || "Task created but failed to attach";
   }
 }
 </script>
@@ -105,9 +128,9 @@ async function handleCreateNew() {
   <Dialog v-model:open="open">
     <DialogContent class="sm:max-w-3xl">
       <DialogHeader>
-        <DialogTitle>Add tasks to cycle</DialogTitle>
+        <DialogTitle>{{ title || "Add tasks" }}</DialogTitle>
         <DialogDescription>
-          Pick tasks that aren't yet in a cycle, or create a brand new one.
+          {{ description || "Pick existing tasks or create a brand new one." }}
         </DialogDescription>
       </DialogHeader>
 
@@ -127,7 +150,7 @@ async function handleCreateNew() {
         <TabsContent value="existing" class="mt-3 min-w-0 space-y-3">
           <div class="relative">
             <Search class="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input v-model="search" placeholder="Search unassigned tasks..." class="pl-9" />
+            <Input v-model="search" placeholder="Search tasks..." class="pl-9" />
           </div>
 
           <div class="overflow-hidden rounded-md border">
@@ -151,7 +174,7 @@ async function handleCreateNew() {
                 v-else-if="existingTasks.length === 0"
                 class="py-10 text-center text-sm text-muted-foreground"
               >
-                No unassigned tasks found.
+                {{ emptyHint || "No tasks found." }}
               </div>
               <label
                 v-for="task in existingTasks"
@@ -184,9 +207,9 @@ async function handleCreateNew() {
 
         <TabsContent value="new" class="mt-3 min-w-0 space-y-3">
           <div class="space-y-2">
-            <Label for="new_task_title">Title</Label>
+            <Label for="shared_new_task_title">Title</Label>
             <Input
-              id="new_task_title"
+              id="shared_new_task_title"
               v-model="newForm.title"
               placeholder="Ship the new feature"
               required
@@ -194,9 +217,9 @@ async function handleCreateNew() {
             />
           </div>
           <div class="space-y-2">
-            <Label for="new_task_state">Initial state</Label>
+            <Label for="shared_new_task_state">Initial state</Label>
             <select
-              id="new_task_state"
+              id="shared_new_task_state"
               v-model="newForm.state_id"
               class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
               :disabled="loading"

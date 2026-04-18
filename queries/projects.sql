@@ -101,7 +101,7 @@ RETURNING id, project_id, user_id, role, joined_at;
 
 -- name: GetProjectMember :one
 SELECT pm.id, pm.project_id, pm.user_id, pm.role, pm.joined_at,
-       u.username, u.email, u.first_name, u.last_name
+       u.username, u.email, u.first_name, u.last_name, u.avatar_url
 FROM project_members pm
 JOIN users u ON pm.user_id = u.id
 WHERE pm.project_id = $1 AND pm.user_id = $2;
