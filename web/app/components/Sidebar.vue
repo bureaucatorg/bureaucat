@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { LayoutDashboard, FolderKanban, Eye, Repeat, Timer, MessageCircle, Settings } from "lucide-vue-next";
+import { LayoutDashboard, FolderKanban, Eye, Repeat, Timer, MessageCircle, Shield, Settings } from "lucide-vue-next";
 
 const { user } = useAuth();
 const route = useRoute();
@@ -104,6 +104,16 @@ onMounted(() => {
       >
         <MessageCircle class="size-4.5" />
       </button>
+
+      <NuxtLink
+        v-if="user?.user_type === 'admin'"
+        to="/admin"
+        title="Admin Dashboard"
+        class="flex size-9 items-center justify-center rounded-md text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+        :class="isActive('/admin') && 'bg-amber-500/15 text-amber-700 dark:text-amber-400'"
+      >
+        <Shield class="size-4.5" />
+      </NuxtLink>
 
       <NuxtLink
         to="/settings"
