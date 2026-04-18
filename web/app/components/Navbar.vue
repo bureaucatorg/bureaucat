@@ -31,7 +31,7 @@ async function handleLogout() {
 
 <template>
   <header class="sticky top-0 z-40 border-b border-border/50 bg-background/80 backdrop-blur-xl">
-    <div class="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
+    <div class="mx-auto flex h-12 max-w-6xl items-center justify-between px-6">
       <NuxtLink to="/" class="flex items-center gap-2.5">
         <BurecatLogo :size="28" />
         <span class="font-display text-lg font-semibold tracking-tight">{{ appName }}</span>
