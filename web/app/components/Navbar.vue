@@ -50,22 +50,24 @@ async function handleLogout() {
           <span class="hidden sm:inline">Star on GitHub</span>
         </a>
 
-        <ThemeToggle />
+        <div class="flex items-center gap-0.5">
+          <Button
+            v-if="isAuthenticated"
+            variant="ghost"
+            size="icon"
+            class="size-9"
+            aria-label="Search"
+            @click="searchOpen = true"
+          >
+            <Search class="size-4" />
+          </Button>
 
-        <Button
-          v-if="isAuthenticated"
-          variant="ghost"
-          size="icon"
-          class="size-9"
-          aria-label="Search"
-          @click="searchOpen = true"
-        >
-          <Search class="size-4" />
-        </Button>
+          <NotificationPopover v-if="isAuthenticated" />
+
+          <ThemeToggle />
+        </div>
 
         <GlobalSearch v-if="isAuthenticated" v-model:open="searchOpen" />
-
-        <NotificationPopover v-if="isAuthenticated" />
 
         <template v-if="!isAuthenticated">
           <NuxtLink to="/signin">
