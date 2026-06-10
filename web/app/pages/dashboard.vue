@@ -15,6 +15,7 @@ import {
   Lightbulb,
 } from "lucide-vue-next";
 import { PRIORITY_LABELS } from "~/types";
+import type { Project } from "~/types";
 
 definePageMeta({
   middleware: ["auth"],
@@ -26,6 +27,7 @@ const { user, getAuthHeader } = useAuth();
 const { projects, loading: projectsLoading, listProjects } = useProjects();
 
 const showCreateDialog = ref(false);
+const showCreateTask = ref(false);
 const searchQuery = ref("");
 let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -40,6 +42,31 @@ watch(searchQuery, () => {
 
 async function handleCreated() {
   fetchProjects();
+  fetchAllProjects();
+}
+
+// Full (unfiltered) project list for the Create Task dialog's selector, kept
+// independent of the project search box above.
+const allProjects = ref<Project[]>([]);
+
+async function fetchAllProjects() {
+  // Direct fetch (not the shared useProjects store) so it doesn't clobber the
+  // search-filtered grid above.
+  try {
+    const response = await fetch("/api/v1/projects?page=1&per_page=100", {
+      headers: getAuthHeader(),
+    });
+    if (response.ok) {
+      const data = await response.json();
+      allProjects.value = data.projects || [];
+    }
+  } catch {
+    // silently fail — the dialog just shows no projects to pick
+  }
+}
+
+async function handleTaskCreated() {
+  fetchMyTasks();
 }
 
 // My Tasks
@@ -121,6 +148,7 @@ const currentTip = ref<string | null>(null);
 
 onMounted(async () => {
   fetchProjects();
+  fetchAllProjects();
   fetchMyTasks();
   await fetchSSOProviders();
 
@@ -176,6 +204,10 @@ onMounted(async () => {
                 ({{ myTasksTotal }})
               </span>
             </h2>
+            <Button size="sm" :disabled="allProjects.length === 0" @click="showCreateTask = true">
+              <Plus class="mr-1.5 size-4" />
+              Create Task
+            </Button>
           </div>
 
           <div v-if="myTasksLoading" class="flex items-center justify-center py-8">
@@ -278,10 +310,6 @@ onMounted(async () => {
                   <ArrowRight class="size-4" />
                 </NuxtLink>
               </Button>
-              <Button size="sm" @click="showCreateDialog = true">
-                <Plus class="mr-1.5 size-4" />
-                Create Project
-              </Button>
             </div>
           </div>
 
@@ -333,6 +361,12 @@ onMounted(async () => {
         <CreateProjectDialog
           v-model:open="showCreateDialog"
           @created="handleCreated"
+        />
+
+        <CreateTaskDialog
+          v-model:open="showCreateTask"
+          :projects="allProjects"
+          @created="handleTaskCreated"
         />
       </div>
     </main>
