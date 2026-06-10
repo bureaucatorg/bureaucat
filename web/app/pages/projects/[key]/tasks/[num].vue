@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import {
-  ChevronLeft,
   ChevronDown,
   Loader2,
   Pencil,
@@ -449,7 +448,6 @@ onMounted(() => {
         <template v-else-if="currentTask">
           <!-- Breadcrumb -->
           <nav class="mb-6 flex items-center gap-2 text-sm text-muted-foreground">
-            <ChevronLeft class="size-4" />
             <NuxtLink to="/projects" class="hover:text-foreground">
               Projects
             </NuxtLink>
