@@ -38,9 +38,54 @@ const filteredMembers = computed(() => {
   );
 });
 
+// Keyboard navigation for the member list.
+const highlightedIndex = ref(0);
+const memberListRef = ref<HTMLElement | null>(null);
+
 watch(showPopover, (open) => {
-  if (!open) searchQuery.value = "";
+  if (!open) {
+    searchQuery.value = "";
+  } else {
+    highlightedIndex.value = 0;
+  }
 });
+
+// Reset/clamp the highlight as the filtered list changes (e.g. while typing).
+watch(filteredMembers, (list) => {
+  if (highlightedIndex.value >= list.length) {
+    highlightedIndex.value = Math.max(0, list.length - 1);
+  }
+});
+
+function scrollHighlightedIntoView() {
+  nextTick(() => {
+    const el = memberListRef.value?.querySelector<HTMLElement>(
+      `[data-index="${highlightedIndex.value}"]`
+    );
+    el?.scrollIntoView({ block: "nearest" });
+  });
+}
+
+function handleKeydown(event: KeyboardEvent) {
+  const count = filteredMembers.value.length;
+  if (event.key === "ArrowDown") {
+    event.preventDefault();
+    if (count === 0) return;
+    highlightedIndex.value = (highlightedIndex.value + 1) % count;
+    scrollHighlightedIntoView();
+  } else if (event.key === "ArrowUp") {
+    event.preventDefault();
+    if (count === 0) return;
+    highlightedIndex.value = (highlightedIndex.value - 1 + count) % count;
+    scrollHighlightedIntoView();
+  } else if (event.key === "Enter") {
+    event.preventDefault();
+    const member = filteredMembers.value[highlightedIndex.value];
+    if (member && loading.value !== member.user_id) handleAdd(member.user_id);
+  } else if (event.key === "Escape") {
+    showPopover.value = false;
+  }
+}
 
 async function handleAdd(userId: string) {
   loading.value = userId;
@@ -123,18 +168,23 @@ async function handleRemove(userId: string) {
                 v-model="searchQuery"
                 placeholder="Search members..."
                 class="h-8 pl-7 text-sm"
+                autofocus
+                @keydown="handleKeydown"
               />
             </div>
           </div>
-          <div class="max-h-48 overflow-y-auto">
+          <div ref="memberListRef" class="max-h-48 overflow-y-auto">
             <div class="py-1">
               <button
-                v-for="member in filteredMembers"
+                v-for="(member, idx) in filteredMembers"
                 :key="member.user_id"
                 type="button"
-                class="flex w-full items-center gap-2 px-3 py-1.5 text-sm hover:bg-accent disabled:opacity-50"
+                :data-index="idx"
+                class="flex w-full items-center gap-2 px-3 py-1.5 text-sm disabled:opacity-50"
+                :class="idx === highlightedIndex ? 'bg-accent' : 'hover:bg-accent'"
                 :disabled="loading === member.user_id"
                 @click="handleAdd(member.user_id)"
+                @mouseenter="highlightedIndex = idx"
               >
                 <Avatar class="size-6">
                   <AvatarImage v-if="member.avatar_url" :src="member.avatar_url" />
