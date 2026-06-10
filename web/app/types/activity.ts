@@ -51,6 +51,23 @@ export interface UserActivityEntry extends ActivityLogEntry {
   task_title: string;
 }
 
+// A persisted, per-user notification. Extends the activity shape with batching
+// (event_count) and read/unread state (is_read).
+export interface NotificationEntry extends UserActivityEntry {
+  event_count: number;
+  is_read: boolean;
+  updated_at: string;
+}
+
+export interface NotificationListResponse {
+  activities: NotificationEntry[];
+  unread_count: number;
+  total: number;
+  page: number;
+  per_page: number;
+  total_pages: number;
+}
+
 export interface UserActivityDateCount {
   date: string;
   count: number;

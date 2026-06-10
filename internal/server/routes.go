@@ -95,7 +95,14 @@ func (s *Server) registerRoutes() {
 		protected := api.Group("", auth.Middleware(s.authManager, s.store), auth.EnforcePATScope())
 		protected.GET("/me", s.authHandler.Me)
 		protected.GET("/me/tasks", s.authHandler.MyTasks)
-		protected.GET("/me/notifications", s.authHandler.GetMyNotifications)
+
+		// Per-user in-app notifications
+		if s.notificationsHandler != nil {
+			protected.GET("/me/notifications", s.notificationsHandler.ListNotifications)
+			protected.GET("/me/notifications/unread_count", s.notificationsHandler.GetUnreadCount)
+			protected.POST("/me/notifications/:id/read", s.notificationsHandler.MarkRead)
+			protected.POST("/me/notifications/read_all", s.notificationsHandler.MarkAllRead)
+		}
 
 		// Local mirror of outbound feedback. Authenticated — the sidebar
 		// dialog calls this alongside the cross-origin POST to bureaucat.org

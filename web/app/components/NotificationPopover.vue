@@ -14,16 +14,19 @@ import {
   MessageSquareDiff,
   MessageSquareX,
   Circle,
+  CheckCheck,
 } from "lucide-vue-next";
-import type { ActivityType, UserActivityEntry } from "~/types";
+import type { ActivityType, NotificationEntry } from "~/types";
 import { ACTIVITY_TYPE_LABELS } from "~/types";
 
-const { user, getAuthHeader } = useAuth();
+const { user } = useAuth();
+const { unreadCount, listNotifications, refreshUnreadCount, markRead, markAllRead } =
+  useNotifications();
 
 const open = ref(false);
 const loading = ref(false);
 const loadingMore = ref(false);
-const activities = ref<UserActivityEntry[]>([]);
+const activities = ref<NotificationEntry[]>([]);
 const page = ref(1);
 const hasMore = ref(true);
 const perPage = 20;
@@ -74,13 +77,9 @@ async function loadActivity(pageNum: number) {
   }
 
   try {
-    const response = await fetch(
-      `/api/v1/me/notifications?page=${pageNum}&per_page=${perPage}`,
-      { headers: getAuthHeader() }
-    );
-    if (response.ok) {
-      const data = await response.json();
-      const items: UserActivityEntry[] = data.activities ?? [];
+    const { success, data } = await listNotifications(pageNum, perPage);
+    if (success && data) {
+      const items = data.activities ?? [];
       if (isFirstPage) {
         activities.value = items;
       } else {
@@ -89,8 +88,6 @@ async function loadActivity(pageNum: number) {
       page.value = pageNum;
       hasMore.value = items.length === perPage && activities.value.length < maxItems;
     }
-  } catch {
-    // silently fail
   } finally {
     loading.value = false;
     loadingMore.value = false;
@@ -107,6 +104,21 @@ function onScroll(e: Event) {
   }
 }
 
+function onActivityClick(activity: NotificationEntry) {
+  if (!activity.is_read) {
+    activity.is_read = true;
+    markRead(activity.id);
+  }
+  open.value = false;
+}
+
+async function onMarkAllRead() {
+  await markAllRead();
+  activities.value = activities.value.map((a) => ({ ...a, is_read: true }));
+}
+
+const hasUnread = computed(() => activities.value.some((a) => !a.is_read));
+
 watch(open, (isOpen) => {
   if (isOpen) {
     page.value = 1;
@@ -114,18 +126,48 @@ watch(open, (isOpen) => {
     loadActivity(1);
   }
 });
+
+let pollTimer: ReturnType<typeof setInterval> | undefined;
+onMounted(() => {
+  refreshUnreadCount();
+  // Light polling so the badge stays roughly fresh without a websocket.
+  pollTimer = setInterval(refreshUnreadCount, 60_000);
+});
+onUnmounted(() => {
+  if (pollTimer) clearInterval(pollTimer);
+});
 </script>
 
 <template>
   <Popover v-model:open="open">
     <PopoverTrigger as-child>
-      <Button variant="ghost" size="icon" class="size-9" aria-label="Notifications">
+      <Button
+        variant="ghost"
+        size="icon"
+        class="relative size-9"
+        aria-label="Notifications"
+      >
         <Bell class="size-4" />
+        <span
+          v-if="unreadCount > 0"
+          class="absolute -right-0.5 -top-0.5 flex min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-semibold leading-4 text-white"
+        >
+          {{ unreadCount > 99 ? "99+" : unreadCount }}
+        </span>
       </Button>
     </PopoverTrigger>
     <PopoverContent align="end" class="w-80 p-0">
-      <div class="border-b px-4 py-3">
+      <div class="flex items-center justify-between border-b px-4 py-3">
         <h3 class="text-sm font-semibold">Notifications</h3>
+        <button
+          v-if="hasUnread"
+          type="button"
+          class="flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
+          @click="onMarkAllRead"
+        >
+          <CheckCheck class="size-3.5" />
+          Mark all read
+        </button>
       </div>
 
       <!-- Loading -->
@@ -149,7 +191,8 @@ watch(open, (isOpen) => {
             :key="activity.id"
             :to="`/projects/${activity.project_key}/tasks/${activity.task_number}`"
             class="flex gap-3 px-4 py-3 transition-colors hover:bg-muted/50"
-            @click="open = false"
+            :class="!activity.is_read && 'bg-muted/30'"
+            @click="onActivityClick(activity)"
           >
             <div class="flex size-6 shrink-0 items-center justify-center rounded-full border bg-background">
               <component
@@ -158,13 +201,19 @@ watch(open, (isOpen) => {
               />
             </div>
             <div class="min-w-0 flex-1">
-              <p class="text-xs">
+              <p class="text-xs" :class="!activity.is_read && 'font-medium'">
                 <span class="font-medium text-foreground">{{ activity.first_name }} {{ activity.last_name }}</span>
-                <span class="text-muted-foreground">
+                <span :class="activity.is_read ? 'text-muted-foreground' : 'text-foreground'">
                   {{ ' ' }}{{ ACTIVITY_TYPE_LABELS[activity.activity_type] || activity.activity_type }}
                   <template v-if="activity.field_name">
                     <span class="font-medium text-foreground">{{ activity.field_name }}</span>
                   </template>
+                </span>
+                <span
+                  v-if="activity.event_count > 1"
+                  class="text-muted-foreground"
+                >
+                  {{ ' ' }}· {{ activity.event_count }} updates
                 </span>
               </p>
               <div class="mt-0.5 flex items-center gap-1.5">
@@ -176,9 +225,14 @@ watch(open, (isOpen) => {
                 </span>
               </div>
               <p class="mt-0.5 text-[11px] text-muted-foreground/60">
-                {{ formatRelativeDate(activity.created_at) }}
+                {{ formatRelativeDate(activity.updated_at || activity.created_at) }}
               </p>
             </div>
+            <span
+              v-if="!activity.is_read"
+              class="mt-1 size-2 shrink-0 rounded-full bg-amber-500"
+              aria-hidden="true"
+            />
           </NuxtLink>
         </div>
         <!-- Loading more indicator -->

@@ -26,9 +26,13 @@ type Querier interface {
 	// ==================== CYCLE TASKS ====================
 	AddTasksToCycle(ctx context.Context, arg AddTasksToCycleParams) error
 	CheckCycleOverlap(ctx context.Context, arg CheckCycleOverlapParams) (int32, error)
+	// Merge a new activity into an existing open notification: bump the count,
+	// update the latest actor/type, and re-surface as unread.
+	CoalesceNotification(ctx context.Context, arg CoalesceNotificationParams) error
 	CountActiveRefreshTokens(ctx context.Context) (int64, error)
 	CountAllProjects(ctx context.Context) (int64, error)
 	CountAllProjectsFiltered(ctx context.Context, search pgtype.Text) (int64, error)
+	CountNotifications(ctx context.Context, recipientID uuid.UUID) (int64, error)
 	CountProjectCycles(ctx context.Context, projectID uuid.UUID) (int64, error)
 	CountProjectMembers(ctx context.Context, projectID uuid.UUID) (int64, error)
 	CountProjectModules(ctx context.Context, arg CountProjectModulesParams) (int64, error)
@@ -37,8 +41,8 @@ type Querier interface {
 	CountTaskComments(ctx context.Context, taskID uuid.UUID) (int64, error)
 	CountTasksByAssignee(ctx context.Context, userID uuid.UUID) (int64, error)
 	CountTasksInState(ctx context.Context, stateID uuid.UUID) (int64, error)
+	CountUnreadNotifications(ctx context.Context, recipientID uuid.UUID) (int64, error)
 	CountUserActivity(ctx context.Context, actorID uuid.UUID) (int64, error)
-	CountUserNotifications(ctx context.Context, actorID uuid.UUID) (int64, error)
 	CountUserProjects(ctx context.Context, userID uuid.UUID) (int64, error)
 	CountUserProjectsFiltered(ctx context.Context, arg CountUserProjectsFilteredParams) (int64, error)
 	CountUsers(ctx context.Context) (int64, error)
@@ -54,6 +58,7 @@ type Querier interface {
 	// caller doesn't supply one, so the SQL can keep the arg non-nullable. This
 	// sidesteps sqlc's handling of nullable enum args under a string override.
 	CreateModule(ctx context.Context, arg CreateModuleParams) (Module, error)
+	CreateNotification(ctx context.Context, arg CreateNotificationParams) (Notification, error)
 	CreatePersonalAccessToken(ctx context.Context, arg CreatePersonalAccessTokenParams) (PersonalAccessToken, error)
 	// ==================== PROJECTS ====================
 	CreateProject(ctx context.Context, arg CreateProjectParams) (Project, error)
@@ -93,6 +98,11 @@ type Querier interface {
 	GetModuleMetrics(ctx context.Context, moduleID uuid.UUID) (GetModuleMetricsRow, error)
 	GetModuleStateBreakdown(ctx context.Context, moduleID uuid.UUID) ([]GetModuleStateBreakdownRow, error)
 	GetNextTaskNumber(ctx context.Context, projectID uuid.UUID) (int32, error)
+	// ==================== NOTIFICATIONS ====================
+	// Most recent notification for a (recipient, task) pair still within the
+	// coalescing window. Used to merge new activity into an existing notification
+	// instead of creating a new one (max 1 notification per task per window).
+	GetOpenNotification(ctx context.Context, arg GetOpenNotificationParams) (Notification, error)
 	GetPersonalAccessTokenByHash(ctx context.Context, tokenHash string) (GetPersonalAccessTokenByHashRow, error)
 	GetProjectByID(ctx context.Context, id uuid.UUID) (Project, error)
 	GetProjectByKey(ctx context.Context, projectKey string) (Project, error)
@@ -146,6 +156,8 @@ type Querier interface {
 	// Used by the duplicate dialog to pre-populate the issues checklist.
 	ListModuleTaskIDs(ctx context.Context, moduleID uuid.UUID) ([]uuid.UUID, error)
 	ListModuleTasks(ctx context.Context, arg ListModuleTasksParams) ([]ListModuleTasksRow, error)
+	// A recipient's notifications, newest first, with task/project/actor display fields.
+	ListNotifications(ctx context.Context, arg ListNotificationsParams) ([]ListNotificationsRow, error)
 	ListPersonalAccessTokensByUser(ctx context.Context, userID uuid.UUID) ([]ListPersonalAccessTokensByUserRow, error)
 	ListProjectCycles(ctx context.Context, arg ListProjectCyclesParams) ([]ListProjectCyclesRow, error)
 	ListProjectCyclesAll(ctx context.Context, projectID uuid.UUID) ([]ListProjectCyclesAllRow, error)
@@ -164,6 +176,10 @@ type Querier interface {
 	ListTaskAssignees(ctx context.Context, taskID uuid.UUID) ([]ListTaskAssigneesRow, error)
 	ListTaskComments(ctx context.Context, taskID uuid.UUID) ([]ListTaskCommentsRow, error)
 	ListTaskLabels(ctx context.Context, taskID uuid.UUID) ([]ListTaskLabelsRow, error)
+	// ==================== TASK PARTICIPANTS ====================
+	// Everyone involved with a task: its creator, current assignees, and anyone who
+	// has commented (non-deleted comments). Used to fan out notifications.
+	ListTaskParticipants(ctx context.Context, taskID uuid.UUID) ([]uuid.UUID, error)
 	ListTaskTemplates(ctx context.Context, projectID uuid.UUID) ([]TaskTemplate, error)
 	ListTasksByAssignee(ctx context.Context, arg ListTasksByAssigneeParams) ([]ListTasksByAssigneeRow, error)
 	ListUnassignedProjectTasks(ctx context.Context, arg ListUnassignedProjectTasksParams) ([]ListUnassignedProjectTasksRow, error)
@@ -171,13 +187,11 @@ type Querier interface {
 	// ==================== USER ACTIVITY ====================
 	ListUserActivity(ctx context.Context, arg ListUserActivityParams) ([]ListUserActivityRow, error)
 	ListUserActivityDates(ctx context.Context, arg ListUserActivityDatesParams) ([]ListUserActivityDatesRow, error)
-	// ==================== USER NOTIFICATIONS ====================
-	// Returns activity on all tasks the user is involved with (creator, assignee, or commenter),
-	// excluding the user's own actions. Includes synthetic entries for imported comments without activity_log rows.
-	ListUserNotifications(ctx context.Context, arg ListUserNotificationsParams) ([]ListUserNotificationsRow, error)
 	ListUserProjects(ctx context.Context, arg ListUserProjectsParams) ([]ListUserProjectsRow, error)
 	ListUserProjectsFiltered(ctx context.Context, arg ListUserProjectsFilteredParams) ([]ListUserProjectsFilteredRow, error)
 	ListUsersPaginated(ctx context.Context, arg ListUsersPaginatedParams) ([]ListUsersPaginatedRow, error)
+	MarkAllNotificationsRead(ctx context.Context, recipientID uuid.UUID) error
+	MarkNotificationRead(ctx context.Context, arg MarkNotificationReadParams) error
 	ProjectKeyExists(ctx context.Context, projectKey string) (bool, error)
 	ProjectViewSlugExists(ctx context.Context, arg ProjectViewSlugExistsParams) (bool, error)
 	RemoveModuleMember(ctx context.Context, arg RemoveModuleMemberParams) error

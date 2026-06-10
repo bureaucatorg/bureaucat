@@ -370,6 +370,18 @@ type ModuleTask struct {
 	AddedBy  uuid.UUID          `json:"added_by"`
 }
 
+type Notification struct {
+	ID           uuid.UUID          `json:"id"`
+	RecipientID  uuid.UUID          `json:"recipient_id"`
+	TaskID       uuid.UUID          `json:"task_id"`
+	ActivityType string             `json:"activity_type"`
+	ActorID      uuid.UUID          `json:"actor_id"`
+	EventCount   int32              `json:"event_count"`
+	ReadAt       pgtype.Timestamptz `json:"read_at"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
+}
+
 type PersonalAccessToken struct {
 	ID         uuid.UUID          `json:"id"`
 	UserID     uuid.UUID          `json:"user_id"`

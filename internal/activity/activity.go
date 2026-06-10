@@ -34,14 +34,23 @@ const (
 	CommentDeleted  ActivityType = "comment_deleted"
 )
 
-// Service handles tamper-proof activity logging
-type Service struct {
-	store store.Querier
+// Notifier fans out a logged activity to per-user notifications. It is defined
+// here (rather than imported) so the activity package stays free of a dependency
+// on the notifications package, avoiding an import cycle.
+type Notifier interface {
+	EnqueueForActivity(ctx context.Context, taskID uuid.UUID, activityType string, actorID uuid.UUID)
 }
 
-// NewService creates a new activity service
-func NewService(queryer store.Querier) *Service {
-	return &Service{store: queryer}
+// Service handles tamper-proof activity logging
+type Service struct {
+	store    store.Querier
+	notifier Notifier
+}
+
+// NewService creates a new activity service. notifier may be nil, in which case
+// no notifications are generated.
+func NewService(queryer store.Querier, notifier Notifier) *Service {
+	return &Service{store: queryer, notifier: notifier}
 }
 
 // LogActivityParams contains parameters for logging an activity
@@ -109,6 +118,12 @@ func (s *Service) LogActivity(ctx context.Context, params LogActivityParams) err
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create activity log: %w", err)
+	}
+
+	// Fan out to per-user notifications (best-effort, off the request path).
+	// This single point covers every activity-logging call site.
+	if s.notifier != nil {
+		go s.notifier.EnqueueForActivity(context.Background(), params.TaskID, string(params.ActivityType), params.ActorID)
 	}
 
 	return nil

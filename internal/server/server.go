@@ -17,6 +17,7 @@ import (
 	"bereaucat/internal/activity"
 	"bereaucat/internal/auth"
 	"bereaucat/internal/handlers"
+	"bereaucat/internal/notifications"
 	"bereaucat/internal/notifier"
 	"bereaucat/internal/store"
 	"bereaucat/internal/uploads"
@@ -54,10 +55,12 @@ type Server struct {
 	patHandler      *handlers.PATHandler
 	feedbackHandler *handlers.FeedbackHandler
 	searchHandler   *handlers.SearchHandler
-	activityService     *activity.Service
-	notificationService *notifier.Service
-	uploadService       *uploads.Service
-	distFS              fs.FS
+	activityService      *activity.Service
+	notificationService  *notifier.Service
+	notificationsService *notifications.Service
+	notificationsHandler *handlers.NotificationHandler
+	uploadService        *uploads.Service
+	distFS               fs.FS
 }
 
 // New creates a new Server instance
@@ -125,8 +128,13 @@ func New(devMode bool, dbURL string, authConfig AuthConfig, distFS fs.FS) (*Serv
 		srv.uploadService = uploadService
 		srv.uploadHandler = handlers.NewUploadHandler(srv.store, uploadService)
 
+		// Initialize per-user in-app notifications service, then wire it into the
+		// activity service so every logged activity fans out to participants.
+		srv.notificationsService = notifications.NewService(srv.store)
+		srv.notificationsHandler = handlers.NewNotificationHandler(srv.store)
+
 		// Initialize activity service
-		srv.activityService = activity.NewService(srv.store)
+		srv.activityService = activity.NewService(srv.store, srv.notificationsService)
 
 		// Initialize notification service (loads providers dynamically from settings)
 		srv.notificationService = notifier.NewService(srv.store)
