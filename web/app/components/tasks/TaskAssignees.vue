@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Plus, X, Loader2, Search } from "lucide-vue-next";
+import { Plus, X, Loader2 } from "lucide-vue-next";
 import { toast } from "vue-sonner";
 import type { TaskAssignee, ProjectMember } from "~/types";
 
@@ -19,7 +19,6 @@ const { addAssignee, removeAssignee } = useTasks();
 
 const loading = ref<string | null>(null);
 const showPopover = ref(false);
-const searchQuery = ref("");
 
 // Members not already assigned
 const availableMembers = computed(() => {
@@ -27,64 +26,8 @@ const availableMembers = computed(() => {
   return props.members.filter((m) => !assignedIds.has(m.user_id));
 });
 
-const filteredMembers = computed(() => {
-  const q = searchQuery.value.toLowerCase().trim();
-  if (!q) return availableMembers.value;
-  return availableMembers.value.filter(
-    (m) =>
-      m.first_name.toLowerCase().includes(q) ||
-      m.last_name.toLowerCase().includes(q) ||
-      m.username.toLowerCase().includes(q)
-  );
-});
-
-// Keyboard navigation for the member list.
-const highlightedIndex = ref(0);
-const memberListRef = ref<HTMLElement | null>(null);
-
-watch(showPopover, (open) => {
-  if (!open) {
-    searchQuery.value = "";
-  } else {
-    highlightedIndex.value = 0;
-  }
-});
-
-// Reset/clamp the highlight as the filtered list changes (e.g. while typing).
-watch(filteredMembers, (list) => {
-  if (highlightedIndex.value >= list.length) {
-    highlightedIndex.value = Math.max(0, list.length - 1);
-  }
-});
-
-function scrollHighlightedIntoView() {
-  nextTick(() => {
-    const el = memberListRef.value?.querySelector<HTMLElement>(
-      `[data-index="${highlightedIndex.value}"]`
-    );
-    el?.scrollIntoView({ block: "nearest" });
-  });
-}
-
-function handleKeydown(event: KeyboardEvent) {
-  const count = filteredMembers.value.length;
-  if (event.key === "ArrowDown") {
-    event.preventDefault();
-    if (count === 0) return;
-    highlightedIndex.value = (highlightedIndex.value + 1) % count;
-    scrollHighlightedIntoView();
-  } else if (event.key === "ArrowUp") {
-    event.preventDefault();
-    if (count === 0) return;
-    highlightedIndex.value = (highlightedIndex.value - 1 + count) % count;
-    scrollHighlightedIntoView();
-  } else if (event.key === "Enter") {
-    event.preventDefault();
-    const member = filteredMembers.value[highlightedIndex.value];
-    if (member && loading.value !== member.user_id) handleAdd(member.user_id);
-  } else if (event.key === "Escape") {
-    showPopover.value = false;
-  }
+function memberSearchText(m: ProjectMember) {
+  return `${m.first_name} ${m.last_name} ${m.username}`;
 }
 
 async function handleAdd(userId: string) {
@@ -153,57 +96,32 @@ async function handleRemove(userId: string) {
       </div>
 
       <!-- Add button -->
-      <Popover v-if="isMember && availableMembers.length > 0" v-model:open="showPopover">
-        <PopoverTrigger as-child>
+      <SearchableSelect
+        v-if="isMember && availableMembers.length > 0"
+        v-model:open="showPopover"
+        :items="availableMembers"
+        :get-search-text="memberSearchText"
+        :get-key="(m) => m.user_id"
+        placeholder="Search members..."
+        empty-text="No members found"
+        @select="(m) => handleAdd(m.user_id)"
+      >
+        <template #trigger>
           <Button variant="outline" size="sm" class="h-8 gap-1.5">
             <Plus class="size-3.5" />
             Add
           </Button>
-        </PopoverTrigger>
-        <PopoverContent align="start" class="w-56 p-0">
-          <div class="border-b px-3 py-2">
-            <div class="relative">
-              <Search class="absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                v-model="searchQuery"
-                placeholder="Search members..."
-                class="h-8 pl-7 text-sm"
-                autofocus
-                @keydown="handleKeydown"
-              />
-            </div>
-          </div>
-          <div ref="memberListRef" class="max-h-48 overflow-y-auto">
-            <div class="py-1">
-              <button
-                v-for="(member, idx) in filteredMembers"
-                :key="member.user_id"
-                type="button"
-                :data-index="idx"
-                class="flex w-full items-center gap-2 px-3 py-1.5 text-sm disabled:opacity-50"
-                :class="idx === highlightedIndex ? 'bg-accent' : 'hover:bg-accent'"
-                :disabled="loading === member.user_id"
-                @click="handleAdd(member.user_id)"
-                @mouseenter="highlightedIndex = idx"
-              >
-                <Avatar class="size-6">
-                  <AvatarImage v-if="member.avatar_url" :src="member.avatar_url" />
-                  <AvatarFallback class="text-xs" :seed="member.user_id">
-                    {{ member.first_name[0] }}{{ member.last_name[0] }}
-                  </AvatarFallback>
-                </Avatar>
-                {{ member.first_name }} {{ member.last_name }}
-              </button>
-              <p
-                v-if="filteredMembers.length === 0"
-                class="px-3 py-2 text-center text-sm text-muted-foreground"
-              >
-                No members found
-              </p>
-            </div>
-          </div>
-        </PopoverContent>
-      </Popover>
+        </template>
+        <template #option="{ item: member }">
+          <Avatar class="size-6">
+            <AvatarImage v-if="member.avatar_url" :src="member.avatar_url" />
+            <AvatarFallback class="text-xs" :seed="member.user_id">
+              {{ member.first_name[0] }}{{ member.last_name[0] }}
+            </AvatarFallback>
+          </Avatar>
+          {{ member.first_name }} {{ member.last_name }}
+        </template>
+      </SearchableSelect>
 
       <!-- Empty state -->
       <span

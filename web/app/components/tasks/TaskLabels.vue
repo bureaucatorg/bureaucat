@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Plus, X, Loader2, Search } from "lucide-vue-next";
+import { Plus, X, Loader2 } from "lucide-vue-next";
 import { toast } from "vue-sonner";
 import type { TaskLabel, ProjectLabel } from "~/types";
 
@@ -19,22 +19,11 @@ const { addLabel, removeLabel } = useTasks();
 
 const loading = ref<string | null>(null);
 const showPopover = ref(false);
-const searchQuery = ref("");
 
 // Labels not already on the task
 const availableLabels = computed(() => {
   const usedIds = new Set(props.taskLabels.map((l) => l.id));
   return props.projectLabels.filter((l) => !usedIds.has(l.id));
-});
-
-const filteredLabels = computed(() => {
-  const q = searchQuery.value.toLowerCase().trim();
-  if (!q) return availableLabels.value;
-  return availableLabels.value.filter((l) => l.name.toLowerCase().includes(q));
-});
-
-watch(showPopover, (open) => {
-  if (!open) searchQuery.value = "";
 });
 
 async function handleAdd(labelId: string) {
@@ -97,50 +86,31 @@ async function handleRemove(labelId: string) {
       </div>
 
       <!-- Add button -->
-      <Popover v-if="isMember && availableLabels.length > 0" v-model:open="showPopover">
-        <PopoverTrigger as-child>
+      <SearchableSelect
+        v-if="isMember && availableLabels.length > 0"
+        v-model:open="showPopover"
+        :items="availableLabels"
+        :get-search-text="(l) => l.name"
+        :get-key="(l) => l.id"
+        placeholder="Search labels..."
+        empty-text="No labels found"
+        content-class="w-48"
+        @select="(l) => handleAdd(l.id)"
+      >
+        <template #trigger>
           <Button variant="outline" size="sm" class="h-7 gap-1.5">
             <Plus class="size-3.5" />
             Add
           </Button>
-        </PopoverTrigger>
-        <PopoverContent align="start" class="w-48 p-0">
-          <div class="border-b px-3 py-2">
-            <div class="relative">
-              <Search class="absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                v-model="searchQuery"
-                placeholder="Search labels..."
-                class="h-8 pl-7 text-sm"
-              />
-            </div>
-          </div>
-          <div class="max-h-48 overflow-y-auto">
-            <div class="py-1">
-              <button
-                v-for="label in filteredLabels"
-                :key="label.id"
-                type="button"
-                class="flex w-full items-center gap-2 px-3 py-1.5 text-sm hover:bg-accent disabled:opacity-50"
-                :disabled="loading === label.id"
-                @click="handleAdd(label.id)"
-              >
-                <div
-                  class="size-3 shrink-0 rounded-full"
-                  :style="{ backgroundColor: label.color }"
-                />
-                {{ label.name }}
-              </button>
-              <p
-                v-if="filteredLabels.length === 0"
-                class="px-3 py-2 text-center text-sm text-muted-foreground"
-              >
-                No labels found
-              </p>
-            </div>
-          </div>
-        </PopoverContent>
-      </Popover>
+        </template>
+        <template #option="{ item: label }">
+          <div
+            class="size-3 shrink-0 rounded-full"
+            :style="{ backgroundColor: label.color }"
+          />
+          {{ label.name }}
+        </template>
+      </SearchableSelect>
 
       <!-- Empty state -->
       <span

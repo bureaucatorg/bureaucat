@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Loader2, Plus, X, Search, Check, ChevronsUpDown } from "lucide-vue-next";
+import { Loader2, Plus, X, Check, ChevronsUpDown } from "lucide-vue-next";
 import { toast } from "vue-sonner";
 import type {
   Project,
@@ -44,7 +44,6 @@ const { listStates, listLabels, listMembers, listTemplates } = useProjects();
 const selectable = computed(() => Array.isArray(props.projects));
 const selectedProjectKey = ref("");
 const showProjectPopover = ref(false);
-const projectSearch = ref("");
 const metaLoading = ref(false);
 
 // Metadata fetched on-demand when a project is chosen (selector mode only).
@@ -67,65 +66,8 @@ const selectedProject = computed(
   () => props.projects?.find((p) => p.project_key === selectedProjectKey.value) ?? null
 );
 
-const filteredProjects = computed(() => {
-  const list = props.projects ?? [];
-  const q = projectSearch.value.toLowerCase().trim();
-  if (!q) return list;
-  return list.filter(
-    (p) =>
-      p.name.toLowerCase().includes(q) ||
-      p.project_key.toLowerCase().includes(q)
-  );
-});
-
-// Keyboard navigation for the project list.
-const highlightedProjectIndex = ref(0);
-const projectListRef = ref<HTMLElement | null>(null);
-
-watch(showProjectPopover, (isOpen) => {
-  if (!isOpen) {
-    projectSearch.value = "";
-  } else {
-    highlightedProjectIndex.value = 0;
-  }
-});
-
-// Reset/clamp the highlight as the filtered list changes (e.g. while typing).
-watch(filteredProjects, (list) => {
-  if (highlightedProjectIndex.value >= list.length) {
-    highlightedProjectIndex.value = Math.max(0, list.length - 1);
-  }
-});
-
-function scrollHighlightedProjectIntoView() {
-  nextTick(() => {
-    const el = projectListRef.value?.querySelector<HTMLElement>(
-      `[data-index="${highlightedProjectIndex.value}"]`
-    );
-    el?.scrollIntoView({ block: "nearest" });
-  });
-}
-
-function handleProjectKeydown(event: KeyboardEvent) {
-  const count = filteredProjects.value.length;
-  if (event.key === "ArrowDown") {
-    event.preventDefault();
-    if (count === 0) return;
-    highlightedProjectIndex.value = (highlightedProjectIndex.value + 1) % count;
-    scrollHighlightedProjectIntoView();
-  } else if (event.key === "ArrowUp") {
-    event.preventDefault();
-    if (count === 0) return;
-    highlightedProjectIndex.value =
-      (highlightedProjectIndex.value - 1 + count) % count;
-    scrollHighlightedProjectIntoView();
-  } else if (event.key === "Enter") {
-    event.preventDefault();
-    const project = filteredProjects.value[highlightedProjectIndex.value];
-    if (project) selectProject(project.project_key);
-  } else if (event.key === "Escape") {
-    showProjectPopover.value = false;
-  }
+function projectSearchText(p: Project) {
+  return `${p.name} ${p.project_key}`;
 }
 
 const loading = ref(false);
@@ -243,8 +185,6 @@ const priorities = [
   { value: 4, label: "Urgent" },
 ];
 
-const assigneeSearch = ref("");
-const labelSearch = ref("");
 const showAssigneePopover = ref(false);
 const showLabelPopover = ref(false);
 
@@ -252,44 +192,30 @@ const selectedAssignees = computed(() =>
   effMembers.value.filter((m) => form.value.assignees.includes(m.user_id))
 );
 
-const filteredAssigneeOptions = computed(() => {
+// Members not yet picked — the pool offered in the assignee popover.
+const availableAssignees = computed(() => {
   const selected = new Set(form.value.assignees);
-  const available = effMembers.value.filter((m) => !selected.has(m.user_id));
-  const q = assigneeSearch.value.toLowerCase().trim();
-  if (!q) return available;
-  return available.filter(
-    (m) =>
-      m.first_name.toLowerCase().includes(q) ||
-      m.last_name.toLowerCase().includes(q) ||
-      m.username.toLowerCase().includes(q)
-  );
+  return effMembers.value.filter((m) => !selected.has(m.user_id));
 });
 
 const selectedLabels = computed(() =>
   effLabels.value.filter((l) => form.value.labels.includes(l.id))
 );
 
-const filteredLabelOptions = computed(() => {
+// Labels not yet picked — the pool offered in the label popover.
+const availableLabels = computed(() => {
   const selected = new Set(form.value.labels);
-  const available = effLabels.value.filter((l) => !selected.has(l.id));
-  const q = labelSearch.value.toLowerCase().trim();
-  if (!q) return available;
-  return available.filter((l) => l.name.toLowerCase().includes(q));
+  return effLabels.value.filter((l) => !selected.has(l.id));
 });
 
-watch(showAssigneePopover, (open) => {
-  if (!open) assigneeSearch.value = "";
-});
-
-watch(showLabelPopover, (open) => {
-  if (!open) labelSearch.value = "";
-});
+function memberSearchText(m: ProjectMember) {
+  return `${m.first_name} ${m.last_name} ${m.username}`;
+}
 
 function addAssignee(userId: string) {
   if (!form.value.assignees.includes(userId)) {
     form.value.assignees.push(userId);
   }
-  showAssigneePopover.value = false;
 }
 
 function removeAssignee(userId: string) {
@@ -300,7 +226,6 @@ function addLabel(labelId: string) {
   if (!form.value.labels.includes(labelId)) {
     form.value.labels.push(labelId);
   }
-  showLabelPopover.value = false;
 }
 
 function removeLabel(labelId: string) {
@@ -333,8 +258,17 @@ function removeLabel(labelId: string) {
         <!-- Project selector (selector mode only) -->
         <div v-if="selectable" class="space-y-2">
           <Label>Project</Label>
-          <Popover v-model:open="showProjectPopover">
-            <PopoverTrigger as-child>
+          <SearchableSelect
+            v-model:open="showProjectPopover"
+            :items="props.projects ?? []"
+            :get-search-text="projectSearchText"
+            :get-key="(p) => p.id"
+            placeholder="Search projects..."
+            empty-text="No projects found"
+            content-class="w-[var(--reka-popover-trigger-width)]"
+            @select="(p) => selectProject(p.project_key)"
+          >
+            <template #trigger>
               <Button
                 type="button"
                 variant="outline"
@@ -353,49 +287,18 @@ function removeLabel(labelId: string) {
                 </span>
                 <ChevronsUpDown class="size-4 shrink-0 opacity-50" />
               </Button>
-            </PopoverTrigger>
-            <PopoverContent align="start" class="w-[var(--reka-popover-trigger-width)] p-0">
-              <div class="border-b px-3 py-2">
-                <div class="relative">
-                  <Search class="absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    v-model="projectSearch"
-                    placeholder="Search projects..."
-                    class="h-8 pl-7 text-sm"
-                    autofocus
-                    @keydown="handleProjectKeydown"
-                  />
-                </div>
-              </div>
-              <div ref="projectListRef" class="max-h-60 overflow-y-auto p-1">
-                <button
-                  v-for="(project, idx) in filteredProjects"
-                  :key="project.id"
-                  type="button"
-                  :data-index="idx"
-                  class="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm"
-                  :class="idx === highlightedProjectIndex ? 'bg-accent' : 'hover:bg-accent'"
-                  @click="selectProject(project.project_key)"
-                  @mouseenter="highlightedProjectIndex = idx"
-                >
-                  <Check
-                    class="size-3.5 shrink-0 text-primary"
-                    :class="selectedProjectKey === project.project_key ? 'opacity-100' : 'opacity-0'"
-                  />
-                  <span class="min-w-0 flex-1 truncate">{{ project.name }}</span>
-                  <span class="shrink-0 rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
-                    {{ project.project_key }}
-                  </span>
-                </button>
-                <p
-                  v-if="filteredProjects.length === 0"
-                  class="px-3 py-6 text-center text-sm text-muted-foreground"
-                >
-                  No projects found
-                </p>
-              </div>
-            </PopoverContent>
-          </Popover>
+            </template>
+            <template #option="{ item: project }">
+              <Check
+                class="size-3.5 shrink-0 text-primary"
+                :class="selectedProjectKey === project.project_key ? 'opacity-100' : 'opacity-0'"
+              />
+              <span class="min-w-0 flex-1 truncate">{{ project.name }}</span>
+              <span class="shrink-0 rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
+                {{ project.project_key }}
+              </span>
+            </template>
+          </SearchableSelect>
         </div>
 
         <!-- Loading project metadata -->
@@ -480,50 +383,30 @@ function removeLabel(labelId: string) {
                   <X class="size-3" />
                 </button>
               </div>
-              <Popover v-model:open="showAssigneePopover">
-                <PopoverTrigger as-child>
-                  <Button type="button" variant="outline" size="sm" class="h-7 gap-1.5" :disabled="loading || filteredAssigneeOptions.length === 0 && selectedAssignees.length === effMembers.length">
+              <SearchableSelect
+                v-model:open="showAssigneePopover"
+                :items="availableAssignees"
+                :get-search-text="memberSearchText"
+                :get-key="(m) => m.user_id"
+                placeholder="Search members..."
+                empty-text="No members found"
+                @select="(m) => addAssignee(m.user_id)"
+              >
+                <template #trigger>
+                  <Button type="button" variant="outline" size="sm" class="h-7 gap-1.5" :disabled="loading || availableAssignees.length === 0">
                     <Plus class="size-3.5" />
                     Add
                   </Button>
-                </PopoverTrigger>
-                <PopoverContent align="start" class="w-56 p-0">
-                  <div class="border-b px-3 py-2">
-                    <div class="relative">
-                      <Search class="absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-                      <Input
-                        v-model="assigneeSearch"
-                        placeholder="Search members..."
-                        class="h-8 pl-7 text-sm"
-                      />
-                    </div>
-                  </div>
-                  <div class="max-h-48 overflow-y-auto">
-                    <div class="py-1">
-                      <button
-                        v-for="member in filteredAssigneeOptions"
-                        :key="member.user_id"
-                        type="button"
-                        class="flex w-full items-center gap-2 px-3 py-1.5 text-sm hover:bg-accent"
-                        @click="addAssignee(member.user_id)"
-                      >
-                        <Avatar class="size-6">
-                          <AvatarFallback class="text-xs" :seed="member.user_id">
-                            {{ member.first_name[0] }}{{ member.last_name[0] }}
-                          </AvatarFallback>
-                        </Avatar>
-                        {{ member.first_name }} {{ member.last_name }}
-                      </button>
-                      <p
-                        v-if="filteredAssigneeOptions.length === 0"
-                        class="px-3 py-2 text-center text-sm text-muted-foreground"
-                      >
-                        No members found
-                      </p>
-                    </div>
-                  </div>
-                </PopoverContent>
-              </Popover>
+                </template>
+                <template #option="{ item: member }">
+                  <Avatar class="size-6">
+                    <AvatarFallback class="text-xs" :seed="member.user_id">
+                      {{ member.first_name[0] }}{{ member.last_name[0] }}
+                    </AvatarFallback>
+                  </Avatar>
+                  {{ member.first_name }} {{ member.last_name }}
+                </template>
+              </SearchableSelect>
             </div>
           </div>
 
@@ -550,49 +433,30 @@ function removeLabel(labelId: string) {
                   <X class="size-3" />
                 </button>
               </div>
-              <Popover v-model:open="showLabelPopover">
-                <PopoverTrigger as-child>
-                  <Button type="button" variant="outline" size="sm" class="h-7 gap-1.5" :disabled="loading || filteredLabelOptions.length === 0 && selectedLabels.length === effLabels.length">
+              <SearchableSelect
+                v-model:open="showLabelPopover"
+                :items="availableLabels"
+                :get-search-text="(l) => l.name"
+                :get-key="(l) => l.id"
+                placeholder="Search labels..."
+                empty-text="No labels found"
+                content-class="w-48"
+                @select="(l) => addLabel(l.id)"
+              >
+                <template #trigger>
+                  <Button type="button" variant="outline" size="sm" class="h-7 gap-1.5" :disabled="loading || availableLabels.length === 0">
                     <Plus class="size-3.5" />
                     Add
                   </Button>
-                </PopoverTrigger>
-                <PopoverContent align="start" class="w-48 p-0">
-                  <div class="border-b px-3 py-2">
-                    <div class="relative">
-                      <Search class="absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-                      <Input
-                        v-model="labelSearch"
-                        placeholder="Search labels..."
-                        class="h-8 pl-7 text-sm"
-                      />
-                    </div>
-                  </div>
-                  <div class="max-h-48 overflow-y-auto">
-                    <div class="py-1">
-                      <button
-                        v-for="label in filteredLabelOptions"
-                        :key="label.id"
-                        type="button"
-                        class="flex w-full items-center gap-2 px-3 py-1.5 text-sm hover:bg-accent"
-                        @click="addLabel(label.id)"
-                      >
-                        <div
-                          class="size-3 shrink-0 rounded-full"
-                          :style="{ backgroundColor: label.color }"
-                        />
-                        {{ label.name }}
-                      </button>
-                      <p
-                        v-if="filteredLabelOptions.length === 0"
-                        class="px-3 py-2 text-center text-sm text-muted-foreground"
-                      >
-                        No labels found
-                      </p>
-                    </div>
-                  </div>
-                </PopoverContent>
-              </Popover>
+                </template>
+                <template #option="{ item: label }">
+                  <div
+                    class="size-3 shrink-0 rounded-full"
+                    :style="{ backgroundColor: label.color }"
+                  />
+                  {{ label.name }}
+                </template>
+              </SearchableSelect>
             </div>
           </div>
         </template>
