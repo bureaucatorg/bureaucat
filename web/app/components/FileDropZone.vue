@@ -45,11 +45,22 @@ function handleDragOver(e: DragEvent) {
   e.preventDefault();
 }
 
+function resetDrag() {
+  dragCounter = 0;
+  dragging.value = false;
+}
+
+// Capture-phase reset: runs before any child (e.g. the editor) handles the
+// drop, so the overlay clears even when the child stops event propagation.
+function handleDropCapture() {
+  if (props.disabled) return;
+  resetDrag();
+}
+
 function handleDrop(e: DragEvent) {
   if (props.disabled) return;
   e.preventDefault();
-  dragCounter = 0;
-  dragging.value = false;
+  resetDrag();
 
   const files = Array.from(e.dataTransfer?.files || []);
   if (files.length > 0) {
@@ -80,6 +91,7 @@ defineExpose({ openFilePicker });
     @dragenter="handleDragEnter"
     @dragleave="handleDragLeave"
     @dragover="handleDragOver"
+    @drop.capture="handleDropCapture"
     @drop="handleDrop"
   >
     <slot />

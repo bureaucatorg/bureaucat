@@ -186,6 +186,9 @@ const editor = useEditor({
     handleDrop: (_view, event, _slice, moved) => {
       if (moved || !event.dataTransfer?.files.length) return false;
       event.preventDefault();
+      // Stop the native event from bubbling to a wrapping FileDropZone, which
+      // would otherwise emit the same files a second time (double upload).
+      event.stopPropagation();
       emit("files-dropped", Array.from(event.dataTransfer.files));
       return true;
     },
@@ -193,6 +196,8 @@ const editor = useEditor({
       const files = Array.from(event.clipboardData?.files || []);
       if (files.length > 0) {
         event.preventDefault();
+        // Stop bubbling to a wrapping paste handler that would re-emit the files.
+        event.stopPropagation();
         emit("files-dropped", files);
         return true;
       }
