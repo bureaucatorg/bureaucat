@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { FileText, Image as ImageIcon, X, Loader2, Download } from "lucide-vue-next";
+import { FileText, X, Loader2, Download } from "lucide-vue-next";
 import type { Attachment } from "~/composables/useAttachments";
 
 const props = withDefaults(
@@ -26,6 +26,19 @@ function isImage(mimeType: string): boolean {
   return mimeType.startsWith("image/");
 }
 
+const imageAttachments = computed(() =>
+  props.attachments.filter((a) => isImage(a.mime_type))
+);
+const fileAttachments = computed(() =>
+  props.attachments.filter((a) => !isImage(a.mime_type))
+);
+
+function openLightbox(attachment: Attachment) {
+  lightboxSrc.value = attachment.url;
+  lightboxAlt.value = attachment.filename;
+  lightboxOpen.value = true;
+}
+
 function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
@@ -34,9 +47,7 @@ function formatSize(bytes: number): string {
 
 function handleClick(attachment: Attachment) {
   if (isImage(attachment.mime_type)) {
-    lightboxSrc.value = attachment.url;
-    lightboxAlt.value = attachment.filename;
-    lightboxOpen.value = true;
+    openLightbox(attachment);
   } else {
     window.open(attachment.url, "_blank");
   }
@@ -49,9 +60,61 @@ function handleClick(attachment: Attachment) {
     <span class="text-xs text-muted-foreground">Loading attachments...</span>
   </div>
 
-  <div v-else-if="attachments.length > 0" class="flex flex-wrap gap-1.5 pt-2">
+  <template v-else-if="attachments.length > 0">
+  <!-- Image / SVG previews -->
+  <div v-if="imageAttachments.length > 0" class="flex flex-wrap gap-2 pt-2">
     <div
-      v-for="attachment in attachments"
+      v-for="attachment in imageAttachments"
+      :key="attachment.id"
+      class="group relative overflow-hidden rounded-md border bg-muted/30"
+    >
+      <button
+        type="button"
+        class="block"
+        :aria-label="`View ${attachment.filename}`"
+        @click="openLightbox(attachment)"
+      >
+        <img
+          :src="attachment.url"
+          :alt="attachment.filename"
+          loading="lazy"
+          class="max-h-48 max-w-[16rem] object-contain transition-opacity group-hover:opacity-90"
+        />
+      </button>
+
+      <!-- Hover actions -->
+      <div class="absolute right-1 top-1 flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+        <a
+          :href="attachment.url"
+          :download="attachment.filename"
+          class="rounded-md bg-background/80 p-1 text-muted-foreground shadow-sm backdrop-blur hover:text-foreground"
+          aria-label="Download"
+          @click.stop
+        >
+          <Download class="size-3.5" />
+        </a>
+        <button
+          v-if="canDelete"
+          type="button"
+          class="rounded-md bg-background/80 p-1 text-muted-foreground shadow-sm backdrop-blur hover:bg-destructive/10 hover:text-destructive"
+          aria-label="Remove attachment"
+          @click.stop="emit('delete', attachment.id)"
+        >
+          <X class="size-3.5" />
+        </button>
+      </div>
+
+      <!-- Filename caption -->
+      <div class="pointer-events-none absolute inset-x-0 bottom-0 truncate bg-gradient-to-t from-black/60 to-transparent px-2 py-1 text-xs text-white">
+        {{ attachment.filename }}
+      </div>
+    </div>
+  </div>
+
+  <!-- Non-image files -->
+  <div v-if="fileAttachments.length > 0" class="flex flex-wrap gap-1.5 pt-2">
+    <div
+      v-for="attachment in fileAttachments"
       :key="attachment.id"
       class="group flex items-center gap-1.5 rounded-full border bg-muted/30 py-1 pl-2 pr-1.5 text-xs transition-colors hover:bg-muted/60"
     >
@@ -60,8 +123,7 @@ function handleClick(attachment: Attachment) {
         class="flex items-center gap-1.5"
         @click="handleClick(attachment)"
       >
-        <ImageIcon v-if="isImage(attachment.mime_type)" class="size-3.5 shrink-0 text-muted-foreground" />
-        <FileText v-else class="size-3.5 shrink-0 text-muted-foreground" />
+        <FileText class="size-3.5 shrink-0 text-muted-foreground" />
         <span class="max-w-[150px] truncate">{{ attachment.filename }}</span>
         <span class="text-muted-foreground/60">{{ formatSize(attachment.size_bytes) }}</span>
       </button>
@@ -87,6 +149,7 @@ function handleClick(attachment: Attachment) {
       </button>
     </div>
   </div>
+  </template>
 
   <ImageLightbox v-model:open="lightboxOpen" :src="lightboxSrc" :alt="lightboxAlt" />
 </template>
