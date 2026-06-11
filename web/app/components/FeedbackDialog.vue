@@ -135,6 +135,16 @@ async function submit() {
         <p class="text-right text-xs text-muted-foreground">
           {{ message.length }} / 5000
         </p>
+        <p class="text-xs text-muted-foreground">
+          Or you can
+          <a
+            href="https://github.com/bureaucatorg/bureaucat/issues/new"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="font-medium underline underline-offset-2 hover:text-foreground"
+          >
+            open an issue on GitHub</a>.
+        </p>
       </div>
 
       <DialogFooter>
