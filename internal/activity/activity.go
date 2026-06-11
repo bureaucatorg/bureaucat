@@ -36,9 +36,11 @@ const (
 
 // Notifier fans out a logged activity to per-user notifications. It is defined
 // here (rather than imported) so the activity package stays free of a dependency
-// on the notifications package, avoiding an import cycle.
+// on the notifications package, avoiding an import cycle. commentID is the comment
+// the activity relates to (nil for non-comment activity), used to deep-link the
+// notification to the highlighted comment.
 type Notifier interface {
-	EnqueueForActivity(ctx context.Context, taskID uuid.UUID, activityType string, actorID uuid.UUID)
+	EnqueueForActivity(ctx context.Context, taskID uuid.UUID, activityType string, actorID uuid.UUID, commentID *uuid.UUID)
 }
 
 // Service handles tamper-proof activity logging
@@ -123,9 +125,33 @@ func (s *Service) LogActivity(ctx context.Context, params LogActivityParams) err
 	// Fan out to per-user notifications (best-effort, off the request path).
 	// This single point covers every activity-logging call site.
 	if s.notifier != nil {
-		go s.notifier.EnqueueForActivity(context.Background(), params.TaskID, string(params.ActivityType), params.ActorID)
+		commentID := commentIDFromParams(params)
+		go s.notifier.EnqueueForActivity(context.Background(), params.TaskID, string(params.ActivityType), params.ActorID, commentID)
 	}
 
+	return nil
+}
+
+// commentIDFromParams extracts the comment a comment-activity refers to, so the
+// notification can deep-link to it. Returns nil for non-comment activity and for
+// deletions (the comment no longer exists to scroll to).
+func commentIDFromParams(p LogActivityParams) *uuid.UUID {
+	if p.ActivityType != CommentCreated && p.ActivityType != CommentUpdated {
+		return nil
+	}
+	for _, v := range []interface{}{p.NewValue, p.OldValue} {
+		m, ok := v.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		idStr, ok := m["comment_id"].(string)
+		if !ok {
+			continue
+		}
+		if id, err := uuid.Parse(idStr); err == nil {
+			return &id
+		}
+	}
 	return nil
 }
 

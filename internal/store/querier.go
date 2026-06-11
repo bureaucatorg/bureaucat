@@ -27,7 +27,7 @@ type Querier interface {
 	AddTasksToCycle(ctx context.Context, arg AddTasksToCycleParams) error
 	CheckCycleOverlap(ctx context.Context, arg CheckCycleOverlapParams) (int32, error)
 	// Merge a new activity into an existing open notification: bump the count,
-	// update the latest actor/type, and re-surface as unread.
+	// update the latest actor/type/comment, and re-surface as unread.
 	CoalesceNotification(ctx context.Context, arg CoalesceNotificationParams) error
 	CountActiveRefreshTokens(ctx context.Context) (int64, error)
 	CountAllProjects(ctx context.Context) (int64, error)
@@ -58,7 +58,7 @@ type Querier interface {
 	// caller doesn't supply one, so the SQL can keep the arg non-nullable. This
 	// sidesteps sqlc's handling of nullable enum args under a string override.
 	CreateModule(ctx context.Context, arg CreateModuleParams) (Module, error)
-	CreateNotification(ctx context.Context, arg CreateNotificationParams) (Notification, error)
+	CreateNotification(ctx context.Context, arg CreateNotificationParams) (CreateNotificationRow, error)
 	CreatePersonalAccessToken(ctx context.Context, arg CreatePersonalAccessTokenParams) (PersonalAccessToken, error)
 	// ==================== PROJECTS ====================
 	CreateProject(ctx context.Context, arg CreateProjectParams) (Project, error)
@@ -102,7 +102,7 @@ type Querier interface {
 	// Most recent notification for a (recipient, task) pair still within the
 	// coalescing window. Used to merge new activity into an existing notification
 	// instead of creating a new one (max 1 notification per task per window).
-	GetOpenNotification(ctx context.Context, arg GetOpenNotificationParams) (Notification, error)
+	GetOpenNotification(ctx context.Context, arg GetOpenNotificationParams) (GetOpenNotificationRow, error)
 	GetPersonalAccessTokenByHash(ctx context.Context, tokenHash string) (GetPersonalAccessTokenByHashRow, error)
 	GetProjectByID(ctx context.Context, id uuid.UUID) (Project, error)
 	GetProjectByKey(ctx context.Context, projectKey string) (Project, error)

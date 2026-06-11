@@ -380,6 +380,7 @@ type Notification struct {
 	ReadAt       pgtype.Timestamptz `json:"read_at"`
 	CreatedAt    pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
+	CommentID    pgtype.UUID        `json:"comment_id"`
 }
 
 type PersonalAccessToken struct {

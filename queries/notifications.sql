@@ -13,24 +13,25 @@ ORDER BY created_at DESC
 LIMIT 1;
 
 -- name: CreateNotification :one
-INSERT INTO notifications (recipient_id, task_id, activity_type, actor_id)
-VALUES (sqlc.arg('recipient_id'), sqlc.arg('task_id'), sqlc.arg('activity_type'), sqlc.arg('actor_id'))
+INSERT INTO notifications (recipient_id, task_id, activity_type, actor_id, comment_id)
+VALUES (sqlc.arg('recipient_id'), sqlc.arg('task_id'), sqlc.arg('activity_type'), sqlc.arg('actor_id'), sqlc.narg('comment_id'))
 RETURNING id, recipient_id, task_id, activity_type, actor_id, event_count, read_at, created_at, updated_at;
 
 -- name: CoalesceNotification :exec
 -- Merge a new activity into an existing open notification: bump the count,
--- update the latest actor/type, and re-surface as unread.
+-- update the latest actor/type/comment, and re-surface as unread.
 UPDATE notifications
 SET event_count   = event_count + 1,
     activity_type = sqlc.arg('activity_type'),
     actor_id      = sqlc.arg('actor_id'),
+    comment_id    = sqlc.narg('comment_id'),
     read_at       = NULL,
     updated_at    = NOW()
 WHERE id = sqlc.arg('id');
 
 -- name: ListNotifications :many
 -- A recipient's notifications, newest first, with task/project/actor display fields.
-SELECT n.id, n.task_id, n.activity_type, n.actor_id, n.event_count, n.read_at, n.created_at, n.updated_at,
+SELECT n.id, n.task_id, n.activity_type, n.actor_id, n.comment_id, n.event_count, n.read_at, n.created_at, n.updated_at,
        u.username, u.first_name, u.last_name, u.avatar_url,
        t.task_number, t.title AS task_title, p.project_key
 FROM notifications n

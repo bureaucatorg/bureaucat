@@ -34,7 +34,7 @@ func NewService(s store.Querier) *Service {
 // participant of the task except the actor. It is best-effort: failures are
 // logged and never propagated, so notification delivery can never break the
 // underlying request.
-func (s *Service) EnqueueForActivity(ctx context.Context, taskID uuid.UUID, activityType string, actorID uuid.UUID) {
+func (s *Service) EnqueueForActivity(ctx context.Context, taskID uuid.UUID, activityType string, actorID uuid.UUID, commentID *uuid.UUID) {
 	participants, err := s.store.ListTaskParticipants(ctx, taskID)
 	if err != nil {
 		log.Printf("notifications: failed to list participants for task %s: %v", taskID, err)
@@ -42,6 +42,11 @@ func (s *Service) EnqueueForActivity(ctx context.Context, taskID uuid.UUID, acti
 	}
 
 	cutoff := pgtype.Timestamptz{Time: time.Now().Add(-s.window), Valid: true}
+
+	commentRef := pgtype.UUID{Valid: false}
+	if commentID != nil {
+		commentRef = pgtype.UUID{Bytes: *commentID, Valid: true}
+	}
 
 	for _, recipientID := range participants {
 		if recipientID == actorID {
@@ -59,6 +64,7 @@ func (s *Service) EnqueueForActivity(ctx context.Context, taskID uuid.UUID, acti
 				ID:           open.ID,
 				ActivityType: activityType,
 				ActorID:      actorID,
+				CommentID:    commentRef,
 			}); err != nil {
 				log.Printf("notifications: failed to coalesce notification %s: %v", open.ID, err)
 			}
@@ -71,6 +77,7 @@ func (s *Service) EnqueueForActivity(ctx context.Context, taskID uuid.UUID, acti
 			TaskID:       taskID,
 			ActivityType: activityType,
 			ActorID:      actorID,
+			CommentID:    commentRef,
 		}); err != nil {
 			log.Printf("notifications: failed to create notification for user %s on task %s: %v", recipientID, taskID, err)
 		}

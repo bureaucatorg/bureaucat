@@ -17,21 +17,28 @@ UPDATE notifications
 SET event_count   = event_count + 1,
     activity_type = $1,
     actor_id      = $2,
+    comment_id    = $3,
     read_at       = NULL,
     updated_at    = NOW()
-WHERE id = $3
+WHERE id = $4
 `
 
 type CoalesceNotificationParams struct {
-	ActivityType string    `json:"activity_type"`
-	ActorID      uuid.UUID `json:"actor_id"`
-	ID           uuid.UUID `json:"id"`
+	ActivityType string      `json:"activity_type"`
+	ActorID      uuid.UUID   `json:"actor_id"`
+	CommentID    pgtype.UUID `json:"comment_id"`
+	ID           uuid.UUID   `json:"id"`
 }
 
 // Merge a new activity into an existing open notification: bump the count,
-// update the latest actor/type, and re-surface as unread.
+// update the latest actor/type/comment, and re-surface as unread.
 func (q *Queries) CoalesceNotification(ctx context.Context, arg CoalesceNotificationParams) error {
-	_, err := q.db.Exec(ctx, coalesceNotification, arg.ActivityType, arg.ActorID, arg.ID)
+	_, err := q.db.Exec(ctx, coalesceNotification,
+		arg.ActivityType,
+		arg.ActorID,
+		arg.CommentID,
+		arg.ID,
+	)
 	return err
 }
 
@@ -67,26 +74,40 @@ func (q *Queries) CountUnreadNotifications(ctx context.Context, recipientID uuid
 }
 
 const createNotification = `-- name: CreateNotification :one
-INSERT INTO notifications (recipient_id, task_id, activity_type, actor_id)
-VALUES ($1, $2, $3, $4)
+INSERT INTO notifications (recipient_id, task_id, activity_type, actor_id, comment_id)
+VALUES ($1, $2, $3, $4, $5)
 RETURNING id, recipient_id, task_id, activity_type, actor_id, event_count, read_at, created_at, updated_at
 `
 
 type CreateNotificationParams struct {
-	RecipientID  uuid.UUID `json:"recipient_id"`
-	TaskID       uuid.UUID `json:"task_id"`
-	ActivityType string    `json:"activity_type"`
-	ActorID      uuid.UUID `json:"actor_id"`
+	RecipientID  uuid.UUID   `json:"recipient_id"`
+	TaskID       uuid.UUID   `json:"task_id"`
+	ActivityType string      `json:"activity_type"`
+	ActorID      uuid.UUID   `json:"actor_id"`
+	CommentID    pgtype.UUID `json:"comment_id"`
 }
 
-func (q *Queries) CreateNotification(ctx context.Context, arg CreateNotificationParams) (Notification, error) {
+type CreateNotificationRow struct {
+	ID           uuid.UUID          `json:"id"`
+	RecipientID  uuid.UUID          `json:"recipient_id"`
+	TaskID       uuid.UUID          `json:"task_id"`
+	ActivityType string             `json:"activity_type"`
+	ActorID      uuid.UUID          `json:"actor_id"`
+	EventCount   int32              `json:"event_count"`
+	ReadAt       pgtype.Timestamptz `json:"read_at"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
+}
+
+func (q *Queries) CreateNotification(ctx context.Context, arg CreateNotificationParams) (CreateNotificationRow, error) {
 	row := q.db.QueryRow(ctx, createNotification,
 		arg.RecipientID,
 		arg.TaskID,
 		arg.ActivityType,
 		arg.ActorID,
+		arg.CommentID,
 	)
-	var i Notification
+	var i CreateNotificationRow
 	err := row.Scan(
 		&i.ID,
 		&i.RecipientID,
@@ -118,13 +139,25 @@ type GetOpenNotificationParams struct {
 	Cutoff      pgtype.Timestamptz `json:"cutoff"`
 }
 
+type GetOpenNotificationRow struct {
+	ID           uuid.UUID          `json:"id"`
+	RecipientID  uuid.UUID          `json:"recipient_id"`
+	TaskID       uuid.UUID          `json:"task_id"`
+	ActivityType string             `json:"activity_type"`
+	ActorID      uuid.UUID          `json:"actor_id"`
+	EventCount   int32              `json:"event_count"`
+	ReadAt       pgtype.Timestamptz `json:"read_at"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
+}
+
 // ==================== NOTIFICATIONS ====================
 // Most recent notification for a (recipient, task) pair still within the
 // coalescing window. Used to merge new activity into an existing notification
 // instead of creating a new one (max 1 notification per task per window).
-func (q *Queries) GetOpenNotification(ctx context.Context, arg GetOpenNotificationParams) (Notification, error) {
+func (q *Queries) GetOpenNotification(ctx context.Context, arg GetOpenNotificationParams) (GetOpenNotificationRow, error) {
 	row := q.db.QueryRow(ctx, getOpenNotification, arg.RecipientID, arg.TaskID, arg.Cutoff)
-	var i Notification
+	var i GetOpenNotificationRow
 	err := row.Scan(
 		&i.ID,
 		&i.RecipientID,
@@ -140,7 +173,7 @@ func (q *Queries) GetOpenNotification(ctx context.Context, arg GetOpenNotificati
 }
 
 const listNotifications = `-- name: ListNotifications :many
-SELECT n.id, n.task_id, n.activity_type, n.actor_id, n.event_count, n.read_at, n.created_at, n.updated_at,
+SELECT n.id, n.task_id, n.activity_type, n.actor_id, n.comment_id, n.event_count, n.read_at, n.created_at, n.updated_at,
        u.username, u.first_name, u.last_name, u.avatar_url,
        t.task_number, t.title AS task_title, p.project_key
 FROM notifications n
@@ -164,6 +197,7 @@ type ListNotificationsRow struct {
 	TaskID       uuid.UUID          `json:"task_id"`
 	ActivityType string             `json:"activity_type"`
 	ActorID      uuid.UUID          `json:"actor_id"`
+	CommentID    pgtype.UUID        `json:"comment_id"`
 	EventCount   int32              `json:"event_count"`
 	ReadAt       pgtype.Timestamptz `json:"read_at"`
 	CreatedAt    pgtype.Timestamptz `json:"created_at"`
@@ -192,6 +226,7 @@ func (q *Queries) ListNotifications(ctx context.Context, arg ListNotificationsPa
 			&i.TaskID,
 			&i.ActivityType,
 			&i.ActorID,
+			&i.CommentID,
 			&i.EventCount,
 			&i.ReadAt,
 			&i.CreatedAt,

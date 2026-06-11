@@ -57,6 +57,7 @@ export interface NotificationEntry extends UserActivityEntry {
   event_count: number;
   is_read: boolean;
   updated_at: string;
+  comment_id?: string;
 }
 
 export interface NotificationListResponse {

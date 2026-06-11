@@ -28,6 +28,7 @@ type NotificationResponse struct {
 	TaskID       uuid.UUID `json:"task_id"`
 	ActivityType string    `json:"activity_type"`
 	ActorID      uuid.UUID `json:"actor_id"`
+	CommentID    *string   `json:"comment_id,omitempty"`
 	Username     string    `json:"username"`
 	FirstName    string    `json:"first_name"`
 	LastName     string    `json:"last_name"`
@@ -90,11 +91,17 @@ func (h *NotificationHandler) ListNotifications(c *echo.Context) error {
 		if n.AvatarUrl.Valid {
 			avatarURL = &n.AvatarUrl.String
 		}
+		var commentID *string
+		if n.CommentID.Valid {
+			s := uuid.UUID(n.CommentID.Bytes).String()
+			commentID = &s
+		}
 		items[i] = NotificationResponse{
 			ID:           n.ID,
 			TaskID:       n.TaskID,
 			ActivityType: n.ActivityType,
 			ActorID:      n.ActorID,
+			CommentID:    commentID,
 			Username:     n.Username,
 			FirstName:    n.FirstName,
 			LastName:     n.LastName,

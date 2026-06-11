@@ -104,6 +104,12 @@ function onScroll(e: Event) {
   }
 }
 
+function notificationLink(activity: NotificationEntry): string {
+  const base = `/projects/${activity.project_key}/tasks/${activity.task_number}`;
+  // Deep-link to the specific comment so the task page scrolls to and highlights it.
+  return activity.comment_id ? `${base}#comment-${activity.comment_id}` : base;
+}
+
 function onActivityClick(activity: NotificationEntry) {
   if (!activity.is_read) {
     activity.is_read = true;
@@ -189,7 +195,7 @@ onUnmounted(() => {
           <NuxtLink
             v-for="activity in activities"
             :key="activity.id"
-            :to="`/projects/${activity.project_key}/tasks/${activity.task_number}`"
+            :to="notificationLink(activity)"
             class="flex gap-3 px-4 py-3 transition-colors hover:bg-muted/50"
             :class="!activity.is_read && 'bg-muted/30'"
             @click="onActivityClick(activity)"
