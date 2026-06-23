@@ -78,7 +78,7 @@ const {
 const {
   tree,
   setTree,
-  clearTree,
+  clearAll,
   sortBy,
   sortDir,
   groupBy,
@@ -230,9 +230,7 @@ function openRenameView(view: ProjectView) {
 }
 
 function resetFilters() {
-  clearTree();
-  searchQuery.value = "";
-  setActiveView(null);
+  clearAll();
 }
 
 function handleTreeUpdate(next: FilterTree) {
@@ -247,11 +245,14 @@ watch(currentPageFromUrl, (newPage) => {
 });
 
 // Reload tasks when effective filter, sort, or active view changes.
+// Page reset is handled by the individual URL writers (setTree, searchQuery,
+// sortBy/sortDir) in a single router.replace each — issuing another replace
+// here would race and clobber the just-written ?f= (dropping the filter from
+// the URL, so it would vanish on browser back).
 watch(
   [effectiveTree, sortBy, sortDir, activeViewSlug],
   () => {
     if (!loading.value) {
-      setPageInUrl(1);
       loadTasks(1);
     }
   },

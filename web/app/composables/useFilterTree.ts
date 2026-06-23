@@ -159,6 +159,21 @@ export function useFilterTree() {
     setTree(emptyTree());
   }
 
+  /**
+   * Clear everything that scopes the task list — filter tree, free-text search
+   * and the active saved view — in a single router.replace so the writes can't
+   * race and strand stale params in the URL.
+   */
+  function clearAll() {
+    tree.value = emptyTree();
+    const q = { ...route.query };
+    delete q.f;
+    delete q.q;
+    delete q.view;
+    delete q.page;
+    void router.replace({ query: q });
+  }
+
   function addPredicate(p: Predicate) {
     setTree({ children: [...tree.value.children, { predicate: p }] });
   }
@@ -181,6 +196,7 @@ export function useFilterTree() {
       const q = { ...route.query };
       if (!v || v === DEFAULT_SORT_BY) delete q.sort_by;
       else q.sort_by = v;
+      delete q.page;
       void router.replace({ query: q });
     },
   });
@@ -190,6 +206,7 @@ export function useFilterTree() {
       const q = { ...route.query };
       if (!v || v === DEFAULT_SORT_DIR) delete q.sort_dir;
       else q.sort_dir = v;
+      delete q.page;
       void router.replace({ query: q });
     },
   });
@@ -271,6 +288,7 @@ export function useFilterTree() {
     tree: computed(() => tree.value),
     setTree,
     clearTree,
+    clearAll,
     addPredicate,
     replacePredicateAt,
     removeNodeAt,
