@@ -209,7 +209,7 @@ async function applyView(slug: string) {
   q.sort_dir = v.sort_dir === "desc" ? undefined : v.sort_dir;
 
   // Group by
-  q.group_by = v.group_by === "state_type" ? undefined : v.group_by;
+  q.group_by = v.group_by === "state" ? undefined : v.group_by;
 
   // Switch to the view's default tab
   const targetTab = v.default_tab || "tasks";

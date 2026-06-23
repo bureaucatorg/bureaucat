@@ -34,7 +34,7 @@ const LEGACY_PARAMS = [
 
 const DEFAULT_SORT_BY: SortKey = "created_at";
 const DEFAULT_SORT_DIR: SortDir = "desc";
-const DEFAULT_GROUP_BY: ViewGroupBy = "state_type";
+const DEFAULT_GROUP_BY: ViewGroupBy = "state";
 
 function emptyTree(): FilterTree {
   return { children: [] };
