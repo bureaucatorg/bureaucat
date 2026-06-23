@@ -9,7 +9,6 @@ services:
     working_dir: /app
     ports:
       - 1341:1341
-      - 3041:3041
     depends_on:
       postgres:
         condition: service_healthy
