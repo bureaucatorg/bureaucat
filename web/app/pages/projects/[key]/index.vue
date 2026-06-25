@@ -410,7 +410,7 @@ onMounted(() => {
               </div>
 
               <template v-else>
-                <div class="space-y-2">
+                <div class="overflow-hidden rounded-lg border border-border/50 divide-y divide-border/50">
                   <TaskCard
                     v-for="task in tasks"
                     :key="task.id"

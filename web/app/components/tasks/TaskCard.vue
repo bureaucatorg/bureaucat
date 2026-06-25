@@ -84,9 +84,9 @@ const involvedPeople = computed(() => {
 </script>
 
 <template>
-  <NuxtLink :to="`/projects/${projectKey}/tasks/${task.task_number}`">
+  <NuxtLink :to="`/projects/${projectKey}/tasks/${task.task_number}`" class="block">
     <div
-      class="task-row group grid items-center rounded-lg border border-border/50 bg-background/50 px-3 py-2.5 transition-all hover:border-amber-500/30 hover:bg-muted/50"
+      class="task-row group grid items-center bg-background/50 px-3 py-2.5 transition-colors hover:bg-muted/50"
     >
       <!-- Col 1: Task ID -->
       <span class="font-mono text-sm text-muted-foreground truncate">{{ task.task_id }}</span>
