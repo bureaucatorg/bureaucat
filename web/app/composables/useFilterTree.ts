@@ -36,6 +36,15 @@ const DEFAULT_SORT_BY: SortKey = "created_at";
 const DEFAULT_SORT_DIR: SortDir = "desc";
 const DEFAULT_GROUP_BY: ViewGroupBy = "state";
 
+// Query params that make up the "filter state" of a project view. These are
+// persisted to localStorage per project so that navigating back to the project
+// (e.g. via the breadcrumb, which carries no query) restores the last filters.
+const PERSIST_KEYS = ["f", "q", "view", "sort_by", "sort_dir", "group_by"] as const;
+
+function filterStorageKey(projectKey: string): string {
+  return `bureaucat:filters:${projectKey}`;
+}
+
 function emptyTree(): FilterTree {
   return { children: [] };
 }
@@ -128,6 +137,42 @@ export function useFilterTree() {
 
   // The live tree — reactive; synced from the URL on mount and whenever ?f= changes.
   const tree = ref<FilterTree>(emptyTree());
+
+  const projectKey = () =>
+    typeof route.params.key === "string" ? route.params.key : "";
+
+  // Persist the filter-related query params for the current project. Called
+  // whenever any of them change. Cleared filters store as {} so they don't get
+  // re-applied on the next visit.
+  function persistFilters() {
+    if (!import.meta.client) return;
+    const key = projectKey();
+    if (!key) return;
+    const data: Record<string, string> = {};
+    for (const k of PERSIST_KEYS) {
+      const v = route.query[k];
+      if (typeof v === "string" && v) data[k] = v;
+    }
+    try {
+      localStorage.setItem(filterStorageKey(key), JSON.stringify(data));
+    } catch {
+      // ignore quota / unavailable storage
+    }
+  }
+
+  function readPersistedFilters(): Record<string, string> | null {
+    if (!import.meta.client) return null;
+    const key = projectKey();
+    if (!key) return null;
+    try {
+      const raw = localStorage.getItem(filterStorageKey(key));
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === "object" ? parsed : null;
+    } catch {
+      return null;
+    }
+  }
 
   // Decode the tree sitting in the URL, if any.
   function readFromUrl(): FilterTree {
@@ -259,9 +304,11 @@ export function useFilterTree() {
 
   /**
    * Run once on mount. Detects legacy URL params and rewrites to ?f=, then
-   * hydrates the live tree from the URL.
+   * hydrates the live tree from the URL. If the URL carries no filter params
+   * at all (e.g. arriving via the breadcrumb), the last-used filters for this
+   * project are restored from localStorage.
    */
-  function hydrateFromUrl() {
+  async function hydrateFromUrl() {
     if (hasAnyLegacyParam(route.query)) {
       const migrated = migrateLegacyQuery(route.query as Record<string, unknown>);
       const q = { ...route.query };
@@ -269,10 +316,22 @@ export function useFilterTree() {
       if (migrated.children.length > 0) {
         q.f = encodeTree(migrated);
       }
-      void router.replace({ query: q });
+      await router.replace({ query: q });
       tree.value = migrated;
       return;
     }
+
+    // No filter params in the URL → try restoring the project's saved filters.
+    const hasFilterParam = PERSIST_KEYS.some((k) => route.query[k]);
+    if (!hasFilterParam) {
+      const saved = readPersistedFilters();
+      if (saved && Object.keys(saved).length > 0) {
+        await router.replace({ query: { ...route.query, ...saved } });
+        tree.value = saved.f ? decodeTree(saved.f) ?? emptyTree() : emptyTree();
+        return;
+      }
+    }
+
     tree.value = readFromUrl();
   }
 
@@ -282,6 +341,13 @@ export function useFilterTree() {
     () => {
       tree.value = readFromUrl();
     }
+  );
+
+  // Persist filter params per project whenever any of them change, so they can
+  // be restored on the next visit that arrives without a query string.
+  watch(
+    () => PERSIST_KEYS.map((k) => route.query[k]),
+    () => persistFilters()
   );
 
   return {

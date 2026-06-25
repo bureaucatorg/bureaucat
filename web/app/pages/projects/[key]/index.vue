@@ -261,8 +261,8 @@ watch(
 
 const existingMemberIds = computed(() => members.value.map((m) => m.user_id));
 
-onMounted(() => {
-  hydrateFromUrl();
+onMounted(async () => {
+  await hydrateFromUrl();
   loadProject();
 });
 </script>
