@@ -6,16 +6,9 @@ import {
   ArrowRight,
   Loader2,
   Search,
-  Circle,
-  CircleDot,
-  CheckCircle2,
-  XCircle,
-  Clock,
-  MessageSquare,
   Lightbulb,
 } from "lucide-vue-next";
-import { PRIORITY_LABELS } from "~/types";
-import type { Project } from "~/types";
+import type { Project, Task, ProjectState } from "~/types";
 
 definePageMeta({
   middleware: ["auth"],
@@ -85,6 +78,7 @@ interface MyTask {
   task_number: number;
   task_id: string;
   title: string;
+  state_id: string;
   state_name: string;
   state_type: string;
   state_color: string;
@@ -105,6 +99,41 @@ const myTasks = ref<MyTask[]>([]);
 const myTasksTotal = ref(0);
 const myTasksLoading = ref(false);
 
+// Adapt the dashboard's lightweight MyTask shape to the full Task shape so we
+// can render the shared TaskList/TaskCard component. Fields the dashboard API
+// doesn't return (creator, timestamps) are left empty — TaskCard treats them
+// as absent (assignees-only avatars).
+const myTasksAsTask = computed<Task[]>(() =>
+  myTasks.value.map((t) => ({
+    id: t.id,
+    project_key: t.project_key,
+    task_number: t.task_number,
+    task_id: t.task_id,
+    title: t.title,
+    state_id: t.state_id,
+    state_name: t.state_name,
+    state_type: t.state_type,
+    state_color: t.state_color,
+    priority: t.priority,
+    created_by: "",
+    creator_username: "",
+    creator_first_name: "",
+    creator_last_name: "",
+    assignees: t.assignees.map((a) => ({
+      id: a.id,
+      user_id: a.user_id,
+      username: a.username,
+      email: "",
+      first_name: a.first_name,
+      last_name: a.last_name,
+      avatar_url: a.avatar_url,
+    })),
+    comment_count: t.comment_count,
+    created_at: "",
+    updated_at: "",
+  }))
+);
+
 async function fetchMyTasks() {
   myTasksLoading.value = true;
   try {
@@ -115,6 +144,7 @@ async function fetchMyTasks() {
       const data: MyTasksResponse = await response.json();
       myTasks.value = data.tasks || [];
       myTasksTotal.value = data.total;
+      fetchStatesForMyTasks();
     }
   } catch {
     // silently fail
@@ -123,15 +153,37 @@ async function fetchMyTasks() {
   }
 }
 
-function getStateIcon(stateType: string) {
-  switch (stateType) {
-    case "backlog": return Clock;
-    case "unstarted": return Circle;
-    case "started": return CircleDot;
-    case "completed": return CheckCircle2;
-    case "cancelled": return XCircle;
-    default: return Circle;
+// Per-project state lists, loaded lazily for the projects that own the user's
+// tasks. TaskCard needs these to offer the inline state selector.
+const statesByProject = ref<Record<string, ProjectState[]>>({});
+
+// Whether the user can edit a project's tasks (admins and members can), keyed
+// by project_key. Derived from the full project list we already fetch.
+const isMemberByProject = computed<Record<string, boolean>>(() => {
+  const map: Record<string, boolean> = {};
+  for (const p of allProjects.value) {
+    map[p.project_key] = p.role === "admin" || p.role === "member";
   }
+  return map;
+});
+
+async function fetchStatesForMyTasks() {
+  const keys = [...new Set(myTasks.value.map((t) => t.project_key))];
+  const missing = keys.filter((k) => !statesByProject.value[k]);
+  await Promise.all(
+    missing.map(async (key) => {
+      try {
+        const res = await fetch(`/api/v1/projects/${key}/states`, {
+          headers: getAuthHeader(),
+        });
+        if (res.ok) {
+          statesByProject.value[key] = await res.json();
+        }
+      } catch {
+        // ignore — that project's rows simply stay read-only
+      }
+    })
+  );
 }
 
 // Tips
@@ -221,74 +273,13 @@ onMounted(async () => {
             No tasks assigned to you
           </div>
 
-          <div v-else class="space-y-1.5">
-            <NuxtLink
-              v-for="task in myTasks"
-              :key="task.id"
-              :to="`/projects/${task.project_key}/tasks/${task.task_number}`"
-            >
-              <div class="dashboard-task-row group grid items-center rounded-lg border border-border/50 bg-background/50 px-3 py-2.5 transition-all hover:border-amber-500/30 hover:bg-muted/50">
-                <span class="font-mono text-sm text-muted-foreground truncate">{{ task.task_id }}</span>
-                <span class="truncate text-sm font-medium min-w-0">{{ task.title }}</span>
-                <div class="flex items-center gap-1 rounded-md border bg-muted/50 px-1.5 py-0.5 w-fit justify-self-end">
-                  <component
-                    :is="getStateIcon(task.state_type)"
-                    class="size-3.5 shrink-0 stroke-[2.5]"
-                    :style="{ color: task.state_color || undefined }"
-                  />
-                  <span class="text-xs text-muted-foreground whitespace-nowrap">{{ task.state_name }}</span>
-                </div>
-                <div class="flex items-center gap-1 rounded-md border bg-muted/50 px-1.5 py-0.5 w-fit justify-self-end">
-                  <span
-                    class="size-2.5 shrink-0 rounded-full ring-1.5 ring-offset-1 ring-offset-background"
-                    :style="{ backgroundColor: PRIORITY_LABELS[task.priority]?.color, '--tw-ring-color': PRIORITY_LABELS[task.priority]?.color }"
-                  />
-                  <span class="text-xs text-muted-foreground whitespace-nowrap">{{ PRIORITY_LABELS[task.priority]?.label }}</span>
-                </div>
-                <div class="flex items-center justify-end">
-                  <div v-if="task.assignees?.length" class="flex -space-x-1.5">
-                    <NuxtLink
-                      v-for="person in task.assignees.slice(0, 4)"
-                      :key="person.user_id"
-                      :to="`/profile/${person.user_id}`"
-                      :title="`${person.first_name} ${person.last_name}`"
-                      class="hover:z-10"
-                      @click.stop
-                    >
-                      <Avatar class="size-6 border-2 border-background transition-transform hover:scale-110">
-                        <AvatarImage
-                          v-if="person.avatar_url"
-                          :src="person.avatar_url"
-                          :alt="`${person.first_name} ${person.last_name}`"
-                        />
-                        <AvatarFallback class="text-[10px]" :seed="person.user_id">
-                          {{ person.first_name?.[0] || "" }}{{ person.last_name?.[0] || "" }}
-                        </AvatarFallback>
-                      </Avatar>
-                    </NuxtLink>
-                    <Avatar
-                      v-if="task.assignees.length > 4"
-                      class="size-6 border-2 border-background"
-                      :title="`${task.assignees.length - 4} more`"
-                    >
-                      <AvatarFallback class="text-[10px] bg-muted">
-                        +{{ task.assignees.length - 4 }}
-                      </AvatarFallback>
-                    </Avatar>
-                  </div>
-                </div>
-                <div class="flex items-center justify-end">
-                  <div
-                    class="flex items-center gap-1 rounded-full bg-muted px-1.5 py-0.5"
-                    :title="`${task.comment_count} comment${task.comment_count !== 1 ? 's' : ''}`"
-                  >
-                    <MessageSquare class="size-3 text-muted-foreground" />
-                    <span class="font-mono text-xs font-medium text-muted-foreground">{{ task.comment_count }}</span>
-                  </div>
-                </div>
-              </div>
-            </NuxtLink>
-          </div>
+          <TaskList
+            v-else
+            :tasks="myTasksAsTask"
+            :states-by-project="statesByProject"
+            :is-member-by-project="isMemberByProject"
+            @updated="fetchMyTasks"
+          />
         </div>
 
         <!-- Your Projects Section -->
@@ -372,10 +363,3 @@ onMounted(async () => {
     </main>
   </div>
 </template>
-
-<style scoped>
-.dashboard-task-row {
-  grid-template-columns: 6rem 1fr 10rem 7rem 6rem 3rem;
-  column-gap: 0.375rem;
-}
-</style>

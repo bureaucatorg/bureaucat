@@ -6,7 +6,7 @@ import { PRIORITY_LABELS } from "~/types";
 const props = withDefaults(
   defineProps<{
     task: Task;
-    projectKey: string;
+    projectKey?: string;
     states?: ProjectState[];
     isMember?: boolean;
   }>(),
@@ -17,6 +17,10 @@ const emit = defineEmits<{
   updated: [];
 }>();
 
+// Fall back to the task's own project_key (e.g. on the dashboard, where tasks
+// span multiple projects) when no explicit key is passed.
+const resolvedKey = computed(() => props.projectKey ?? props.task.project_key);
+
 const { updateTask } = useTasks();
 const updatingState = ref(false);
 
@@ -26,7 +30,7 @@ const canEditState = computed(() => props.isMember && props.states.length > 0);
 async function changeState(stateId: string) {
   if (stateId === props.task.state_id || updatingState.value) return;
   updatingState.value = true;
-  const res = await updateTask(props.projectKey, props.task.task_number, { state_id: stateId });
+  const res = await updateTask(resolvedKey.value, props.task.task_number, { state_id: stateId });
   updatingState.value = false;
   if (res.success) emit("updated");
 }
@@ -84,7 +88,7 @@ const involvedPeople = computed(() => {
 </script>
 
 <template>
-  <NuxtLink :to="`/projects/${projectKey}/tasks/${task.task_number}`" class="block">
+  <NuxtLink :to="`/projects/${resolvedKey}/tasks/${task.task_number}`" class="block">
     <div
       class="task-row group grid items-center bg-background/50 px-3 py-2.5 transition-colors hover:bg-muted/50"
     >

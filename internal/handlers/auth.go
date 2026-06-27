@@ -370,6 +370,7 @@ type MyTaskItem struct {
 	TaskNumber   int32            `json:"task_number"`
 	TaskID       string           `json:"task_id"`
 	Title        string           `json:"title"`
+	StateID      uuid.UUID        `json:"state_id"`
 	StateName    string           `json:"state_name"`
 	StateType    string           `json:"state_type"`
 	StateColor   string           `json:"state_color"`
@@ -452,6 +453,7 @@ func (h *AuthHandler) MyTasks(c *echo.Context) error {
 			TaskNumber:   t.TaskNumber,
 			TaskID:       t.ProjectKey + "-" + strconv.Itoa(int(t.TaskNumber)),
 			Title:        t.Title,
+			StateID:      t.StateID,
 			StateName:    t.StateName,
 			StateType:    t.StateType,
 			StateColor:   stateColor,

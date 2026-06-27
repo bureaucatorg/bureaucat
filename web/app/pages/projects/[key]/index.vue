@@ -410,17 +410,13 @@ onMounted(async () => {
               </div>
 
               <template v-else>
-                <div class="overflow-hidden rounded-lg border border-border/50 divide-y divide-border/50">
-                  <TaskCard
-                    v-for="task in tasks"
-                    :key="task.id"
-                    :task="task"
-                    :project-key="projectKey"
-                    :states="states"
-                    :is-member="isMember"
-                    @updated="() => loadTasks(tasksPage)"
-                  />
-                </div>
+                <TaskList
+                  :tasks="tasks"
+                  :project-key="projectKey"
+                  :states="states"
+                  :is-member="isMember"
+                  @updated="() => loadTasks(tasksPage)"
+                />
 
                 <div
                   v-if="tasksTotalPages > 1"
