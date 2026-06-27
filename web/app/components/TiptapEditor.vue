@@ -267,6 +267,7 @@ function handleFileInput(e: Event) {
     >
       <button
         type="button"
+        tabindex="-1"
         aria-label="Bold"
         class="inline-flex size-7 items-center justify-center rounded-md hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 outline-none"
         :class="{ 'bg-muted text-foreground': isActive('bold') }"
@@ -276,6 +277,7 @@ function handleFileInput(e: Event) {
       </button>
       <button
         type="button"
+        tabindex="-1"
         aria-label="Italic"
         class="inline-flex size-7 items-center justify-center rounded-md hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 outline-none"
         :class="{ 'bg-muted text-foreground': isActive('italic') }"
@@ -285,6 +287,7 @@ function handleFileInput(e: Event) {
       </button>
       <button
         type="button"
+        tabindex="-1"
         aria-label="Strikethrough"
         class="inline-flex size-7 items-center justify-center rounded-md hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 outline-none"
         :class="{ 'bg-muted text-foreground': isActive('strike') }"
@@ -294,6 +297,7 @@ function handleFileInput(e: Event) {
       </button>
       <button
         type="button"
+        tabindex="-1"
         aria-label="Inline code"
         class="inline-flex size-7 items-center justify-center rounded-md hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 outline-none"
         :class="{ 'bg-muted text-foreground': isActive('code') }"
@@ -306,6 +310,7 @@ function handleFileInput(e: Event) {
 
       <button
         type="button"
+        tabindex="-1"
         aria-label="Heading 1"
         class="inline-flex size-7 items-center justify-center rounded-md hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 outline-none"
         :class="{ 'bg-muted text-foreground': isActive('heading', { level: 1 }) }"
@@ -315,6 +320,7 @@ function handleFileInput(e: Event) {
       </button>
       <button
         type="button"
+        tabindex="-1"
         aria-label="Heading 2"
         class="inline-flex size-7 items-center justify-center rounded-md hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 outline-none"
         :class="{ 'bg-muted text-foreground': isActive('heading', { level: 2 }) }"
@@ -324,6 +330,7 @@ function handleFileInput(e: Event) {
       </button>
       <button
         type="button"
+        tabindex="-1"
         aria-label="Heading 3"
         class="inline-flex size-7 items-center justify-center rounded-md hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 outline-none"
         :class="{ 'bg-muted text-foreground': isActive('heading', { level: 3 }) }"
@@ -336,6 +343,7 @@ function handleFileInput(e: Event) {
 
       <button
         type="button"
+        tabindex="-1"
         aria-label="Bullet list"
         class="inline-flex size-7 items-center justify-center rounded-md hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 outline-none"
         :class="{ 'bg-muted text-foreground': isActive('bulletList') }"
@@ -345,6 +353,7 @@ function handleFileInput(e: Event) {
       </button>
       <button
         type="button"
+        tabindex="-1"
         aria-label="Ordered list"
         class="inline-flex size-7 items-center justify-center rounded-md hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 outline-none"
         :class="{ 'bg-muted text-foreground': isActive('orderedList') }"
@@ -354,6 +363,7 @@ function handleFileInput(e: Event) {
       </button>
       <button
         type="button"
+        tabindex="-1"
         aria-label="Blockquote"
         class="inline-flex size-7 items-center justify-center rounded-md hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 outline-none"
         :class="{ 'bg-muted text-foreground': isActive('blockquote') }"
@@ -363,6 +373,7 @@ function handleFileInput(e: Event) {
       </button>
       <button
         type="button"
+        tabindex="-1"
         aria-label="Code block"
         class="inline-flex size-7 items-center justify-center rounded-md hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 outline-none"
         :class="{ 'bg-muted text-foreground': isActive('codeBlock') }"
@@ -375,6 +386,7 @@ function handleFileInput(e: Event) {
 
       <button
         type="button"
+        tabindex="-1"
         aria-label="Horizontal rule"
         class="inline-flex size-7 items-center justify-center rounded-md hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 outline-none"
         @click="editor!.chain().focus().setHorizontalRule().run()"
@@ -386,6 +398,7 @@ function handleFileInput(e: Event) {
 
       <button
         type="button"
+        tabindex="-1"
         aria-label="Attach file"
         class="inline-flex size-7 items-center justify-center rounded-md hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 outline-none"
         :disabled="uploading"
@@ -399,6 +412,7 @@ function handleFileInput(e: Event) {
 
       <button
         type="button"
+        tabindex="-1"
         aria-label="Undo"
         class="inline-flex size-7 items-center justify-center rounded-md hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 outline-none disabled:opacity-40"
         :disabled="!editor!.can().undo()"
@@ -408,6 +422,7 @@ function handleFileInput(e: Event) {
       </button>
       <button
         type="button"
+        tabindex="-1"
         aria-label="Redo"
         class="inline-flex size-7 items-center justify-center rounded-md hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 outline-none disabled:opacity-40"
         :disabled="!editor!.can().redo()"
