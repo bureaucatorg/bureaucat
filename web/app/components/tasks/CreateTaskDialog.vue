@@ -185,6 +185,22 @@ const priorities = [
   { value: 4, label: "Urgent" },
 ];
 
+// shadcn/reka-ui Select works with string values only, and reserves the empty
+// string for "no selection" — so these adapters bridge to the form's types.
+const NO_TEMPLATE = "__none__";
+const templateValue = computed({
+  get: () => selectedTemplateId.value || NO_TEMPLATE,
+  set: (v: string) => {
+    selectedTemplateId.value = v === NO_TEMPLATE ? "" : v;
+  },
+});
+const priorityValue = computed({
+  get: () => String(form.value.priority),
+  set: (v: string) => {
+    form.value.priority = Number(v);
+  },
+});
+
 const showAssigneePopover = ref(false);
 const showLabelPopover = ref(false);
 
@@ -311,12 +327,17 @@ function removeLabel(labelId: string) {
         <template v-if="!selectable || (selectedProject && !metaLoading)">
           <div v-if="effTemplates.length > 0" class="space-y-2">
             <Label for="template">Template</Label>
-            <NativeSelect id="template" v-model="selectedTemplateId" :disabled="loading">
-              <option value="">No template</option>
-              <option v-for="tmpl in effTemplates" :key="tmpl.id" :value="tmpl.id">
-                {{ tmpl.name }}
-              </option>
-            </NativeSelect>
+            <Select v-model="templateValue" :disabled="loading">
+              <SelectTrigger id="template" class="w-full">
+                <SelectValue placeholder="No template" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem :value="NO_TEMPLATE">No template</SelectItem>
+                <SelectItem v-for="tmpl in effTemplates" :key="tmpl.id" :value="tmpl.id">
+                  {{ tmpl.name }}
+                </SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           <div class="space-y-2">
@@ -342,20 +363,30 @@ function removeLabel(labelId: string) {
           <div class="grid grid-cols-2 gap-4">
             <div class="space-y-2">
               <Label for="state">State</Label>
-              <NativeSelect id="state" v-model="form.state_id" :disabled="loading">
-                <option v-for="state in effStates" :key="state.id" :value="state.id">
-                  {{ state.name }}
-                </option>
-              </NativeSelect>
+              <Select v-model="form.state_id" :disabled="loading">
+                <SelectTrigger id="state" class="w-full">
+                  <SelectValue placeholder="Select a state" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem v-for="state in effStates" :key="state.id" :value="state.id">
+                    {{ state.name }}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             <div class="space-y-2">
               <Label for="priority">Priority</Label>
-              <NativeSelect id="priority" v-model.number="form.priority" :disabled="loading">
-                <option v-for="p in priorities" :key="p.value" :value="p.value">
-                  {{ p.label }}
-                </option>
-              </NativeSelect>
+              <Select v-model="priorityValue" :disabled="loading">
+                <SelectTrigger id="priority" class="w-full">
+                  <SelectValue placeholder="Select priority" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem v-for="p in priorities" :key="p.value" :value="String(p.value)">
+                    {{ p.label }}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
