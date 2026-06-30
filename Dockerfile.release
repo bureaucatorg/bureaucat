@@ -8,8 +8,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         curl \
         git \
         unzip \
-        docker.io \
     && rm -rf /var/lib/apt/lists/*
+
+# Docker CLI client only (talks to the host daemon via the mounted socket).
+# goreleaser's `dockers` step shells out to `docker build`/`docker push`.
+COPY --from=docker:cli /usr/local/bin/docker /usr/local/bin/docker
 
 # goreleaser (v2) — copied from the official image instead of `go install`.
 COPY --from=goreleaser/goreleaser:latest /usr/bin/goreleaser /usr/bin/goreleaser
