@@ -1,0 +1,24 @@
+# Release-runner image: contains everything `just release` needs so the whole
+# release runs inside Docker — Go (binaries), Bun (frontend), goreleaser, and the
+# Docker CLI (talks to the host daemon via the mounted /var/run/docker.sock).
+FROM golang:1.25.6-trixie
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        ca-certificates \
+        curl \
+        git \
+        unzip \
+        docker.io \
+    && rm -rf /var/lib/apt/lists/*
+
+# goreleaser (v2) — copied from the official image instead of `go install`.
+COPY --from=goreleaser/goreleaser:latest /usr/bin/goreleaser /usr/bin/goreleaser
+
+# bun (frontend build for the `before` hooks)
+RUN curl -fsSL https://bun.sh/install | bash
+ENV PATH="/root/.bun/bin:${PATH}"
+
+# git complains about the mounted repo being owned by another uid.
+RUN git config --global --add safe.directory /app
+
+WORKDIR /app

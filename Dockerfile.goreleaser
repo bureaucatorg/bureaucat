@@ -1,0 +1,11 @@
+# Runtime image used by goreleaser's `dockers` step.
+# goreleaser copies the prebuilt `bureaucat` binary (CGO disabled, fully static,
+# with the frontend + migrations already embedded) into the build context, so
+# this stage only needs to wrap it. distroless ships ca-certificates and runs
+# as nonroot; no RUN steps are needed.
+FROM gcr.io/distroless/static:nonroot
+WORKDIR /app
+COPY bureaucat /app/bureaucat
+EXPOSE 1341
+ENTRYPOINT ["/app/bureaucat"]
+CMD ["serve", "--migrate"]

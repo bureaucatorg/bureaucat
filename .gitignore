@@ -30,6 +30,9 @@ postgres-data/
 air.log
 tmp/
 
+# goreleaser artifact output
+/.goreleaser-dist/
+
 # Embedded dist (generated, but keep .gitkeep)
 cmd/bureaucat/dist/*
 !cmd/bureaucat/dist/.gitkeep

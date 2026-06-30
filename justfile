@@ -1,13 +1,35 @@
 image := "docker.io/codingcoffee/bureaucat"
+runner := "bureaucat-release:local"
+
+# The whole release runs inside this image (go + bun + goreleaser + docker cli).
+# Host docker socket + docker config + GITHUB_TOKEN are passed through so
+# goreleaser can build/push the image and create the GitHub release.
+release-run := '''
+docker run --rm \
+    -v "$PWD":/app \
+    -v /var/run/docker.sock:/var/run/docker.sock \
+    -v "$HOME/.docker":/root/.docker \
+    -e GITHUB_TOKEN \
+    -e DOCKER_CONFIG=/root/.docker \
+    -w /app \
+    ''' + runner
 
 # Show current version from latest git tag
 version:
     @git describe --tags --abbrev=0 2>/dev/null || echo "no tags yet"
 
+# Build the release-runner image (cached; rebuild when Dockerfile.release changes)
+release-image:
+    docker build -f Dockerfile.release -t {{runner}} .
+
 # Release a new version: just release patch|minor|major
-release kind="patch":
+release kind="patch": release-image
     #!/usr/bin/env bash
     set -euo pipefail
+
+    if [[ -z "${GITHUB_TOKEN:-}" ]]; then
+        echo "GITHUB_TOKEN is not set (needed to publish the GitHub release)."; exit 1
+    fi
 
     # Get current version from latest tag (default v0.0.0 if no tags)
     current=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
@@ -35,50 +57,24 @@ release kind="patch":
     git commit -m "chore: bump version to ${version}"
     git push origin HEAD
 
-    # Tag and push
+    # Tag and push (goreleaser builds the release from this tag)
     git tag -a "${version}" -m "Release ${version}"
     git push origin "${version}"
     echo "Pushed tag ${version} to origin"
 
-    # Build docker image
-    echo "Building docker image..."
-    docker build \
-        --build-arg VERSION="${version}" \
-        -t {{image}}:${version} \
-        -t {{image}}:latest \
-        .
-
-    # Push to docker hub
-    echo "Pushing to Docker Hub..."
-    docker push {{image}}:${version}
-    docker push {{image}}:latest
+    # Build binaries + frontend, push docker image, create GitHub release —
+    # all inside the runner container.
+    echo "Running goreleaser in Docker..."
+    {{release-run}} goreleaser release --clean
 
     echo ""
     echo "Released ${version}"
 
-# Build docker image without releasing (uses current git describe)
-build:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    version=$(git describe --tags --always --dirty)
-    echo "Building ${version}..."
-    docker build \
-        --build-arg VERSION="${version}" \
-        -t {{image}}:${version} \
-        -t {{image}}:latest \
-        .
-    echo "Built {{image}}:${version}"
+# Build everything locally without publishing (snapshot, no tag/push required)
+build: release-image
+    {{release-run}} goreleaser release --clean --snapshot
 
-# Push the latest built image to Docker Hub
-push:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    version=$(git describe --tags --abbrev=0 2>/dev/null || echo "dev")
-    docker push {{image}}:${version}
-    docker push {{image}}:latest
-    echo "Pushed {{image}}:${version} and latest"
-
-# Build the Bureaucat CLI binary locally
+# Build the Bureaucat CLI binary locally (host go toolchain)
 build-cli:
     go build -o ./bureaucat ./cmd/bureaucat
 

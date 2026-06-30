@@ -1,0 +1,73 @@
+version: 2
+
+project_name: bureaucat
+
+# goreleaser's own artifact output dir (kept out of git, see .gitignore)
+dist: .goreleaser-dist
+
+# These hooks reproduce what Dockerfile does before `go build`:
+#   1. copy SQL migrations into the embed location
+#   2. generate the Nuxt static site and copy it into the embed location
+# They run inside the release-runner container (bun + go are on PATH).
+before:
+  hooks:
+    - bash -c "find cmd/bureaucat/migrations -mindepth 1 ! -name .gitkeep -exec rm -rf {} + && cp -a migrations/. cmd/bureaucat/migrations/"
+    - bash -c "cd web && bun install --frozen-lockfile && bun run generate"
+    - bash -c "find cmd/bureaucat/dist -mindepth 1 ! -name .gitkeep -exec rm -rf {} + && cp -a web/.output/public/. cmd/bureaucat/dist/"
+
+builds:
+  - id: bureaucat
+    main: ./cmd/bureaucat
+    binary: bureaucat
+    env:
+      - CGO_ENABLED=0
+    flags:
+      - -trimpath
+    ldflags:
+      # Version is read by main.go; keep the leading "v" to match existing tags.
+      - -s -w -X main.Version={{ .Tag }}
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+
+archives:
+  - id: bureaucat
+    formats: [tar.gz]
+    name_template: "{{ .ProjectName }}_{{ .Tag }}_{{ .Os }}_{{ .Arch }}"
+
+checksum:
+  name_template: "checksums.txt"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore: bump version"
+      - "Merge "
+
+# Docker image is built and pushed via the host daemon (socket mounted into
+# the runner). Single-arch (linux/amd64) to mirror the previous `docker build`
+# behaviour and avoid needing QEMU/buildx inside the container.
+dockers:
+  - id: bureaucat
+    goos: linux
+    goarch: amd64
+    dockerfile: Dockerfile.goreleaser
+    image_templates:
+      - "docker.io/codingcoffee/bureaucat:{{ .Tag }}"
+      - "docker.io/codingcoffee/bureaucat:latest"
+    build_flag_templates:
+      - "--label=org.opencontainers.image.title={{ .ProjectName }}"
+      - "--label=org.opencontainers.image.version={{ .Tag }}"
+      - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
+
+release:
+  # origin -> github.com:bureaucatorg/bureaucat (auto-detected)
+  github:
+    owner: bureaucatorg
+    name: bureaucat
