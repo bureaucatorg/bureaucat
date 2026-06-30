@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { User, LogOut, LayoutDashboard, FolderKanban, Shield, Star, Settings, Search } from "lucide-vue-next";
+import type { Project } from "~/types";
 
-const { user, isAuthenticated, logout } = useAuth();
+const { user, isAuthenticated, logout, getAuthHeader } = useAuth();
 const { appName, signupSettings, fetchSignupSettings } = useSettings();
 const route = useRoute();
 
@@ -9,8 +10,57 @@ const isLandingPage = computed(() => route.path === "/");
 
 const searchOpen = ref(false);
 
+// Global "Create Task" dialog, triggered from any screen by pressing Shift+C.
+// In selector mode it needs the user's project list to choose from, fetched
+// lazily the first time the dialog is opened.
+const createTaskOpen = ref(false);
+const allProjects = ref<Project[]>([]);
+
+async function fetchAllProjects() {
+  try {
+    const res = await fetch("/api/v1/projects?page=1&per_page=100", {
+      headers: getAuthHeader(),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      allProjects.value = data.projects || [];
+    }
+  } catch {
+    // silently fail — the dialog just shows no projects to pick
+  }
+}
+
+async function openCreateTask() {
+  if (!allProjects.value.length) await fetchAllProjects();
+  createTaskOpen.value = true;
+}
+
+// Don't hijack the keystroke while the user is typing into a field or editor.
+function isEditableTarget(el: EventTarget | null): boolean {
+  const node = el as HTMLElement | null;
+  if (!node || !node.tagName) return false;
+  return (
+    node.tagName === "INPUT" ||
+    node.tagName === "TEXTAREA" ||
+    node.tagName === "SELECT" ||
+    node.isContentEditable
+  );
+}
+
+function onGlobalKeydown(e: KeyboardEvent) {
+  if (!isAuthenticated.value) return;
+  // Capital "C" (Shift held) — bare modifier-less letter so it composes like
+  // the Ctrl+K search shortcut without clashing with browser/OS shortcuts.
+  if (e.key !== "C" || e.ctrlKey || e.metaKey || e.altKey) return;
+  if (isEditableTarget(e.target) || isEditableTarget(document.activeElement)) return;
+  e.preventDefault();
+  openCreateTask();
+}
+
 const appVersion = ref("");
 onMounted(async () => {
+  window.addEventListener("keydown", onGlobalKeydown);
+
   try {
     const res = await fetch("/api/v1/health");
     if (res.ok) {
@@ -20,6 +70,10 @@ onMounted(async () => {
   } catch {}
 
   fetchSignupSettings();
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener("keydown", onGlobalKeydown);
 });
 
 async function handleLogout() {
@@ -68,6 +122,12 @@ async function handleLogout() {
         </div>
 
         <GlobalSearch v-if="isAuthenticated" v-model:open="searchOpen" />
+
+        <CreateTaskDialog
+          v-if="isAuthenticated"
+          v-model:open="createTaskOpen"
+          :projects="allProjects"
+        />
 
         <template v-if="!isAuthenticated">
           <NuxtLink to="/signin">
