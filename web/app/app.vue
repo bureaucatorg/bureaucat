@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { Toaster as Sonner } from "@/components/ui/sonner";
+
 const { isAuthenticated } = useAuth();
 </script>
 
