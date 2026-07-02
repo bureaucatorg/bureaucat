@@ -148,6 +148,13 @@ export function useFilterTree() {
     if (!import.meta.client) return;
     const key = projectKey();
     if (!key) return;
+    // Only persist while actually on the project overview page. When navigating
+    // into a task (client-side) the query momentarily clears to {} before this
+    // page unmounts; persisting then would wipe the saved filters with an empty
+    // object, and the breadcrumb (which lands on a query-less URL) would have
+    // nothing to restore. Project keys are URL-safe slugs, so a direct compare
+    // against the overview path is sufficient.
+    if (route.path !== `/projects/${key}`) return;
     const data: Record<string, string> = {};
     for (const k of PERSIST_KEYS) {
       const v = route.query[k];
