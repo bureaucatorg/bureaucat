@@ -36,13 +36,18 @@ builds:
 archives:
   - id: bureaucat
     formats: [tar.gz]
-    name_template: "{{ .ProjectName }}_{{ .Tag }}_{{ .Os }}_{{ .Arch }}"
+    name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
 
 checksum:
   name_template: "checksums.txt"
 
 changelog:
+  # Resolve commit author @usernames via the GitHub API (origin is on GitHub);
+  # the default "git" source only exposes the raw author name, not a login.
+  use: github
   sort: asc
+  # Prefix each entry with the author's @mention(s) when GitHub can resolve them.
+  format: "{{ if .Logins }}{{ .Logins }} {{ end }}{{ .SHA }} {{ .Message }}"
   filters:
     exclude:
       - "^docs:"
