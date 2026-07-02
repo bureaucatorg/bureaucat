@@ -21,6 +21,10 @@ const props = withDefaults(
     // Selector mode (e.g. opened from /dashboard): pass the list of projects to
     // choose from. The dialog fetches the chosen project's metadata itself.
     projects?: Project[];
+    // Subtask mode (opened from a parent task's detail page): the created task
+    // becomes a child of this (project-local) parent number. The dialog stays on
+    // the current page instead of navigating to the new task.
+    parentTaskNumber?: number;
   }>(),
   {
     states: () => [],
@@ -161,21 +165,30 @@ async function handleSubmit() {
     priority: form.value.priority,
     assignees: form.value.assignees.length > 0 ? form.value.assignees : undefined,
     labels: form.value.labels.length > 0 ? form.value.labels : undefined,
+    parent_task_number: props.parentTaskNumber,
   });
 
   loading.value = false;
 
   if (result.success && result.data) {
-    toast.success(`Task ${result.data.task_id} created`);
     open.value = false;
     emit("created");
-    await navigateTo(
-      `/projects/${result.data.project_key}/tasks/${result.data.task_number}`
-    );
+    // Subtask mode stays on the parent's page; standalone create navigates to
+    // the new task.
+    if (props.parentTaskNumber != null) {
+      toast.success(`Subtask ${result.data.task_id} created`);
+    } else {
+      toast.success(`Task ${result.data.task_id} created`);
+      await navigateTo(
+        `/projects/${result.data.project_key}/tasks/${result.data.task_number}`
+      );
+    }
   } else {
     error.value = result.error || "Failed to create task";
   }
 }
+
+const isSubtaskMode = computed(() => props.parentTaskNumber != null);
 
 const priorities = [
   { value: 0, label: "No priority" },
@@ -253,9 +266,12 @@ function removeLabel(labelId: string) {
   <Dialog v-model:open="open">
     <DialogContent class="sm:max-w-4xl max-h-[85vh] overflow-y-auto">
       <DialogHeader>
-        <DialogTitle>Create New Task</DialogTitle>
+        <DialogTitle>{{ isSubtaskMode ? "Create Subtask" : "Create New Task" }}</DialogTitle>
         <DialogDescription>
-          <template v-if="selectable">
+          <template v-if="isSubtaskMode">
+            Add a subtask under {{ projectKey }}-{{ parentTaskNumber }}
+          </template>
+          <template v-else-if="selectable">
             {{ selectedProject ? `Add a new task to ${selectedProject.name}` : "Select a project to add a task to" }}
           </template>
           <template v-else>
@@ -503,7 +519,7 @@ function removeLabel(labelId: string) {
           </Button>
           <Button type="submit" :disabled="loading || !form.title || !effectiveProjectKey">
             <Loader2 v-if="loading" class="mr-2 size-4 animate-spin" />
-            Create Task
+            {{ isSubtaskMode ? "Create Subtask" : "Create Task" }}
           </Button>
         </DialogFooter>
       </form>

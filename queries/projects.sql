@@ -211,9 +211,9 @@ ORDER BY name ASC;
 -- ==================== TASKS ====================
 
 -- name: CreateTask :one
-INSERT INTO tasks (project_id, task_number, title, description, state_id, priority, created_by, start_date, due_date)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-RETURNING id, project_id, task_number, title, description, state_id, priority, created_by, start_date, due_date, created_at, updated_at, deleted_at;
+INSERT INTO tasks (project_id, task_number, title, description, state_id, priority, created_by, start_date, due_date, parent_task_id)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, sqlc.narg('parent_task_id'))
+RETURNING id, project_id, task_number, title, description, state_id, priority, created_by, start_date, due_date, parent_task_id, created_at, updated_at, deleted_at;
 
 -- name: GetNextTaskNumber :one
 SELECT COALESCE(MAX(task_number), 0) + 1 AS next_number
@@ -221,25 +221,31 @@ FROM tasks
 WHERE project_id = $1;
 
 -- name: GetTaskByID :one
-SELECT t.id, t.project_id, t.task_number, t.title, t.description, t.state_id, t.priority, t.created_by, t.start_date, t.due_date, t.created_at, t.updated_at, t.deleted_at,
+SELECT t.id, t.project_id, t.task_number, t.title, t.description, t.state_id, t.priority, t.created_by, t.start_date, t.due_date, t.parent_task_id, t.created_at, t.updated_at, t.deleted_at,
        p.project_key,
        ps.name as state_name, ps.state_type, ps.color as state_color,
-       u.username as creator_username, u.first_name as creator_first_name, u.last_name as creator_last_name, u.avatar_url as creator_avatar_url
+       u.username as creator_username, u.first_name as creator_first_name, u.last_name as creator_last_name, u.avatar_url as creator_avatar_url,
+       pt.task_number as parent_task_number, pt.title as parent_task_title,
+       (SELECT COUNT(*) FROM tasks st WHERE st.parent_task_id = t.id AND st.deleted_at IS NULL)::bigint as subtask_count
 FROM tasks t
 JOIN projects p ON t.project_id = p.id
 JOIN project_states ps ON t.state_id = ps.id
 JOIN users u ON t.created_by = u.id
+LEFT JOIN tasks pt ON t.parent_task_id = pt.id AND pt.deleted_at IS NULL
 WHERE t.id = $1 AND t.deleted_at IS NULL;
 
 -- name: GetTaskByProjectAndNumber :one
-SELECT t.id, t.project_id, t.task_number, t.title, t.description, t.state_id, t.priority, t.created_by, t.start_date, t.due_date, t.created_at, t.updated_at, t.deleted_at,
+SELECT t.id, t.project_id, t.task_number, t.title, t.description, t.state_id, t.priority, t.created_by, t.start_date, t.due_date, t.parent_task_id, t.created_at, t.updated_at, t.deleted_at,
        p.project_key,
        ps.name as state_name, ps.state_type, ps.color as state_color,
-       u.username as creator_username, u.first_name as creator_first_name, u.last_name as creator_last_name, u.avatar_url as creator_avatar_url
+       u.username as creator_username, u.first_name as creator_first_name, u.last_name as creator_last_name, u.avatar_url as creator_avatar_url,
+       pt.task_number as parent_task_number, pt.title as parent_task_title,
+       (SELECT COUNT(*) FROM tasks st WHERE st.parent_task_id = t.id AND st.deleted_at IS NULL)::bigint as subtask_count
 FROM tasks t
 JOIN projects p ON t.project_id = p.id
 JOIN project_states ps ON t.state_id = ps.id
 JOIN users u ON t.created_by = u.id
+LEFT JOIN tasks pt ON t.parent_task_id = pt.id AND pt.deleted_at IS NULL
 WHERE t.project_id = $1 AND t.task_number = $2 AND t.deleted_at IS NULL;
 
 -- name: UpdateTask :one
@@ -252,7 +258,7 @@ SET title = COALESCE(sqlc.narg('title'), title),
     due_date = CASE WHEN sqlc.arg('update_due_date')::bool THEN sqlc.narg('due_date') ELSE due_date END,
     updated_at = NOW()
 WHERE id = $1 AND deleted_at IS NULL
-RETURNING id, project_id, task_number, title, description, state_id, priority, created_by, start_date, due_date, created_at, updated_at, deleted_at;
+RETURNING id, project_id, task_number, title, description, state_id, priority, created_by, start_date, due_date, parent_task_id, created_at, updated_at, deleted_at;
 
 -- name: MoveTask :one
 -- Move a task to a different project, assigning a new project-local task number
@@ -263,7 +269,7 @@ SET project_id = sqlc.arg('project_id'),
     state_id = sqlc.arg('state_id'),
     updated_at = NOW()
 WHERE id = sqlc.arg('id') AND deleted_at IS NULL
-RETURNING id, project_id, task_number, title, description, state_id, priority, created_by, start_date, due_date, created_at, updated_at, deleted_at;
+RETURNING id, project_id, task_number, title, description, state_id, priority, created_by, start_date, due_date, parent_task_id, created_at, updated_at, deleted_at;
 
 -- name: DeleteTaskCycleLinks :exec
 DELETE FROM cycle_tasks WHERE task_id = $1;
@@ -275,6 +281,32 @@ DELETE FROM module_tasks WHERE task_id = $1;
 UPDATE tasks
 SET deleted_at = NOW(), updated_at = NOW()
 WHERE id = $1 AND deleted_at IS NULL;
+
+-- name: ListSubtasks :many
+-- Direct children of a task, in task-number order. Used on the parent's detail page.
+SELECT t.id, t.project_id, t.task_number, t.title, t.state_id, t.priority,
+       t.created_by, u.first_name as creator_first_name, u.last_name as creator_last_name, u.avatar_url as creator_avatar_url,
+       p.project_key, ps.name as state_name, ps.state_type, ps.color as state_color
+FROM tasks t
+JOIN projects p ON t.project_id = p.id
+JOIN project_states ps ON t.state_id = ps.id
+JOIN users u ON t.created_by = u.id
+WHERE t.parent_task_id = sqlc.arg('parent_id')::uuid AND t.deleted_at IS NULL
+ORDER BY t.task_number ASC;
+
+-- name: ListSubtaskIDsForMove :many
+-- Child ids + state name of a task, used to cascade a cross-project move.
+SELECT t.id, ps.name as state_name
+FROM tasks t
+JOIN project_states ps ON t.state_id = ps.id
+WHERE t.parent_task_id = sqlc.arg('parent_id')::uuid AND t.deleted_at IS NULL
+ORDER BY t.task_number ASC;
+
+-- name: CascadeSoftDeleteSubtasks :exec
+-- Soft-delete all children of a task (cascade-together on parent delete).
+UPDATE tasks
+SET deleted_at = NOW(), updated_at = NOW()
+WHERE parent_task_id = sqlc.arg('parent_id')::uuid AND deleted_at IS NULL;
 
 -- name: ListProjectTasks :many
 SELECT t.id, t.project_id, t.task_number, t.title, t.description, t.state_id, t.priority, t.created_by, t.created_at, t.updated_at, t.deleted_at,

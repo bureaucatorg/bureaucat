@@ -64,6 +64,22 @@ func timePtrEqual(a, b *time.Time) bool {
 	return a.Equal(*b)
 }
 
+func pgUUIDToUUIDPtr(u pgtype.UUID) *uuid.UUID {
+	if !u.Valid {
+		return nil
+	}
+	id := uuid.UUID(u.Bytes)
+	return &id
+}
+
+func pgInt4ToIntPtr(i pgtype.Int4) *int {
+	if !i.Valid {
+		return nil
+	}
+	v := int(i.Int32)
+	return &v
+}
+
 // TaskHandler handles task-related endpoints.
 type TaskHandler struct {
 	store               store.Querier
@@ -107,6 +123,10 @@ type TaskResponse struct {
 	Assignees       []AssigneeResponse `json:"assignees,omitempty"`
 	Labels          []TaskLabelInfo    `json:"labels,omitempty"`
 	CommentCount    int                `json:"comment_count"`
+	ParentTaskID     *uuid.UUID        `json:"parent_task_id,omitempty"`
+	ParentTaskNumber *int              `json:"parent_task_number,omitempty"`
+	ParentTaskTitle  *string           `json:"parent_task_title,omitempty"`
+	SubtaskCount     int               `json:"subtask_count"`
 	CreatedAt       time.Time          `json:"created_at"`
 	UpdatedAt       time.Time          `json:"updated_at"`
 }
@@ -139,6 +159,10 @@ type CreateTaskRequest struct {
 	DueDate     *time.Time `json:"due_date"`
 	Assignees   []string   `json:"assignees"`
 	Labels      []string   `json:"labels"`
+	// ParentTaskNumber, when set, creates this task as a subtask of the given
+	// (project-local) parent task. One level only: the parent must not itself
+	// be a subtask.
+	ParentTaskNumber *int `json:"parent_task_number"`
 }
 
 // UpdateTaskRequest represents the request to update a task.
@@ -436,6 +460,23 @@ func (h *TaskHandler) CreateTask(c *echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "due date cannot be before start date")
 	}
 
+	// Resolve parent when creating a subtask. One level only: the parent must
+	// exist in this project and must not itself be a subtask.
+	var parentTaskID pgtype.UUID
+	if req.ParentTaskNumber != nil {
+		parent, err := h.store.GetTaskByProjectAndNumber(ctx, store.GetTaskByProjectAndNumberParams{
+			ProjectID:  projectID,
+			TaskNumber: int32(*req.ParentTaskNumber),
+		})
+		if err != nil {
+			return echo.NewHTTPError(http.StatusNotFound, "parent task not found")
+		}
+		if parent.ParentTaskID.Valid {
+			return echo.NewHTTPError(http.StatusBadRequest, "cannot create a subtask under a subtask (only one level of nesting is allowed)")
+		}
+		parentTaskID = pgtype.UUID{Bytes: parent.ID, Valid: true}
+	}
+
 	// Get next task number
 	nextNumber, err := h.store.GetNextTaskNumber(ctx, projectID)
 	if err != nil {
@@ -444,15 +485,16 @@ func (h *TaskHandler) CreateTask(c *echo.Context) error {
 
 	// Create task
 	task, err := h.store.CreateTask(ctx, store.CreateTaskParams{
-		ProjectID:   projectID,
-		TaskNumber:  int32(nextNumber),
-		Title:       req.Title,
-		Description: stringToPgtypeText(req.Description),
-		StateID:     stateID,
-		Priority:    priority,
-		CreatedBy:   userID,
-		StartDate:   timePtrToTimestamptz(req.StartDate),
-		DueDate:     timePtrToTimestamptz(req.DueDate),
+		ProjectID:    projectID,
+		TaskNumber:   int32(nextNumber),
+		Title:        req.Title,
+		Description:  stringToPgtypeText(req.Description),
+		StateID:      stateID,
+		Priority:     priority,
+		CreatedBy:    userID,
+		StartDate:    timePtrToTimestamptz(req.StartDate),
+		DueDate:      timePtrToTimestamptz(req.DueDate),
+		ParentTaskID: parentTaskID,
 	})
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to create task")
@@ -610,6 +652,10 @@ func (h *TaskHandler) CreateTask(c *echo.Context) error {
 		CreatorAvatarURL: textToStringPtr(fullTask.CreatorAvatarUrl),
 		Assignees:       assignees,
 		Labels:          labels,
+		ParentTaskID:     pgUUIDToUUIDPtr(fullTask.ParentTaskID),
+		ParentTaskNumber: pgInt4ToIntPtr(fullTask.ParentTaskNumber),
+		ParentTaskTitle:  textToStringPtr(fullTask.ParentTaskTitle),
+		SubtaskCount:     int(fullTask.SubtaskCount),
 		CreatedAt:       fullTask.CreatedAt.Time,
 		UpdatedAt:       fullTask.UpdatedAt.Time,
 	})
@@ -678,6 +724,10 @@ func (h *TaskHandler) GetTask(c *echo.Context) error {
 		CreatorAvatarURL: textToStringPtr(task.CreatorAvatarUrl),
 		Assignees:       assignees,
 		Labels:          labels,
+		ParentTaskID:     pgUUIDToUUIDPtr(task.ParentTaskID),
+		ParentTaskNumber: pgInt4ToIntPtr(task.ParentTaskNumber),
+		ParentTaskTitle:  textToStringPtr(task.ParentTaskTitle),
+		SubtaskCount:     int(task.SubtaskCount),
 		CreatedAt:       task.CreatedAt.Time,
 		UpdatedAt:       task.UpdatedAt.Time,
 	})
@@ -991,13 +1041,135 @@ func (h *TaskHandler) DeleteTask(c *echo.Context) error {
 		},
 	})
 
-	// Soft delete
-	err = h.store.SoftDeleteTask(ctx, task.ID)
+	// Soft delete the task and cascade to its subtasks atomically. The FK's
+	// ON DELETE CASCADE does not fire on a soft delete, so children are
+	// detached-and-deleted explicitly here.
+	tx, err := h.pool.Begin(ctx)
 	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to delete task")
+	}
+	defer tx.Rollback(ctx)
+	q := store.New(tx)
+	if err := q.CascadeSoftDeleteSubtasks(ctx, task.ID); err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to delete subtasks")
+	}
+	if err := q.SoftDeleteTask(ctx, task.ID); err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to delete task")
+	}
+	if err := tx.Commit(ctx); err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to delete task")
 	}
 
 	return c.JSON(http.StatusOK, map[string]string{"message": "task deleted"})
+}
+
+// SubtaskResponse is a child task as it appears under its parent. It carries the
+// creator plus assignees so the UI can show the same "users" column as the main
+// task list.
+type SubtaskResponse struct {
+	ID               uuid.UUID          `json:"id"`
+	ProjectKey       string             `json:"project_key"`
+	TaskNumber       int                `json:"task_number"`
+	TaskID           string             `json:"task_id"`
+	Title            string             `json:"title"`
+	StateID          uuid.UUID          `json:"state_id"`
+	StateName        string             `json:"state_name"`
+	StateType        string             `json:"state_type"`
+	StateColor       string             `json:"state_color"`
+	Priority         int                `json:"priority"`
+	CreatedBy        uuid.UUID          `json:"created_by"`
+	CreatorFirstName string             `json:"creator_first_name"`
+	CreatorLastName  string             `json:"creator_last_name"`
+	CreatorAvatarURL *string            `json:"creator_avatar_url,omitempty"`
+	Assignees        []AssigneeResponse `json:"assignees"`
+}
+
+// ListSubtasks returns the direct children of a task.
+//
+//	@Summary		List subtasks
+//	@Description	Returns the direct child tasks of the given task, ordered by task number.
+//	@Tags			Tasks
+//	@Produce		json
+//	@Param			projectKey	path		string	true	"Project key"
+//	@Param			taskNum		path		int		true	"Parent task number"
+//	@Success		200			{array}		SubtaskResponse
+//	@Failure		404			{object}	ErrorResponse
+//	@Security		BearerAuth
+//	@Router			/projects/{projectKey}/tasks/{taskNum}/subtasks [get]
+func (h *TaskHandler) ListSubtasks(c *echo.Context) error {
+	projectID, err := uuid.Parse(c.Request().Header.Get(auth.HeaderProjectID))
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "invalid project ID in context")
+	}
+	taskNum, err := strconv.Atoi(c.Param("taskNum"))
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid task number")
+	}
+
+	ctx := c.Request().Context()
+
+	task, err := h.store.GetTaskByProjectAndNumber(ctx, store.GetTaskByProjectAndNumberParams{
+		ProjectID:  projectID,
+		TaskNumber: int32(taskNum),
+	})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusNotFound, "task not found")
+	}
+
+	rows, err := h.store.ListSubtasks(ctx, task.ID)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to list subtasks")
+	}
+
+	// Batch-load assignees for all child tasks (mirrors decorateTasks).
+	assigneesByTask := map[uuid.UUID][]AssigneeResponse{}
+	if len(rows) > 0 {
+		ids := make([]uuid.UUID, len(rows))
+		for i, t := range rows {
+			ids[i] = t.ID
+		}
+		assignees, err := h.store.ListAssigneesForTasks(ctx, ids)
+		if err != nil {
+			return echo.NewHTTPError(http.StatusInternalServerError, "failed to load subtask assignees")
+		}
+		for _, a := range assignees {
+			assigneesByTask[a.TaskID] = append(assigneesByTask[a.TaskID], AssigneeResponse{
+				ID:        a.ID,
+				UserID:    a.UserID,
+				Username:  a.Username,
+				Email:     a.Email,
+				FirstName: a.FirstName,
+				LastName:  a.LastName,
+				AvatarURL: textToStringPtr(a.AvatarUrl),
+			})
+		}
+	}
+
+	out := make([]SubtaskResponse, len(rows))
+	for i, t := range rows {
+		assignees := assigneesByTask[t.ID]
+		if assignees == nil {
+			assignees = []AssigneeResponse{}
+		}
+		out[i] = SubtaskResponse{
+			ID:               t.ID,
+			ProjectKey:       t.ProjectKey,
+			TaskNumber:       int(t.TaskNumber),
+			TaskID:           t.ProjectKey + "-" + strconv.Itoa(int(t.TaskNumber)),
+			Title:            t.Title,
+			StateID:          t.StateID,
+			StateName:        t.StateName,
+			StateType:        t.StateType,
+			StateColor:       textToString(t.StateColor, "#6B7280"),
+			Priority:         int(t.Priority),
+			CreatedBy:        t.CreatedBy,
+			CreatorFirstName: t.CreatorFirstName,
+			CreatorLastName:  t.CreatorLastName,
+			CreatorAvatarURL: textToStringPtr(t.CreatorAvatarUrl),
+			Assignees:        assignees,
+		}
+	}
+	return c.JSON(http.StatusOK, out)
 }
 
 // AddAssigneeRequest represents the request to add an assignee.
@@ -1466,69 +1638,20 @@ func (h *TaskHandler) moveTaskTx(ctx context.Context, task store.GetTaskByProjec
 	defer tx.Rollback(ctx)
 	q := store.New(tx)
 
-	// Remap state by name; fall back to the destination's default state.
-	var newStateID uuid.UUID
-	if st, err := q.GetProjectStateByProjectAndName(ctx, store.GetProjectStateByProjectAndNameParams{
-		ProjectID: dest.ID,
-		Name:      task.StateName,
-	}); err == nil {
-		newStateID = st.ID
-	} else {
-		def, err := q.GetDefaultProjectState(ctx, dest.ID)
-		if err != nil {
-			return 0, err
-		}
-		newStateID = def.ID
-	}
-
-	nextNumber, err := q.GetNextTaskNumber(ctx, dest.ID)
+	newNumber, err := h.moveOneWithinTx(ctx, q, task.ID, task.StateName, dest, actorID)
 	if err != nil {
 		return 0, err
 	}
 
-	moved, err := q.MoveTask(ctx, store.MoveTaskParams{
-		ID:         task.ID,
-		ProjectID:  dest.ID,
-		TaskNumber: nextNumber,
-		StateID:    newStateID,
-	})
+	// Cascade the move to subtasks: children move with their parent, keeping the
+	// parent link (the parent's UUID is unchanged). Each child is renumbered in
+	// the destination. GetNextTaskNumber sees prior uncommitted moves in this tx.
+	children, err := q.ListSubtaskIDsForMove(ctx, task.ID)
 	if err != nil {
 		return 0, err
 	}
-
-	// Drop project-scoped cycle/module associations.
-	if err := q.DeleteTaskCycleLinks(ctx, task.ID); err != nil {
-		return 0, err
-	}
-	if err := q.DeleteTaskModuleLinks(ctx, task.ID); err != nil {
-		return 0, err
-	}
-
-	// Remap labels by name: drop the source labels, re-add matching ones from
-	// the destination project. Unmatched labels are silently dropped.
-	labels, err := q.ListTaskLabels(ctx, task.ID)
-	if err != nil {
-		return 0, err
-	}
-	for _, l := range labels {
-		if err := q.RemoveTaskLabel(ctx, store.RemoveTaskLabelParams{
-			TaskID:  task.ID,
-			LabelID: l.LabelID,
-		}); err != nil {
-			return 0, err
-		}
-		destLabel, err := q.GetProjectLabelByProjectAndName(ctx, store.GetProjectLabelByProjectAndNameParams{
-			ProjectID: dest.ID,
-			Name:      l.Name,
-		})
-		if err != nil {
-			continue
-		}
-		if err := q.AddTaskLabel(ctx, store.AddTaskLabelParams{
-			TaskID:  task.ID,
-			LabelID: destLabel.ID,
-			AddedBy: actorID,
-		}); err != nil {
+	for _, child := range children {
+		if _, err := h.moveOneWithinTx(ctx, q, child.ID, child.StateName, dest, actorID); err != nil {
 			return 0, err
 		}
 	}
@@ -1548,9 +1671,83 @@ func (h *TaskHandler) moveTaskTx(ctx context.Context, task store.GetTaskByProjec
 		},
 		NewValue: map[string]interface{}{
 			"project_key": dest.ProjectKey,
-			"task_id":     dest.ProjectKey + "-" + strconv.Itoa(int(moved.TaskNumber)),
+			"task_id":     dest.ProjectKey + "-" + strconv.Itoa(int(newNumber)),
 		},
 	})
+
+	return newNumber, nil
+}
+
+// moveOneWithinTx moves a single task to dest within an existing transaction:
+// remaps state and labels by name and drops cycle/module links. It returns the
+// new (destination-local) task number. The task's parent_task_id is preserved.
+func (h *TaskHandler) moveOneWithinTx(ctx context.Context, q *store.Queries, taskID uuid.UUID, stateName string, dest store.Project, actorID uuid.UUID) (int32, error) {
+	// Remap state by name; fall back to the destination's default state.
+	var newStateID uuid.UUID
+	if st, err := q.GetProjectStateByProjectAndName(ctx, store.GetProjectStateByProjectAndNameParams{
+		ProjectID: dest.ID,
+		Name:      stateName,
+	}); err == nil {
+		newStateID = st.ID
+	} else {
+		def, err := q.GetDefaultProjectState(ctx, dest.ID)
+		if err != nil {
+			return 0, err
+		}
+		newStateID = def.ID
+	}
+
+	nextNumber, err := q.GetNextTaskNumber(ctx, dest.ID)
+	if err != nil {
+		return 0, err
+	}
+
+	moved, err := q.MoveTask(ctx, store.MoveTaskParams{
+		ID:         taskID,
+		ProjectID:  dest.ID,
+		TaskNumber: nextNumber,
+		StateID:    newStateID,
+	})
+	if err != nil {
+		return 0, err
+	}
+
+	// Drop project-scoped cycle/module associations.
+	if err := q.DeleteTaskCycleLinks(ctx, taskID); err != nil {
+		return 0, err
+	}
+	if err := q.DeleteTaskModuleLinks(ctx, taskID); err != nil {
+		return 0, err
+	}
+
+	// Remap labels by name: drop the source labels, re-add matching ones from
+	// the destination project. Unmatched labels are silently dropped.
+	labels, err := q.ListTaskLabels(ctx, taskID)
+	if err != nil {
+		return 0, err
+	}
+	for _, l := range labels {
+		if err := q.RemoveTaskLabel(ctx, store.RemoveTaskLabelParams{
+			TaskID:  taskID,
+			LabelID: l.LabelID,
+		}); err != nil {
+			return 0, err
+		}
+		destLabel, err := q.GetProjectLabelByProjectAndName(ctx, store.GetProjectLabelByProjectAndNameParams{
+			ProjectID: dest.ID,
+			Name:      l.Name,
+		})
+		if err != nil {
+			continue
+		}
+		if err := q.AddTaskLabel(ctx, store.AddTaskLabelParams{
+			TaskID:  taskID,
+			LabelID: destLabel.ID,
+			AddedBy: actorID,
+		}); err != nil {
+			return 0, err
+		}
+	}
 
 	return moved.TaskNumber, nil
 }
@@ -1603,6 +1800,9 @@ func (h *TaskHandler) MoveTask(c *echo.Context) error {
 	})
 	if err != nil {
 		return echo.NewHTTPError(http.StatusNotFound, "task not found")
+	}
+	if task.ParentTaskID.Valid {
+		return echo.NewHTTPError(http.StatusBadRequest, "cannot move a subtask; move its parent task instead")
 	}
 
 	newNumber, err := h.moveTaskTx(ctx, task, dest, userID)
@@ -1692,6 +1892,12 @@ func (h *TaskHandler) MoveTasks(c *echo.Context) error {
 		})
 		if err != nil {
 			result.Error = "task not found"
+			resp.Failed++
+			resp.Results = append(resp.Results, result)
+			continue
+		}
+		if task.ParentTaskID.Valid {
+			result.Error = "cannot move a subtask; move its parent task instead"
 			resp.Failed++
 			resp.Results = append(resp.Results, result)
 			continue

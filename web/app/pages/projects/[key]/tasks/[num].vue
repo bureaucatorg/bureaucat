@@ -3,6 +3,7 @@ import {
   ChevronDown,
   Loader2,
   Pencil,
+  Plus,
   Trash2,
   FolderInput,
   Lock,
@@ -49,7 +50,7 @@ const {
   listLabels,
 } = useProjects();
 
-const { currentTask, getTask, updateTask, deleteTask } = useTasks();
+const { currentTask, getTask, updateTask, deleteTask, listSubtasks } = useTasks();
 const { comments, loading: commentsLoading, listComments } = useComments();
 const { activities, loading: activitiesLoading, listActivity } = useActivity();
 const { listAttachments, attachFile, deleteAttachment } = useAttachments();
@@ -139,6 +140,7 @@ async function loadData() {
     listComments(projectKey.value, taskNum.value),
     listActivity(projectKey.value, taskNum.value),
     loadTaskAttachments(),
+    loadSubtasks(),
   ]);
 
   loading.value = false;
@@ -356,6 +358,26 @@ async function handleDelete() {
 
 const showMoveDialog = ref(false);
 
+// Subtasks
+const subtasks = ref<import("~/types").Subtask[]>([]);
+const subtasksLoading = ref(false);
+const showCreateSubtask = ref(false);
+// A subtask cannot itself have subtasks (one level of nesting).
+const isSubtask = computed(() => currentTask.value?.parent_task_id != null);
+
+async function loadSubtasks() {
+  subtasksLoading.value = true;
+  const result = await listSubtasks(projectKey.value, taskNum.value);
+  if (result.success && result.data) {
+    subtasks.value = result.data;
+  }
+  subtasksLoading.value = false;
+}
+
+async function onSubtaskCreated() {
+  await Promise.all([loadSubtasks(), refreshTask()]);
+}
+
 function handleTaskMoved(payload: { targetKey: string; newTaskNumber?: number }) {
   toast.success("Task moved");
   if (payload.newTaskNumber !== undefined) {
@@ -475,6 +497,16 @@ onMounted(() => {
               {{ projectKey }}
             </NuxtLink>
             <span>/</span>
+            <template v-if="currentTask.parent_task_number != null">
+              <NuxtLink
+                :to="`/projects/${projectKey}/tasks/${currentTask.parent_task_number}`"
+                class="max-w-[16rem] truncate font-semibold text-amber-600 hover:text-amber-700 dark:text-amber-500 dark:hover:text-amber-400"
+                :title="currentTask.parent_task_title"
+              >
+                {{ currentTask.parent_task_number }}
+              </NuxtLink>
+              <span>/</span>
+            </template>
             <NuxtLink
               :to="`/projects/${projectKey}/tasks/${taskNum}`"
               class="font-semibold text-amber-600 hover:text-amber-700 dark:text-amber-500 dark:hover:text-amber-400"
@@ -655,6 +687,37 @@ onMounted(() => {
                   :attachments="taskAttachments"
                   :loading="taskAttachmentsLoading"
                 />
+              </div>
+
+              <!-- Subtasks (one level only, so not shown on a subtask itself) -->
+              <div v-if="!isSubtask" class="space-y-3">
+                <div class="flex items-center justify-between">
+                  <h2 class="text-sm font-semibold text-muted-foreground">
+                    Subtasks
+                    <span v-if="subtasks.length" class="ml-1 font-normal">({{ subtasks.length }})</span>
+                  </h2>
+                  <Button
+                    v-if="isMember"
+                    variant="outline"
+                    size="sm"
+                    class="h-7 gap-1.5"
+                    @click="showCreateSubtask = true"
+                  >
+                    <Plus class="size-3.5" />
+                    Add subtask
+                  </Button>
+                </div>
+                <SubtaskList
+                  v-if="subtasks.length"
+                  :subtasks="subtasks"
+                  :project-key="projectKey"
+                  :states="states"
+                  :is-member="isMember"
+                  @updated="loadSubtasks"
+                />
+                <p v-else-if="!subtasksLoading" class="text-sm italic text-muted-foreground">
+                  No subtasks yet.
+                </p>
               </div>
 
               <Separator />
@@ -894,8 +957,8 @@ onMounted(() => {
                 </div>
               </div>
 
-              <!-- Move -->
-              <div v-if="isMember" class="mt-2 border-t border-border pt-3">
+              <!-- Move (subtasks move with their parent, so not offered here) -->
+              <div v-if="isMember && !isSubtask" class="mt-2 border-t border-border pt-3">
                 <Button
                   variant="ghost"
                   size="sm"
@@ -929,6 +992,17 @@ onMounted(() => {
           :project-key="projectKey"
           :task-num="taskNum"
           @moved="handleTaskMoved"
+        />
+
+        <!-- Create subtask -->
+        <CreateTaskDialog
+          v-model:open="showCreateSubtask"
+          :project-key="projectKey"
+          :states="states"
+          :labels="projectLabels"
+          :members="members"
+          :parent-task-number="taskNum"
+          @created="onSubtaskCreated"
         />
 
         <!-- Delete confirmation -->

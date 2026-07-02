@@ -1,5 +1,6 @@
 import type {
   Task,
+  Subtask,
   PaginatedTasksResponse,
   CreateTaskRequest,
   UpdateTaskRequest,
@@ -169,7 +170,13 @@ export function useTasks() {
       }
 
       const task: Task = await response.json();
-      state.currentTask = task;
+
+      // Only sync currentTask when it's the one being edited — otherwise editing
+      // a related task (e.g. a subtask from its parent's page) would clobber the
+      // parent bound to the detail view.
+      if (state.currentTask?.id === task.id) {
+        state.currentTask = task;
+      }
 
       // Update task in list if present
       const idx = state.tasks.findIndex((t) => t.id === task.id);
@@ -375,6 +382,29 @@ export function useTasks() {
     }
   }
 
+  // Subtasks
+  async function listSubtasks(
+    projectKey: string,
+    taskNum: number
+  ): Promise<{ success: boolean; data?: Subtask[]; error?: string }> {
+    try {
+      const response = await fetch(
+        `/api/v1/projects/${projectKey}/tasks/${taskNum}/subtasks`,
+        { headers: getAuthHeader() }
+      );
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        return { success: false, error: error.message || "Failed to fetch subtasks" };
+      }
+
+      const data: Subtask[] = await response.json();
+      return { success: true, data };
+    } catch {
+      return { success: false, error: "Network error" };
+    }
+  }
+
   function clearCurrentTask() {
     state.currentTask = null;
   }
@@ -407,6 +437,9 @@ export function useTasks() {
     // Move
     moveTask,
     moveTasks,
+
+    // Subtasks
+    listSubtasks,
 
     // Utils
     clearCurrentTask,

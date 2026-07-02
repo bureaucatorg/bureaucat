@@ -20,8 +20,30 @@ export interface Task {
   assignees?: TaskAssignee[];
   labels?: TaskLabel[];
   comment_count: number;
+  parent_task_id?: string;
+  parent_task_number?: number;
+  parent_task_title?: string;
+  subtask_count?: number;
   created_at: string;
   updated_at: string;
+}
+
+export interface Subtask {
+  id: string;
+  project_key: string;
+  task_number: number;
+  task_id: string; // e.g., "DEVOP-123"
+  title: string;
+  state_id: string;
+  state_name: string;
+  state_type: string;
+  state_color: string;
+  priority: number;
+  created_by: string;
+  creator_first_name: string;
+  creator_last_name: string;
+  creator_avatar_url?: string;
+  assignees?: TaskAssignee[];
 }
 
 export interface PaginatedTasksResponse {
@@ -71,6 +93,9 @@ export interface CreateTaskRequest {
   due_date?: string;
   assignees?: string[];
   labels?: string[];
+  // When set, creates this task as a subtask of the given (project-local)
+  // parent task number. One level of nesting only.
+  parent_task_number?: number;
 }
 
 export interface UpdateTaskRequest {

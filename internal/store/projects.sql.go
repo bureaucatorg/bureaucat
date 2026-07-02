@@ -84,6 +84,18 @@ func (q *Queries) AddTaskLabel(ctx context.Context, arg AddTaskLabelParams) erro
 	return err
 }
 
+const cascadeSoftDeleteSubtasks = `-- name: CascadeSoftDeleteSubtasks :exec
+UPDATE tasks
+SET deleted_at = NOW(), updated_at = NOW()
+WHERE parent_task_id = $1::uuid AND deleted_at IS NULL
+`
+
+// Soft-delete all children of a task (cascade-together on parent delete).
+func (q *Queries) CascadeSoftDeleteSubtasks(ctx context.Context, parentID uuid.UUID) error {
+	_, err := q.db.Exec(ctx, cascadeSoftDeleteSubtasks, parentID)
+	return err
+}
+
 const countAllProjects = `-- name: CountAllProjects :one
 SELECT COUNT(*)
 FROM projects p
@@ -427,37 +439,39 @@ func (q *Queries) CreateProjectState(ctx context.Context, arg CreateProjectState
 
 const createTask = `-- name: CreateTask :one
 
-INSERT INTO tasks (project_id, task_number, title, description, state_id, priority, created_by, start_date, due_date)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-RETURNING id, project_id, task_number, title, description, state_id, priority, created_by, start_date, due_date, created_at, updated_at, deleted_at
+INSERT INTO tasks (project_id, task_number, title, description, state_id, priority, created_by, start_date, due_date, parent_task_id)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+RETURNING id, project_id, task_number, title, description, state_id, priority, created_by, start_date, due_date, parent_task_id, created_at, updated_at, deleted_at
 `
 
 type CreateTaskParams struct {
-	ProjectID   uuid.UUID          `json:"project_id"`
-	TaskNumber  int32              `json:"task_number"`
-	Title       string             `json:"title"`
-	Description pgtype.Text        `json:"description"`
-	StateID     uuid.UUID          `json:"state_id"`
-	Priority    int32              `json:"priority"`
-	CreatedBy   uuid.UUID          `json:"created_by"`
-	StartDate   pgtype.Timestamptz `json:"start_date"`
-	DueDate     pgtype.Timestamptz `json:"due_date"`
+	ProjectID    uuid.UUID          `json:"project_id"`
+	TaskNumber   int32              `json:"task_number"`
+	Title        string             `json:"title"`
+	Description  pgtype.Text        `json:"description"`
+	StateID      uuid.UUID          `json:"state_id"`
+	Priority     int32              `json:"priority"`
+	CreatedBy    uuid.UUID          `json:"created_by"`
+	StartDate    pgtype.Timestamptz `json:"start_date"`
+	DueDate      pgtype.Timestamptz `json:"due_date"`
+	ParentTaskID pgtype.UUID        `json:"parent_task_id"`
 }
 
 type CreateTaskRow struct {
-	ID          uuid.UUID          `json:"id"`
-	ProjectID   uuid.UUID          `json:"project_id"`
-	TaskNumber  int32              `json:"task_number"`
-	Title       string             `json:"title"`
-	Description pgtype.Text        `json:"description"`
-	StateID     uuid.UUID          `json:"state_id"`
-	Priority    int32              `json:"priority"`
-	CreatedBy   uuid.UUID          `json:"created_by"`
-	StartDate   pgtype.Timestamptz `json:"start_date"`
-	DueDate     pgtype.Timestamptz `json:"due_date"`
-	CreatedAt   pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
-	DeletedAt   pgtype.Timestamptz `json:"deleted_at"`
+	ID           uuid.UUID          `json:"id"`
+	ProjectID    uuid.UUID          `json:"project_id"`
+	TaskNumber   int32              `json:"task_number"`
+	Title        string             `json:"title"`
+	Description  pgtype.Text        `json:"description"`
+	StateID      uuid.UUID          `json:"state_id"`
+	Priority     int32              `json:"priority"`
+	CreatedBy    uuid.UUID          `json:"created_by"`
+	StartDate    pgtype.Timestamptz `json:"start_date"`
+	DueDate      pgtype.Timestamptz `json:"due_date"`
+	ParentTaskID pgtype.UUID        `json:"parent_task_id"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
+	DeletedAt    pgtype.Timestamptz `json:"deleted_at"`
 }
 
 // ==================== TASKS ====================
@@ -472,6 +486,7 @@ func (q *Queries) CreateTask(ctx context.Context, arg CreateTaskParams) (CreateT
 		arg.CreatedBy,
 		arg.StartDate,
 		arg.DueDate,
+		arg.ParentTaskID,
 	)
 	var i CreateTaskRow
 	err := row.Scan(
@@ -485,6 +500,7 @@ func (q *Queries) CreateTask(ctx context.Context, arg CreateTaskParams) (CreateT
 		&i.CreatedBy,
 		&i.StartDate,
 		&i.DueDate,
+		&i.ParentTaskID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
@@ -877,14 +893,17 @@ func (q *Queries) GetProjectStateByProjectAndName(ctx context.Context, arg GetPr
 }
 
 const getTaskByID = `-- name: GetTaskByID :one
-SELECT t.id, t.project_id, t.task_number, t.title, t.description, t.state_id, t.priority, t.created_by, t.start_date, t.due_date, t.created_at, t.updated_at, t.deleted_at,
+SELECT t.id, t.project_id, t.task_number, t.title, t.description, t.state_id, t.priority, t.created_by, t.start_date, t.due_date, t.parent_task_id, t.created_at, t.updated_at, t.deleted_at,
        p.project_key,
        ps.name as state_name, ps.state_type, ps.color as state_color,
-       u.username as creator_username, u.first_name as creator_first_name, u.last_name as creator_last_name, u.avatar_url as creator_avatar_url
+       u.username as creator_username, u.first_name as creator_first_name, u.last_name as creator_last_name, u.avatar_url as creator_avatar_url,
+       pt.task_number as parent_task_number, pt.title as parent_task_title,
+       (SELECT COUNT(*) FROM tasks st WHERE st.parent_task_id = t.id AND st.deleted_at IS NULL)::bigint as subtask_count
 FROM tasks t
 JOIN projects p ON t.project_id = p.id
 JOIN project_states ps ON t.state_id = ps.id
 JOIN users u ON t.created_by = u.id
+LEFT JOIN tasks pt ON t.parent_task_id = pt.id AND pt.deleted_at IS NULL
 WHERE t.id = $1 AND t.deleted_at IS NULL
 `
 
@@ -899,6 +918,7 @@ type GetTaskByIDRow struct {
 	CreatedBy        uuid.UUID          `json:"created_by"`
 	StartDate        pgtype.Timestamptz `json:"start_date"`
 	DueDate          pgtype.Timestamptz `json:"due_date"`
+	ParentTaskID     pgtype.UUID        `json:"parent_task_id"`
 	CreatedAt        pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
 	DeletedAt        pgtype.Timestamptz `json:"deleted_at"`
@@ -910,6 +930,9 @@ type GetTaskByIDRow struct {
 	CreatorFirstName string             `json:"creator_first_name"`
 	CreatorLastName  string             `json:"creator_last_name"`
 	CreatorAvatarUrl pgtype.Text        `json:"creator_avatar_url"`
+	ParentTaskNumber pgtype.Int4        `json:"parent_task_number"`
+	ParentTaskTitle  pgtype.Text        `json:"parent_task_title"`
+	SubtaskCount     int64              `json:"subtask_count"`
 }
 
 func (q *Queries) GetTaskByID(ctx context.Context, id uuid.UUID) (GetTaskByIDRow, error) {
@@ -926,6 +949,7 @@ func (q *Queries) GetTaskByID(ctx context.Context, id uuid.UUID) (GetTaskByIDRow
 		&i.CreatedBy,
 		&i.StartDate,
 		&i.DueDate,
+		&i.ParentTaskID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
@@ -937,19 +961,25 @@ func (q *Queries) GetTaskByID(ctx context.Context, id uuid.UUID) (GetTaskByIDRow
 		&i.CreatorFirstName,
 		&i.CreatorLastName,
 		&i.CreatorAvatarUrl,
+		&i.ParentTaskNumber,
+		&i.ParentTaskTitle,
+		&i.SubtaskCount,
 	)
 	return i, err
 }
 
 const getTaskByProjectAndNumber = `-- name: GetTaskByProjectAndNumber :one
-SELECT t.id, t.project_id, t.task_number, t.title, t.description, t.state_id, t.priority, t.created_by, t.start_date, t.due_date, t.created_at, t.updated_at, t.deleted_at,
+SELECT t.id, t.project_id, t.task_number, t.title, t.description, t.state_id, t.priority, t.created_by, t.start_date, t.due_date, t.parent_task_id, t.created_at, t.updated_at, t.deleted_at,
        p.project_key,
        ps.name as state_name, ps.state_type, ps.color as state_color,
-       u.username as creator_username, u.first_name as creator_first_name, u.last_name as creator_last_name, u.avatar_url as creator_avatar_url
+       u.username as creator_username, u.first_name as creator_first_name, u.last_name as creator_last_name, u.avatar_url as creator_avatar_url,
+       pt.task_number as parent_task_number, pt.title as parent_task_title,
+       (SELECT COUNT(*) FROM tasks st WHERE st.parent_task_id = t.id AND st.deleted_at IS NULL)::bigint as subtask_count
 FROM tasks t
 JOIN projects p ON t.project_id = p.id
 JOIN project_states ps ON t.state_id = ps.id
 JOIN users u ON t.created_by = u.id
+LEFT JOIN tasks pt ON t.parent_task_id = pt.id AND pt.deleted_at IS NULL
 WHERE t.project_id = $1 AND t.task_number = $2 AND t.deleted_at IS NULL
 `
 
@@ -969,6 +999,7 @@ type GetTaskByProjectAndNumberRow struct {
 	CreatedBy        uuid.UUID          `json:"created_by"`
 	StartDate        pgtype.Timestamptz `json:"start_date"`
 	DueDate          pgtype.Timestamptz `json:"due_date"`
+	ParentTaskID     pgtype.UUID        `json:"parent_task_id"`
 	CreatedAt        pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
 	DeletedAt        pgtype.Timestamptz `json:"deleted_at"`
@@ -980,6 +1011,9 @@ type GetTaskByProjectAndNumberRow struct {
 	CreatorFirstName string             `json:"creator_first_name"`
 	CreatorLastName  string             `json:"creator_last_name"`
 	CreatorAvatarUrl pgtype.Text        `json:"creator_avatar_url"`
+	ParentTaskNumber pgtype.Int4        `json:"parent_task_number"`
+	ParentTaskTitle  pgtype.Text        `json:"parent_task_title"`
+	SubtaskCount     int64              `json:"subtask_count"`
 }
 
 func (q *Queries) GetTaskByProjectAndNumber(ctx context.Context, arg GetTaskByProjectAndNumberParams) (GetTaskByProjectAndNumberRow, error) {
@@ -996,6 +1030,7 @@ func (q *Queries) GetTaskByProjectAndNumber(ctx context.Context, arg GetTaskByPr
 		&i.CreatedBy,
 		&i.StartDate,
 		&i.DueDate,
+		&i.ParentTaskID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
@@ -1007,6 +1042,9 @@ func (q *Queries) GetTaskByProjectAndNumber(ctx context.Context, arg GetTaskByPr
 		&i.CreatorFirstName,
 		&i.CreatorLastName,
 		&i.CreatorAvatarUrl,
+		&i.ParentTaskNumber,
+		&i.ParentTaskTitle,
+		&i.SubtaskCount,
 	)
 	return i, err
 }
@@ -1492,6 +1530,105 @@ func (q *Queries) ListProjectTasks(ctx context.Context, arg ListProjectTasksPara
 			&i.StateType,
 			&i.StateColor,
 			&i.CreatorUsername,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listSubtaskIDsForMove = `-- name: ListSubtaskIDsForMove :many
+SELECT t.id, ps.name as state_name
+FROM tasks t
+JOIN project_states ps ON t.state_id = ps.id
+WHERE t.parent_task_id = $1::uuid AND t.deleted_at IS NULL
+ORDER BY t.task_number ASC
+`
+
+type ListSubtaskIDsForMoveRow struct {
+	ID        uuid.UUID `json:"id"`
+	StateName string    `json:"state_name"`
+}
+
+// Child ids + state name of a task, used to cascade a cross-project move.
+func (q *Queries) ListSubtaskIDsForMove(ctx context.Context, parentID uuid.UUID) ([]ListSubtaskIDsForMoveRow, error) {
+	rows, err := q.db.Query(ctx, listSubtaskIDsForMove, parentID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListSubtaskIDsForMoveRow{}
+	for rows.Next() {
+		var i ListSubtaskIDsForMoveRow
+		if err := rows.Scan(&i.ID, &i.StateName); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listSubtasks = `-- name: ListSubtasks :many
+SELECT t.id, t.project_id, t.task_number, t.title, t.state_id, t.priority,
+       t.created_by, u.first_name as creator_first_name, u.last_name as creator_last_name, u.avatar_url as creator_avatar_url,
+       p.project_key, ps.name as state_name, ps.state_type, ps.color as state_color
+FROM tasks t
+JOIN projects p ON t.project_id = p.id
+JOIN project_states ps ON t.state_id = ps.id
+JOIN users u ON t.created_by = u.id
+WHERE t.parent_task_id = $1::uuid AND t.deleted_at IS NULL
+ORDER BY t.task_number ASC
+`
+
+type ListSubtasksRow struct {
+	ID               uuid.UUID   `json:"id"`
+	ProjectID        uuid.UUID   `json:"project_id"`
+	TaskNumber       int32       `json:"task_number"`
+	Title            string      `json:"title"`
+	StateID          uuid.UUID   `json:"state_id"`
+	Priority         int32       `json:"priority"`
+	CreatedBy        uuid.UUID   `json:"created_by"`
+	CreatorFirstName string      `json:"creator_first_name"`
+	CreatorLastName  string      `json:"creator_last_name"`
+	CreatorAvatarUrl pgtype.Text `json:"creator_avatar_url"`
+	ProjectKey       string      `json:"project_key"`
+	StateName        string      `json:"state_name"`
+	StateType        string      `json:"state_type"`
+	StateColor       pgtype.Text `json:"state_color"`
+}
+
+// Direct children of a task, in task-number order. Used on the parent's detail page.
+func (q *Queries) ListSubtasks(ctx context.Context, parentID uuid.UUID) ([]ListSubtasksRow, error) {
+	rows, err := q.db.Query(ctx, listSubtasks, parentID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListSubtasksRow{}
+	for rows.Next() {
+		var i ListSubtasksRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.ProjectID,
+			&i.TaskNumber,
+			&i.Title,
+			&i.StateID,
+			&i.Priority,
+			&i.CreatedBy,
+			&i.CreatorFirstName,
+			&i.CreatorLastName,
+			&i.CreatorAvatarUrl,
+			&i.ProjectKey,
+			&i.StateName,
+			&i.StateType,
+			&i.StateColor,
 		); err != nil {
 			return nil, err
 		}
@@ -2142,7 +2279,7 @@ SET project_id = $1,
     state_id = $3,
     updated_at = NOW()
 WHERE id = $4 AND deleted_at IS NULL
-RETURNING id, project_id, task_number, title, description, state_id, priority, created_by, start_date, due_date, created_at, updated_at, deleted_at
+RETURNING id, project_id, task_number, title, description, state_id, priority, created_by, start_date, due_date, parent_task_id, created_at, updated_at, deleted_at
 `
 
 type MoveTaskParams struct {
@@ -2153,19 +2290,20 @@ type MoveTaskParams struct {
 }
 
 type MoveTaskRow struct {
-	ID          uuid.UUID          `json:"id"`
-	ProjectID   uuid.UUID          `json:"project_id"`
-	TaskNumber  int32              `json:"task_number"`
-	Title       string             `json:"title"`
-	Description pgtype.Text        `json:"description"`
-	StateID     uuid.UUID          `json:"state_id"`
-	Priority    int32              `json:"priority"`
-	CreatedBy   uuid.UUID          `json:"created_by"`
-	StartDate   pgtype.Timestamptz `json:"start_date"`
-	DueDate     pgtype.Timestamptz `json:"due_date"`
-	CreatedAt   pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
-	DeletedAt   pgtype.Timestamptz `json:"deleted_at"`
+	ID           uuid.UUID          `json:"id"`
+	ProjectID    uuid.UUID          `json:"project_id"`
+	TaskNumber   int32              `json:"task_number"`
+	Title        string             `json:"title"`
+	Description  pgtype.Text        `json:"description"`
+	StateID      uuid.UUID          `json:"state_id"`
+	Priority     int32              `json:"priority"`
+	CreatedBy    uuid.UUID          `json:"created_by"`
+	StartDate    pgtype.Timestamptz `json:"start_date"`
+	DueDate      pgtype.Timestamptz `json:"due_date"`
+	ParentTaskID pgtype.UUID        `json:"parent_task_id"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
+	DeletedAt    pgtype.Timestamptz `json:"deleted_at"`
 }
 
 // Move a task to a different project, assigning a new project-local task number
@@ -2189,6 +2327,7 @@ func (q *Queries) MoveTask(ctx context.Context, arg MoveTaskParams) (MoveTaskRow
 		&i.CreatedBy,
 		&i.StartDate,
 		&i.DueDate,
+		&i.ParentTaskID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
@@ -2753,7 +2892,7 @@ SET title = COALESCE($2, title),
     due_date = CASE WHEN $8::bool THEN $9 ELSE due_date END,
     updated_at = NOW()
 WHERE id = $1 AND deleted_at IS NULL
-RETURNING id, project_id, task_number, title, description, state_id, priority, created_by, start_date, due_date, created_at, updated_at, deleted_at
+RETURNING id, project_id, task_number, title, description, state_id, priority, created_by, start_date, due_date, parent_task_id, created_at, updated_at, deleted_at
 `
 
 type UpdateTaskParams struct {
@@ -2769,19 +2908,20 @@ type UpdateTaskParams struct {
 }
 
 type UpdateTaskRow struct {
-	ID          uuid.UUID          `json:"id"`
-	ProjectID   uuid.UUID          `json:"project_id"`
-	TaskNumber  int32              `json:"task_number"`
-	Title       string             `json:"title"`
-	Description pgtype.Text        `json:"description"`
-	StateID     uuid.UUID          `json:"state_id"`
-	Priority    int32              `json:"priority"`
-	CreatedBy   uuid.UUID          `json:"created_by"`
-	StartDate   pgtype.Timestamptz `json:"start_date"`
-	DueDate     pgtype.Timestamptz `json:"due_date"`
-	CreatedAt   pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
-	DeletedAt   pgtype.Timestamptz `json:"deleted_at"`
+	ID           uuid.UUID          `json:"id"`
+	ProjectID    uuid.UUID          `json:"project_id"`
+	TaskNumber   int32              `json:"task_number"`
+	Title        string             `json:"title"`
+	Description  pgtype.Text        `json:"description"`
+	StateID      uuid.UUID          `json:"state_id"`
+	Priority     int32              `json:"priority"`
+	CreatedBy    uuid.UUID          `json:"created_by"`
+	StartDate    pgtype.Timestamptz `json:"start_date"`
+	DueDate      pgtype.Timestamptz `json:"due_date"`
+	ParentTaskID pgtype.UUID        `json:"parent_task_id"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
+	DeletedAt    pgtype.Timestamptz `json:"deleted_at"`
 }
 
 func (q *Queries) UpdateTask(ctx context.Context, arg UpdateTaskParams) (UpdateTaskRow, error) {
@@ -2808,6 +2948,7 @@ func (q *Queries) UpdateTask(ctx context.Context, arg UpdateTaskParams) (UpdateT
 		&i.CreatedBy,
 		&i.StartDate,
 		&i.DueDate,
+		&i.ParentTaskID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,

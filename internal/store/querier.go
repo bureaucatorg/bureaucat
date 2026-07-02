@@ -25,6 +25,8 @@ type Querier interface {
 	AddTaskLabel(ctx context.Context, arg AddTaskLabelParams) error
 	// ==================== CYCLE TASKS ====================
 	AddTasksToCycle(ctx context.Context, arg AddTasksToCycleParams) error
+	// Soft-delete all children of a task (cascade-together on parent delete).
+	CascadeSoftDeleteSubtasks(ctx context.Context, parentID uuid.UUID) error
 	CheckCycleOverlap(ctx context.Context, arg CheckCycleOverlapParams) (int32, error)
 	// Merge a new activity into an existing open notification: bump the count,
 	// update the latest actor/type/comment, and re-surface as unread.
@@ -174,6 +176,10 @@ type Querier interface {
 	// Returns every shared view in the project plus private views owned by the caller.
 	ListProjectViews(ctx context.Context, arg ListProjectViewsParams) ([]ListProjectViewsRow, error)
 	ListSettings(ctx context.Context) ([]Setting, error)
+	// Child ids + state name of a task, used to cascade a cross-project move.
+	ListSubtaskIDsForMove(ctx context.Context, parentID uuid.UUID) ([]ListSubtaskIDsForMoveRow, error)
+	// Direct children of a task, in task-number order. Used on the parent's detail page.
+	ListSubtasks(ctx context.Context, parentID uuid.UUID) ([]ListSubtasksRow, error)
 	ListTaskActivity(ctx context.Context, taskID uuid.UUID) ([]ListTaskActivityRow, error)
 	ListTaskAssignees(ctx context.Context, taskID uuid.UUID) ([]ListTaskAssigneesRow, error)
 	ListTaskComments(ctx context.Context, taskID uuid.UUID) ([]ListTaskCommentsRow, error)

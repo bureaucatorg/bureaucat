@@ -470,19 +470,20 @@ type Setting struct {
 }
 
 type Task struct {
-	ID          uuid.UUID          `json:"id"`
-	ProjectID   uuid.UUID          `json:"project_id"`
-	TaskNumber  int32              `json:"task_number"`
-	Title       string             `json:"title"`
-	Description pgtype.Text        `json:"description"`
-	StateID     uuid.UUID          `json:"state_id"`
-	Priority    int32              `json:"priority"`
-	CreatedBy   uuid.UUID          `json:"created_by"`
-	CreatedAt   pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
-	DeletedAt   pgtype.Timestamptz `json:"deleted_at"`
-	StartDate   pgtype.Timestamptz `json:"start_date"`
-	DueDate     pgtype.Timestamptz `json:"due_date"`
+	ID           uuid.UUID          `json:"id"`
+	ProjectID    uuid.UUID          `json:"project_id"`
+	TaskNumber   int32              `json:"task_number"`
+	Title        string             `json:"title"`
+	Description  pgtype.Text        `json:"description"`
+	StateID      uuid.UUID          `json:"state_id"`
+	Priority     int32              `json:"priority"`
+	CreatedBy    uuid.UUID          `json:"created_by"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
+	DeletedAt    pgtype.Timestamptz `json:"deleted_at"`
+	StartDate    pgtype.Timestamptz `json:"start_date"`
+	DueDate      pgtype.Timestamptz `json:"due_date"`
+	ParentTaskID pgtype.UUID        `json:"parent_task_id"`
 }
 
 type TaskAssignee struct {

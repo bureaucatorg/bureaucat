@@ -234,6 +234,9 @@ func (s *Server) registerRoutes() {
 				projectGroup.PATCH("/tasks/:taskNum", s.taskHandler.UpdateTask, auth.ProjectRoleMiddleware("member"))
 				projectGroup.DELETE("/tasks/:taskNum", s.taskHandler.DeleteTask, auth.ProjectRoleMiddleware("member"))
 
+				// Subtasks (children created via POST /tasks with parent_task_number)
+				projectGroup.GET("/tasks/:taskNum/subtasks", s.taskHandler.ListSubtasks)
+
 				// Task assignees
 				projectGroup.POST("/tasks/:taskNum/assignees", s.taskHandler.AddAssignee, auth.ProjectRoleMiddleware("member"))
 				projectGroup.DELETE("/tasks/:taskNum/assignees/:userId", s.taskHandler.RemoveAssignee, auth.ProjectRoleMiddleware("member"))

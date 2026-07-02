@@ -729,7 +729,8 @@ JOIN projects p ON t.project_id = p.id
 JOIN project_states ps ON t.state_id = ps.id
 JOIN users u ON t.created_by = u.id
 WHERE t.project_id = $1
-  AND t.deleted_at IS NULL`
+  AND t.deleted_at IS NULL
+  AND t.parent_task_id IS NULL`
 
 const filterCountBase = `SELECT COUNT(*)
 FROM tasks t
@@ -737,7 +738,8 @@ JOIN projects p ON t.project_id = p.id
 JOIN project_states ps ON t.state_id = ps.id
 JOIN users u ON t.created_by = u.id
 WHERE t.project_id = $1
-  AND t.deleted_at IS NULL`
+  AND t.deleted_at IS NULL
+  AND t.parent_task_id IS NULL`
 
 // ListTasks compiles the filter tree, runs the dynamic query, and returns rows.
 func (r *FilterRunner) ListTasks(ctx context.Context, p FilterListParams) ([]FilteredTaskRow, error) {
