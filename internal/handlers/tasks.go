@@ -10,6 +10,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/labstack/echo/v5"
 
 	"bereaucat/internal/activity"
@@ -66,15 +67,17 @@ func timePtrEqual(a, b *time.Time) bool {
 // TaskHandler handles task-related endpoints.
 type TaskHandler struct {
 	store               store.Querier
+	pool                *pgxpool.Pool
 	filterRunner        *store.FilterRunner
 	activityService     *activity.Service
 	notificationService *notifier.Service
 }
 
 // NewTaskHandler creates a new task handler.
-func NewTaskHandler(s store.Querier, filterRunner *store.FilterRunner, activityService *activity.Service, notificationService *notifier.Service) *TaskHandler {
+func NewTaskHandler(s store.Querier, pool *pgxpool.Pool, filterRunner *store.FilterRunner, activityService *activity.Service, notificationService *notifier.Service) *TaskHandler {
 	return &TaskHandler{
 		store:               s,
+		pool:                pool,
 		filterRunner:        filterRunner,
 		activityService:     activityService,
 		notificationService: notificationService,
@@ -1392,6 +1395,320 @@ func (h *TaskHandler) RemoveLabel(c *echo.Context) error {
 }
 
 // Helper functions
+
+// MoveTaskRequest is the body for moving a single task.
+type MoveTaskRequest struct {
+	TargetProjectKey string `json:"target_project_key"`
+}
+
+// MoveTasksRequest is the body for moving multiple tasks.
+type MoveTasksRequest struct {
+	TargetProjectKey string `json:"target_project_key"`
+	TaskNumbers      []int  `json:"task_numbers"`
+}
+
+// MoveTaskResult reports the outcome of moving one task in a bulk operation.
+type MoveTaskResult struct {
+	TaskNumber    int    `json:"task_number"`
+	Success       bool   `json:"success"`
+	NewTaskID     string `json:"new_task_id,omitempty"`
+	NewTaskNumber int    `json:"new_task_number,omitempty"`
+	Error         string `json:"error,omitempty"`
+}
+
+// MoveTasksResponse is the response body for a bulk move.
+type MoveTasksResponse struct {
+	Moved   int              `json:"moved"`
+	Failed  int              `json:"failed"`
+	Results []MoveTaskResult `json:"results"`
+}
+
+// resolveMoveTarget looks up the destination project by key and verifies the
+// caller may move tasks into it: site admins are always allowed, otherwise the
+// caller must be a member of the destination project.
+func (h *TaskHandler) resolveMoveTarget(ctx context.Context, c *echo.Context, targetKey string, userID uuid.UUID) (store.Project, error) {
+	if targetKey == "" {
+		return store.Project{}, echo.NewHTTPError(http.StatusBadRequest, "target_project_key is required")
+	}
+	dest, err := h.store.GetProjectByKey(ctx, targetKey)
+	if err != nil {
+		return store.Project{}, echo.NewHTTPError(http.StatusNotFound, "target project not found")
+	}
+	if c.Request().Header.Get(auth.HeaderProjectID) == dest.ID.String() {
+		return store.Project{}, echo.NewHTTPError(http.StatusBadRequest, "task is already in this project")
+	}
+	if c.Request().Header.Get(auth.HeaderUserType) != "admin" {
+		isMember, err := h.store.IsProjectMember(ctx, store.IsProjectMemberParams{
+			ProjectID: dest.ID,
+			UserID:    userID,
+		})
+		if err != nil {
+			return store.Project{}, echo.NewHTTPError(http.StatusInternalServerError, "failed to check membership")
+		}
+		if !isMember {
+			return store.Project{}, echo.NewHTTPError(http.StatusForbidden, "not a member of the target project")
+		}
+	}
+	return dest, nil
+}
+
+// moveTaskTx moves one task to destProject inside a transaction, remapping the
+// state and labels by name and dropping cycle/module links. It returns the new
+// (destination-local) task number. Activity is logged after commit.
+func (h *TaskHandler) moveTaskTx(ctx context.Context, task store.GetTaskByProjectAndNumberRow, dest store.Project, actorID uuid.UUID) (int32, error) {
+	tx, err := h.pool.Begin(ctx)
+	if err != nil {
+		return 0, err
+	}
+	defer tx.Rollback(ctx)
+	q := store.New(tx)
+
+	// Remap state by name; fall back to the destination's default state.
+	var newStateID uuid.UUID
+	if st, err := q.GetProjectStateByProjectAndName(ctx, store.GetProjectStateByProjectAndNameParams{
+		ProjectID: dest.ID,
+		Name:      task.StateName,
+	}); err == nil {
+		newStateID = st.ID
+	} else {
+		def, err := q.GetDefaultProjectState(ctx, dest.ID)
+		if err != nil {
+			return 0, err
+		}
+		newStateID = def.ID
+	}
+
+	nextNumber, err := q.GetNextTaskNumber(ctx, dest.ID)
+	if err != nil {
+		return 0, err
+	}
+
+	moved, err := q.MoveTask(ctx, store.MoveTaskParams{
+		ID:         task.ID,
+		ProjectID:  dest.ID,
+		TaskNumber: nextNumber,
+		StateID:    newStateID,
+	})
+	if err != nil {
+		return 0, err
+	}
+
+	// Drop project-scoped cycle/module associations.
+	if err := q.DeleteTaskCycleLinks(ctx, task.ID); err != nil {
+		return 0, err
+	}
+	if err := q.DeleteTaskModuleLinks(ctx, task.ID); err != nil {
+		return 0, err
+	}
+
+	// Remap labels by name: drop the source labels, re-add matching ones from
+	// the destination project. Unmatched labels are silently dropped.
+	labels, err := q.ListTaskLabels(ctx, task.ID)
+	if err != nil {
+		return 0, err
+	}
+	for _, l := range labels {
+		if err := q.RemoveTaskLabel(ctx, store.RemoveTaskLabelParams{
+			TaskID:  task.ID,
+			LabelID: l.LabelID,
+		}); err != nil {
+			return 0, err
+		}
+		destLabel, err := q.GetProjectLabelByProjectAndName(ctx, store.GetProjectLabelByProjectAndNameParams{
+			ProjectID: dest.ID,
+			Name:      l.Name,
+		})
+		if err != nil {
+			continue
+		}
+		if err := q.AddTaskLabel(ctx, store.AddTaskLabelParams{
+			TaskID:  task.ID,
+			LabelID: destLabel.ID,
+			AddedBy: actorID,
+		}); err != nil {
+			return 0, err
+		}
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return 0, err
+	}
+
+	// Log the move outside the transaction (best-effort, matching other handlers).
+	h.activityService.LogActivity(ctx, activity.LogActivityParams{
+		TaskID:       task.ID,
+		ActivityType: activity.TaskMoved,
+		ActorID:      actorID,
+		OldValue: map[string]interface{}{
+			"project_key": task.ProjectKey,
+			"task_id":     task.ProjectKey + "-" + strconv.Itoa(int(task.TaskNumber)),
+		},
+		NewValue: map[string]interface{}{
+			"project_key": dest.ProjectKey,
+			"task_id":     dest.ProjectKey + "-" + strconv.Itoa(int(moved.TaskNumber)),
+		},
+	})
+
+	return moved.TaskNumber, nil
+}
+
+// MoveTask moves a single task to another project.
+//
+//	@Summary		Move task
+//	@Description	Move a task to a different project, assigning a new task number and remapping state/labels.
+//	@Tags			Tasks
+//	@Accept			json
+//	@Produce		json
+//	@Param			projectKey	path		string			true	"Source project key"
+//	@Param			taskNum		path		int				true	"Task number"
+//	@Param			body		body		MoveTaskRequest	true	"Target project"
+//	@Success		200			{object}	TaskResponse
+//	@Failure		400			{object}	ErrorResponse
+//	@Failure		403			{object}	ErrorResponse
+//	@Failure		404			{object}	ErrorResponse
+//	@Security		BearerAuth
+//	@Router			/projects/{projectKey}/tasks/{taskNum}/move [post]
+func (h *TaskHandler) MoveTask(c *echo.Context) error {
+	projectID, err := uuid.Parse(c.Request().Header.Get(auth.HeaderProjectID))
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "invalid project ID in context")
+	}
+	userID, err := uuid.Parse(c.Request().Header.Get(auth.HeaderUserID))
+	if err != nil {
+		return echo.NewHTTPError(http.StatusUnauthorized, "invalid user ID")
+	}
+	taskNum, err := strconv.Atoi(c.Param("taskNum"))
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid task number")
+	}
+
+	var req MoveTaskRequest
+	if err := c.Bind(&req); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid request body")
+	}
+
+	ctx := c.Request().Context()
+
+	dest, err := h.resolveMoveTarget(ctx, c, req.TargetProjectKey, userID)
+	if err != nil {
+		return err
+	}
+
+	task, err := h.store.GetTaskByProjectAndNumber(ctx, store.GetTaskByProjectAndNumberParams{
+		ProjectID:  projectID,
+		TaskNumber: int32(taskNum),
+	})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusNotFound, "task not found")
+	}
+
+	newNumber, err := h.moveTaskTx(ctx, task, dest, userID)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to move task")
+	}
+
+	// Return the moved task in its new project context.
+	fullTask, err := h.store.GetTaskByID(ctx, task.ID)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to load moved task")
+	}
+	assignees := h.getTaskAssignees(ctx, task.ID)
+	labels := h.getTaskLabels(ctx, task.ID)
+
+	return c.JSON(http.StatusOK, TaskResponse{
+		ID:               fullTask.ID,
+		ProjectKey:       dest.ProjectKey,
+		TaskNumber:       int(newNumber),
+		TaskID:           dest.ProjectKey + "-" + strconv.Itoa(int(newNumber)),
+		Title:            fullTask.Title,
+		Description:      textToStringPtr(fullTask.Description),
+		StateID:          fullTask.StateID,
+		StateName:        fullTask.StateName,
+		StateType:        fullTask.StateType,
+		StateColor:       textToString(fullTask.StateColor, "#6B7280"),
+		Priority:         int(fullTask.Priority),
+		StartDate:        timestamptzToTimePtr(fullTask.StartDate),
+		DueDate:          timestamptzToTimePtr(fullTask.DueDate),
+		CreatedBy:        fullTask.CreatedBy,
+		CreatorUsername:  fullTask.CreatorUsername,
+		CreatorFirstName: fullTask.CreatorFirstName,
+		CreatorLastName:  fullTask.CreatorLastName,
+		CreatorAvatarURL: textToStringPtr(fullTask.CreatorAvatarUrl),
+		Assignees:        assignees,
+		Labels:           labels,
+		CreatedAt:        fullTask.CreatedAt.Time,
+		UpdatedAt:        fullTask.UpdatedAt.Time,
+	})
+}
+
+// MoveTasks moves multiple tasks to another project, best-effort per task.
+//
+//	@Summary		Bulk move tasks
+//	@Description	Move multiple tasks to a different project. Each task is moved independently; failures do not roll back successful moves.
+//	@Tags			Tasks
+//	@Accept			json
+//	@Produce		json
+//	@Param			projectKey	path		string				true	"Source project key"
+//	@Param			body		body		MoveTasksRequest	true	"Target project and task numbers"
+//	@Success		200			{object}	MoveTasksResponse
+//	@Failure		400			{object}	ErrorResponse
+//	@Failure		403			{object}	ErrorResponse
+//	@Security		BearerAuth
+//	@Router			/projects/{projectKey}/tasks/move [post]
+func (h *TaskHandler) MoveTasks(c *echo.Context) error {
+	projectID, err := uuid.Parse(c.Request().Header.Get(auth.HeaderProjectID))
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "invalid project ID in context")
+	}
+	userID, err := uuid.Parse(c.Request().Header.Get(auth.HeaderUserID))
+	if err != nil {
+		return echo.NewHTTPError(http.StatusUnauthorized, "invalid user ID")
+	}
+
+	var req MoveTasksRequest
+	if err := c.Bind(&req); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid request body")
+	}
+	if len(req.TaskNumbers) == 0 {
+		return echo.NewHTTPError(http.StatusBadRequest, "task_numbers is required")
+	}
+
+	ctx := c.Request().Context()
+
+	dest, err := h.resolveMoveTarget(ctx, c, req.TargetProjectKey, userID)
+	if err != nil {
+		return err
+	}
+
+	resp := MoveTasksResponse{Results: make([]MoveTaskResult, 0, len(req.TaskNumbers))}
+	for _, num := range req.TaskNumbers {
+		result := MoveTaskResult{TaskNumber: num}
+		task, err := h.store.GetTaskByProjectAndNumber(ctx, store.GetTaskByProjectAndNumberParams{
+			ProjectID:  projectID,
+			TaskNumber: int32(num),
+		})
+		if err != nil {
+			result.Error = "task not found"
+			resp.Failed++
+			resp.Results = append(resp.Results, result)
+			continue
+		}
+		newNumber, err := h.moveTaskTx(ctx, task, dest, userID)
+		if err != nil {
+			result.Error = "failed to move task"
+			resp.Failed++
+			resp.Results = append(resp.Results, result)
+			continue
+		}
+		result.Success = true
+		result.NewTaskNumber = int(newNumber)
+		result.NewTaskID = dest.ProjectKey + "-" + strconv.Itoa(int(newNumber))
+		resp.Moved++
+		resp.Results = append(resp.Results, result)
+	}
+
+	return c.JSON(http.StatusOK, resp)
+}
 
 func (h *TaskHandler) getTaskAssignees(ctx context.Context, taskID uuid.UUID) []AssigneeResponse {
 	assignees, err := h.store.ListTaskAssignees(ctx, taskID)

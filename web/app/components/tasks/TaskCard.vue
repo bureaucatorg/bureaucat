@@ -9,12 +9,17 @@ const props = withDefaults(
     projectKey?: string;
     states?: ProjectState[];
     isMember?: boolean;
+    // When true, a leading checkbox is shown and the row toggles selection
+    // instead of navigating on the checkbox itself.
+    selectable?: boolean;
+    selected?: boolean;
   }>(),
-  { states: () => [], isMember: false }
+  { states: () => [], isMember: false, selectable: false, selected: false }
 );
 
 const emit = defineEmits<{
   updated: [];
+  toggleSelect: [];
 }>();
 
 // Fall back to the task's own project_key (e.g. on the dashboard, where tasks
@@ -91,7 +96,13 @@ const involvedPeople = computed(() => {
   <NuxtLink :to="`/projects/${resolvedKey}/tasks/${task.task_number}`" class="block">
     <div
       class="task-row group grid items-center bg-background/50 px-3 py-2.5 transition-colors hover:bg-muted/50"
+      :class="{ selectable, 'bg-accent/40': selectable && selected }"
     >
+      <!-- Col 0: Selection checkbox -->
+      <div v-if="selectable" class="justify-self-center" @click.stop.prevent>
+        <Checkbox :model-value="selected" @update:model-value="emit('toggleSelect')" />
+      </div>
+
       <!-- Col 1: Task ID -->
       <span class="font-mono text-sm text-muted-foreground truncate">{{ task.task_id }}</span>
 
@@ -186,5 +197,8 @@ const involvedPeople = computed(() => {
 .task-row {
   grid-template-columns: 6rem 1fr 10rem 7rem 6rem 3rem;
   column-gap: 0.375rem;
+}
+.task-row.selectable {
+  grid-template-columns: 1.5rem 6rem 1fr 10rem 7rem 6rem 3rem;
 }
 </style>

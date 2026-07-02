@@ -535,6 +535,24 @@ func (q *Queries) DeleteProjectState(ctx context.Context, id uuid.UUID) error {
 	return err
 }
 
+const deleteTaskCycleLinks = `-- name: DeleteTaskCycleLinks :exec
+DELETE FROM cycle_tasks WHERE task_id = $1
+`
+
+func (q *Queries) DeleteTaskCycleLinks(ctx context.Context, taskID uuid.UUID) error {
+	_, err := q.db.Exec(ctx, deleteTaskCycleLinks, taskID)
+	return err
+}
+
+const deleteTaskModuleLinks = `-- name: DeleteTaskModuleLinks :exec
+DELETE FROM module_tasks WHERE task_id = $1
+`
+
+func (q *Queries) DeleteTaskModuleLinks(ctx context.Context, taskID uuid.UUID) error {
+	_, err := q.db.Exec(ctx, deleteTaskModuleLinks, taskID)
+	return err
+}
+
 const deleteTaskTemplate = `-- name: DeleteTaskTemplate :exec
 DELETE FROM task_templates WHERE id = $1
 `
@@ -2100,6 +2118,67 @@ func (q *Queries) ListUserProjectsFiltered(ctx context.Context, arg ListUserProj
 		return nil, err
 	}
 	return items, nil
+}
+
+const moveTask = `-- name: MoveTask :one
+UPDATE tasks
+SET project_id = $1,
+    task_number = $2,
+    state_id = $3,
+    updated_at = NOW()
+WHERE id = $4 AND deleted_at IS NULL
+RETURNING id, project_id, task_number, title, description, state_id, priority, created_by, start_date, due_date, created_at, updated_at, deleted_at
+`
+
+type MoveTaskParams struct {
+	ProjectID  uuid.UUID `json:"project_id"`
+	TaskNumber int32     `json:"task_number"`
+	StateID    uuid.UUID `json:"state_id"`
+	ID         uuid.UUID `json:"id"`
+}
+
+type MoveTaskRow struct {
+	ID          uuid.UUID          `json:"id"`
+	ProjectID   uuid.UUID          `json:"project_id"`
+	TaskNumber  int32              `json:"task_number"`
+	Title       string             `json:"title"`
+	Description pgtype.Text        `json:"description"`
+	StateID     uuid.UUID          `json:"state_id"`
+	Priority    int32              `json:"priority"`
+	CreatedBy   uuid.UUID          `json:"created_by"`
+	StartDate   pgtype.Timestamptz `json:"start_date"`
+	DueDate     pgtype.Timestamptz `json:"due_date"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+	DeletedAt   pgtype.Timestamptz `json:"deleted_at"`
+}
+
+// Move a task to a different project, assigning a new project-local task number
+// and state. Cycle/module links and labels are handled separately by the caller.
+func (q *Queries) MoveTask(ctx context.Context, arg MoveTaskParams) (MoveTaskRow, error) {
+	row := q.db.QueryRow(ctx, moveTask,
+		arg.ProjectID,
+		arg.TaskNumber,
+		arg.StateID,
+		arg.ID,
+	)
+	var i MoveTaskRow
+	err := row.Scan(
+		&i.ID,
+		&i.ProjectID,
+		&i.TaskNumber,
+		&i.Title,
+		&i.Description,
+		&i.StateID,
+		&i.Priority,
+		&i.CreatedBy,
+		&i.StartDate,
+		&i.DueDate,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+	)
+	return i, err
 }
 
 const projectKeyExists = `-- name: ProjectKeyExists :one

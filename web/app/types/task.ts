@@ -32,6 +32,20 @@ export interface PaginatedTasksResponse {
   total_pages: number;
 }
 
+export interface MoveTaskResult {
+  task_number: number;
+  success: boolean;
+  new_task_id?: string;
+  new_task_number?: number;
+  error?: string;
+}
+
+export interface MoveTasksResponse {
+  moved: number;
+  failed: number;
+  results: MoveTaskResult[];
+}
+
 export interface TaskAssignee {
   id: string;
   user_id: string;

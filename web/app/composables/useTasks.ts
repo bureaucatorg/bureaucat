@@ -3,6 +3,7 @@ import type {
   PaginatedTasksResponse,
   CreateTaskRequest,
   UpdateTaskRequest,
+  MoveTasksResponse,
   FilterTree,
   SortKey,
   SortDir,
@@ -313,6 +314,67 @@ export function useTasks() {
     }
   }
 
+  // Move
+  async function moveTask(
+    projectKey: string,
+    taskNum: number,
+    targetProjectKey: string
+  ): Promise<{ success: boolean; data?: Task; error?: string }> {
+    try {
+      const response = await fetch(
+        `/api/v1/projects/${projectKey}/tasks/${taskNum}/move`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...getAuthHeader(),
+          },
+          body: JSON.stringify({ target_project_key: targetProjectKey }),
+        }
+      );
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        return { success: false, error: error.message || "Failed to move task" };
+      }
+
+      const task: Task = await response.json();
+      return { success: true, data: task };
+    } catch {
+      return { success: false, error: "Network error" };
+    }
+  }
+
+  async function moveTasks(
+    projectKey: string,
+    taskNumbers: number[],
+    targetProjectKey: string
+  ): Promise<{ success: boolean; data?: MoveTasksResponse; error?: string }> {
+    try {
+      const response = await fetch(`/api/v1/projects/${projectKey}/tasks/move`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...getAuthHeader(),
+        },
+        body: JSON.stringify({
+          target_project_key: targetProjectKey,
+          task_numbers: taskNumbers,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        return { success: false, error: error.message || "Failed to move tasks" };
+      }
+
+      const data: MoveTasksResponse = await response.json();
+      return { success: true, data };
+    } catch {
+      return { success: false, error: "Network error" };
+    }
+  }
+
   function clearCurrentTask() {
     state.currentTask = null;
   }
@@ -341,6 +403,10 @@ export function useTasks() {
     // Labels
     addLabel,
     removeLabel,
+
+    // Move
+    moveTask,
+    moveTasks,
 
     // Utils
     clearCurrentTask,

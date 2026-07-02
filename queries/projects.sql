@@ -248,6 +248,23 @@ SET title = COALESCE(sqlc.narg('title'), title),
 WHERE id = $1 AND deleted_at IS NULL
 RETURNING id, project_id, task_number, title, description, state_id, priority, created_by, start_date, due_date, created_at, updated_at, deleted_at;
 
+-- name: MoveTask :one
+-- Move a task to a different project, assigning a new project-local task number
+-- and state. Cycle/module links and labels are handled separately by the caller.
+UPDATE tasks
+SET project_id = sqlc.arg('project_id'),
+    task_number = sqlc.arg('task_number'),
+    state_id = sqlc.arg('state_id'),
+    updated_at = NOW()
+WHERE id = sqlc.arg('id') AND deleted_at IS NULL
+RETURNING id, project_id, task_number, title, description, state_id, priority, created_by, start_date, due_date, created_at, updated_at, deleted_at;
+
+-- name: DeleteTaskCycleLinks :exec
+DELETE FROM cycle_tasks WHERE task_id = $1;
+
+-- name: DeleteTaskModuleLinks :exec
+DELETE FROM module_tasks WHERE task_id = $1;
+
 -- name: SoftDeleteTask :exec
 UPDATE tasks
 SET deleted_at = NOW(), updated_at = NOW()

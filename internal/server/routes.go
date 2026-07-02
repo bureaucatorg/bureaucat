@@ -227,7 +227,9 @@ func (s *Server) registerRoutes() {
 			if s.taskHandler != nil {
 				projectGroup.GET("/tasks", s.taskHandler.ListTasks)
 				projectGroup.POST("/tasks", s.taskHandler.CreateTask, auth.ProjectRoleMiddleware("member"))
+				projectGroup.POST("/tasks/move", s.taskHandler.MoveTasks, auth.ProjectRoleMiddleware("member"))
 				projectGroup.GET("/tasks/:taskNum", s.taskHandler.GetTask)
+				projectGroup.POST("/tasks/:taskNum/move", s.taskHandler.MoveTask, auth.ProjectRoleMiddleware("member"))
 				projectGroup.PATCH("/tasks/:taskNum", s.taskHandler.UpdateTask, auth.ProjectRoleMiddleware("member"))
 				projectGroup.DELETE("/tasks/:taskNum", s.taskHandler.DeleteTask, auth.ProjectRoleMiddleware("member"))
 

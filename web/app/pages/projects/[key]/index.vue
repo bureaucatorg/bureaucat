@@ -13,8 +13,11 @@ import {
   ExternalLink,
   Eye,
   Save,
+  FolderInput,
+  X,
 } from "lucide-vue-next";
-import type { FilterTree, ProjectView } from "~/types";
+import { toast } from "vue-sonner";
+import type { FilterTree, ProjectView, MoveTasksResponse } from "~/types";
 
 definePageMeta({
   middleware: ["auth"],
@@ -102,6 +105,46 @@ const isMember = computed(
   () => currentProject.value?.role === "admin" || currentProject.value?.role === "member"
 );
 
+// Bulk task selection / move.
+const selectedTasks = ref<Set<number>>(new Set());
+const showBulkMove = ref(false);
+
+function toggleTaskSelection(taskNumber: number) {
+  if (selectedTasks.value.has(taskNumber)) selectedTasks.value.delete(taskNumber);
+  else selectedTasks.value.add(taskNumber);
+  selectedTasks.value = new Set(selectedTasks.value);
+}
+
+function clearSelection() {
+  selectedTasks.value = new Set();
+}
+
+// True when every task on the current page is selected.
+const allSelected = computed(
+  () => tasks.value.length > 0 && tasks.value.every((t) => selectedTasks.value.has(t.task_number))
+);
+
+function toggleSelectAll() {
+  if (allSelected.value) {
+    selectedTasks.value = new Set();
+  } else {
+    selectedTasks.value = new Set(tasks.value.map((t) => t.task_number));
+  }
+}
+
+async function handleBulkMoved(payload: { targetKey: string; result?: MoveTasksResponse }) {
+  const result = payload.result;
+  if (result) {
+    if (result.failed > 0) {
+      toast.warning(`Moved ${result.moved} task${result.moved === 1 ? "" : "s"}, ${result.failed} failed`);
+    } else {
+      toast.success(`Moved ${result.moved} task${result.moved === 1 ? "" : "s"}`);
+    }
+  }
+  selectedTasks.value = new Set();
+  await loadTasks(tasksPage.value);
+}
+
 const currentPageFromUrl = computed(() => {
   const p = parseInt(route.query.page as string, 10);
   return Number.isFinite(p) && p > 0 ? p : 1;
@@ -179,10 +222,16 @@ async function handleSettingsRefresh() {
 }
 
 function prevPage() {
-  if (tasksPage.value > 1) setPageInUrl(tasksPage.value - 1);
+  if (tasksPage.value > 1) {
+    clearSelection();
+    setPageInUrl(tasksPage.value - 1);
+  }
 }
 function nextPage() {
-  if (tasksPage.value < tasksTotalPages.value) setPageInUrl(tasksPage.value + 1);
+  if (tasksPage.value < tasksTotalPages.value) {
+    clearSelection();
+    setPageInUrl(tasksPage.value + 1);
+  }
 }
 
 async function applyView(slug: string) {
@@ -410,12 +459,39 @@ onMounted(async () => {
               </div>
 
               <template v-else>
+                <div
+                  v-if="isMember"
+                  class="flex items-center justify-between rounded-md border bg-muted/40 px-3 py-2"
+                >
+                  <div class="flex items-center gap-3">
+                    <Button variant="outline" size="sm" @click="toggleSelectAll">
+                      {{ allSelected ? "Deselect all" : "Select all" }}
+                    </Button>
+                    <span v-if="selectedTasks.size > 0" class="text-sm font-medium">
+                      {{ selectedTasks.size }} selected
+                    </span>
+                  </div>
+                  <div v-if="selectedTasks.size > 0" class="flex items-center gap-2">
+                    <Button size="sm" @click="showBulkMove = true">
+                      <FolderInput class="mr-2 size-4" />
+                      Move
+                    </Button>
+                    <Button variant="ghost" size="sm" @click="clearSelection">
+                      <X class="mr-1 size-4" />
+                      Clear
+                    </Button>
+                  </div>
+                </div>
+
                 <TaskList
                   :tasks="tasks"
                   :project-key="projectKey"
                   :states="states"
                   :is-member="isMember"
+                  :selectable="isMember"
+                  :selected="selectedTasks"
                   @updated="() => loadTasks(tasksPage)"
+                  @toggle-select="toggleTaskSelection"
                 />
 
                 <div
@@ -585,6 +661,13 @@ onMounted(async () => {
           :members="members"
           :templates="templates"
           @created="handleTaskCreated"
+        />
+
+        <MoveTaskDialog
+          v-model:open="showBulkMove"
+          :project-key="projectKey"
+          :task-numbers="Array.from(selectedTasks)"
+          @moved="handleBulkMoved"
         />
 
         <AddMemberDialog

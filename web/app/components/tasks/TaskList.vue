@@ -14,12 +14,16 @@ const props = withDefaults(
     // precedence over the single-value props above when provided.
     statesByProject?: Record<string, ProjectState[]>;
     isMemberByProject?: Record<string, boolean>;
+    // Bulk-selection mode (single-project project page only).
+    selectable?: boolean;
+    selected?: Set<number>;
   }>(),
-  { states: () => [], isMember: false }
+  { states: () => [], isMember: false, selectable: false }
 );
 
 const emit = defineEmits<{
   updated: [];
+  toggleSelect: [taskNumber: number];
 }>();
 
 function statesFor(task: Task): ProjectState[] {
@@ -41,7 +45,10 @@ function isMemberFor(task: Task): boolean {
       :project-key="projectKey ?? task.project_key"
       :states="statesFor(task)"
       :is-member="isMemberFor(task)"
+      :selectable="selectable"
+      :selected="selected?.has(task.task_number) ?? false"
       @updated="emit('updated')"
+      @toggle-select="emit('toggleSelect', task.task_number)"
     />
   </div>
 </template>

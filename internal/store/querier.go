@@ -82,6 +82,8 @@ type Querier interface {
 	DeletePersonalAccessToken(ctx context.Context, arg DeletePersonalAccessTokenParams) error
 	DeleteProjectLabel(ctx context.Context, id uuid.UUID) error
 	DeleteProjectState(ctx context.Context, id uuid.UUID) error
+	DeleteTaskCycleLinks(ctx context.Context, taskID uuid.UUID) error
+	DeleteTaskModuleLinks(ctx context.Context, taskID uuid.UUID) error
 	DeleteTaskTemplate(ctx context.Context, id uuid.UUID) error
 	DeleteUpload(ctx context.Context, id uuid.UUID) error
 	DeleteUserByID(ctx context.Context, id uuid.UUID) error
@@ -192,6 +194,9 @@ type Querier interface {
 	ListUsersPaginated(ctx context.Context, arg ListUsersPaginatedParams) ([]ListUsersPaginatedRow, error)
 	MarkAllNotificationsRead(ctx context.Context, recipientID uuid.UUID) error
 	MarkNotificationRead(ctx context.Context, arg MarkNotificationReadParams) error
+	// Move a task to a different project, assigning a new project-local task number
+	// and state. Cycle/module links and labels are handled separately by the caller.
+	MoveTask(ctx context.Context, arg MoveTaskParams) (MoveTaskRow, error)
 	ProjectKeyExists(ctx context.Context, projectKey string) (bool, error)
 	ProjectViewSlugExists(ctx context.Context, arg ProjectViewSlugExistsParams) (bool, error)
 	RemoveModuleMember(ctx context.Context, arg RemoveModuleMemberParams) error

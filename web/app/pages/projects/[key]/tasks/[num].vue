@@ -4,6 +4,7 @@ import {
   Loader2,
   Pencil,
   Trash2,
+  FolderInput,
   Check,
   X,
   Calendar as CalendarIcon,
@@ -344,6 +345,15 @@ async function handleDelete() {
     router.push(`/projects/${projectKey.value}`);
   } else {
     toast.error(result.error || "Failed to delete task");
+  }
+}
+
+const showMoveDialog = ref(false);
+
+function handleTaskMoved(payload: { targetKey: string; newTaskNumber?: number }) {
+  toast.success("Task moved");
+  if (payload.newTaskNumber !== undefined) {
+    router.push(`/projects/${payload.targetKey}/tasks/${payload.newTaskNumber}`);
   }
 }
 
@@ -868,6 +878,19 @@ onMounted(() => {
                 </div>
               </div>
 
+              <!-- Move -->
+              <div v-if="isMember" class="mt-2 border-t border-border pt-3">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  class="w-full justify-start gap-2"
+                  @click="showMoveDialog = true"
+                >
+                  <FolderInput class="size-3.5" />
+                  Move to project
+                </Button>
+              </div>
+
               <!-- Delete -->
               <div v-if="canDelete" class="mt-2 border-t border-border pt-3">
                 <Button
@@ -883,6 +906,14 @@ onMounted(() => {
             </div>
           </div>
         </template>
+
+        <!-- Move to project -->
+        <MoveTaskDialog
+          v-model:open="showMoveDialog"
+          :project-key="projectKey"
+          :task-num="taskNum"
+          @moved="handleTaskMoved"
+        />
 
         <!-- Delete confirmation -->
         <Dialog v-model:open="showDeleteConfirm">
