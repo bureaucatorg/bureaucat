@@ -12,6 +12,7 @@
  * ?from_date=, ?to_date= are detected and migrated on first load.
  */
 
+import type { LocationQueryRaw } from "vue-router";
 import type {
   FilterTree,
   FilterNode,
@@ -141,6 +142,17 @@ export function useFilterTree() {
   const projectKey = () =>
     typeof route.params.key === "string" ? route.params.key : "";
 
+  // Distinguishes URL writes we initiate (filter mutations, sort/group/search,
+  // view selection) from query changes we did NOT cause (breadcrumb to the bare
+  // project URL, browser back/forward). Internal writes persist the new state;
+  // external ones that land on the empty project URL restore saved filters
+  // instead of being mistaken for a "clear".
+  let internalWrite = false;
+  function replaceQuery(query: LocationQueryRaw) {
+    internalWrite = true;
+    return router.replace({ query });
+  }
+
   // Persist the filter-related query params for the current project. Called
   // whenever any of them change. Cleared filters store as {} so they don't get
   // re-applied on the next visit.
@@ -148,12 +160,9 @@ export function useFilterTree() {
     if (!import.meta.client) return;
     const key = projectKey();
     if (!key) return;
-    // Only persist while actually on the project overview page. When navigating
-    // into a task (client-side) the query momentarily clears to {} before this
-    // page unmounts; persisting then would wipe the saved filters with an empty
-    // object, and the breadcrumb (which lands on a query-less URL) would have
-    // nothing to restore. Project keys are URL-safe slugs, so a direct compare
-    // against the overview path is sufficient.
+    // Only persist filter changes made on the overview page itself. (Callers
+    // gate this via the internalWrite flag, so this only runs for our own URL
+    // writes, which always happen here — but the guard keeps it safe.)
     if (route.path !== `/projects/${key}`) return;
     const data: Record<string, string> = {};
     for (const k of PERSIST_KEYS) {
@@ -199,7 +208,7 @@ export function useFilterTree() {
       q.f = encodeTree(next);
     }
     if (opts.resetPage) delete q.page;
-    void router.replace({ query: q });
+    void replaceQuery(q);
   }
 
   function setTree(next: FilterTree, opts?: { resetPage?: boolean }) {
@@ -223,7 +232,7 @@ export function useFilterTree() {
     delete q.q;
     delete q.view;
     delete q.page;
-    void router.replace({ query: q });
+    void replaceQuery(q);
   }
 
   function addPredicate(p: Predicate) {
@@ -249,7 +258,7 @@ export function useFilterTree() {
       if (!v || v === DEFAULT_SORT_BY) delete q.sort_by;
       else q.sort_by = v;
       delete q.page;
-      void router.replace({ query: q });
+      void replaceQuery(q);
     },
   });
   const sortDir = computed<SortDir>({
@@ -259,7 +268,7 @@ export function useFilterTree() {
       if (!v || v === DEFAULT_SORT_DIR) delete q.sort_dir;
       else q.sort_dir = v;
       delete q.page;
-      void router.replace({ query: q });
+      void replaceQuery(q);
     },
   });
   const groupBy = computed<ViewGroupBy>({
@@ -268,7 +277,7 @@ export function useFilterTree() {
       const q = { ...route.query };
       if (!v || v === DEFAULT_GROUP_BY) delete q.group_by;
       else q.group_by = v;
-      void router.replace({ query: q });
+      void replaceQuery(q);
     },
   });
 
@@ -285,7 +294,7 @@ export function useFilterTree() {
       if (v) q.q = v;
       else delete q.q;
       delete q.page;
-      void router.replace({ query: q });
+      void replaceQuery(q);
     },
   });
 
@@ -306,7 +315,7 @@ export function useFilterTree() {
     const q = { ...route.query };
     if (slug) q.view = slug;
     else delete q.view;
-    void router.replace({ query: q });
+    void replaceQuery(q);
   }
 
   /**
@@ -323,7 +332,7 @@ export function useFilterTree() {
       if (migrated.children.length > 0) {
         q.f = encodeTree(migrated);
       }
-      await router.replace({ query: q });
+      await replaceQuery(q);
       tree.value = migrated;
       return;
     }
@@ -333,7 +342,7 @@ export function useFilterTree() {
     if (!hasFilterParam) {
       const saved = readPersistedFilters();
       if (saved && Object.keys(saved).length > 0) {
-        await router.replace({ query: { ...route.query, ...saved } });
+        await replaceQuery({ ...route.query, ...saved });
         tree.value = saved.f ? decodeTree(saved.f) ?? emptyTree() : emptyTree();
         return;
       }
@@ -350,11 +359,30 @@ export function useFilterTree() {
     }
   );
 
-  // Persist filter params per project whenever any of them change, so they can
-  // be restored on the next visit that arrives without a query string.
+  // React to filter-param changes. Our own writes persist the new state; a
+  // change we didn't make that lands on the bare project URL (breadcrumb,
+  // back/forward) restores the saved filters instead of losing them.
   watch(
     () => PERSIST_KEYS.map((k) => route.query[k]),
-    () => persistFilters()
+    () => {
+      if (internalWrite) {
+        // A change we made — persist it. An empty state is stored as {} so an
+        // explicit clear is remembered and not re-applied on the next visit.
+        internalWrite = false;
+        persistFilters();
+        return;
+      }
+      // A navigation we didn't initiate. If we've landed on the project overview
+      // with no filter params, restore the last-used filters.
+      const key = projectKey();
+      if (!key || route.path !== `/projects/${key}`) return;
+      if (PERSIST_KEYS.some((k) => route.query[k])) return;
+      const saved = readPersistedFilters();
+      if (saved && Object.keys(saved).length > 0) {
+        void replaceQuery({ ...route.query, ...saved });
+        tree.value = saved.f ? decodeTree(saved.f) ?? emptyTree() : emptyTree();
+      }
+    }
   );
 
   return {
