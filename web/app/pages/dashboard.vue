@@ -18,6 +18,7 @@ useSeoMeta({ title: "Dashboard" });
 
 const { user, getAuthHeader } = useAuth();
 const { projects, loading: projectsLoading, listProjects } = useProjects();
+const { currentWorkspace, workspaces } = useWorkspaces();
 
 const showCreateDialog = ref(false);
 const showCreateTask = ref(false);
@@ -31,6 +32,12 @@ function fetchProjects() {
 watch(searchQuery, () => {
   if (debounceTimer) clearTimeout(debounceTimer);
   debounceTimer = setTimeout(fetchProjects, 300);
+});
+
+// Reload "Your Projects" when the active workspace changes (the list is scoped
+// to the current workspace via listProjects).
+watch(currentWorkspace, () => {
+  fetchProjects();
 });
 
 async function handleCreated() {
@@ -98,6 +105,18 @@ interface MyTasksResponse {
 const myTasks = ref<MyTask[]>([]);
 const myTasksTotal = ref(0);
 const myTasksLoading = ref(false);
+// When off (default), "Assigned to You" is scoped to the active workspace.
+// The choice is persisted across sessions. (SSR is disabled, so setup runs on
+// the client and localStorage is available here.)
+const ALL_WORKSPACES_KEY = "bureaucat.dashboardAllWorkspaces";
+const showAllWorkspaces = ref(
+  typeof window !== "undefined" && localStorage.getItem(ALL_WORKSPACES_KEY) === "1"
+);
+watch(showAllWorkspaces, (v) => {
+  if (typeof window !== "undefined") {
+    localStorage.setItem(ALL_WORKSPACES_KEY, v ? "1" : "0");
+  }
+});
 
 // Adapt the dashboard's lightweight MyTask shape to the full Task shape so we
 // can render the shared TaskList/TaskCard component. Fields the dashboard API
@@ -137,7 +156,12 @@ const myTasksAsTask = computed<Task[]>(() =>
 async function fetchMyTasks() {
   myTasksLoading.value = true;
   try {
-    const response = await fetch("/api/v1/me/tasks?per_page=20", {
+    let url = "/api/v1/me/tasks?per_page=20";
+    // Scope to the active workspace unless the user opted into all workspaces.
+    if (!showAllWorkspaces.value && currentWorkspace.value) {
+      url += `&workspace_id=${currentWorkspace.value.id}`;
+    }
+    const response = await fetch(url, {
       headers: getAuthHeader(),
     });
     if (response.ok) {
@@ -153,6 +177,12 @@ async function fetchMyTasks() {
   }
 }
 
+// Refetch "Assigned to You" when the workspace changes or the all-workspaces
+// toggle flips (both affect the workspace_id scope).
+watch([currentWorkspace, showAllWorkspaces], () => {
+  fetchMyTasks();
+});
+
 // Per-project state lists, loaded lazily for the projects that own the user's
 // tasks. TaskCard needs these to offer the inline state selector.
 const statesByProject = ref<Record<string, ProjectState[]>>({});
@@ -163,6 +193,18 @@ const isMemberByProject = computed<Record<string, boolean>>(() => {
   const map: Record<string, boolean> = {};
   for (const p of allProjects.value) {
     map[p.project_key] = p.role === "admin" || p.role === "member";
+  }
+  return map;
+});
+
+// Workspace name per project_key, for the dashboard task list's workspace column.
+// Resolved from the full project list + the workspaces the user can see.
+const workspaceByProject = computed<Record<string, string>>(() => {
+  const nameById: Record<string, string> = {};
+  for (const w of workspaces.value) nameById[w.id] = w.name;
+  const map: Record<string, string> = {};
+  for (const p of allProjects.value) {
+    map[p.project_key] = nameById[p.workspace_id] ?? "";
   }
   return map;
 });
@@ -256,10 +298,23 @@ onMounted(async () => {
                 ({{ myTasksTotal }})
               </span>
             </h2>
-            <Button size="sm" :disabled="allProjects.length === 0" @click="showCreateTask = true">
-              <Plus class="mr-1.5 size-4" />
-              Create Task
-            </Button>
+            <div class="flex items-center gap-4">
+              <div class="flex items-center gap-2">
+                <Switch
+                  id="all-workspaces"
+                  :checked="showAllWorkspaces"
+                  aria-label="Show tasks from all workspaces"
+                  @update:checked="showAllWorkspaces = $event"
+                />
+                <Label for="all-workspaces" class="cursor-pointer text-xs text-muted-foreground">
+                  All workspaces
+                </Label>
+              </div>
+              <Button size="sm" :disabled="allProjects.length === 0" @click="showCreateTask = true">
+                <Plus class="mr-1.5 size-4" />
+                Create Task
+              </Button>
+            </div>
           </div>
 
           <div v-if="myTasksLoading" class="flex items-center justify-center py-8">
@@ -278,6 +333,8 @@ onMounted(async () => {
             :tasks="myTasksAsTask"
             :states-by-project="statesByProject"
             :is-member-by-project="isMemberByProject"
+            :show-workspace="showAllWorkspaces"
+            :workspace-by-project="workspaceByProject"
             @updated="fetchMyTasks"
           />
         </div>

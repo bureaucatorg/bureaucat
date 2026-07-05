@@ -167,6 +167,36 @@ export function useProjects() {
     }
   }
 
+  // Reassign a project to a different workspace. Global-admin only on the server.
+  async function moveProjectToWorkspace(
+    projectKey: string,
+    workspaceKey: string
+  ): Promise<{ success: boolean; data?: Project; error?: string }> {
+    try {
+      const response = await fetch(`/api/v1/projects/${projectKey}/workspace`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          ...getAuthHeader(),
+        },
+        body: JSON.stringify({ workspace_key: workspaceKey }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        return { success: false, error: error.message || "Failed to move project" };
+      }
+
+      const project: Project = await response.json();
+      if (state.currentProject?.project_key === projectKey) {
+        state.currentProject = project;
+      }
+      return { success: true, data: project };
+    } catch {
+      return { success: false, error: "Network error" };
+    }
+  }
+
   async function setProjectDisabled(
     projectKey: string,
     disabled: boolean
@@ -661,6 +691,7 @@ export function useProjects() {
     createProject,
     getProject,
     updateProject,
+    moveProjectToWorkspace,
     setProjectDisabled,
     deleteProject,
 

@@ -31,6 +31,12 @@ SET name = COALESCE(sqlc.narg('name'), name),
 WHERE id = $1 AND deleted_at IS NULL
 RETURNING id, project_key, name, description, icon_id, cover_id, created_by, created_at, updated_at, deleted_at, disabled, workspace_id;
 
+-- name: UpdateProjectWorkspace :one
+UPDATE projects
+SET workspace_id = $2, updated_at = NOW()
+WHERE id = $1 AND deleted_at IS NULL
+RETURNING id, project_key, name, description, icon_id, cover_id, created_by, created_at, updated_at, deleted_at, disabled, workspace_id;
+
 -- name: SoftDeleteProject :exec
 UPDATE projects
 SET deleted_at = NOW(), updated_at = NOW()
@@ -358,6 +364,7 @@ JOIN project_states ps ON t.state_id = ps.id
 JOIN task_assignees ta ON t.id = ta.task_id
 WHERE ta.user_id = $1 AND t.deleted_at IS NULL AND p.deleted_at IS NULL
   AND ps.state_type NOT IN ('completed', 'cancelled')
+  AND (sqlc.narg('workspace_id')::uuid IS NULL OR p.workspace_id = sqlc.narg('workspace_id'))
 ORDER BY t.updated_at DESC
 LIMIT $2 OFFSET $3;
 
@@ -368,7 +375,8 @@ JOIN projects p ON t.project_id = p.id
 JOIN project_states ps ON t.state_id = ps.id
 JOIN task_assignees ta ON t.id = ta.task_id
 WHERE ta.user_id = $1 AND t.deleted_at IS NULL AND p.deleted_at IS NULL
-  AND ps.state_type NOT IN ('completed', 'cancelled');
+  AND ps.state_type NOT IN ('completed', 'cancelled')
+  AND (sqlc.narg('workspace_id')::uuid IS NULL OR p.workspace_id = sqlc.narg('workspace_id'));
 
 -- ==================== GLOBAL SEARCH ====================
 

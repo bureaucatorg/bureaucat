@@ -167,6 +167,11 @@ func (s *Server) registerRoutes() {
 			protected.GET("/projects", s.projectHandler.ListProjects)
 			protected.POST("/projects", s.projectHandler.CreateProject)
 
+			// Reassign a project to another workspace (admin only). Registered
+			// outside the project group so it bypasses project membership and the
+			// disabled read-only guard. Intended for one-time data migrations.
+			protected.PATCH("/projects/:projectKey/workspace", s.projectHandler.MoveProjectToWorkspace, auth.AdminMiddleware())
+
 			// Project-specific routes (requires project membership)
 			projectGroup := protected.Group("/projects/:projectKey", auth.ProjectMiddleware(s.store))
 

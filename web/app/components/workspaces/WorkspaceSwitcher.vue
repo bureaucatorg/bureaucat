@@ -10,6 +10,23 @@ const router = useRouter();
 const isAdmin = computed(() => user.value?.user_type === "admin");
 const showCreate = ref(false);
 
+// One-time onboarding coach-mark: a persistent hint pointing at the switcher,
+// shown until the user opens it once (dismissal persisted so it never returns).
+const HINT_KEY = "bureaucat.workspaceSwitcherHintSeen";
+const showHint = ref(false);
+
+onMounted(() => {
+  if (typeof window !== "undefined" && !localStorage.getItem(HINT_KEY)) {
+    showHint.value = true;
+  }
+});
+
+function dismissHint() {
+  if (!showHint.value) return;
+  showHint.value = false;
+  if (typeof window !== "undefined") localStorage.setItem(HINT_KEY, "1");
+}
+
 const triggerLabel = computed(() => {
   const ws = currentWorkspace.value;
   return ws ? ws.workspace_key.slice(0, 2) : "";
@@ -27,7 +44,22 @@ async function selectWorkspace(ws: Workspace) {
 </script>
 
 <template>
-  <div>
+  <div class="relative">
+    <!-- One-time coach-mark, dismissed after the switcher is opened once. -->
+    <div
+      v-if="showHint"
+      class="pointer-events-none absolute left-full top-1/2 z-50 ml-2 flex -translate-y-1/2 items-center"
+    >
+      <span
+        class="size-0 border-y-[6px] border-r-[6px] border-y-transparent border-r-foreground"
+      />
+      <div
+        class="whitespace-nowrap rounded-lg bg-foreground px-3 py-2 text-xs font-medium text-background shadow-lg"
+      >
+        Switch Workspace
+      </div>
+    </div>
+
     <DropdownMenu>
       <DropdownMenuTrigger as-child>
         <button
@@ -35,6 +67,7 @@ async function selectWorkspace(ws: Workspace) {
           :title="currentWorkspace ? currentWorkspace.name : 'Workspaces'"
           aria-label="Switch workspace"
           class="group relative flex size-9 items-center justify-center rounded-md bg-amber-500/10 text-xs font-semibold text-amber-700 outline-none transition-colors hover:bg-amber-500/20 focus-visible:ring-2 focus-visible:ring-ring dark:text-amber-400"
+          @click="dismissHint"
         >
           <span v-if="triggerLabel" class="font-mono">{{ triggerLabel }}</span>
           <Building2 v-else class="size-4.5" />

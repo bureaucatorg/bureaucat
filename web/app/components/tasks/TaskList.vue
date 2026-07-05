@@ -17,9 +17,17 @@ const props = withDefaults(
     // Bulk-selection mode (single-project project page only).
     selectable?: boolean;
     selected?: Set<number>;
+    // Multi-project usage (dashboard): show each task's workspace as a leading
+    // column, resolved per task via its project_key.
+    showWorkspace?: boolean;
+    workspaceByProject?: Record<string, string>;
   }>(),
-  { states: () => [], isMember: false, selectable: false }
+  { states: () => [], isMember: false, selectable: false, showWorkspace: false }
 );
+
+function workspaceFor(task: Task): string {
+  return props.workspaceByProject?.[task.project_key] ?? "";
+}
 
 const emit = defineEmits<{
   updated: [];
@@ -47,6 +55,8 @@ function isMemberFor(task: Task): boolean {
       :is-member="isMemberFor(task)"
       :selectable="selectable"
       :selected="selected?.has(task.task_number) ?? false"
+      :show-workspace="showWorkspace"
+      :workspace-name="workspaceFor(task)"
       @updated="emit('updated')"
       @toggle-select="emit('toggleSelect', task.task_number)"
     />

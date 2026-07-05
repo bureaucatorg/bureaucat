@@ -172,10 +172,16 @@ JOIN project_states ps ON t.state_id = ps.id
 JOIN task_assignees ta ON t.id = ta.task_id
 WHERE ta.user_id = $1 AND t.deleted_at IS NULL AND p.deleted_at IS NULL
   AND ps.state_type NOT IN ('completed', 'cancelled')
+  AND ($2::uuid IS NULL OR p.workspace_id = $2)
 `
 
-func (q *Queries) CountTasksByAssignee(ctx context.Context, userID uuid.UUID) (int64, error) {
-	row := q.db.QueryRow(ctx, countTasksByAssignee, userID)
+type CountTasksByAssigneeParams struct {
+	UserID      uuid.UUID   `json:"user_id"`
+	WorkspaceID pgtype.UUID `json:"workspace_id"`
+}
+
+func (q *Queries) CountTasksByAssignee(ctx context.Context, arg CountTasksByAssigneeParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countTasksByAssignee, arg.UserID, arg.WorkspaceID)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -1952,14 +1958,16 @@ JOIN project_states ps ON t.state_id = ps.id
 JOIN task_assignees ta ON t.id = ta.task_id
 WHERE ta.user_id = $1 AND t.deleted_at IS NULL AND p.deleted_at IS NULL
   AND ps.state_type NOT IN ('completed', 'cancelled')
+  AND ($4::uuid IS NULL OR p.workspace_id = $4)
 ORDER BY t.updated_at DESC
 LIMIT $2 OFFSET $3
 `
 
 type ListTasksByAssigneeParams struct {
-	UserID uuid.UUID `json:"user_id"`
-	Limit  int32     `json:"limit"`
-	Offset int32     `json:"offset"`
+	UserID      uuid.UUID   `json:"user_id"`
+	Limit       int32       `json:"limit"`
+	Offset      int32       `json:"offset"`
+	WorkspaceID pgtype.UUID `json:"workspace_id"`
 }
 
 type ListTasksByAssigneeRow struct {
@@ -1976,7 +1984,12 @@ type ListTasksByAssigneeRow struct {
 }
 
 func (q *Queries) ListTasksByAssignee(ctx context.Context, arg ListTasksByAssigneeParams) ([]ListTasksByAssigneeRow, error) {
-	rows, err := q.db.Query(ctx, listTasksByAssignee, arg.UserID, arg.Limit, arg.Offset)
+	rows, err := q.db.Query(ctx, listTasksByAssignee,
+		arg.UserID,
+		arg.Limit,
+		arg.Offset,
+		arg.WorkspaceID,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -2899,6 +2912,38 @@ func (q *Queries) UpdateProjectState(ctx context.Context, arg UpdateProjectState
 		&i.Position,
 		&i.IsDefault,
 		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const updateProjectWorkspace = `-- name: UpdateProjectWorkspace :one
+UPDATE projects
+SET workspace_id = $2, updated_at = NOW()
+WHERE id = $1 AND deleted_at IS NULL
+RETURNING id, project_key, name, description, icon_id, cover_id, created_by, created_at, updated_at, deleted_at, disabled, workspace_id
+`
+
+type UpdateProjectWorkspaceParams struct {
+	ID          uuid.UUID `json:"id"`
+	WorkspaceID uuid.UUID `json:"workspace_id"`
+}
+
+func (q *Queries) UpdateProjectWorkspace(ctx context.Context, arg UpdateProjectWorkspaceParams) (Project, error) {
+	row := q.db.QueryRow(ctx, updateProjectWorkspace, arg.ID, arg.WorkspaceID)
+	var i Project
+	err := row.Scan(
+		&i.ID,
+		&i.ProjectKey,
+		&i.Name,
+		&i.Description,
+		&i.IconID,
+		&i.CoverID,
+		&i.CreatedBy,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+		&i.Disabled,
+		&i.WorkspaceID,
 	)
 	return i, err
 }

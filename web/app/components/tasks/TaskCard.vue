@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Circle, CircleDot, CheckCircle2, XCircle, Clock, MessageSquare } from "lucide-vue-next";
+import { Circle, CircleDot, CheckCircle2, XCircle, Clock, MessageSquare, FolderKanban } from "lucide-vue-next";
 import type { Task, ProjectState } from "~/types";
 import { PRIORITY_LABELS } from "~/types";
 
@@ -13,8 +13,19 @@ const props = withDefaults(
     // instead of navigating on the checkbox itself.
     selectable?: boolean;
     selected?: boolean;
+    // Multi-project usage (dashboard): show the task's workspace as a leading
+    // column. Redundant inside a single project, so off by default.
+    showWorkspace?: boolean;
+    workspaceName?: string;
   }>(),
-  { states: () => [], isMember: false, selectable: false, selected: false }
+  {
+    states: () => [],
+    isMember: false,
+    selectable: false,
+    selected: false,
+    showWorkspace: false,
+    workspaceName: "",
+  }
 );
 
 const emit = defineEmits<{
@@ -96,11 +107,22 @@ const involvedPeople = computed(() => {
   <NuxtLink :to="`/projects/${resolvedKey}/tasks/${task.task_number}`" class="block">
     <div
       class="task-row group grid items-center bg-background/50 px-3 py-2.5 transition-colors hover:bg-muted/50"
-      :class="{ selectable, 'bg-accent/40': selectable && selected }"
+      :class="{ selectable, 'has-workspace': showWorkspace, 'bg-accent/40': selectable && selected }"
     >
       <!-- Col 0: Selection checkbox -->
       <div v-if="selectable" class="justify-self-center" @click.stop.prevent>
         <Checkbox :model-value="selected" @update:model-value="emit('toggleSelect')" />
+      </div>
+
+      <!-- Col: Workspace (multi-project lists only) -->
+      <div v-if="showWorkspace" class="min-w-0">
+        <span
+          class="inline-flex max-w-full items-center gap-1 rounded-md border bg-muted/50 px-1.5 py-0.5"
+          :title="workspaceName"
+        >
+          <FolderKanban class="size-3 shrink-0 text-muted-foreground" />
+          <span class="truncate text-xs text-muted-foreground">{{ workspaceName || "—" }}</span>
+        </span>
       </div>
 
       <!-- Col 1: Task ID -->
@@ -200,5 +222,11 @@ const involvedPeople = computed(() => {
 }
 .task-row.selectable {
   grid-template-columns: 1.5rem 6rem 1fr 10rem 7rem 6rem 3rem;
+}
+.task-row.has-workspace {
+  grid-template-columns: 8rem 6rem 1fr 10rem 7rem 6rem 3rem;
+}
+.task-row.has-workspace.selectable {
+  grid-template-columns: 1.5rem 8rem 6rem 1fr 10rem 7rem 6rem 3rem;
 }
 </style>

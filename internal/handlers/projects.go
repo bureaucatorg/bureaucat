@@ -458,6 +458,79 @@ func (h *ProjectHandler) UpdateProject(c *echo.Context) error {
 	})
 }
 
+// MoveProjectToWorkspaceRequest reassigns a project to a different workspace.
+type MoveProjectToWorkspaceRequest struct {
+	WorkspaceKey string `json:"workspace_key"`
+}
+
+// MoveProjectToWorkspace reassigns a project to another workspace. Global-admin
+// only (registered outside the project group, so it resolves the project itself
+// and is not subject to project membership or the disabled read-only guard).
+// Intended for one-time data migrations.
+//
+//	@Summary		Move project to workspace
+//	@Description	Reassign a project to another workspace by key. Admin only.
+//	@Tags			Projects
+//	@Accept			json
+//	@Produce		json
+//	@Param			projectKey	path		string							true	"Project key"
+//	@Param			body		body		MoveProjectToWorkspaceRequest	true	"Target workspace key"
+//	@Success		200			{object}	ProjectResponse
+//	@Failure		400			{object}	ErrorResponse
+//	@Failure		404			{object}	ErrorResponse
+//	@Failure		500			{object}	ErrorResponse
+//	@Security		BearerAuth
+//	@Router			/projects/{projectKey}/workspace [patch]
+func (h *ProjectHandler) MoveProjectToWorkspace(c *echo.Context) error {
+	projectKey := c.Param("projectKey")
+	if projectKey == "" {
+		return echo.NewHTTPError(http.StatusBadRequest, "project key is required")
+	}
+
+	var req MoveProjectToWorkspaceRequest
+	if err := c.Bind(&req); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid request body")
+	}
+	req.WorkspaceKey = strings.ToUpper(strings.TrimSpace(req.WorkspaceKey))
+	if req.WorkspaceKey == "" {
+		return echo.NewHTTPError(http.StatusBadRequest, "workspace_key is required")
+	}
+
+	ctx := c.Request().Context()
+
+	project, err := h.store.GetProjectByKey(ctx, projectKey)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusNotFound, "project not found")
+	}
+
+	workspace, err := h.store.GetWorkspaceByKey(ctx, req.WorkspaceKey)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusNotFound, "workspace not found")
+	}
+
+	updated, err := h.store.UpdateProjectWorkspace(ctx, store.UpdateProjectWorkspaceParams{
+		ID:          project.ID,
+		WorkspaceID: workspace.ID,
+	})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to move project")
+	}
+
+	return c.JSON(http.StatusOK, ProjectResponse{
+		ID:          updated.ID,
+		ProjectKey:  updated.ProjectKey,
+		Name:        updated.Name,
+		Description: textToStringPtr(updated.Description),
+		IconURL:     pgtypeUUIDToURL(updated.IconID),
+		CoverURL:    pgtypeUUIDToURL(updated.CoverID),
+		Disabled:    updated.Disabled,
+		WorkspaceID: updated.WorkspaceID,
+		CreatedBy:   updated.CreatedBy,
+		CreatedAt:   updated.CreatedAt.Time,
+		UpdatedAt:   updated.UpdatedAt.Time,
+	})
+}
+
 // SetProjectDisabledRequest toggles a project's read-only (disabled) state.
 type SetProjectDisabledRequest struct {
 	Disabled bool `json:"disabled"`

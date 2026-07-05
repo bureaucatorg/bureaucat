@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 	"unicode"
 
@@ -406,18 +407,33 @@ func (h *AuthHandler) MyTasks(c *echo.Context) error {
 	}
 	offset := (page - 1) * perPage
 
+	// Optional workspace scope. When omitted, assigned tasks across all
+	// workspaces are returned.
+	workspaceParam := pgtype.UUID{}
+	if ws := strings.TrimSpace(c.QueryParam("workspace_id")); ws != "" {
+		wsID, err := uuid.Parse(ws)
+		if err != nil {
+			return echo.NewHTTPError(http.StatusBadRequest, "invalid workspace_id")
+		}
+		workspaceParam = pgtype.UUID{Bytes: wsID, Valid: true}
+	}
+
 	ctx := c.Request().Context()
 
 	tasks, err := h.store.ListTasksByAssignee(ctx, store.ListTasksByAssigneeParams{
-		UserID: userID,
-		Limit:  int32(perPage),
-		Offset: int32(offset),
+		UserID:      userID,
+		Limit:       int32(perPage),
+		Offset:      int32(offset),
+		WorkspaceID: workspaceParam,
 	})
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to list tasks")
 	}
 
-	total, err := h.store.CountTasksByAssignee(ctx, userID)
+	total, err := h.store.CountTasksByAssignee(ctx, store.CountTasksByAssigneeParams{
+		UserID:      userID,
+		WorkspaceID: workspaceParam,
+	})
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to count tasks")
 	}

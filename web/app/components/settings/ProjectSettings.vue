@@ -12,10 +12,56 @@ const emit = defineEmits<{
   refresh: [];
 }>();
 
-const { updateProject, setProjectDisabled } = useProjects();
+const { updateProject, moveProjectToWorkspace, setProjectDisabled } = useProjects();
+const { user } = useAuth();
+const { workspaces, listWorkspaces } = useWorkspaces();
 
 const loading = ref(false);
 const togglingDisabled = ref(false);
+const movingWorkspace = ref(false);
+
+// Only global admins may reassign a project's workspace (server-enforced).
+const isGlobalAdmin = computed(() => user.value?.user_type === "admin");
+
+// The workspace the project currently belongs to.
+const currentWorkspace = computed(() =>
+  workspaces.value.find((w) => w.id === props.project.workspace_id) ?? null
+);
+
+// Bound to the workspace <select>; defaults to the current workspace.
+const selectedWorkspaceId = ref(props.project.workspace_id);
+
+watch(
+  () => props.project.workspace_id,
+  (id) => {
+    selectedWorkspaceId.value = id;
+  }
+);
+
+const workspaceChanged = computed(
+  () => selectedWorkspaceId.value !== props.project.workspace_id
+);
+
+onMounted(() => {
+  if (workspaces.value.length === 0) listWorkspaces();
+});
+
+async function handleMoveWorkspace() {
+  const target = workspaces.value.find((w) => w.id === selectedWorkspaceId.value);
+  if (!target || !workspaceChanged.value) return;
+
+  movingWorkspace.value = true;
+  const result = await moveProjectToWorkspace(props.project.project_key, target.workspace_key);
+  movingWorkspace.value = false;
+
+  if (result.success) {
+    toast.success(`Moved to "${target.name}"`);
+    emit("refresh");
+  } else {
+    selectedWorkspaceId.value = props.project.workspace_id;
+    toast.error(result.error || "Failed to move project");
+  }
+}
 
 async function handleToggleDisabled(disabled: boolean) {
   togglingDisabled.value = true;
@@ -123,6 +169,62 @@ const hasChanges = computed(() => {
               </Button>
             </div>
           </form>
+        </CardContent>
+      </Card>
+    </div>
+
+    <!-- Workspace -->
+    <div class="space-y-4">
+      <div>
+        <h3 class="font-semibold">Workspace</h3>
+        <p class="text-sm text-muted-foreground">
+          The workspace this project belongs to
+        </p>
+      </div>
+
+      <Card>
+        <CardContent class="pt-6">
+          <template v-if="isGlobalAdmin">
+            <div class="space-y-2">
+              <Label for="workspace">Workspace</Label>
+              <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <Select v-model="selectedWorkspaceId" :disabled="movingWorkspace">
+                  <SelectTrigger id="workspace" class="w-full sm:max-w-xs">
+                    <SelectValue placeholder="Select a workspace" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem v-for="w in workspaces" :key="w.id" :value="w.id">
+                      {{ w.name }}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button
+                  variant="outline"
+                  :disabled="!workspaceChanged || movingWorkspace"
+                  @click="handleMoveWorkspace"
+                >
+                  <Loader2 v-if="movingWorkspace" class="mr-2 size-4 animate-spin" />
+                  Move
+                </Button>
+              </div>
+              <p class="text-xs text-muted-foreground">
+                Moving only changes which workspace the project lives in; project
+                membership is unchanged. Members who aren't in the target workspace
+                won't see it in that workspace's project list.
+              </p>
+            </div>
+          </template>
+          <template v-else>
+            <div class="flex items-center justify-between gap-4">
+              <div class="space-y-1">
+                <Label>Workspace</Label>
+                <p class="text-sm text-muted-foreground">
+                  Only a global admin can move this project to another workspace.
+                </p>
+              </div>
+              <span class="text-sm font-medium">{{ currentWorkspace?.name || "—" }}</span>
+            </div>
+          </template>
         </CardContent>
       </Card>
     </div>

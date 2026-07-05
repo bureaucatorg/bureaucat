@@ -45,7 +45,7 @@ type Querier interface {
 	CountProjectTasks(ctx context.Context, projectID uuid.UUID) (int64, error)
 	CountSearchUsers(ctx context.Context, dollar_1 pgtype.Text) (int64, error)
 	CountTaskComments(ctx context.Context, taskID uuid.UUID) (int64, error)
-	CountTasksByAssignee(ctx context.Context, userID uuid.UUID) (int64, error)
+	CountTasksByAssignee(ctx context.Context, arg CountTasksByAssigneeParams) (int64, error)
 	CountTasksInState(ctx context.Context, stateID uuid.UUID) (int64, error)
 	CountUnreadNotifications(ctx context.Context, recipientID uuid.UUID) (int64, error)
 	CountUserActivity(ctx context.Context, actorID uuid.UUID) (int64, error)
@@ -273,6 +273,7 @@ type Querier interface {
 	UpdateProjectMemberRole(ctx context.Context, arg UpdateProjectMemberRoleParams) error
 	UpdateProjectState(ctx context.Context, arg UpdateProjectStateParams) (ProjectState, error)
 	UpdateProjectView(ctx context.Context, arg UpdateProjectViewParams) (UpdateProjectViewRow, error)
+	UpdateProjectWorkspace(ctx context.Context, arg UpdateProjectWorkspaceParams) (Project, error)
 	UpdateTask(ctx context.Context, arg UpdateTaskParams) (UpdateTaskRow, error)
 	UpdateTaskTemplate(ctx context.Context, arg UpdateTaskTemplateParams) (TaskTemplate, error)
 	UpdateUserAvatarURL(ctx context.Context, arg UpdateUserAvatarURLParams) error
