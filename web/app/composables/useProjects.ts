@@ -53,7 +53,10 @@ export function useProjects() {
   async function listProjects(
     page = 1,
     perPage = 20,
-    search = ""
+    search = "",
+    // When false, the list spans every workspace the user belongs to instead
+    // of being scoped to the active workspace (used by the move-task picker).
+    workspaceScoped = true
   ): Promise<{ success: boolean; data?: PaginatedProjectsResponse; error?: string }> {
     try {
       state.loading = true;
@@ -61,8 +64,8 @@ export function useProjects() {
       if (search) {
         url += `&search=${encodeURIComponent(search)}`;
       }
-      // Scope the list to the active workspace.
-      if (currentWorkspace.value) {
+      // Scope the list to the active workspace unless the caller opts out.
+      if (workspaceScoped && currentWorkspace.value) {
         url += `&workspace_id=${currentWorkspace.value.id}`;
       }
       const response = await fetch(url, { headers: getAuthHeader() });
