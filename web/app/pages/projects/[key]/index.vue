@@ -82,6 +82,7 @@ const {
 const {
   tree,
   setTree,
+  clearTreeAndView,
   clearAll,
   sortBy,
   sortDir,
@@ -199,11 +200,17 @@ async function loadProject() {
 }
 
 async function loadTasks(page = 1) {
+  // The server falls back to a saved view's filter (?view=) only when no
+  // explicit tree (?f=) is sent. If the user has emptied the filter — e.g. by
+  // removing the last chip — we must NOT pass the view slug, or the server
+  // would re-hydrate the view's filter and the "clear" would appear to do
+  // nothing. Only hand over the slug while an actual filter is present.
+  const hasFilter = effectiveTree.value.children.length > 0;
   await listTasks(projectKey.value, page, 20, {
     tree: effectiveTree.value,
     sortBy: sortBy.value,
     sortDir: sortDir.value,
-    viewSlug: activeViewSlug.value ?? undefined,
+    viewSlug: hasFilter ? activeViewSlug.value ?? undefined : undefined,
   });
 }
 
@@ -287,6 +294,13 @@ function resetFilters() {
 }
 
 function handleTreeUpdate(next: FilterTree) {
+  // Removing the last chip means "no filter" — also drop the saved-view slug so
+  // the server doesn't fall back to the view's filter (and it doesn't return on
+  // the next visit). Any remaining chips keep the view association (drift).
+  if (next.children.length === 0) {
+    clearTreeAndView();
+    return;
+  }
   setTree(next);
 }
 

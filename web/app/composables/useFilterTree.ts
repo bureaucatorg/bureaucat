@@ -221,6 +221,23 @@ export function useFilterTree() {
   }
 
   /**
+   * Empty the filter tree AND drop the active saved-view association in a
+   * single URL write (free-text search is preserved). Used when the user
+   * removes the last filter chip: without dropping ?view=, the server would
+   * fall back to the view's saved filter and the "clear" would be undone — both
+   * immediately (server re-hydration) and on the next visit (view re-applied
+   * from the persisted params).
+   */
+  function clearTreeAndView() {
+    tree.value = emptyTree();
+    const q = { ...route.query };
+    delete q.f;
+    delete q.view;
+    delete q.page;
+    void replaceQuery(q);
+  }
+
+  /**
    * Clear everything that scopes the task list — filter tree, free-text search
    * and the active saved view — in a single router.replace so the writes can't
    * race and strand stale params in the URL.
@@ -389,6 +406,7 @@ export function useFilterTree() {
     tree: computed(() => tree.value),
     setTree,
     clearTree,
+    clearTreeAndView,
     clearAll,
     addPredicate,
     replacePredicateAt,
