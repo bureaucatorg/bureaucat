@@ -18,9 +18,10 @@ const props = withDefaults(
     labels?: ProjectLabel[];
     members?: ProjectMember[];
     templates?: TaskTemplate[];
-    // Selector mode (e.g. opened from /dashboard): pass the list of projects to
-    // choose from. The dialog fetches the chosen project's metadata itself.
-    projects?: Project[];
+    // Selector mode (e.g. opened from /dashboard or Shift+C): the dialog fetches
+    // the workspace-scoped project list itself and shows a project picker. It
+    // also fetches the chosen project's metadata on selection.
+    projectSelector?: boolean;
     // Subtask mode (opened from a parent task's detail page): the created task
     // becomes a child of this (project-local) parent number. The dialog stays on
     // the current page instead of navigating to the new task.
@@ -40,15 +41,40 @@ const emit = defineEmits<{
   created: [];
 }>();
 
+const { getAuthHeader } = useAuth();
+const { currentWorkspace } = useWorkspaces();
 const { createTask } = useTasks();
 const { listStates, listLabels, listMembers, listTemplates } = useProjects();
 
 // --- Project selection ---
-// Selector mode is active whenever a `projects` list is supplied.
-const selectable = computed(() => Array.isArray(props.projects));
+// Selector mode is active when the caller opts into the project picker; the
+// dialog then owns fetching the (workspace-scoped) list of projects to choose
+// from.
+const selectable = computed(() => props.projectSelector === true);
 const selectedProjectKey = ref("");
 const showProjectPopover = ref(false);
 const metaLoading = ref(false);
+
+// The workspace-scoped project list for the picker, fetched on open. Kept
+// local (not the shared useProjects store) so it never clobbers a caller's
+// own project grid.
+const availableProjects = ref<Project[]>([]);
+
+async function fetchProjects() {
+  try {
+    let url = "/api/v1/projects?page=1&per_page=100";
+    if (currentWorkspace.value) {
+      url += `&workspace_id=${currentWorkspace.value.id}`;
+    }
+    const res = await fetch(url, { headers: getAuthHeader() });
+    if (res.ok) {
+      const data = await res.json();
+      availableProjects.value = data.projects || [];
+    }
+  } catch {
+    // silently fail — the picker just shows no projects to choose from
+  }
+}
 
 // Metadata fetched on-demand when a project is chosen (selector mode only).
 const fetchedStates = ref<ProjectState[]>([]);
@@ -67,7 +93,7 @@ const effTemplates = computed(() =>
 );
 
 const selectedProject = computed(
-  () => props.projects?.find((p) => p.project_key === selectedProjectKey.value) ?? null
+  () => availableProjects.value.find((p) => p.project_key === selectedProjectKey.value) ?? null
 );
 
 function projectSearchText(p: Project) {
@@ -136,7 +162,7 @@ watch(selectedTemplateId, (id) => {
   }
 });
 
-watch(open, (isOpen) => {
+watch(open, async (isOpen) => {
   if (isOpen) {
     if (selectable.value) {
       selectedProjectKey.value = "";
@@ -144,6 +170,7 @@ watch(open, (isOpen) => {
       fetchedLabels.value = [];
       fetchedMembers.value = [];
       fetchedTemplates.value = [];
+      await fetchProjects();
       // Drop the cursor straight into the project picker so the user can start
       // typing to search projects immediately. Deferred so the popover opens
       // after the dialog's own open/focus handling has settled.
@@ -298,7 +325,7 @@ function removeLabel(labelId: string) {
           <Label>Project</Label>
           <SearchableSelect
             v-model:open="showProjectPopover"
-            :items="props.projects ?? []"
+            :items="availableProjects"
             :get-search-text="projectSearchText"
             :get-key="(p) => p.id"
             placeholder="Search projects..."

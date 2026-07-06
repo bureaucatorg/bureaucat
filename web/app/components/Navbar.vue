@@ -1,9 +1,7 @@
 <script setup lang="ts">
 import { User, LogOut, LayoutDashboard, FolderKanban, Shield, Star, Settings, Search } from "lucide-vue-next";
-import type { Project } from "~/types";
 
-const { user, isAuthenticated, logout, getAuthHeader } = useAuth();
-const { currentWorkspace } = useWorkspaces();
+const { user, isAuthenticated, logout } = useAuth();
 const { appName, signupSettings, fetchSignupSettings } = useSettings();
 const route = useRoute();
 
@@ -12,39 +10,12 @@ const isLandingPage = computed(() => route.path === "/");
 const searchOpen = ref(false);
 
 // Global "Create Task" dialog, triggered from any screen by pressing Shift+C.
-// In selector mode it needs the user's project list to choose from, fetched
-// lazily the first time the dialog is opened.
+// In selector mode the dialog fetches its own workspace-scoped project list.
 const createTaskOpen = ref(false);
-const allProjects = ref<Project[]>([]);
 
-async function fetchAllProjects() {
-  try {
-    let url = "/api/v1/projects?page=1&per_page=100";
-    if (currentWorkspace.value) {
-      url += `&workspace_id=${currentWorkspace.value.id}`;
-    }
-    const res = await fetch(url, {
-      headers: getAuthHeader(),
-    });
-    if (res.ok) {
-      const data = await res.json();
-      allProjects.value = data.projects || [];
-    }
-  } catch {
-    // silently fail — the dialog just shows no projects to pick
-  }
-}
-
-async function openCreateTask() {
-  if (!allProjects.value.length) await fetchAllProjects();
+function openCreateTask() {
   createTaskOpen.value = true;
 }
-
-// Drop the cached project list when the workspace changes so the create-task
-// picker reflects the newly selected workspace.
-watch(currentWorkspace, () => {
-  allProjects.value = [];
-});
 
 // Don't hijack the keystroke while the user is typing into a field or editor.
 function isEditableTarget(el: EventTarget | null): boolean {
@@ -137,7 +108,7 @@ async function handleLogout() {
         <CreateTaskDialog
           v-if="isAuthenticated"
           v-model:open="createTaskOpen"
-          :projects="allProjects"
+          project-selector
         />
 
         <template v-if="!isAuthenticated">

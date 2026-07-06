@@ -414,7 +414,7 @@ onMounted(async () => {
 
         <CreateTaskDialog
           v-model:open="showCreateTask"
-          :projects="allProjects"
+          project-selector
           @created="handleTaskCreated"
         />
       </div>
