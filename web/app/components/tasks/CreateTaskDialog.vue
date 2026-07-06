@@ -144,6 +144,12 @@ watch(open, (isOpen) => {
       fetchedLabels.value = [];
       fetchedMembers.value = [];
       fetchedTemplates.value = [];
+      // Drop the cursor straight into the project picker so the user can start
+      // typing to search projects immediately. Deferred so the popover opens
+      // after the dialog's own open/focus handling has settled.
+      nextTick(() => {
+        showProjectPopover.value = true;
+      });
     }
     resetForm();
   }
