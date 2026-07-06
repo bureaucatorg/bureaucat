@@ -165,7 +165,44 @@ const isMac = computed(() => {
         class="max-h-[min(440px,60vh)] overflow-y-auto py-1"
       >
         <div v-if="showIdle" class="px-4 py-10 text-center text-sm text-muted-foreground">
-          Start typing to search across everything you can access.
+          <p>Start typing to search across everything you can access.</p>
+          <div class="mt-6 flex justify-center">
+            <table class="border-separate border-spacing-x-6 border-spacing-y-2 text-left">
+              <tbody>
+                <tr>
+                  <td class="align-middle">
+                    <span class="flex items-center gap-1">
+                      <kbd
+                        class="inline-flex h-4 items-center rounded border border-border/60 bg-background px-1 font-mono text-[10px]"
+                      >
+                        {{ isMac ? "⌘" : "Ctrl" }}
+                      </kbd>
+                      <kbd
+                        class="inline-flex h-4 min-w-4 items-center justify-center rounded border border-border/60 bg-background px-1 font-mono text-[10px]"
+                        >K</kbd
+                      >
+                    </span>
+                  </td>
+                  <td class="align-middle text-[11px] leading-none text-muted-foreground">Search</td>
+                </tr>
+                <tr>
+                  <td class="align-middle">
+                    <span class="flex items-center gap-1">
+                      <kbd
+                        class="inline-flex h-4 items-center rounded border border-border/60 bg-background px-1 font-mono text-[10px]"
+                        >Shift</kbd
+                      >
+                      <kbd
+                        class="inline-flex h-4 min-w-4 items-center justify-center rounded border border-border/60 bg-background px-1 font-mono text-[10px]"
+                        >C</kbd
+                      >
+                    </span>
+                  </td>
+                  <td class="align-middle text-[11px] leading-none text-muted-foreground">Create task</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
 
         <div v-else-if="showEmpty" class="px-4 py-10 text-center text-sm text-muted-foreground">
