@@ -3,6 +3,7 @@ import { User, LogOut, LayoutDashboard, FolderKanban, Shield, Star, Settings, Se
 
 const { user, isAuthenticated, logout } = useAuth();
 const { appName, signupSettings, fetchSignupSettings } = useSettings();
+const { showAllWorkspaces } = useDashboardScope();
 const route = useRoute();
 
 const isLandingPage = computed(() => route.path === "/");
@@ -16,6 +17,12 @@ const createTaskOpen = ref(false);
 // On a /projects/[key] page, pre-select that project in the picker.
 const currentProjectKey = computed(() =>
   typeof route.params.key === "string" ? route.params.key : ""
+);
+
+// On the dashboard, the picker follows that page's "All workspaces" toggle;
+// everywhere else Shift+C stays scoped to the active workspace.
+const createTaskAllWorkspaces = computed(
+  () => route.path === "/dashboard" && showAllWorkspaces.value
 );
 
 function openCreateTask() {
@@ -115,6 +122,7 @@ async function handleLogout() {
           v-model:open="createTaskOpen"
           project-selector
           :initial-project-key="currentProjectKey"
+          :all-workspaces="createTaskAllWorkspaces"
         />
 
         <template v-if="!isAuthenticated">

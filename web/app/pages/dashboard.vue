@@ -105,19 +105,11 @@ interface MyTasksResponse {
 const myTasks = ref<MyTask[]>([]);
 const myTasksTotal = ref(0);
 const myTasksLoading = ref(false);
-// When off (default), "Assigned to You" is scoped to the active workspace.
-// The choice is persisted across sessions. (SSR is disabled, so setup runs on
-// the client and localStorage is available here.)
-const ALL_WORKSPACES_KEY = "bureaucat.dashboardAllWorkspaces";
-// Defaults to true (all workspaces) until the user explicitly toggles it.
-const storedAllWorkspaces =
-  typeof window !== "undefined" ? localStorage.getItem(ALL_WORKSPACES_KEY) : null;
-const showAllWorkspaces = ref(storedAllWorkspaces === null ? true : storedAllWorkspaces === "1");
-watch(showAllWorkspaces, (v) => {
-  if (typeof window !== "undefined") {
-    localStorage.setItem(ALL_WORKSPACES_KEY, v ? "1" : "0");
-  }
-});
+// When off, "Assigned to You" (and the Create Task project picker) are scoped
+// to the active workspace; when on, they span every workspace. Shared via a
+// composable so the global Shift+C dialog honors the same toggle. The choice is
+// persisted across sessions.
+const { showAllWorkspaces } = useDashboardScope();
 
 // Adapt the dashboard's lightweight MyTask shape to the full Task shape so we
 // can render the shared TaskList/TaskCard component. Fields the dashboard API
@@ -415,6 +407,7 @@ onMounted(async () => {
         <CreateTaskDialog
           v-model:open="showCreateTask"
           project-selector
+          :all-workspaces="showAllWorkspaces"
           @created="handleTaskCreated"
         />
       </div>

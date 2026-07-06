@@ -25,6 +25,10 @@ const props = withDefaults(
     // Selector mode only: a project key to pre-select when the dialog opens
     // (e.g. the current project when Shift+C is pressed on /projects/[key]).
     initialProjectKey?: string;
+    // Selector mode only: when true, the project picker lists projects across
+    // every workspace instead of only the active one (mirrors the dashboard's
+    // "All workspaces" toggle).
+    allWorkspaces?: boolean;
     // Subtask mode (opened from a parent task's detail page): the created task
     // becomes a child of this (project-local) parent number. The dialog stays on
     // the current page instead of navigating to the new task.
@@ -66,7 +70,7 @@ const availableProjects = ref<Project[]>([]);
 async function fetchProjects() {
   try {
     let url = "/api/v1/projects?page=1&per_page=100";
-    if (currentWorkspace.value) {
+    if (!props.allWorkspaces && currentWorkspace.value) {
       url += `&workspace_id=${currentWorkspace.value.id}`;
     }
     const res = await fetch(url, { headers: getAuthHeader() });
