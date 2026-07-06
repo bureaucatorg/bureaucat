@@ -2,6 +2,7 @@
 import { ChevronLeft, Loader2, Plus, X, Search } from "lucide-vue-next";
 import { toast } from "vue-sonner";
 import type { ProjectState, ProjectLabel, ProjectMember, TaskTemplate } from "~/types";
+import { mdToHtml } from "~/utils/markdown";
 
 definePageMeta({
   middleware: ["auth"],
@@ -82,7 +83,9 @@ watch(selectedTemplateId, (id) => {
   const tmpl = templates.value.find((t) => t.id === id);
   if (tmpl) {
     form.value.title = tmpl.title;
-    form.value.description = tmpl.description;
+    // Templates are stored as HTML; convert any legacy markdown ones so the
+    // Tiptap editor receives valid HTML rather than raw markdown text.
+    form.value.description = mdToHtml(tmpl.description);
   }
 });
 

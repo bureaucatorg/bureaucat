@@ -2,6 +2,7 @@
 import { Plus, Trash2, Pencil, Loader2, Check, X } from "lucide-vue-next";
 import { toast } from "vue-sonner";
 import type { TaskTemplate } from "~/types";
+import { mdToHtml } from "~/utils/markdown";
 
 const props = defineProps<{
   templates: TaskTemplate[];
@@ -58,7 +59,9 @@ function startEdit(template: TaskTemplate) {
   editForm.value = {
     name: template.name,
     title: template.title,
-    description: template.description,
+    // Legacy templates are stored as markdown; convert so the rich editor
+    // shows them formatted rather than as raw markdown text.
+    description: mdToHtml(template.description),
   };
 }
 
@@ -142,11 +145,10 @@ async function handleDelete(template: TaskTemplate) {
           </div>
           <div class="space-y-2">
             <Label>Description</Label>
-            <Textarea
+            <TiptapEditor
               v-model="newTemplate.description"
-              placeholder="Pre-filled task description"
-              rows="3"
               :disabled="loading"
+              compact
             />
           </div>
           <div class="flex justify-end gap-2">
@@ -198,10 +200,10 @@ async function handleDelete(template: TaskTemplate) {
             </div>
             <div class="space-y-2">
               <Label>Description</Label>
-              <Textarea
+              <TiptapEditor
                 v-model="editForm.description"
-                rows="2"
                 :disabled="loading"
+                compact
               />
             </div>
             <div class="flex justify-end gap-1">

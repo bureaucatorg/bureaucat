@@ -8,6 +8,7 @@ import type {
   ProjectMember,
   TaskTemplate,
 } from "~/types";
+import { mdToHtml } from "~/utils/markdown";
 
 const props = withDefaults(
   defineProps<{
@@ -165,7 +166,9 @@ watch(selectedTemplateId, (id) => {
   const tmpl = effTemplates.value.find((t) => t.id === id);
   if (tmpl) {
     form.value.title = tmpl.title;
-    form.value.description = tmpl.description;
+    // Templates are stored as HTML; convert any legacy markdown ones so the
+    // Tiptap editor receives valid HTML rather than raw markdown text.
+    form.value.description = mdToHtml(tmpl.description);
   }
 });
 
