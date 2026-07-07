@@ -22,6 +22,7 @@ const pageNum = computed(() => parseInt(route.params.num as string));
 
 const { currentProject, members, getProject, listMembers } = useProjects();
 const { currentPage, getPage, updatePage, deletePage, clearCurrent } = usePages();
+const { uploadFiles } = useFileAttach();
 
 useHead({
   title: computed(() => currentPage.value?.title ?? `${projectKey.value} page`),
@@ -283,6 +284,7 @@ onBeforeUnmount(() => {
               borderless
               tables
               :members="members"
+              :upload-handler="uploadFiles"
             />
             <div
               v-else-if="currentPage.content"

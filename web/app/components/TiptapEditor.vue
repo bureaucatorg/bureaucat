@@ -6,7 +6,15 @@ import { Table } from "@tiptap/extension-table";
 import { TableRow } from "@tiptap/extension-table-row";
 import { TableHeader } from "@tiptap/extension-table-header";
 import { TableCell } from "@tiptap/extension-table-cell";
+import { Image } from "@tiptap/extension-image";
 import type { Editor } from "@tiptap/vue-3";
+
+// Files a parent uploader returns so we can embed them in the document.
+export interface EditorUpload {
+  url: string;
+  filename: string;
+  mimeType: string;
+}
 import type { ProjectMember } from "~/types";
 import {
   Bold,
@@ -39,6 +47,11 @@ const props = defineProps<{
   // Enables table support (extension + toolbar control). Off by default so the
   // compact editors (comments, task descriptions) stay simple.
   tables?: boolean;
+  // When provided, dropped/pasted/picked files are uploaded via this callback
+  // and embedded inline in the document (images as <img>, others as links).
+  // When absent, files are emitted via `files-dropped` for the parent to handle
+  // as a separate attachment list (tasks/comments behaviour).
+  uploadHandler?: (files: File[]) => Promise<EditorUpload[]>;
   members?: ProjectMember[];
 }>();
 
@@ -194,6 +207,50 @@ if (props.tables) {
   );
 }
 
+if (props.uploadHandler) {
+  extensions.push(
+    Image.configure({ HTMLAttributes: { class: "rounded-md" } })
+  );
+}
+
+const internalUploading = ref(false);
+const busyUploading = computed(() => props.uploading || internalUploading.value);
+
+// Route files either to the inline uploader (embed in the document) or, when no
+// uploader is configured, up to the parent via `files-dropped`.
+async function handleFiles(files: File[]) {
+  if (!files.length) return;
+  if (!props.uploadHandler) {
+    emit("files-dropped", files);
+    return;
+  }
+  internalUploading.value = true;
+  try {
+    const uploaded = await props.uploadHandler(files);
+    const ed = editor.value;
+    if (!ed) return;
+    for (const u of uploaded) {
+      if (u.mimeType.startsWith("image/")) {
+        ed.chain().focus().setImage({ src: u.url, alt: u.filename }).run();
+      } else {
+        ed.chain()
+          .focus()
+          .insertContent([
+            {
+              type: "text",
+              text: u.filename,
+              marks: [{ type: "link", attrs: { href: u.url } }],
+            },
+            { type: "text", text: " " },
+          ])
+          .run();
+      }
+    }
+  } finally {
+    internalUploading.value = false;
+  }
+}
+
 const editor = useEditor({
   content: props.modelValue,
   editable: !props.disabled,
@@ -211,7 +268,7 @@ const editor = useEditor({
       // Stop the native event from bubbling to a wrapping FileDropZone, which
       // would otherwise emit the same files a second time (double upload).
       event.stopPropagation();
-      emit("files-dropped", Array.from(event.dataTransfer.files));
+      handleFiles(Array.from(event.dataTransfer.files));
       return true;
     },
     handlePaste: (_view, event) => {
@@ -220,7 +277,7 @@ const editor = useEditor({
         event.preventDefault();
         // Stop bubbling to a wrapping paste handler that would re-emit the files.
         event.stopPropagation();
-        emit("files-dropped", files);
+        handleFiles(files);
         return true;
       }
       return false;
@@ -274,7 +331,7 @@ function openFilePicker() {
 function handleFileInput(e: Event) {
   const input = e.target as HTMLInputElement;
   if (input.files?.length) {
-    emit("files-dropped", Array.from(input.files));
+    handleFiles(Array.from(input.files));
   }
   input.value = "";
 }
@@ -492,10 +549,10 @@ function handleFileInput(e: Event) {
         tabindex="-1"
         aria-label="Attach file"
         class="inline-flex size-7 items-center justify-center rounded-md hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 outline-none"
-        :disabled="uploading"
+        :disabled="busyUploading"
         @click="openFilePicker"
       >
-        <Loader2 v-if="uploading" class="size-3.5 animate-spin" />
+        <Loader2 v-if="busyUploading" class="size-3.5 animate-spin" />
         <Paperclip v-else class="size-3.5" />
       </button>
 
