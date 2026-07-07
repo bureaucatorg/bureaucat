@@ -2,6 +2,10 @@
 import { useEditor, EditorContent } from "@tiptap/vue-3";
 import StarterKit from "@tiptap/starter-kit";
 import Link from "@tiptap/extension-link";
+import { Table } from "@tiptap/extension-table";
+import { TableRow } from "@tiptap/extension-table-row";
+import { TableHeader } from "@tiptap/extension-table-header";
+import { TableCell } from "@tiptap/extension-table-cell";
 import type { Editor } from "@tiptap/vue-3";
 import type { ProjectMember } from "~/types";
 import {
@@ -21,6 +25,7 @@ import {
   Redo,
   Paperclip,
   Loader2,
+  Table as TableIcon,
 } from "lucide-vue-next";
 
 const props = defineProps<{
@@ -31,6 +36,9 @@ const props = defineProps<{
   // Removes the box border/background and left padding so the editor reads as a
   // seamless document surface (used by full-page docs like project Pages).
   borderless?: boolean;
+  // Enables table support (extension + toolbar control). Off by default so the
+  // compact editors (comments, task descriptions) stay simple.
+  tables?: boolean;
   members?: ProjectMember[];
 }>();
 
@@ -161,24 +169,35 @@ function handleMentionKeydown(event: KeyboardEvent): boolean {
   return false;
 }
 
+const extensions = [
+  StarterKit.configure({
+    heading: { levels: [1, 2, 3] },
+    // Disable the drop cursor — drops are handled as file attachments, so the
+    // ProseMirror insertion-point line would otherwise show as stray noise.
+    dropcursor: false,
+  }),
+  Link.configure({
+    openOnClick: false,
+    autolink: false,
+    HTMLAttributes: {
+      class: "text-primary underline underline-offset-2",
+    },
+  }),
+];
+
+if (props.tables) {
+  extensions.push(
+    Table.configure({ resizable: true }),
+    TableRow,
+    TableHeader,
+    TableCell
+  );
+}
+
 const editor = useEditor({
   content: props.modelValue,
   editable: !props.disabled,
-  extensions: [
-    StarterKit.configure({
-      heading: { levels: [1, 2, 3] },
-      // Disable the drop cursor — drops are handled as file attachments, so the
-      // ProseMirror insertion-point line would otherwise show as stray noise.
-      dropcursor: false,
-    }),
-    Link.configure({
-      openOnClick: false,
-      autolink: false,
-      HTMLAttributes: {
-        class: "text-primary underline underline-offset-2",
-      },
-    }),
-  ],
+  extensions,
   editorProps: {
     attributes: {
       class: `prose prose-sm max-w-none dark:prose-invert focus:outline-none py-2 ${props.borderless ? "px-0" : "px-3"} ${props.compact ? "min-h-[72px]" : "min-h-[200px]"}`,
@@ -402,6 +421,70 @@ function handleFileInput(e: Event) {
         <Minus class="size-3.5" />
       </button>
 
+      <template v-if="tables">
+        <div class="mx-1 h-4 w-px bg-border" role="separator" />
+
+        <DropdownMenu>
+          <DropdownMenuTrigger as-child>
+            <button
+              type="button"
+              tabindex="-1"
+              aria-label="Table"
+              class="inline-flex size-7 items-center justify-center rounded-md hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 outline-none"
+              :class="{ 'bg-muted text-foreground': isActive('table') }"
+            >
+              <TableIcon class="size-3.5" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            <DropdownMenuItem
+              @click="editor!.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()"
+            >
+              Insert table
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              :disabled="!isActive('table')"
+              @click="editor!.chain().focus().addColumnAfter().run()"
+            >
+              Add column
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              :disabled="!isActive('table')"
+              @click="editor!.chain().focus().deleteColumn().run()"
+            >
+              Delete column
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              :disabled="!isActive('table')"
+              @click="editor!.chain().focus().addRowAfter().run()"
+            >
+              Add row
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              :disabled="!isActive('table')"
+              @click="editor!.chain().focus().deleteRow().run()"
+            >
+              Delete row
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              :disabled="!isActive('table')"
+              @click="editor!.chain().focus().toggleHeaderRow().run()"
+            >
+              Toggle header row
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              :disabled="!isActive('table')"
+              class="text-destructive focus:text-destructive"
+              @click="editor!.chain().focus().deleteTable().run()"
+            >
+              Delete table
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </template>
+
       <div class="mx-1 h-4 w-px bg-border" role="separator" />
 
       <button
@@ -489,5 +572,48 @@ function handleFileInput(e: Event) {
   color: var(--muted-foreground);
   pointer-events: none;
   height: 0;
+}
+
+/* Tables */
+.tiptap-editor .tiptap table {
+  border-collapse: collapse;
+  margin: 0.5rem 0;
+  table-layout: fixed;
+  width: 100%;
+  overflow: hidden;
+}
+.tiptap-editor .tiptap td,
+.tiptap-editor .tiptap th {
+  border: 1px solid var(--border);
+  box-sizing: border-box;
+  min-width: 1em;
+  padding: 6px 8px;
+  position: relative;
+  vertical-align: top;
+}
+.tiptap-editor .tiptap th {
+  background-color: var(--muted);
+  font-weight: 600;
+  text-align: left;
+}
+.tiptap-editor .tiptap .selectedCell::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: color-mix(in srgb, var(--primary) 12%, transparent);
+  pointer-events: none;
+  z-index: 2;
+}
+.tiptap-editor .tiptap .column-resize-handle {
+  position: absolute;
+  top: 0;
+  bottom: -2px;
+  right: -1px;
+  width: 3px;
+  background-color: var(--primary);
+  pointer-events: none;
+}
+.tiptap-editor .tiptap.resize-cursor {
+  cursor: col-resize;
 }
 </style>

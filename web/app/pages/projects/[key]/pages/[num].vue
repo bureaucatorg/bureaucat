@@ -281,6 +281,7 @@ onBeforeUnmount(() => {
               v-if="isMember"
               v-model="content"
               borderless
+              tables
               :members="members"
             />
             <div
