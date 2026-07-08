@@ -70,8 +70,8 @@ func (q *Queries) CountWorkspaces(ctx context.Context) (int64, error) {
 const pagesCreatedPerDay = `-- name: PagesCreatedPerDay :many
 SELECT d::date AS day, COUNT(pg.id)::int AS count
 FROM generate_series(
-    CURRENT_DATE - (($1::int - 1) * INTERVAL '1 day'),
-    CURRENT_DATE,
+    $1::date,
+    $2::date,
     INTERVAL '1 day'
 ) d
 LEFT JOIN pages pg
@@ -81,13 +81,18 @@ GROUP BY d
 ORDER BY d ASC
 `
 
+type PagesCreatedPerDayParams struct {
+	FromDate pgtype.Date `json:"from_date"`
+	ToDate   pgtype.Date `json:"to_date"`
+}
+
 type PagesCreatedPerDayRow struct {
 	Day   pgtype.Date `json:"day"`
 	Count int32       `json:"count"`
 }
 
-func (q *Queries) PagesCreatedPerDay(ctx context.Context, days int32) ([]PagesCreatedPerDayRow, error) {
-	rows, err := q.db.Query(ctx, pagesCreatedPerDay, days)
+func (q *Queries) PagesCreatedPerDay(ctx context.Context, arg PagesCreatedPerDayParams) ([]PagesCreatedPerDayRow, error) {
+	rows, err := q.db.Query(ctx, pagesCreatedPerDay, arg.FromDate, arg.ToDate)
 	if err != nil {
 		return nil, err
 	}
@@ -150,8 +155,8 @@ func (q *Queries) ProjectsPerWorkspace(ctx context.Context) ([]ProjectsPerWorksp
 const subtasksCreatedPerDay = `-- name: SubtasksCreatedPerDay :many
 SELECT d::date AS day, COUNT(t.id)::int AS count
 FROM generate_series(
-    CURRENT_DATE - (($1::int - 1) * INTERVAL '1 day'),
-    CURRENT_DATE,
+    $1::date,
+    $2::date,
     INTERVAL '1 day'
 ) d
 LEFT JOIN tasks t
@@ -162,13 +167,18 @@ GROUP BY d
 ORDER BY d ASC
 `
 
+type SubtasksCreatedPerDayParams struct {
+	FromDate pgtype.Date `json:"from_date"`
+	ToDate   pgtype.Date `json:"to_date"`
+}
+
 type SubtasksCreatedPerDayRow struct {
 	Day   pgtype.Date `json:"day"`
 	Count int32       `json:"count"`
 }
 
-func (q *Queries) SubtasksCreatedPerDay(ctx context.Context, days int32) ([]SubtasksCreatedPerDayRow, error) {
-	rows, err := q.db.Query(ctx, subtasksCreatedPerDay, days)
+func (q *Queries) SubtasksCreatedPerDay(ctx context.Context, arg SubtasksCreatedPerDayParams) ([]SubtasksCreatedPerDayRow, error) {
+	rows, err := q.db.Query(ctx, subtasksCreatedPerDay, arg.FromDate, arg.ToDate)
 	if err != nil {
 		return nil, err
 	}
@@ -257,8 +267,8 @@ func (q *Queries) TasksByStateType(ctx context.Context) ([]TasksByStateTypeRow, 
 const tasksCreatedPerDay = `-- name: TasksCreatedPerDay :many
 SELECT d::date AS day, COUNT(t.id)::int AS count
 FROM generate_series(
-    CURRENT_DATE - (($1::int - 1) * INTERVAL '1 day'),
-    CURRENT_DATE,
+    $1::date,
+    $2::date,
     INTERVAL '1 day'
 ) d
 LEFT JOIN tasks t
@@ -269,13 +279,18 @@ GROUP BY d
 ORDER BY d ASC
 `
 
+type TasksCreatedPerDayParams struct {
+	FromDate pgtype.Date `json:"from_date"`
+	ToDate   pgtype.Date `json:"to_date"`
+}
+
 type TasksCreatedPerDayRow struct {
 	Day   pgtype.Date `json:"day"`
 	Count int32       `json:"count"`
 }
 
-func (q *Queries) TasksCreatedPerDay(ctx context.Context, days int32) ([]TasksCreatedPerDayRow, error) {
-	rows, err := q.db.Query(ctx, tasksCreatedPerDay, days)
+func (q *Queries) TasksCreatedPerDay(ctx context.Context, arg TasksCreatedPerDayParams) ([]TasksCreatedPerDayRow, error) {
+	rows, err := q.db.Query(ctx, tasksCreatedPerDay, arg.FromDate, arg.ToDate)
 	if err != nil {
 		return nil, err
 	}

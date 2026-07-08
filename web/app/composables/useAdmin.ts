@@ -69,6 +69,8 @@ export interface AdminStats {
   top_projects: ProjectStat[];
   projects_per_workspace: WorkspaceStat[];
   series: {
+    from: string;
+    to: string;
     days: number;
     tasks: DayCount[];
     subtasks: DayCount[];
@@ -287,13 +289,14 @@ export function useAdmin() {
     }
   }
 
-  async function getStats(days = 30): Promise<{
+  async function getStats(from: string, to: string): Promise<{
     success: boolean;
     data?: AdminStats;
     error?: string;
   }> {
     try {
-      const response = await fetch(`/api/v1/admin/stats?days=${days}`, {
+      const params = new URLSearchParams({ from, to });
+      const response = await fetch(`/api/v1/admin/stats?${params}`, {
         headers: getAuthHeader(),
       });
 

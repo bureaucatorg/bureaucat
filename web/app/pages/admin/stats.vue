@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { BarChart3, Loader2, Users, LayoutGrid, ListTodo, GitBranch, FileText, Boxes } from "lucide-vue-next";
+import { BarChart3, Loader2, Users, LayoutGrid, ListTodo, GitBranch, FileText, Boxes, Calendar as CalendarIcon, ChevronDown } from "lucide-vue-next";
 import { toast } from "vue-sonner";
+import { type DateValue, today, getLocalTimeZone } from "@internationalized/date";
 import { VisAxis, VisXYContainer, VisGroupedBar } from "@unovis/vue";
 import {
   ChartContainer,
@@ -22,13 +23,54 @@ const { getStats } = useAdmin();
 
 const loading = ref(true);
 const stats = ref<AdminStats | null>(null);
-const days = ref(30);
+const rangeOpen = ref(false);
 
-const RANGE_OPTIONS = [14, 30, 90];
+const tz = getLocalTimeZone();
+const maxDate = today(tz);
+
+// Range selection (defaults to the trailing 30 days).
+const toDate = ref<DateValue>(maxDate.copy());
+const fromDate = ref<DateValue>(maxDate.subtract({ days: 29 }));
+
+const PRESETS = [
+  { label: "Last 7 days", days: 7 },
+  { label: "Last 14 days", days: 14 },
+  { label: "Last 30 days", days: 30 },
+  { label: "Last 90 days", days: 90 },
+];
+
+function applyPreset(n: number) {
+  toDate.value = maxDate.copy();
+  fromDate.value = maxDate.subtract({ days: n - 1 });
+}
+
+function toIso(d: DateValue): string {
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.year}-${p(d.month)}-${p(d.day)}`;
+}
+
+function fmtDate(d: DateValue): string {
+  return `${MONTHS[d.month - 1]} ${d.day}, ${d.year}`;
+}
+
+// Inclusive day span of the current selection.
+const spanDays = computed(() =>
+  Math.round((toDate.value.toDate(tz).getTime() - fromDate.value.toDate(tz).getTime()) / 86_400_000) + 1
+);
+
+// Which preset (if any) the current range matches, so we can highlight it.
+const activePresetDays = computed(() =>
+  toIso(toDate.value) === toIso(maxDate) ? (PRESETS.find((p) => p.days === spanDays.value)?.days ?? null) : null
+);
+
+const rangeLabel = computed(() => {
+  const preset = PRESETS.find((p) => p.days === activePresetDays.value);
+  return preset ? preset.label : `${fmtDate(fromDate.value)} – ${fmtDate(toDate.value)}`;
+});
 
 async function loadStats() {
   loading.value = true;
-  const result = await getStats(days.value);
+  const result = await getStats(toIso(fromDate.value), toIso(toDate.value));
   loading.value = false;
 
   if (result.success && result.data) {
@@ -38,8 +80,8 @@ async function loadStats() {
   }
 }
 
-// Reload the per-day series when the range changes.
-watch(days, loadStats);
+// Reload the per-day series whenever the range changes.
+watch([fromDate, toDate], loadStats);
 
 onMounted(loadStats);
 
@@ -175,19 +217,44 @@ const maxProjectTasks = computed(() =>
             </p>
           </div>
 
-          <div class="flex items-center gap-2">
-            <Label for="range" class="text-sm text-muted-foreground">Range</Label>
-            <NativeSelect
-              id="range"
-              :model-value="String(days)"
-              class="w-36"
-              @update:model-value="days = Number($event)"
-            >
-              <option v-for="opt in RANGE_OPTIONS" :key="opt" :value="String(opt)">
-                Last {{ opt }} days
-              </option>
-            </NativeSelect>
-          </div>
+          <Popover v-model:open="rangeOpen">
+            <PopoverTrigger as-child>
+              <Button variant="outline" size="sm" class="gap-2">
+                <CalendarIcon class="size-4" />
+                <span>{{ rangeLabel }}</span>
+                <ChevronDown class="size-3.5 opacity-60" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="end" class="w-auto p-0">
+              <div class="flex flex-col sm:flex-row">
+                <div class="flex flex-row flex-wrap gap-1 border-b p-2 sm:flex-col sm:flex-nowrap sm:border-b-0 sm:border-r">
+                  <Button
+                    v-for="p in PRESETS"
+                    :key="p.days"
+                    variant="ghost"
+                    size="sm"
+                    class="justify-start"
+                    :class="activePresetDays === p.days && 'bg-accent text-accent-foreground'"
+                    @click="applyPreset(p.days)"
+                  >
+                    {{ p.label }}
+                  </Button>
+                </div>
+                <div class="p-2">
+                  <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div>
+                      <p class="mb-1 px-1 text-xs font-medium text-muted-foreground">From</p>
+                      <Calendar v-model="fromDate" :max-value="toDate" layout="month-and-year" />
+                    </div>
+                    <div>
+                      <p class="mb-1 px-1 text-xs font-medium text-muted-foreground">To</p>
+                      <Calendar v-model="toDate" :min-value="fromDate" :max-value="maxDate" layout="month-and-year" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
         </div>
 
         <!-- Loading -->
@@ -214,7 +281,7 @@ const maxProjectTasks = computed(() =>
             <div class="mb-3">
               <h2 class="text-lg font-semibold">Activity trends</h2>
               <p class="text-sm text-muted-foreground">
-                Items created per day over the last {{ stats.series.days }} days
+                Items created per day · {{ rangeLabel }}
               </p>
             </div>
 

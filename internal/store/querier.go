@@ -231,7 +231,7 @@ type Querier interface {
 	// Move a task to a different project, assigning a new project-local task number
 	// and state. Cycle/module links and labels are handled separately by the caller.
 	MoveTask(ctx context.Context, arg MoveTaskParams) (MoveTaskRow, error)
-	PagesCreatedPerDay(ctx context.Context, days int32) ([]PagesCreatedPerDayRow, error)
+	PagesCreatedPerDay(ctx context.Context, arg PagesCreatedPerDayParams) ([]PagesCreatedPerDayRow, error)
 	ProjectKeyExists(ctx context.Context, projectKey string) (bool, error)
 	ProjectViewSlugExists(ctx context.Context, arg ProjectViewSlugExistsParams) (bool, error)
 	ProjectsPerWorkspace(ctx context.Context) ([]ProjectsPerWorkspaceRow, error)
@@ -273,10 +273,10 @@ type Querier interface {
 	SoftDeleteProjectView(ctx context.Context, id uuid.UUID) error
 	SoftDeleteTask(ctx context.Context, id uuid.UUID) error
 	SoftDeleteWorkspace(ctx context.Context, id uuid.UUID) error
-	SubtasksCreatedPerDay(ctx context.Context, days int32) ([]SubtasksCreatedPerDayRow, error)
+	SubtasksCreatedPerDay(ctx context.Context, arg SubtasksCreatedPerDayParams) ([]SubtasksCreatedPerDayRow, error)
 	TasksByPriority(ctx context.Context) ([]TasksByPriorityRow, error)
 	TasksByStateType(ctx context.Context) ([]TasksByStateTypeRow, error)
-	TasksCreatedPerDay(ctx context.Context, days int32) ([]TasksCreatedPerDayRow, error)
+	TasksCreatedPerDay(ctx context.Context, arg TasksCreatedPerDayParams) ([]TasksCreatedPerDayRow, error)
 	TopProjectsByTaskCount(ctx context.Context) ([]TopProjectsByTaskCountRow, error)
 	// When a member leaves a project, keep their shared views alive by reassigning ownership.
 	TransferOwnedSharedViews(ctx context.Context, arg TransferOwnedSharedViewsParams) error

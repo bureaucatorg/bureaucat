@@ -48,8 +48,8 @@ ORDER BY project_count DESC;
 -- name: TasksCreatedPerDay :many
 SELECT d::date AS day, COUNT(t.id)::int AS count
 FROM generate_series(
-    CURRENT_DATE - ((sqlc.arg('days')::int - 1) * INTERVAL '1 day'),
-    CURRENT_DATE,
+    sqlc.arg('from_date')::date,
+    sqlc.arg('to_date')::date,
     INTERVAL '1 day'
 ) d
 LEFT JOIN tasks t
@@ -62,8 +62,8 @@ ORDER BY d ASC;
 -- name: SubtasksCreatedPerDay :many
 SELECT d::date AS day, COUNT(t.id)::int AS count
 FROM generate_series(
-    CURRENT_DATE - ((sqlc.arg('days')::int - 1) * INTERVAL '1 day'),
-    CURRENT_DATE,
+    sqlc.arg('from_date')::date,
+    sqlc.arg('to_date')::date,
     INTERVAL '1 day'
 ) d
 LEFT JOIN tasks t
@@ -76,8 +76,8 @@ ORDER BY d ASC;
 -- name: PagesCreatedPerDay :many
 SELECT d::date AS day, COUNT(pg.id)::int AS count
 FROM generate_series(
-    CURRENT_DATE - ((sqlc.arg('days')::int - 1) * INTERVAL '1 day'),
-    CURRENT_DATE,
+    sqlc.arg('from_date')::date,
+    sqlc.arg('to_date')::date,
     INTERVAL '1 day'
 ) d
 LEFT JOIN pages pg

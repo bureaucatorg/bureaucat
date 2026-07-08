@@ -3,6 +3,7 @@ package handlers
 import (
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -618,6 +619,8 @@ type AdminStatsResponse struct {
 	TopProjects          []ProjectStat   `json:"top_projects"`
 	ProjectsPerWorkspace []WorkspaceStat `json:"projects_per_workspace"`
 	Series               struct {
+		From     string     `json:"from"`
+		To       string     `json:"to"`
 		Days     int        `json:"days"`
 		Tasks    []DayCount `json:"tasks"`
 		Subtasks []DayCount `json:"subtasks"`
@@ -640,7 +643,8 @@ var priorityLabels = map[int]string{
 //	@Description	Returns system-wide totals, breakdowns, and per-day activity series.
 //	@Tags			Admin - Stats
 //	@Produce		json
-//	@Param			days	query		int	false	"Number of days for per-day series"	default(30)
+//	@Param			from	query		string	false	"Start date (YYYY-MM-DD) for per-day series"
+//	@Param			to		query		string	false	"End date (YYYY-MM-DD) for per-day series"
 //	@Success		200		{object}	AdminStatsResponse
 //	@Failure		500		{object}	ErrorResponse
 //	@Security		BearerAuth
@@ -648,12 +652,31 @@ var priorityLabels = map[int]string{
 func (h *AdminHandler) GetStats(c *echo.Context) error {
 	ctx := c.Request().Context()
 
-	days, _ := strconv.Atoi(c.QueryParam("days"))
-	if days < 1 {
-		days = 30
+	const dateLayout = "2006-01-02"
+	const maxSpanDays = 366
+
+	// Default range: trailing 30 days ending today.
+	today := time.Now().Truncate(24 * time.Hour)
+	toDate := today
+	fromDate := today.AddDate(0, 0, -29)
+
+	if v := c.QueryParam("to"); v != "" {
+		if parsed, err := time.Parse(dateLayout, v); err == nil {
+			toDate = parsed
+		}
 	}
-	if days > 365 {
-		days = 365
+	if v := c.QueryParam("from"); v != "" {
+		if parsed, err := time.Parse(dateLayout, v); err == nil {
+			fromDate = parsed
+		}
+	}
+
+	// Normalise: ensure from <= to and clamp the span to a sane maximum.
+	if fromDate.After(toDate) {
+		fromDate, toDate = toDate, fromDate
+	}
+	if toDate.Sub(fromDate) > maxSpanDays*24*time.Hour {
+		fromDate = toDate.AddDate(0, 0, -(maxSpanDays - 1))
 	}
 
 	var resp AdminStatsResponse
@@ -718,33 +741,38 @@ func (h *AdminHandler) GetStats(c *echo.Context) error {
 		resp.ProjectsPerWorkspace[i] = WorkspaceStat{WorkspaceKey: w.WorkspaceKey, Name: w.Name, ProjectCount: int(w.ProjectCount)}
 	}
 
-	resp.Series.Days = days
+	from := pgtype.Date{Time: fromDate, Valid: true}
+	to := pgtype.Date{Time: toDate, Valid: true}
 
-	tasksSeries, err := h.store.TasksCreatedPerDay(ctx, int32(days))
+	resp.Series.From = fromDate.Format(dateLayout)
+	resp.Series.To = toDate.Format(dateLayout)
+	resp.Series.Days = int(toDate.Sub(fromDate).Hours()/24) + 1
+
+	tasksSeries, err := h.store.TasksCreatedPerDay(ctx, store.TasksCreatedPerDayParams{FromDate: from, ToDate: to})
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to load tasks series")
 	}
 	resp.Series.Tasks = make([]DayCount, len(tasksSeries))
 	for i, d := range tasksSeries {
-		resp.Series.Tasks[i] = DayCount{Day: d.Day.Time.Format("2006-01-02"), Count: int(d.Count)}
+		resp.Series.Tasks[i] = DayCount{Day: d.Day.Time.Format(dateLayout), Count: int(d.Count)}
 	}
 
-	subtasksSeries, err := h.store.SubtasksCreatedPerDay(ctx, int32(days))
+	subtasksSeries, err := h.store.SubtasksCreatedPerDay(ctx, store.SubtasksCreatedPerDayParams{FromDate: from, ToDate: to})
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to load subtasks series")
 	}
 	resp.Series.Subtasks = make([]DayCount, len(subtasksSeries))
 	for i, d := range subtasksSeries {
-		resp.Series.Subtasks[i] = DayCount{Day: d.Day.Time.Format("2006-01-02"), Count: int(d.Count)}
+		resp.Series.Subtasks[i] = DayCount{Day: d.Day.Time.Format(dateLayout), Count: int(d.Count)}
 	}
 
-	pagesSeries, err := h.store.PagesCreatedPerDay(ctx, int32(days))
+	pagesSeries, err := h.store.PagesCreatedPerDay(ctx, store.PagesCreatedPerDayParams{FromDate: from, ToDate: to})
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to load pages series")
 	}
 	resp.Series.Pages = make([]DayCount, len(pagesSeries))
 	for i, d := range pagesSeries {
-		resp.Series.Pages[i] = DayCount{Day: d.Day.Time.Format("2006-01-02"), Count: int(d.Count)}
+		resp.Series.Pages[i] = DayCount{Day: d.Day.Time.Format(dateLayout), Count: int(d.Count)}
 	}
 
 	return c.JSON(http.StatusOK, resp)
