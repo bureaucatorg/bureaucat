@@ -38,6 +38,9 @@ const open = defineModel<boolean>("open", { default: false });
 
 const emit = defineEmits<{
   select: [item: T];
+  // Forwarded from the popover so callers can redirect focus after close
+  // (e.g. onto a follow-up field) by calling event.preventDefault().
+  closeAutoFocus: [event: Event];
 }>();
 
 const search = ref("");
@@ -112,7 +115,11 @@ function onKeydown(event: KeyboardEvent) {
     <PopoverTrigger as-child>
       <slot name="trigger" :open="open" />
     </PopoverTrigger>
-    <PopoverContent :align="align" :class="cn('p-0', contentClass)">
+    <PopoverContent
+      :align="align"
+      :class="cn('p-0', contentClass)"
+      @close-auto-focus="(e: Event) => emit('closeAutoFocus', e)"
+    >
       <div class="border-b px-3 py-2">
         <div class="relative">
           <Search class="absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />

@@ -155,14 +155,52 @@ async function loadProjectMeta(key: string) {
   selectedTemplateId.value = "";
 }
 
+// True while a project is being pre-selected on open, so the dialog's default
+// auto-focus can be redirected to the Template field.
+const focusTemplateOnOpen = ref(false);
+
+// Controls the Template dropdown so it can be auto-opened after a project is
+// chosen.
+const templateOpen = ref(false);
+
+function focusTemplateField() {
+  // rAF (after nextTick) lets reka-ui's dialog/popover focus management settle
+  // first; otherwise the dropdown opens and is immediately closed as focus is
+  // reclaimed by the dialog/popover.
+  nextTick(() => {
+    requestAnimationFrame(() => {
+      templateOpen.value = true;
+    });
+  });
+}
+
+// Redirect the dialog's initial focus to the Template field when a project is
+// already chosen; otherwise keep reka-ui's default focus handling.
+function handleOpenAutoFocus(event: Event) {
+  if (!focusTemplateOnOpen.value) return;
+  event.preventDefault();
+  focusTemplateOnOpen.value = false;
+  focusTemplateField();
+}
+
+// Set when a project is picked from the popover, so its close-auto-focus lands
+// on the Template field instead of returning focus to the project trigger.
+const focusTemplateOnPopoverClose = ref(false);
+
+function handleProjectCloseAutoFocus(event: Event) {
+  if (!focusTemplateOnPopoverClose.value) return;
+  event.preventDefault();
+  focusTemplateOnPopoverClose.value = false;
+  focusTemplateField();
+}
+
 async function selectProject(key: string) {
   selectedProjectKey.value = key;
+  // Closing the popover would normally return focus to the project trigger;
+  // redirect it to the Template field instead (see handleProjectCloseAutoFocus).
+  focusTemplateOnPopoverClose.value = showProjectPopover.value;
   showProjectPopover.value = false;
   await loadProjectMeta(key);
-  // Move focus to the Template field so the user can continue without reaching
-  // for the mouse after picking a project.
-  await nextTick();
-  document.getElementById("template")?.focus();
 }
 
 watch(selectedTemplateId, (id) => {
@@ -179,6 +217,10 @@ watch(selectedTemplateId, (id) => {
 watch(open, async (isOpen) => {
   if (isOpen) {
     if (selectable.value) {
+      // Set synchronously, before any await, so the dialog's open-auto-focus
+      // (which fires on mount) sees the intent to focus the Template field when
+      // a project will be pre-selected. Corrected below if it isn't found.
+      focusTemplateOnOpen.value = !!props.initialProjectKey;
       selectedProjectKey.value = "";
       fetchedStates.value = [];
       fetchedLabels.value = [];
@@ -195,6 +237,8 @@ watch(open, async (isOpen) => {
         availableProjects.value.some((p) => p.project_key === props.initialProjectKey)
           ? props.initialProjectKey
           : "";
+      // No project to pre-select after all — let the dialog focus normally.
+      if (!preselect) focusTemplateOnOpen.value = false;
       nextTick(() => {
         if (preselect) {
           selectProject(preselect);
@@ -319,7 +363,10 @@ function removeLabel(labelId: string) {
 
 <template>
   <Dialog v-model:open="open">
-    <DialogContent class="sm:max-w-4xl max-h-[85vh] overflow-y-auto">
+    <DialogContent
+      class="sm:max-w-4xl max-h-[85vh] overflow-y-auto"
+      @open-auto-focus="handleOpenAutoFocus"
+    >
       <DialogHeader>
         <DialogTitle>{{ isSubtaskMode ? "Create Subtask" : "Create New Task" }}</DialogTitle>
         <DialogDescription>
@@ -354,6 +401,7 @@ function removeLabel(labelId: string) {
             empty-text="No projects found"
             content-class="w-[var(--reka-popover-trigger-width)]"
             @select="(p) => selectProject(p.project_key)"
+            @close-auto-focus="handleProjectCloseAutoFocus"
           >
             <template #trigger>
               <Button
@@ -399,8 +447,11 @@ function removeLabel(labelId: string) {
              chosen in selector mode. -->
         <div class="space-y-2">
           <Label for="template">Template</Label>
-            <Select v-model="templateValue" :disabled="loading">
-              <SelectTrigger id="template" class="w-full">
+            <Select v-model="templateValue" v-model:open="templateOpen" :disabled="loading">
+              <SelectTrigger
+                id="template"
+                class="w-full focus:border-ring focus:ring-ring/50 focus:ring-[3px]"
+              >
                 <SelectValue placeholder="No template" />
               </SelectTrigger>
               <SelectContent>
