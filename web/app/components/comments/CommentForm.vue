@@ -152,14 +152,20 @@ function handleKeyDown(event: KeyboardEvent) {
         </div>
 
         <div class="flex items-center justify-between">
-          <p class="text-xs text-muted-foreground">
-            <kbd class="rounded border px-1 py-0.5 text-[10px]">
-              {{ navigator?.platform?.includes("Mac") ? "⌘" : "Ctrl" }}
-            </kbd>
-            +
-            <kbd class="rounded border px-1 py-0.5 text-[10px]">Enter</kbd>
-            to submit
-          </p>
+          <div class="flex flex-col gap-1.5 text-xs text-muted-foreground">
+            <p>
+              <kbd class="rounded border px-1 py-0.5 text-[10px]">Enter</kbd>
+              for new line
+            </p>
+            <p>
+              <kbd class="rounded border px-1 py-0.5 text-[10px]">
+                {{ navigator?.platform?.includes("Mac") ? "⌘" : "Ctrl" }}
+              </kbd>
+              +
+              <kbd class="rounded border px-1 py-0.5 text-[10px]">Enter</kbd>
+              to submit
+            </p>
+          </div>
           <div class="flex items-center gap-1">
             <Button
               type="button"
