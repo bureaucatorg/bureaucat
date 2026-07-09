@@ -693,11 +693,9 @@ onMounted(async () => {
 
         <CreateTaskDialog
           v-model:open="showCreateTask"
-          :project-key="projectKey"
-          :states="states"
-          :labels="labels"
-          :members="members"
-          :templates="templates"
+          project-selector
+          all-workspaces
+          :initial-project-key="projectKey"
           @created="handleTaskCreated"
         />
 

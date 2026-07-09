@@ -155,10 +155,14 @@ async function loadProjectMeta(key: string) {
   selectedTemplateId.value = "";
 }
 
-function selectProject(key: string) {
+async function selectProject(key: string) {
   selectedProjectKey.value = key;
   showProjectPopover.value = false;
-  loadProjectMeta(key);
+  await loadProjectMeta(key);
+  // Move focus to the Template field so the user can continue without reaching
+  // for the mouse after picking a project.
+  await nextTick();
+  document.getElementById("template")?.focus();
 }
 
 watch(selectedTemplateId, (id) => {
@@ -390,10 +394,11 @@ function removeLabel(labelId: string) {
           Loading project details...
         </div>
 
-        <!-- The rest of the form requires a project in selector mode. -->
-        <template v-if="!selectable || (selectedProject && !metaLoading)">
-          <div v-if="effTemplates.length > 0" class="space-y-2">
-            <Label for="template">Template</Label>
+        <!-- All fields are always shown; project-dependent fields (state,
+             assignees, labels, templates) simply populate once a project is
+             chosen in selector mode. -->
+        <div class="space-y-2">
+          <Label for="template">Template</Label>
             <Select v-model="templateValue" :disabled="loading">
               <SelectTrigger id="template" class="w-full">
                 <SelectValue placeholder="No template" />
@@ -457,7 +462,7 @@ function removeLabel(labelId: string) {
             </div>
           </div>
 
-          <div v-if="effMembers.length > 0" class="space-y-2">
+          <div class="space-y-2">
             <Label>Assignees</Label>
             <TokenSelect
               :selected="selectedAssignees"
@@ -489,7 +494,7 @@ function removeLabel(labelId: string) {
             </TokenSelect>
           </div>
 
-          <div v-if="effLabels.length > 0" class="space-y-2">
+          <div class="space-y-2">
             <Label>Labels</Label>
             <TokenSelect
               :selected="selectedLabels"
@@ -516,7 +521,6 @@ function removeLabel(labelId: string) {
               </template>
             </TokenSelect>
           </div>
-        </template>
 
         <DialogFooter>
           <Button
