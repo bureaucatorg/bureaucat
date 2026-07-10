@@ -18,6 +18,8 @@ function copyLink() {
 
 const { projects, loading, listProjects, total, page, totalPages } = useProjects();
 const { currentWorkspace } = useWorkspaces();
+// Shares the dashboard's "all workspaces" preference (same localStorage key).
+const { showAllWorkspaces } = useDashboardScope();
 
 const showCreateDialog = ref(false);
 const searchQuery = ref("");
@@ -26,7 +28,8 @@ const perPage = 12;
 let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
 function fetchProjects(p = 1) {
-  listProjects(p, perPage, searchQuery.value);
+  // Scope to the active workspace unless the user opted into all workspaces.
+  listProjects(p, perPage, searchQuery.value, !showAllWorkspaces.value);
 }
 
 watch(searchQuery, () => {
@@ -36,8 +39,8 @@ watch(searchQuery, () => {
   }, 300);
 });
 
-// Reload the list when the active workspace changes.
-watch(currentWorkspace, () => {
+// Reload the list when the active workspace or scope toggle changes.
+watch([currentWorkspace, showAllWorkspaces], () => {
   fetchProjects(1);
 });
 
@@ -90,15 +93,26 @@ onMounted(() => {
           </Button>
         </div>
 
-        <!-- Search -->
-        <div class="mb-6">
-          <div class="relative max-w-sm">
+        <!-- Search + workspace scope -->
+        <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div class="relative w-full sm:max-w-sm">
             <Search class="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               v-model="searchQuery"
               placeholder="Search projects..."
               class="pl-9"
             />
+          </div>
+          <div class="flex items-center gap-2">
+            <Switch
+              id="all-workspaces"
+              :checked="showAllWorkspaces"
+              aria-label="Show projects from all workspaces"
+              @update:checked="showAllWorkspaces = $event"
+            />
+            <Label for="all-workspaces" class="cursor-pointer text-xs text-muted-foreground">
+              {{ showAllWorkspaces ? "Showing all workspaces" : "Current workspace only" }}
+            </Label>
           </div>
         </div>
 
