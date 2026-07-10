@@ -27,11 +27,6 @@ function dismissHint() {
   if (typeof window !== "undefined") localStorage.setItem(HINT_KEY, "1");
 }
 
-const triggerLabel = computed(() => {
-  const ws = currentWorkspace.value;
-  return ws ? ws.workspace_key.slice(0, 2) : "";
-});
-
 async function selectWorkspace(ws: Workspace) {
   if (ws.id === currentWorkspace.value?.id) return;
   setCurrentWorkspace(ws);
@@ -69,8 +64,7 @@ async function selectWorkspace(ws: Workspace) {
           class="group relative flex size-9 items-center justify-center rounded-md bg-amber-500/10 text-xs font-semibold text-amber-700 outline-none transition-colors hover:bg-amber-500/20 focus-visible:ring-2 focus-visible:ring-ring dark:text-amber-400"
           @click="dismissHint"
         >
-          <span v-if="triggerLabel" class="font-mono">{{ triggerLabel }}</span>
-          <Building2 v-else class="size-4.5" />
+          <Building2 class="size-4.5" />
           <ChevronsUpDown
             class="absolute -bottom-0.5 -right-0.5 size-2.5 text-muted-foreground/70"
           />

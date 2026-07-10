@@ -158,6 +158,7 @@ onMounted(() => {
               v-for="project in projects"
               :key="project.id"
               :project="project"
+              :show-workspace="showAllWorkspaces"
             />
           </div>
 

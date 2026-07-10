@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { BarChart3, Loader2, Users, LayoutGrid, ListTodo, GitBranch, FileText, Boxes, Calendar as CalendarIcon, ChevronDown } from "lucide-vue-next";
+import { BarChart3, Loader2, Users, LayoutGrid, ListTodo, GitBranch, FileText, Building2, Calendar as CalendarIcon, ChevronDown } from "lucide-vue-next";
 import { toast } from "vue-sonner";
 import { type DateValue, today, getLocalTimeZone } from "@internationalized/date";
 import { VisAxis, VisXYContainer, VisGroupedBar } from "@unovis/vue";
@@ -89,7 +89,7 @@ const totalCards = computed(() => {
   const t = stats.value?.totals;
   if (!t) return [];
   return [
-    { label: "Workspaces", value: t.workspaces, icon: Boxes, color: "text-violet-400" },
+    { label: "Workspaces", value: t.workspaces, icon: Building2, color: "text-violet-400" },
     { label: "Projects", value: t.projects, icon: LayoutGrid, color: "text-blue-400" },
     { label: "Tasks", value: t.tasks, icon: ListTodo, color: "text-emerald-400" },
     { label: "Subtasks", value: t.subtasks, icon: GitBranch, color: "text-teal-400" },

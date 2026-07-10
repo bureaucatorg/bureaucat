@@ -1,10 +1,19 @@
 <script setup lang="ts">
-import { FolderKanban, Users } from "lucide-vue-next";
+import { FolderKanban, Users, Building2 } from "lucide-vue-next";
 import type { Project } from "~/types";
 
 const props = defineProps<{
   project: Project;
+  // When true, show which workspace the project belongs to (used when the
+  // list spans all workspaces).
+  showWorkspace?: boolean;
 }>();
+
+const { workspaces } = useWorkspaces();
+
+const workspaceName = computed(
+  () => workspaces.value.find((w) => w.id === props.project.workspace_id)?.name ?? ""
+);
 
 const roleBadgeVariant = computed(() => {
   switch (props.project.role) {
@@ -37,12 +46,17 @@ const roleBadgeVariant = computed(() => {
           </Badge>
         </div>
         <CardTitle class="mt-3 text-base font-semibold">{{ project.name }}</CardTitle>
-        <div class="flex items-center gap-2">
-          <span
-            class="font-mono text-xs text-muted-foreground transition-colors group-hover:text-amber-600 dark:group-hover:text-amber-500"
-          >
-            {{ project.project_key }}
-          </span>
+        <span
+          class="font-mono text-xs text-muted-foreground transition-colors group-hover:text-amber-600 dark:group-hover:text-amber-500"
+        >
+          {{ project.project_key }}
+        </span>
+        <div
+          v-if="showWorkspace && workspaceName"
+          class="mt-1 inline-flex w-fit items-center gap-1 rounded-md bg-muted px-1.5 py-0.5 text-xs text-muted-foreground"
+        >
+          <Building2 class="size-3 shrink-0" />
+          {{ workspaceName }}
         </div>
       </CardHeader>
       <CardContent class="pt-0">

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Circle, CircleDot, CheckCircle2, XCircle, Clock, MessageSquare, FolderKanban } from "lucide-vue-next";
+import { Circle, CircleDot, CheckCircle2, XCircle, Clock, MessageSquare, Building2 } from "lucide-vue-next";
 import type { Task, ProjectState } from "~/types";
 import { PRIORITY_LABELS } from "~/types";
 
@@ -120,7 +120,7 @@ const involvedPeople = computed(() => {
           class="inline-flex max-w-full items-center gap-1 rounded-md border bg-muted/50 px-1.5 py-0.5"
           :title="workspaceName"
         >
-          <FolderKanban class="size-3 shrink-0 text-muted-foreground" />
+          <Building2 class="size-3 shrink-0 text-muted-foreground" />
           <span class="truncate text-xs text-muted-foreground">{{ workspaceName || "—" }}</span>
         </span>
       </div>
