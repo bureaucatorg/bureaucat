@@ -83,16 +83,27 @@ function formatDate(dateStr: string) {
 
     <Table v-else>
       <TableHeader>
-        <TableRow>
-          <TableHead>Member</TableHead>
-          <TableHead>Role</TableHead>
-          <TableHead>Joined</TableHead>
-          <TableHead v-if="isAdmin" class="w-[100px]">Actions</TableHead>
+        <TableRow class="border-b bg-muted/50 hover:bg-muted/50">
+          <TableHead class="h-11 px-4 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            Member
+          </TableHead>
+          <TableHead class="h-11 px-4 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            Role
+          </TableHead>
+          <TableHead class="h-11 px-4 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            Joined
+          </TableHead>
+          <TableHead
+            v-if="isAdmin"
+            class="h-11 w-[80px] px-4 text-right text-xs font-medium uppercase tracking-wide text-muted-foreground"
+          >
+            Actions
+          </TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
         <TableRow v-for="member in members" :key="member.id">
-          <TableCell>
+          <TableCell class="px-4 py-3">
             <NuxtLink :to="`/profile/${member.user_id}`" class="flex items-center gap-3 hover:opacity-80 transition-opacity">
               <Avatar>
                 <AvatarFallback :seed="member.user_id">
@@ -107,7 +118,7 @@ function formatDate(dateStr: string) {
               </div>
             </NuxtLink>
           </TableCell>
-          <TableCell>
+          <TableCell class="px-4 py-3">
             <div class="flex items-center gap-2">
               <component :is="getRoleIcon(member.role)" class="size-4 text-muted-foreground" />
               <Badge
@@ -118,10 +129,10 @@ function formatDate(dateStr: string) {
               </Badge>
             </div>
           </TableCell>
-          <TableCell class="text-muted-foreground">
+          <TableCell class="px-4 py-3 text-muted-foreground">
             {{ formatDate(member.joined_at) }}
           </TableCell>
-          <TableCell v-if="isAdmin">
+          <TableCell v-if="isAdmin" class="px-4 py-3 text-right">
             <DropdownMenu>
               <DropdownMenuTrigger as-child>
                 <Button

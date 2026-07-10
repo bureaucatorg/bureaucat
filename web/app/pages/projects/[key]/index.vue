@@ -606,7 +606,7 @@ onMounted(async () => {
                 </Button>
               </div>
 
-              <Card>
+              <Card class="overflow-hidden py-0">
                 <CardContent class="p-0">
                   <MemberList
                     :members="members"
