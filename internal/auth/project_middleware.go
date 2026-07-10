@@ -23,13 +23,18 @@ const (
 
 // isProjectWrite reports whether the request mutates project data. Read methods
 // (GET/HEAD/OPTIONS) are always allowed on a disabled project; the enable/disable
-// toggle (PATCH .../disabled) is also allowed so a project can be re-enabled.
-func isProjectWrite(method, path string) bool {
+// toggle (PATCH .../disabled) is also allowed so a project can be re-enabled, and
+// deleting the project itself is allowed so a disabled project can still be removed.
+func isProjectWrite(method, path, projectKey string) bool {
 	switch method {
 	case http.MethodGet, http.MethodHead, http.MethodOptions:
 		return false
 	}
 	if method == http.MethodPatch && strings.HasSuffix(path, "/disabled") {
+		return false
+	}
+	// DELETE on the project root (.../projects/{key}) removes the project itself.
+	if method == http.MethodDelete && strings.HasSuffix(path, "/projects/"+projectKey) {
 		return false
 	}
 	return true
@@ -78,7 +83,7 @@ func ProjectMiddleware(queryer store.Querier) echo.MiddlewareFunc {
 
 			// A disabled project is read-only: reject any write except the
 			// toggle that re-enables it.
-			if project.Disabled && isProjectWrite(c.Request().Method, c.Request().URL.Path) {
+			if project.Disabled && isProjectWrite(c.Request().Method, c.Request().URL.Path, projectKey) {
 				return echo.NewHTTPError(http.StatusForbidden, "project is disabled (read-only)")
 			}
 
