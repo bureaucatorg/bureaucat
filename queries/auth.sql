@@ -56,6 +56,7 @@ WHERE username ILIKE '%' || $1 || '%'
    OR email ILIKE '%' || $1 || '%'
    OR first_name ILIKE '%' || $1 || '%'
    OR last_name ILIKE '%' || $1 || '%'
+   OR (first_name || ' ' || last_name) ILIKE '%' || $1 || '%'
 ORDER BY created_at ASC
 LIMIT $2 OFFSET $3;
 
@@ -64,7 +65,8 @@ SELECT COUNT(*) FROM users
 WHERE username ILIKE '%' || $1 || '%'
    OR email ILIKE '%' || $1 || '%'
    OR first_name ILIKE '%' || $1 || '%'
-   OR last_name ILIKE '%' || $1 || '%';
+   OR last_name ILIKE '%' || $1 || '%'
+   OR (first_name || ' ' || last_name) ILIKE '%' || $1 || '%';
 
 -- name: DeleteUserByID :exec
 DELETE FROM users WHERE id = $1;
