@@ -98,6 +98,29 @@ const {
 
 const loading = ref(true);
 const error = ref<string | null>(null);
+
+// Tasks-per-page selection, persisted locally so it survives refreshes.
+const PER_PAGE_OPTIONS = [20, 50, 100] as const;
+const PER_PAGE_STORAGE_KEY = "bureaucat:tasksPerPage";
+const perPage = ref(20);
+
+onMounted(() => {
+  const stored = parseInt(localStorage.getItem(PER_PAGE_STORAGE_KEY) ?? "", 10);
+  if (PER_PAGE_OPTIONS.includes(stored as (typeof PER_PAGE_OPTIONS)[number])) {
+    perPage.value = stored;
+  }
+});
+
+function handlePerPageChange(value: unknown) {
+  const next = parseInt(String(value), 10);
+  if (!PER_PAGE_OPTIONS.includes(next as (typeof PER_PAGE_OPTIONS)[number])) return;
+  perPage.value = next;
+  localStorage.setItem(PER_PAGE_STORAGE_KEY, String(next));
+  clearSelection();
+  setPageInUrl(1);
+  loadTasks(1);
+}
+
 const showCreateTask = ref(false);
 const showAddMember = ref(false);
 const showSaveView = ref(false);
@@ -207,7 +230,7 @@ async function loadTasks(page = 1) {
   // would re-hydrate the view's filter and the "clear" would appear to do
   // nothing. Only hand over the slug while an actual filter is present.
   const hasFilter = effectiveTree.value.children.length > 0;
-  await listTasks(projectKey.value, page, 20, {
+  await listTasks(projectKey.value, page, perPage.value, {
     tree: effectiveTree.value,
     sortBy: sortBy.value,
     sortDir: sortDir.value,
@@ -528,13 +551,30 @@ onMounted(async () => {
                 />
 
                 <div
-                  v-if="tasksTotalPages > 1"
-                  class="flex items-center justify-between border-t pt-4"
+                  v-if="tasks.length > 0"
+                  class="flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between"
                 >
-                  <p class="text-sm text-muted-foreground">
+                  <Select
+                    :model-value="String(perPage)"
+                    @update:model-value="handlePerPageChange"
+                  >
+                    <SelectTrigger size="sm" class="w-[140px]" aria-label="Tasks per page">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem
+                        v-for="opt in PER_PAGE_OPTIONS"
+                        :key="opt"
+                        :value="String(opt)"
+                      >
+                        {{ opt }} per page
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p class="text-sm text-muted-foreground sm:flex-1 sm:text-center">
                     Showing {{ tasks.length }} of {{ totalTasks }} tasks
                   </p>
-                  <div class="flex items-center gap-2">
+                  <div v-if="tasksTotalPages > 1" class="flex items-center gap-2">
                     <Button
                       variant="outline"
                       size="sm"
