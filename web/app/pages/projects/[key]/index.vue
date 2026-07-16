@@ -640,6 +640,7 @@ onMounted(async () => {
                     <Button
                       variant="outline"
                       size="sm"
+                      class="has-[>svg]:px-3"
                       :disabled="exporting"
                       @click="exportTasks"
                     >
