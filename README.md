@@ -41,6 +41,7 @@
 ### Prerequisites
 
 - Docker & Docker Compose
+- `make`, plus `openssl`, `curl`, and `python3` on the host (used by `make bootstrap` / `make seed`)
 
 ### Development
 
@@ -49,11 +50,9 @@
 git clone https://github.com/bureaucatorg/bureaucat.git
 cd bureaucat
 
-# Copy environment files
-cp .env.example .env
-
-# Start development environment
-docker compose up
+# One command: creates .env, generates object-storage config, builds the
+# stack, runs DB migrations, and seeds a rich demo workspace.
+make dev-bootstrap        # `make bootstrap` is a shorthand alias
 ```
 
 This starts:
@@ -62,13 +61,31 @@ This starts:
 - **PostgreSQL** on port 5432
 - **pgweb** (DB explorer) at `http://localhost:8081`
 
+Then open `http://localhost:1341` and sign in with the demo account
+**demo@gmail.com** / **Passw0rd!**. `make dev-bootstrap` also seeds a rich demo
+workspace (users, projects, sprints, epics, tasks + sub-tasks) via `make seed`.
+
+Run `make help` for the full command list — dev lifecycle
+(`make dev-up` / `dev-down` / `dev-logs`), attach/exec (`make dev-attach` /
+`make dev-shell`), database (`make migrate` / `make seed`), prod
+(`make prod-bootstrap` / `make prod-up`), and `make nuke` to wipe everything
+for this repo.
+
 ### Production
 
 ```bash
-docker compose -f docker-compose.prod.yml up --build
+make prod-bootstrap      # or: make prod-up
 ```
 
-Builds a single Go binary with the frontend embedded. Serves everything on port `1341`.
+Builds a single Go binary with the frontend embedded and serves everything on port `1341`.
+
+> **Note — you can't run dev and prod at the same time.** Both bind port `1341`
+> and share the `bureaucat-garage` container name, and by design the prod compose
+> file reuses the same `.env`, `garage/garage.toml`, and `postgres-data/` as dev.
+> `make dev-bootstrap` / `make prod-bootstrap` each stop and remove the other
+> stack first, so switching is safe; if you started with `make dev-up`, run
+> `make dev-down` before `make prod-up`. A real deployment should use its own
+> `.env` and storage.
 
 ## Configuration
 
