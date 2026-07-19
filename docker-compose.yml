@@ -6,6 +6,9 @@ services:
       dockerfile: Dockerfile.dev
     volumes:
       - ./:/app
+      # Named volume shields node_modules from the ./:/app bind mount; it seeds
+      # from the image's /app/web/node_modules (baked in Dockerfile.dev) on first run.
+      - bureaucat-vue-node:/app/web/node_modules
     working_dir: /app
     ports:
       - 1341:1341
@@ -75,3 +78,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+
+volumes:
+  bureaucat-vue-node:
+    name: bureaucat-vue-node
