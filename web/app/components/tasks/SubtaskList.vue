@@ -83,7 +83,7 @@ function involvedPeople(subtask: Subtask) {
             <NuxtLink
               :to="`/projects/${projectKey}/tasks/${subtask.task_number}`"
               :title="`Open ${subtask.task_id}`"
-              class="flex w-fit items-center gap-1.5 rounded-md px-1.5 py-0.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              class="-my-2.5 flex w-fit items-center gap-1.5 rounded-md px-2 py-2.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
               @click.stop
             >
               <Maximize2 class="size-3.5 shrink-0 opacity-50" />
