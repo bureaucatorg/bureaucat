@@ -1029,35 +1029,10 @@ func (h *TaskHandler) DeleteTask(c *echo.Context) error {
 		return echo.NewHTTPError(http.StatusForbidden, "only admins or the task creator can delete this task")
 	}
 
-	// Log deletion
-	h.activityService.LogActivity(ctx, activity.LogActivityParams{
-		TaskID:       task.ID,
-		ActivityType: activity.TaskDeleted,
-		ActorID:      userID,
-		OldValue: map[string]interface{}{
-			"title":       task.Title,
-			"description": textToStringPtr(task.Description),
-			"state_id":    task.StateID.String(),
-			"priority":    task.Priority,
-		},
-	})
-
 	// Soft delete the task and cascade to its subtasks atomically. The FK's
 	// ON DELETE CASCADE does not fire on a soft delete, so children are
-	// detached-and-deleted explicitly here.
-	tx, err := h.pool.Begin(ctx)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, "failed to delete task")
-	}
-	defer tx.Rollback(ctx)
-	q := store.New(tx)
-	if err := q.CascadeSoftDeleteSubtasks(ctx, task.ID); err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, "failed to delete subtasks")
-	}
-	if err := q.SoftDeleteTask(ctx, task.ID); err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, "failed to delete task")
-	}
-	if err := tx.Commit(ctx); err != nil {
+	// detached-and-deleted explicitly inside the transaction.
+	if err := h.deleteTaskTx(ctx, task, userID); err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to delete task")
 	}
 
@@ -1760,6 +1735,25 @@ type MoveTasksResponse struct {
 	Results []MoveTaskResult `json:"results"`
 }
 
+// DeleteTasksRequest is the body for deleting multiple tasks.
+type DeleteTasksRequest struct {
+	TaskNumbers []int `json:"task_numbers"`
+}
+
+// DeleteTaskResult reports the outcome of deleting one task in a bulk operation.
+type DeleteTaskResult struct {
+	TaskNumber int    `json:"task_number"`
+	Success    bool   `json:"success"`
+	Error      string `json:"error,omitempty"`
+}
+
+// DeleteTasksResponse is the response body for a bulk delete.
+type DeleteTasksResponse struct {
+	Deleted int                `json:"deleted"`
+	Failed  int                `json:"failed"`
+	Results []DeleteTaskResult `json:"results"`
+}
+
 // resolveMoveTarget looks up the destination project by key and verifies the
 // caller may move tasks into it: site admins are always allowed, otherwise the
 // caller must be a member of the destination project.
@@ -2082,6 +2076,101 @@ func (h *TaskHandler) MoveTasks(c *echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, resp)
+}
+
+// DeleteTasks soft-deletes multiple top-level tasks (and cascades to their
+// subtasks). Admin-only; the route is guarded by the admin project-role
+// middleware. Subtasks cannot be targeted directly — delete the parent instead.
+//
+//	@Summary		Delete multiple tasks
+//	@Description	Soft-deletes the given tasks and their subtasks. Admin only.
+//	@Tags			Tasks
+//	@Accept			json
+//	@Produce		json
+//	@Param			key		path		string				true	"Project key"
+//	@Param			body	body		DeleteTasksRequest	true	"Task numbers to delete"
+//	@Success		200		{object}	DeleteTasksResponse
+//	@Failure		400		{object}	ErrorResponse
+//	@Security		BearerAuth
+//	@Router			/projects/{key}/tasks/delete [post]
+func (h *TaskHandler) DeleteTasks(c *echo.Context) error {
+	projectID, err := uuid.Parse(c.Request().Header.Get(auth.HeaderProjectID))
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "invalid project ID in context")
+	}
+	userID, err := uuid.Parse(c.Request().Header.Get(auth.HeaderUserID))
+	if err != nil {
+		return echo.NewHTTPError(http.StatusUnauthorized, "invalid user ID")
+	}
+
+	var req DeleteTasksRequest
+	if err := c.Bind(&req); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid request body")
+	}
+	if len(req.TaskNumbers) == 0 {
+		return echo.NewHTTPError(http.StatusBadRequest, "task_numbers is required")
+	}
+
+	ctx := c.Request().Context()
+
+	resp := DeleteTasksResponse{Results: make([]DeleteTaskResult, 0, len(req.TaskNumbers))}
+	for _, num := range req.TaskNumbers {
+		result := DeleteTaskResult{TaskNumber: num}
+
+		task, err := h.store.GetTaskByProjectAndNumber(ctx, store.GetTaskByProjectAndNumberParams{
+			ProjectID:  projectID,
+			TaskNumber: int32(num),
+		})
+		if err != nil {
+			result.Error = "task not found"
+			resp.Failed++
+			resp.Results = append(resp.Results, result)
+			continue
+		}
+
+		if err := h.deleteTaskTx(ctx, task, userID); err != nil {
+			result.Error = "failed to delete task"
+			resp.Failed++
+			resp.Results = append(resp.Results, result)
+			continue
+		}
+
+		result.Success = true
+		resp.Deleted++
+		resp.Results = append(resp.Results, result)
+	}
+
+	return c.JSON(http.StatusOK, resp)
+}
+
+// deleteTaskTx soft-deletes a task and its subtasks in one transaction, logging
+// the deletion. Shared by the single and bulk delete handlers.
+func (h *TaskHandler) deleteTaskTx(ctx context.Context, task store.GetTaskByProjectAndNumberRow, actorID uuid.UUID) error {
+	h.activityService.LogActivity(ctx, activity.LogActivityParams{
+		TaskID:       task.ID,
+		ActivityType: activity.TaskDeleted,
+		ActorID:      actorID,
+		OldValue: map[string]interface{}{
+			"title":       task.Title,
+			"description": textToStringPtr(task.Description),
+			"state_id":    task.StateID.String(),
+			"priority":    task.Priority,
+		},
+	})
+
+	tx, err := h.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+	q := store.New(tx)
+	if err := q.CascadeSoftDeleteSubtasks(ctx, task.ID); err != nil {
+		return err
+	}
+	if err := q.SoftDeleteTask(ctx, task.ID); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
 }
 
 func (h *TaskHandler) getTaskAssignees(ctx context.Context, taskID uuid.UUID) []AssigneeResponse {

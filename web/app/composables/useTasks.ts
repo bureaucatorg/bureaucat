@@ -6,6 +6,7 @@ import type {
   CreateTaskRequest,
   UpdateTaskRequest,
   MoveTasksResponse,
+  DeleteTasksResponse,
   FilterTree,
   SortKey,
   SortDir,
@@ -416,6 +417,33 @@ export function useTasks() {
     }
   }
 
+  // Bulk delete (admin only, enforced server-side).
+  async function deleteTasks(
+    projectKey: string,
+    taskNumbers: number[]
+  ): Promise<{ success: boolean; data?: DeleteTasksResponse; error?: string }> {
+    try {
+      const response = await fetch(`/api/v1/projects/${projectKey}/tasks/delete`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...getAuthHeader(),
+        },
+        body: JSON.stringify({ task_numbers: taskNumbers }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        return { success: false, error: error.message || "Failed to delete tasks" };
+      }
+
+      const data: DeleteTasksResponse = await response.json();
+      return { success: true, data };
+    } catch {
+      return { success: false, error: "Network error" };
+    }
+  }
+
   // Subtasks
   async function listSubtasks(
     projectKey: string,
@@ -523,6 +551,9 @@ export function useTasks() {
     // Move
     moveTask,
     moveTasks,
+
+    // Bulk delete
+    deleteTasks,
 
     // Subtasks
     listSubtasks,

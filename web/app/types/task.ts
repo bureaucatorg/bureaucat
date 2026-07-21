@@ -86,6 +86,18 @@ export interface MoveTasksResponse {
   results: MoveTaskResult[];
 }
 
+export interface DeleteTaskResult {
+  task_number: number;
+  success: boolean;
+  error?: string;
+}
+
+export interface DeleteTasksResponse {
+  deleted: number;
+  failed: number;
+  results: DeleteTaskResult[];
+}
+
 export interface TaskAssignee {
   id: string;
   user_id: string;

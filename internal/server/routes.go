@@ -264,6 +264,7 @@ func (s *Server) registerRoutes() {
 				projectGroup.GET("/tasks", s.taskHandler.ListTasks)
 				projectGroup.POST("/tasks", s.taskHandler.CreateTask, auth.ProjectRoleMiddleware("member"))
 				projectGroup.POST("/tasks/move", s.taskHandler.MoveTasks, auth.ProjectRoleMiddleware("member"))
+				projectGroup.POST("/tasks/delete", s.taskHandler.DeleteTasks, auth.ProjectRoleMiddleware("admin"))
 				projectGroup.GET("/tasks/:taskNum", s.taskHandler.GetTask)
 				projectGroup.POST("/tasks/:taskNum/move", s.taskHandler.MoveTask, auth.ProjectRoleMiddleware("member"))
 				projectGroup.PATCH("/tasks/:taskNum", s.taskHandler.UpdateTask, auth.ProjectRoleMiddleware("member"))

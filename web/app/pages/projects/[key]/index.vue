@@ -18,6 +18,7 @@ import {
   Download,
   X,
   Lock,
+  Trash2,
 } from "lucide-vue-next";
 import { toast } from "vue-sonner";
 import type { FilterTree, ProjectView, MoveTasksResponse } from "~/types";
@@ -72,6 +73,7 @@ const {
   totalPages: tasksTotalPages,
   listTasks,
   fetchAllTasks,
+  deleteTasks,
 } = useTasks();
 
 const { user } = useAuth();
@@ -140,6 +142,8 @@ const canWrite = computed(() => isMember.value && !isDisabled.value);
 // Bulk task selection / move.
 const selectedTasks = ref<Set<number>>(new Set());
 const showBulkMove = ref(false);
+const showBulkDelete = ref(false);
+const bulkDeleting = ref(false);
 
 function toggleTaskSelection(taskNumber: number) {
   if (selectedTasks.value.has(taskNumber)) selectedTasks.value.delete(taskNumber);
@@ -173,6 +177,28 @@ async function handleBulkMoved(payload: { targetKey: string; result?: MoveTasksR
       toast.success(`Moved ${result.moved} task${result.moved === 1 ? "" : "s"}`);
     }
   }
+  selectedTasks.value = new Set();
+  await loadTasks(tasksPage.value);
+}
+
+async function handleBulkDelete() {
+  bulkDeleting.value = true;
+  const result = await deleteTasks(projectKey.value, Array.from(selectedTasks.value));
+  bulkDeleting.value = false;
+
+  if (!result.success) {
+    toast.error(result.error || "Failed to delete tasks");
+    return;
+  }
+
+  const data = result.data;
+  if (data && data.failed > 0) {
+    toast.warning(`Deleted ${data.deleted} task${data.deleted === 1 ? "" : "s"}, ${data.failed} failed`);
+  } else {
+    toast.success(`Deleted ${data?.deleted ?? 0} task${data?.deleted === 1 ? "" : "s"}`);
+  }
+
+  showBulkDelete.value = false;
   selectedTasks.value = new Set();
   await loadTasks(tasksPage.value);
 }
@@ -632,6 +658,15 @@ onMounted(async () => {
                         <FolderInput class="mr-2 size-4" />
                         Move
                       </Button>
+                      <Button
+                        v-if="isAdmin"
+                        variant="destructive"
+                        size="sm"
+                        @click="showBulkDelete = true"
+                      >
+                        <Trash2 class="mr-2 size-4" />
+                        Delete
+                      </Button>
                       <Button variant="ghost" size="sm" @click="clearSelection">
                         <X class="mr-1 size-4" />
                         Clear
@@ -857,6 +892,38 @@ onMounted(async () => {
           :task-numbers="Array.from(selectedTasks)"
           @moved="handleBulkMoved"
         />
+
+        <Dialog v-model:open="showBulkDelete">
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Delete tasks</DialogTitle>
+              <DialogDescription>
+                Are you sure you want to delete
+                <strong>{{ selectedTasks.size }}</strong>
+                task{{ selectedTasks.size === 1 ? "" : "s" }}? Their subtasks will
+                also be deleted. This action cannot be undone.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                :disabled="bulkDeleting"
+                @click="showBulkDelete = false"
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                :disabled="bulkDeleting"
+                @click="handleBulkDelete"
+              >
+                <Loader2 v-if="bulkDeleting" class="mr-2 size-4 animate-spin" />
+                <Trash2 v-else class="mr-2 size-4" />
+                Delete
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         <AddMemberDialog
           v-model:open="showAddMember"
