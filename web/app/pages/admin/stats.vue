@@ -145,6 +145,27 @@ const trendCharts = computed(() => {
   ];
 });
 
+// Views-created series, split by visibility (stacked private + shared).
+interface ViewSeriesPoint {
+  day: string;
+  private: number;
+  shared: number;
+}
+
+const VIEW_PRIVATE_COLOR = "#FCD34D"; // amber-300
+const VIEW_SHARED_COLOR = "#93C5FD"; // blue-300
+
+const viewsConfig: ChartConfig = {
+  private: { label: "Private", color: VIEW_PRIVATE_COLOR },
+  shared: { label: "Shared", color: VIEW_SHARED_COLOR },
+};
+
+const viewsSeries = computed<ViewSeriesPoint[]>(() => stats.value?.series.views ?? []);
+
+const hasViews = computed(() =>
+  viewsSeries.value.some((d) => d.private > 0 || d.shared > 0)
+);
+
 interface BarPoint {
   label: string;
   count: number;
@@ -321,6 +342,57 @@ const maxProjectTasks = computed(() =>
                       <ChartCrosshair :template="componentToString(seriesConfig, ChartTooltipContent)" />
                     </VisXYContainer>
                   </ChartContainer>
+                </CardContent>
+              </Card>
+
+              <!-- Views created, stacked by visibility -->
+              <Card class="gap-3 py-4">
+                <CardHeader class="flex flex-row items-center justify-between space-y-0 px-4 pb-1">
+                  <CardTitle class="text-base">Views created</CardTitle>
+                  <div class="flex items-center gap-3 text-xs text-muted-foreground">
+                    <span class="flex items-center gap-1.5">
+                      <span class="size-2.5 rounded-full" :style="{ backgroundColor: VIEW_PRIVATE_COLOR }" />
+                      Private
+                    </span>
+                    <span class="flex items-center gap-1.5">
+                      <span class="size-2.5 rounded-full" :style="{ backgroundColor: VIEW_SHARED_COLOR }" />
+                      Shared
+                    </span>
+                  </div>
+                </CardHeader>
+                <CardContent class="px-4">
+                  <ChartContainer v-if="hasViews" :config="viewsConfig" class="h-44 w-full">
+                    <VisXYContainer :data="viewsSeries" :margin="{ top: 8, right: 8, bottom: 4, left: 4 }">
+                      <VisGroupedBar
+                        :x="(_d: ViewSeriesPoint, i: number) => i"
+                        :y="[(d: ViewSeriesPoint) => d.private, (d: ViewSeriesPoint) => d.shared]"
+                        :color="[VIEW_PRIVATE_COLOR, VIEW_SHARED_COLOR]"
+                        :rounded-corners="2"
+                        :bar-padding="0.15"
+                        :group-padding="0.15"
+                      />
+                      <VisAxis
+                        type="x"
+                        :x="(_d: ViewSeriesPoint, i: number) => i"
+                        :tick-format="(i: number) => shortDay(viewsSeries[i]?.day)"
+                        :num-ticks="5"
+                        :grid-line="false"
+                        :domain-line="false"
+                        :tick-line="false"
+                      />
+                      <VisAxis
+                        type="y"
+                        :tick-format="yTick"
+                        :num-ticks="4"
+                        :grid-line="false"
+                        :domain-line="false"
+                        :tick-line="false"
+                      />
+                      <ChartTooltip />
+                      <ChartCrosshair :template="componentToString(viewsConfig, ChartTooltipContent)" />
+                    </VisXYContainer>
+                  </ChartContainer>
+                  <p v-else class="py-12 text-center text-sm text-muted-foreground">No views yet</p>
                 </CardContent>
               </Card>
             </div>

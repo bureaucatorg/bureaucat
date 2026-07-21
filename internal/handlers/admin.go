@@ -605,6 +605,13 @@ type DayCount struct {
 	Count int    `json:"count"`
 }
 
+// ViewDayCount is a single day bucket split by view visibility.
+type ViewDayCount struct {
+	Day     string `json:"day"`
+	Private int    `json:"private"`
+	Shared  int    `json:"shared"`
+}
+
 // AdminStatsResponse is the aggregate stats payload for the admin stats page.
 type AdminStatsResponse struct {
 	Totals struct {
@@ -623,9 +630,10 @@ type AdminStatsResponse struct {
 		From     string     `json:"from"`
 		To       string     `json:"to"`
 		Days     int        `json:"days"`
-		Tasks    []DayCount `json:"tasks"`
-		Subtasks []DayCount `json:"subtasks"`
-		Pages    []DayCount `json:"pages"`
+		Tasks    []DayCount     `json:"tasks"`
+		Subtasks []DayCount     `json:"subtasks"`
+		Pages    []DayCount     `json:"pages"`
+		Views    []ViewDayCount `json:"views"`
 	} `json:"series"`
 }
 
@@ -774,6 +782,19 @@ func (h *AdminHandler) GetStats(c *echo.Context) error {
 	resp.Series.Pages = make([]DayCount, len(pagesSeries))
 	for i, d := range pagesSeries {
 		resp.Series.Pages[i] = DayCount{Day: d.Day.Time.Format(dateLayout), Count: int(d.Count)}
+	}
+
+	viewsSeries, err := h.store.ViewsCreatedPerDay(ctx, store.ViewsCreatedPerDayParams{FromDate: from, ToDate: to})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to load views series")
+	}
+	resp.Series.Views = make([]ViewDayCount, len(viewsSeries))
+	for i, d := range viewsSeries {
+		resp.Series.Views[i] = ViewDayCount{
+			Day:     d.Day.Time.Format(dateLayout),
+			Private: int(d.PrivateCount),
+			Shared:  int(d.SharedCount),
+		}
 	}
 
 	return c.JSON(http.StatusOK, resp)

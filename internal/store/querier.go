@@ -325,6 +325,7 @@ type Querier interface {
 	UpsertSetting(ctx context.Context, arg UpsertSettingParams) (Setting, error)
 	UserExistsByEmailOrUsername(ctx context.Context, arg UserExistsByEmailOrUsernameParams) (bool, error)
 	VerifyActivityChain(ctx context.Context, taskID uuid.UUID) ([]ActivityLog, error)
+	ViewsCreatedPerDay(ctx context.Context, arg ViewsCreatedPerDayParams) ([]ViewsCreatedPerDayRow, error)
 	WorkspaceKeyExists(ctx context.Context, workspaceKey string) (bool, error)
 }
 

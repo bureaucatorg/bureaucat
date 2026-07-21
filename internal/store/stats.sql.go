@@ -350,3 +350,51 @@ func (q *Queries) TopProjectsByTaskCount(ctx context.Context) ([]TopProjectsByTa
 	}
 	return items, nil
 }
+
+const viewsCreatedPerDay = `-- name: ViewsCreatedPerDay :many
+SELECT
+    d::date AS day,
+    (COUNT(v.id) FILTER (WHERE v.visibility = 'private'))::int AS private_count,
+    (COUNT(v.id) FILTER (WHERE v.visibility = 'shared'))::int AS shared_count
+FROM generate_series(
+    $1::date,
+    $2::date,
+    INTERVAL '1 day'
+) d
+LEFT JOIN project_views v
+    ON v.created_at::date = d::date
+    AND v.deleted_at IS NULL
+GROUP BY d
+ORDER BY d ASC
+`
+
+type ViewsCreatedPerDayParams struct {
+	FromDate pgtype.Date `json:"from_date"`
+	ToDate   pgtype.Date `json:"to_date"`
+}
+
+type ViewsCreatedPerDayRow struct {
+	Day          pgtype.Date `json:"day"`
+	PrivateCount int32       `json:"private_count"`
+	SharedCount  int32       `json:"shared_count"`
+}
+
+func (q *Queries) ViewsCreatedPerDay(ctx context.Context, arg ViewsCreatedPerDayParams) ([]ViewsCreatedPerDayRow, error) {
+	rows, err := q.db.Query(ctx, viewsCreatedPerDay, arg.FromDate, arg.ToDate)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ViewsCreatedPerDayRow{}
+	for rows.Next() {
+		var i ViewsCreatedPerDayRow
+		if err := rows.Scan(&i.Day, &i.PrivateCount, &i.SharedCount); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}

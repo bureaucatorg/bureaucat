@@ -55,6 +55,12 @@ interface DayCount {
   count: number;
 }
 
+interface ViewDayCount {
+  day: string;
+  private: number;
+  shared: number;
+}
+
 export interface AdminStats {
   totals: {
     workspaces: number;
@@ -75,6 +81,7 @@ export interface AdminStats {
     tasks: DayCount[];
     subtasks: DayCount[];
     pages: DayCount[];
+    views: ViewDayCount[];
   };
 }
 

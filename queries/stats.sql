@@ -85,3 +85,19 @@ LEFT JOIN pages pg
     AND pg.deleted_at IS NULL
 GROUP BY d
 ORDER BY d ASC;
+
+-- name: ViewsCreatedPerDay :many
+SELECT
+    d::date AS day,
+    (COUNT(v.id) FILTER (WHERE v.visibility = 'private'))::int AS private_count,
+    (COUNT(v.id) FILTER (WHERE v.visibility = 'shared'))::int AS shared_count
+FROM generate_series(
+    sqlc.arg('from_date')::date,
+    sqlc.arg('to_date')::date,
+    INTERVAL '1 day'
+) d
+LEFT JOIN project_views v
+    ON v.created_at::date = d::date
+    AND v.deleted_at IS NULL
+GROUP BY d
+ORDER BY d ASC;
