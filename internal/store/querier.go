@@ -281,6 +281,9 @@ type Querier interface {
 	// projects the user is a member of.
 	SearchUserTasks(ctx context.Context, arg SearchUserTasksParams) ([]SearchUserTasksRow, error)
 	SearchUsersPaginated(ctx context.Context, arg SearchUsersPaginatedParams) ([]SearchUsersPaginatedRow, error)
+	// Marks exactly one state as default for the project, clearing any previous
+	// default. Atomic in a single statement (no transaction needed).
+	SetDefaultProjectState(ctx context.Context, arg SetDefaultProjectStateParams) error
 	SetProjectDisabled(ctx context.Context, arg SetProjectDisabledParams) (Project, error)
 	// Sets (or clears) a task's parent. Used to attach/re-parent an existing task
 	// as a subtask.

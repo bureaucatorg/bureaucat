@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Plus, Trash2, GripVertical, Loader2 } from "lucide-vue-next";
+import { Plus, Trash2, GripVertical, Loader2, Star } from "lucide-vue-next";
 import { toast } from "vue-sonner";
 import type { ProjectState, StateType } from "~/types";
 
@@ -13,12 +13,13 @@ const emit = defineEmits<{
   refresh: [];
 }>();
 
-const { createState, updateState, deleteState } = useProjects();
+const { createState, updateState, setDefaultState, deleteState } = useProjects();
 
 const loading = ref(false);
 const showCreateForm = ref(false);
 const editingId = ref<string | null>(null);
 const deletingId = ref<string | null>(null);
+const settingDefaultId = ref<string | null>(null);
 
 const newState = ref({
   name: "",
@@ -82,6 +83,21 @@ async function handleUpdate(state: ProjectState, updates: { name?: string; color
     emit("refresh");
   } else {
     toast.error(result.error || "Failed to update state");
+  }
+}
+
+async function handleSetDefault(state: ProjectState) {
+  if (state.is_default) return;
+
+  settingDefaultId.value = state.id;
+  const result = await setDefaultState(props.projectKey, state.id);
+  settingDefaultId.value = null;
+
+  if (result.success) {
+    toast.success(`"${state.name}" is now the default state`);
+    emit("refresh");
+  } else {
+    toast.error(result.error || "Failed to set default state");
   }
 }
 
@@ -199,9 +215,25 @@ async function handleDelete(state: ProjectState) {
             :style="{ backgroundColor: state.color }"
           />
           <span class="flex-1 text-sm font-medium">{{ state.name }}</span>
-          <Badge v-if="state.is_default" variant="outline" class="text-xs">
+          <Badge v-if="state.is_default" variant="outline" class="gap-1 text-xs">
+            <Star class="size-3 fill-current" />
             Default
           </Badge>
+          <Button
+            v-else-if="isAdmin"
+            variant="ghost"
+            size="sm"
+            class="h-8 gap-1.5 text-muted-foreground"
+            :disabled="settingDefaultId === state.id"
+            @click="handleSetDefault(state)"
+          >
+            <Loader2
+              v-if="settingDefaultId === state.id"
+              class="size-3.5 animate-spin"
+            />
+            <Star v-else class="size-3.5" />
+            Set default
+          </Button>
           <Button
             v-if="isAdmin && !state.is_default"
             variant="ghost"

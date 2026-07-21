@@ -491,6 +491,31 @@ export function useProjects() {
     }
   }
 
+  async function setDefaultState(
+    projectKey: string,
+    stateId: string
+  ): Promise<{ success: boolean; data?: ProjectState; error?: string }> {
+    try {
+      const response = await fetch(
+        `/api/v1/projects/${projectKey}/states/${stateId}/default`,
+        {
+          method: "POST",
+          headers: getAuthHeader(),
+        }
+      );
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        return { success: false, error: error.message || "Failed to set default state" };
+      }
+
+      const stateData: ProjectState = await response.json();
+      return { success: true, data: stateData };
+    } catch {
+      return { success: false, error: "Network error" };
+    }
+  }
+
   async function deleteState(
     projectKey: string,
     stateId: string
@@ -747,6 +772,7 @@ export function useProjects() {
     listStates,
     createState,
     updateState,
+    setDefaultState,
     deleteState,
 
     // Labels

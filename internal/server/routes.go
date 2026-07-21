@@ -193,6 +193,7 @@ func (s *Server) registerRoutes() {
 			projectGroup.GET("/states", s.projectHandler.ListStates)
 			projectGroup.POST("/states", s.projectHandler.CreateState, auth.ProjectRoleMiddleware("admin"))
 			projectGroup.PATCH("/states/:stateId", s.projectHandler.UpdateState, auth.ProjectRoleMiddleware("admin"))
+			projectGroup.POST("/states/:stateId/default", s.projectHandler.SetDefaultState, auth.ProjectRoleMiddleware("admin"))
 			projectGroup.DELETE("/states/:stateId", s.projectHandler.DeleteState, auth.ProjectRoleMiddleware("admin"))
 
 			// Project labels

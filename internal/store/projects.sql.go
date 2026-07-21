@@ -2968,6 +2968,24 @@ func (q *Queries) SearchUserTasks(ctx context.Context, arg SearchUserTasksParams
 	return items, nil
 }
 
+const setDefaultProjectState = `-- name: SetDefaultProjectState :exec
+UPDATE project_states
+SET is_default = (id = $1)
+WHERE project_id = $2
+`
+
+type SetDefaultProjectStateParams struct {
+	StateID   uuid.UUID `json:"state_id"`
+	ProjectID uuid.UUID `json:"project_id"`
+}
+
+// Marks exactly one state as default for the project, clearing any previous
+// default. Atomic in a single statement (no transaction needed).
+func (q *Queries) SetDefaultProjectState(ctx context.Context, arg SetDefaultProjectStateParams) error {
+	_, err := q.db.Exec(ctx, setDefaultProjectState, arg.StateID, arg.ProjectID)
+	return err
+}
+
 const setProjectDisabled = `-- name: SetProjectDisabled :one
 UPDATE projects
 SET disabled = $1, updated_at = NOW()

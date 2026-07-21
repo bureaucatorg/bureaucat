@@ -1219,6 +1219,61 @@ func (h *ProjectHandler) UpdateState(c *echo.Context) error {
 	})
 }
 
+// SetDefaultState marks a state as the project's default (the state new tasks
+// start in). Any previous default is cleared. Requires project admin role.
+//
+//	@Summary		Set default state
+//	@Description	Marks a workflow state as the project default, clearing the previous one. Requires project admin role.
+//	@Tags			Project States
+//	@Produce		json
+//	@Param			projectKey	path		string	true	"Project key"
+//	@Param			stateId		path		string	true	"State ID"
+//	@Success		200			{object}	StateResponse
+//	@Failure		400			{object}	ErrorResponse
+//	@Failure		404			{object}	ErrorResponse
+//	@Failure		500			{object}	ErrorResponse
+//	@Security		BearerAuth
+//	@Router			/projects/{projectKey}/states/{stateId}/default [post]
+func (h *ProjectHandler) SetDefaultState(c *echo.Context) error {
+	projectID, err := uuid.Parse(c.Request().Header.Get(auth.HeaderProjectID))
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "invalid project ID in context")
+	}
+
+	stateID, err := uuid.Parse(c.Param("stateId"))
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid state ID")
+	}
+
+	ctx := c.Request().Context()
+
+	// Ensure the state exists and belongs to this project.
+	state, err := h.store.GetProjectStateByID(ctx, stateID)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusNotFound, "state not found")
+	}
+	if state.ProjectID != projectID {
+		return echo.NewHTTPError(http.StatusNotFound, "state not found")
+	}
+
+	if err := h.store.SetDefaultProjectState(ctx, store.SetDefaultProjectStateParams{
+		ProjectID: projectID,
+		StateID:   stateID,
+	}); err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to set default state")
+	}
+
+	return c.JSON(http.StatusOK, StateResponse{
+		ID:        state.ID,
+		StateType: state.StateType,
+		Name:      state.Name,
+		Color:     textToString(state.Color, "#6B7280"),
+		Position:  int(state.Position),
+		IsDefault: true,
+		CreatedAt: state.CreatedAt.Time,
+	})
+}
+
 // DeleteState deletes a state.
 //
 //	@Summary		Delete state

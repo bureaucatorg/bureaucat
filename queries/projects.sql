@@ -216,6 +216,13 @@ RETURNING id, project_id, state_type, name, color, position, is_default, created
 -- name: DeleteProjectState :exec
 DELETE FROM project_states WHERE id = $1;
 
+-- name: SetDefaultProjectState :exec
+-- Marks exactly one state as default for the project, clearing any previous
+-- default. Atomic in a single statement (no transaction needed).
+UPDATE project_states
+SET is_default = (id = sqlc.arg('state_id'))
+WHERE project_id = sqlc.arg('project_id');
+
 -- name: ListProjectStates :many
 SELECT id, project_id, state_type, name, color, position, is_default, created_at
 FROM project_states
