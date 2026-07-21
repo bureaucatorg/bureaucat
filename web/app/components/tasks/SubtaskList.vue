@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Maximize2 } from "lucide-vue-next";
 import type { Subtask, ProjectState } from "~/types";
 
 const props = withDefaults(
@@ -15,6 +16,9 @@ const emit = defineEmits<{ updated: [] }>();
 
 const { updateTask } = useTasks();
 const updatingId = ref<string | null>(null);
+
+// Which subtask's detail card is currently open (null = none).
+const openId = ref<string | null>(null);
 
 // Inline state editing is only offered to members who have states to pick from.
 const canEditState = computed(() => props.isMember && props.states.length > 0);
@@ -61,85 +65,111 @@ function involvedPeople(subtask: Subtask) {
 
 <template>
   <div class="overflow-hidden rounded-lg border border-border/50 divide-y divide-border/50">
-    <NuxtLink
+    <Popover
       v-for="subtask in subtasks"
       :key="subtask.id"
-      :to="`/projects/${projectKey}/tasks/${subtask.task_number}`"
-      class="block"
+      :open="openId === subtask.id"
+      @update:open="(v: boolean) => (openId = v ? subtask.id : null)"
     >
-      <div
-        class="subtask-row group grid items-center bg-background/50 px-3 py-2.5 transition-colors hover:bg-muted/50"
-      >
-        <!-- Col 1: Task ID -->
-        <span class="font-mono text-sm text-muted-foreground truncate">{{ subtask.task_id }}</span>
-
-        <!-- Col 2: Title -->
-        <span class="truncate text-sm font-medium min-w-0">{{ subtask.title }}</span>
-
-        <!-- Col 3: State badge (editable for members) -->
-        <div class="justify-self-end" @click.stop.prevent>
-          <TaskStateSelector
-            v-if="canEditState"
-            :states="states"
-            :model-value="subtask.state_id"
-            :disabled="updatingId === subtask.id"
-            compact
-            dense
-            @update:model-value="(id) => changeState(subtask, id)"
-          />
+      <PopoverTrigger as-child>
+        <button
+          type="button"
+          class="block w-full text-left"
+        >
           <div
-            v-else
-            class="flex items-center gap-1 rounded-md border bg-muted/50 px-1.5 py-0.5 w-fit"
+            class="subtask-row group grid items-center bg-background/50 px-3 py-2.5 transition-colors hover:bg-muted/50"
           >
-            <span
-              class="size-2.5 shrink-0 rounded-full"
-              :style="{ backgroundColor: subtask.state_color }"
-            />
-            <span class="text-xs text-muted-foreground whitespace-nowrap">{{ subtask.state_name }}</span>
-          </div>
-        </div>
-
-        <!-- Col 4: Stacked avatars -->
-        <div class="flex items-center justify-end">
-          <div v-if="involvedPeople(subtask).length > 0" class="flex -space-x-1.5">
+            <!-- Col 1: Task ID (opens the full page) -->
             <NuxtLink
-              v-for="person in involvedPeople(subtask).slice(0, 4)"
-              :key="person.id"
-              :to="`/profile/${person.id}`"
-              :title="`${person.firstName} ${person.lastName}`"
-              class="hover:z-10"
+              :to="`/projects/${projectKey}/tasks/${subtask.task_number}`"
+              :title="`Open ${subtask.task_id}`"
+              class="flex w-fit items-center gap-1.5 rounded-md px-1.5 py-0.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
               @click.stop
             >
-              <Avatar class="size-6 border-2 border-background transition-transform hover:scale-110">
-                <AvatarImage
-                  v-if="person.avatarUrl"
-                  :src="person.avatarUrl"
-                  :alt="`${person.firstName} ${person.lastName}`"
-                />
-                <AvatarFallback class="text-[10px]" :seed="person.id">
-                  {{ person.firstName?.[0] || "" }}{{ person.lastName?.[0] || "" }}
-                </AvatarFallback>
-              </Avatar>
+              <Maximize2 class="size-3.5 shrink-0 opacity-50" />
+              <span class="font-mono text-sm truncate">{{ subtask.task_id }}</span>
             </NuxtLink>
-            <Avatar
-              v-if="involvedPeople(subtask).length > 4"
-              class="size-6 border-2 border-background"
-              :title="`${involvedPeople(subtask).length - 4} more`"
-            >
-              <AvatarFallback class="text-[10px] bg-muted">
-                +{{ involvedPeople(subtask).length - 4 }}
-              </AvatarFallback>
-            </Avatar>
+
+            <!-- Col 2: Title -->
+            <span class="truncate text-sm font-medium min-w-0">{{ subtask.title }}</span>
+
+            <!-- Col 3: State badge (editable for members) -->
+            <div class="justify-self-end" @click.stop.prevent>
+              <TaskStateSelector
+                v-if="canEditState"
+                :states="states"
+                :model-value="subtask.state_id"
+                :disabled="updatingId === subtask.id"
+                compact
+                dense
+                @update:model-value="(id: string) => changeState(subtask, id)"
+              />
+              <div
+                v-else
+                class="flex items-center gap-1 rounded-md border bg-muted/50 px-1.5 py-0.5 w-fit"
+              >
+                <span
+                  class="size-2.5 shrink-0 rounded-full"
+                  :style="{ backgroundColor: subtask.state_color }"
+                />
+                <span class="text-xs text-muted-foreground whitespace-nowrap">{{ subtask.state_name }}</span>
+              </div>
+            </div>
+
+            <!-- Col 4: Stacked avatars -->
+            <div class="flex items-center justify-end">
+              <div v-if="involvedPeople(subtask).length > 0" class="flex -space-x-1.5">
+                <NuxtLink
+                  v-for="person in involvedPeople(subtask).slice(0, 4)"
+                  :key="person.id"
+                  :to="`/profile/${person.id}`"
+                  :title="`${person.firstName} ${person.lastName}`"
+                  class="hover:z-10"
+                  @click.stop
+                >
+                  <Avatar class="size-6 border-2 border-background transition-transform hover:scale-110">
+                    <AvatarImage
+                      v-if="person.avatarUrl"
+                      :src="person.avatarUrl"
+                      :alt="`${person.firstName} ${person.lastName}`"
+                    />
+                    <AvatarFallback class="text-[10px]" :seed="person.id">
+                      {{ person.firstName?.[0] || "" }}{{ person.lastName?.[0] || "" }}
+                    </AvatarFallback>
+                  </Avatar>
+                </NuxtLink>
+                <Avatar
+                  v-if="involvedPeople(subtask).length > 4"
+                  class="size-6 border-2 border-background"
+                  :title="`${involvedPeople(subtask).length - 4} more`"
+                >
+                  <AvatarFallback class="text-[10px] bg-muted">
+                    +{{ involvedPeople(subtask).length - 4 }}
+                  </AvatarFallback>
+                </Avatar>
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
-    </NuxtLink>
+        </button>
+      </PopoverTrigger>
+
+      <PopoverContent
+        align="start"
+        class="w-[48rem] max-w-[calc(100vw-2rem)] max-h-[75vh] overflow-y-auto shadow-lg"
+      >
+        <SubtaskDetailCard
+          v-if="openId === subtask.id"
+          :project-key="projectKey"
+          :task-number="subtask.task_number"
+        />
+      </PopoverContent>
+    </Popover>
   </div>
 </template>
 
 <style scoped>
 .subtask-row {
-  grid-template-columns: 6rem 1fr 10rem 5rem;
+  grid-template-columns: auto 1fr 10rem 5rem;
   column-gap: 0.375rem;
 }
 </style>
