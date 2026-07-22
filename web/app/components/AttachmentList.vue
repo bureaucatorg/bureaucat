@@ -44,14 +44,6 @@ function formatSize(bytes: number): string {
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
-
-function handleClick(attachment: Attachment) {
-  if (isImage(attachment.mime_type)) {
-    openLightbox(attachment);
-  } else {
-    window.open(attachment.url, "_blank");
-  }
-}
 </script>
 
 <template>
@@ -118,15 +110,15 @@ function handleClick(attachment: Attachment) {
       :key="attachment.id"
       class="group flex items-center gap-1.5 rounded-full border bg-muted/30 py-1 pl-2 pr-1.5 text-xs transition-colors hover:bg-muted/60"
     >
-      <button
-        type="button"
+      <a
+        :href="attachment.url"
+        :download="attachment.filename"
         class="flex items-center gap-1.5"
-        @click="handleClick(attachment)"
       >
         <FileText class="size-3.5 shrink-0 text-muted-foreground" />
         <span class="max-w-[150px] truncate">{{ attachment.filename }}</span>
         <span class="text-muted-foreground/60">{{ formatSize(attachment.size_bytes) }}</span>
-      </button>
+      </a>
 
       <a
         :href="attachment.url"
