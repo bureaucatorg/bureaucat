@@ -1,15 +1,17 @@
 <script setup lang="ts">
 import { Maximize2 } from "lucide-vue-next";
-import type { Subtask, ProjectState } from "~/types";
+import type { Subtask, ProjectState, ProjectMember, ProjectLabel } from "~/types";
 
 const props = withDefaults(
   defineProps<{
     subtasks: Subtask[];
     projectKey: string;
     states?: ProjectState[];
+    members?: ProjectMember[];
+    labels?: ProjectLabel[];
     isMember?: boolean;
   }>(),
-  { states: () => [], isMember: false }
+  { states: () => [], members: () => [], labels: () => [], isMember: false }
 );
 
 const emit = defineEmits<{ updated: [] }>();
@@ -161,6 +163,11 @@ function involvedPeople(subtask: Subtask) {
           v-if="openId === subtask.id"
           :project-key="projectKey"
           :task-number="subtask.task_number"
+          :states="states"
+          :members="members"
+          :project-labels="labels"
+          :is-member="isMember"
+          @updated="emit('updated')"
         />
       </PopoverContent>
     </Popover>
