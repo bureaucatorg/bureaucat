@@ -157,7 +157,8 @@ function involvedPeople(subtask: Subtask) {
 
       <PopoverContent
         align="start"
-        class="w-[48rem] max-w-[calc(100vw-2rem)] max-h-[75vh] overflow-y-auto shadow-lg"
+        :collision-padding="16"
+        class="w-[48rem] max-w-[calc(100vw-2rem)] max-h-[min(75vh,var(--reka-popover-content-available-height))] overflow-y-auto shadow-lg"
       >
         <SubtaskDetailCard
           v-if="openId === subtask.id"

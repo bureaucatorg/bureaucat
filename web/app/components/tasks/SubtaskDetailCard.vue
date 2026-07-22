@@ -8,11 +8,14 @@ import {
   Check,
   X,
   ChevronDown,
+  MessageSquare,
+  Send,
+  ArrowUpDown,
 } from "lucide-vue-next";
 import { toast } from "vue-sonner";
 import { marked } from "marked";
 import { CalendarDate, type DateValue } from "@internationalized/date";
-import type { Task, ProjectState, ProjectMember, ProjectLabel } from "~/types";
+import type { Task, ProjectState, ProjectMember, ProjectLabel, Comment } from "~/types";
 import { PRIORITY_LABELS } from "~/types";
 
 const props = withDefaults(
@@ -31,7 +34,7 @@ const props = withDefaults(
 // the affected row (state badge, title, avatars, ...).
 const emit = defineEmits<{ updated: [] }>();
 
-const { getAuthHeader } = useAuth();
+const { getAuthHeader, user } = useAuth();
 const { updateTask } = useTasks();
 
 const task = ref<Task | null>(null);
@@ -259,7 +262,95 @@ async function onRelationChanged() {
   emit("updated");
 }
 
-onMounted(loadTask);
+// --- Comments ---
+// Managed locally (direct fetch), NOT via useComments(): that composable holds a
+// module-level shared comment list bound to the parent task's activity feed, so
+// loading/pushing the subtask's comments there would clobber the parent's feed.
+const comments = ref<Comment[]>([]);
+const commentsLoading = ref(false);
+const commentContent = ref("");
+const submittingComment = ref(false);
+
+// Sort preference is shared with the task page's activity feed for consistency.
+const SORT_KEY = "bureaucat-activity-sort";
+const newestFirst = ref(
+  typeof localStorage !== "undefined" ? localStorage.getItem(SORT_KEY) !== "oldest" : true
+);
+
+function toggleCommentSort() {
+  newestFirst.value = !newestFirst.value;
+  if (typeof localStorage !== "undefined") {
+    localStorage.setItem(SORT_KEY, newestFirst.value ? "newest" : "oldest");
+  }
+}
+
+const sortedComments = computed(() =>
+  [...comments.value].sort((a, b) => {
+    const diff = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+    return newestFirst.value ? -diff : diff;
+  })
+);
+
+const commentsEndpoint = computed(
+  () => `/api/v1/projects/${props.projectKey}/tasks/${props.taskNumber}/comments`
+);
+
+const isCommentEmpty = computed(() => {
+  const text = commentContent.value.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").trim();
+  return text.length === 0;
+});
+
+function canEditComment(comment: Comment): boolean {
+  return props.isMember && comment.created_by === user.value?.id;
+}
+
+async function loadComments() {
+  commentsLoading.value = true;
+  try {
+    const res = await fetch(commentsEndpoint.value, { headers: getAuthHeader() });
+    if (res.ok) comments.value = await res.json();
+  } catch {
+    // Non-fatal: the rest of the card still renders.
+  } finally {
+    commentsLoading.value = false;
+  }
+}
+
+async function submitComment() {
+  if (isCommentEmpty.value) return;
+  const trimmed = trimHtmlContent(commentContent.value);
+  submittingComment.value = true;
+  try {
+    const res = await fetch(commentsEndpoint.value, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...getAuthHeader() },
+      body: JSON.stringify({ content: trimmed }),
+    });
+    if (res.ok) {
+      commentContent.value = "";
+      await loadComments();
+    } else {
+      const err = await res.json().catch(() => ({}));
+      toast.error(err.message || "Failed to add comment");
+    }
+  } catch {
+    toast.error("Network error");
+  } finally {
+    submittingComment.value = false;
+  }
+}
+
+function handleCommentKeydown(event: KeyboardEvent) {
+  if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
+    event.preventDefault();
+    submitComment();
+  }
+}
+
+onMounted(() => {
+  loadTask();
+  loadComments();
+});
 </script>
 
 <template>
@@ -528,6 +619,79 @@ onMounted(loadTask);
           :is-member="isMember"
           @refresh="onRelationChanged"
         />
+
+        <Separator />
+
+        <!-- Comments -->
+        <div class="space-y-4">
+          <div class="flex items-center justify-between gap-2">
+            <h3 class="flex items-center gap-2 text-sm font-semibold">
+              <MessageSquare class="size-4" />
+              Comments
+              <span class="font-normal text-muted-foreground">({{ comments.length }})</span>
+            </h3>
+            <Button
+              v-if="comments.length"
+              variant="ghost"
+              size="sm"
+              @click="toggleCommentSort"
+            >
+              <ArrowUpDown class="mr-1.5 size-3.5" />
+              {{ newestFirst ? "Newest first" : "Oldest first" }}
+            </Button>
+          </div>
+
+          <div v-if="commentsLoading" class="flex items-center justify-center py-6">
+            <Loader2 class="size-5 animate-spin text-muted-foreground" />
+          </div>
+
+          <div v-else-if="comments.length" class="space-y-4">
+            <CommentItem
+              v-for="comment in sortedComments"
+              :key="comment.id"
+              :comment="comment"
+              :project-key="projectKey"
+              :task-num="taskNumber"
+              :can-edit="canEditComment(comment)"
+              :members="members"
+              @deleted="loadComments"
+              @updated="loadComments"
+            />
+          </div>
+
+          <p v-else class="rounded-lg border border-dashed py-6 text-center text-sm text-muted-foreground">
+            No comments yet
+          </p>
+
+          <!-- Add comment -->
+          <div v-if="isMember" class="flex gap-3">
+            <Avatar class="size-8 shrink-0">
+              <AvatarImage v-if="user?.avatar_url" :src="user.avatar_url" />
+              <AvatarFallback class="text-xs" :seed="user?.id">
+                {{ user?.first_name?.[0] }}{{ user?.last_name?.[0] }}
+              </AvatarFallback>
+            </Avatar>
+            <form class="flex-1 space-y-2" @submit.prevent="submitComment" @keydown="handleCommentKeydown">
+              <TiptapEditor
+                v-model="commentContent"
+                :disabled="submittingComment"
+                :members="members"
+                compact
+              />
+              <div class="flex justify-end">
+                <Button
+                  type="submit"
+                  size="sm"
+                  :disabled="submittingComment || isCommentEmpty"
+                >
+                  <Loader2 v-if="submittingComment" class="mr-1.5 size-3.5 animate-spin" />
+                  <Send v-else class="mr-1.5 size-3.5" />
+                  Comment
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
       </div>
     </template>
   </div>
