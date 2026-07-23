@@ -323,13 +323,35 @@ export function useFilterTree() {
    * effectiveTree is what the API actually receives. The free-text search
    * box is emitted as a single `search contains X` predicate — the server
    * expands that opcode to match both title and description internally.
+   *
+   * Default view: with no explicit filters, no search, and no active saved
+   * view, completed/cancelled tasks are hidden via an implicit `state_type
+   * not_in` predicate. The moment the user sets any filter (or applies a
+   * view), that implicit exclusion drops and all matching tasks are shown.
    */
   const effectiveTree = computed<FilterTree>(() => {
-    if (!searchQuery.value) return tree.value;
-    const searchNode: FilterNode = {
-      predicate: { field: "search", op: "contains", value: searchQuery.value },
-    };
-    return { children: [searchNode, ...tree.value.children] };
+    const children: FilterNode[] = [];
+    if (searchQuery.value) {
+      children.push({
+        predicate: { field: "search", op: "contains", value: searchQuery.value },
+      });
+    }
+    children.push(...tree.value.children);
+
+    if (children.length === 0 && !activeViewSlug.value) {
+      return {
+        children: [
+          {
+            predicate: {
+              field: "state_type",
+              op: "not_in",
+              value: ["completed", "cancelled"],
+            },
+          },
+        ],
+      };
+    }
+    return { children };
   });
 
   function setActiveView(slug: string | null) {
