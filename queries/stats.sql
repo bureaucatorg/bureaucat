@@ -13,6 +13,14 @@ SELECT COUNT(*) FROM tasks WHERE deleted_at IS NULL AND parent_task_id IS NOT NU
 -- name: CountPages :one
 SELECT COUNT(*) FROM pages WHERE deleted_at IS NULL;
 
+-- name: CountAttachments :one
+SELECT COUNT(*) FROM attachments;
+
+-- name: AttachmentsTotalSize :one
+SELECT COALESCE(SUM(u.size_bytes), 0)::bigint AS total_bytes
+FROM attachments a
+JOIN uploads u ON u.id = a.upload_id;
+
 -- name: TasksByStateType :many
 SELECT ps.state_type AS state_type, COUNT(t.id)::int AS count
 FROM tasks t
@@ -83,6 +91,46 @@ FROM generate_series(
 LEFT JOIN pages pg
     ON pg.created_at::date = d::date
     AND pg.deleted_at IS NULL
+GROUP BY d
+ORDER BY d ASC;
+
+-- name: CommentsCreatedPerDay :many
+SELECT d::date AS day, COUNT(c.id)::int AS count
+FROM generate_series(
+    sqlc.arg('from_date')::date,
+    sqlc.arg('to_date')::date,
+    INTERVAL '1 day'
+) d
+LEFT JOIN comments c
+    ON c.created_at::date = d::date
+    AND c.deleted_at IS NULL
+GROUP BY d
+ORDER BY d ASC;
+
+-- name: ActivityCreatedPerDay :many
+-- All activity_log events except comment lifecycle events (state changes,
+-- assignee/label edits, task lifecycle, etc.).
+SELECT d::date AS day, COUNT(al.id)::int AS count
+FROM generate_series(
+    sqlc.arg('from_date')::date,
+    sqlc.arg('to_date')::date,
+    INTERVAL '1 day'
+) d
+LEFT JOIN activity_log al
+    ON al.created_at::date = d::date
+    AND al.activity_type NOT IN ('comment_created', 'comment_updated', 'comment_deleted')
+GROUP BY d
+ORDER BY d ASC;
+
+-- name: AttachmentsCreatedPerDay :many
+SELECT d::date AS day, COUNT(a.id)::int AS count
+FROM generate_series(
+    sqlc.arg('from_date')::date,
+    sqlc.arg('to_date')::date,
+    INTERVAL '1 day'
+) d
+LEFT JOIN attachments a
+    ON a.created_at::date = d::date
 GROUP BY d
 ORDER BY d ASC;
 

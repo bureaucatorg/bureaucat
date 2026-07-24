@@ -69,6 +69,8 @@ export interface AdminStats {
     subtasks: number;
     pages: number;
     users: number;
+    attachments: number;
+    attachments_bytes: number;
   };
   tasks_by_state: StatCount[];
   tasks_by_priority: StatCount[];
@@ -82,6 +84,9 @@ export interface AdminStats {
     subtasks: DayCount[];
     pages: DayCount[];
     views: ViewDayCount[];
+    comments: DayCount[];
+    activity: DayCount[];
+    attachments: DayCount[];
   };
 }
 

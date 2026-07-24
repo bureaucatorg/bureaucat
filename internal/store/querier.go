@@ -12,6 +12,9 @@ import (
 )
 
 type Querier interface {
+	// All activity_log events except comment lifecycle events (state changes,
+	// assignee/label edits, task lifecycle, etc.).
+	ActivityCreatedPerDay(ctx context.Context, arg ActivityCreatedPerDayParams) ([]ActivityCreatedPerDayRow, error)
 	// ==================== MODULE MEMBERS ====================
 	AddModuleMember(ctx context.Context, arg AddModuleMemberParams) error
 	AddModuleMembersBulk(ctx context.Context, arg AddModuleMembersBulkParams) error
@@ -30,17 +33,21 @@ type Querier interface {
 	AddTasksToCycle(ctx context.Context, arg AddTasksToCycleParams) error
 	// ==================== WORKSPACE MEMBERS ====================
 	AddWorkspaceMember(ctx context.Context, arg AddWorkspaceMemberParams) (WorkspaceMember, error)
+	AttachmentsCreatedPerDay(ctx context.Context, arg AttachmentsCreatedPerDayParams) ([]AttachmentsCreatedPerDayRow, error)
+	AttachmentsTotalSize(ctx context.Context) (int64, error)
 	// Soft-delete all children of a task (cascade-together on parent delete).
 	CascadeSoftDeleteSubtasks(ctx context.Context, parentID uuid.UUID) error
 	CheckCycleOverlap(ctx context.Context, arg CheckCycleOverlapParams) (int32, error)
 	// Merge a new activity into an existing open notification: bump the count,
 	// update the latest actor/type/comment, and re-surface as unread.
 	CoalesceNotification(ctx context.Context, arg CoalesceNotificationParams) error
+	CommentsCreatedPerDay(ctx context.Context, arg CommentsCreatedPerDayParams) ([]CommentsCreatedPerDayRow, error)
 	CountActiveRefreshTokens(ctx context.Context) (int64, error)
 	CountAllProjects(ctx context.Context) (int64, error)
 	CountAllProjectsFiltered(ctx context.Context, arg CountAllProjectsFilteredParams) (int64, error)
 	CountAllWorkspaces(ctx context.Context) (int64, error)
 	CountAllWorkspacesFiltered(ctx context.Context, search pgtype.Text) (int64, error)
+	CountAttachments(ctx context.Context) (int64, error)
 	CountDeletedProjects(ctx context.Context) (int64, error)
 	CountNotifications(ctx context.Context, recipientID uuid.UUID) (int64, error)
 	CountPages(ctx context.Context) (int64, error)

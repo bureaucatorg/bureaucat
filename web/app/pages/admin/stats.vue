@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { BarChart3, Loader2, Users, LayoutGrid, ListTodo, GitBranch, FileText, Building2, Calendar as CalendarIcon, ChevronDown } from "lucide-vue-next";
+import { BarChart3, Loader2, Users, LayoutGrid, ListTodo, GitBranch, FileText, Building2, Paperclip, HardDrive, Calendar as CalendarIcon, ChevronDown } from "lucide-vue-next";
 import { toast } from "vue-sonner";
 import { type DateValue, today, getLocalTimeZone } from "@internationalized/date";
 import { VisAxis, VisXYContainer, VisGroupedBar } from "@unovis/vue";
@@ -85,16 +85,27 @@ watch([fromDate, toDate], loadStats);
 
 onMounted(loadStats);
 
+// Human-readable byte size (1536 -> "1.5 KB").
+function formatBytes(bytes: number): string {
+  if (bytes <= 0) return "0 B";
+  const units = ["B", "KB", "MB", "GB", "TB"];
+  const i = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+  const value = bytes / 1024 ** i;
+  return `${i === 0 ? value : value.toFixed(1)} ${units[i]}`;
+}
+
 const totalCards = computed(() => {
   const t = stats.value?.totals;
   if (!t) return [];
   return [
-    { label: "Workspaces", value: t.workspaces, icon: Building2, color: "text-violet-400" },
-    { label: "Projects", value: t.projects, icon: LayoutGrid, color: "text-blue-400" },
-    { label: "Tasks", value: t.tasks, icon: ListTodo, color: "text-emerald-400" },
-    { label: "Subtasks", value: t.subtasks, icon: GitBranch, color: "text-teal-400" },
-    { label: "Pages", value: t.pages, icon: FileText, color: "text-amber-400" },
-    { label: "Users", value: t.users, icon: Users, color: "text-rose-400" },
+    { label: "Workspaces", value: t.workspaces.toLocaleString(), icon: Building2, color: "text-violet-400" },
+    { label: "Projects", value: t.projects.toLocaleString(), icon: LayoutGrid, color: "text-blue-400" },
+    { label: "Tasks", value: t.tasks.toLocaleString(), icon: ListTodo, color: "text-emerald-400" },
+    { label: "Subtasks", value: t.subtasks.toLocaleString(), icon: GitBranch, color: "text-teal-400" },
+    { label: "Pages", value: t.pages.toLocaleString(), icon: FileText, color: "text-amber-400" },
+    { label: "Users", value: t.users.toLocaleString(), icon: Users, color: "text-rose-400" },
+    { label: "Attachments", value: t.attachments.toLocaleString(), icon: Paperclip, color: "text-cyan-400" },
+    { label: "Attachments size", value: formatBytes(t.attachments_bytes), icon: HardDrive, color: "text-sky-400" },
   ];
 });
 
@@ -141,6 +152,9 @@ const trendCharts = computed(() => {
   return [
     { key: "tasks", title: "Tasks created", color: "#6EE7B7", data: s?.tasks ?? [] },
     { key: "subtasks", title: "Subtasks created", color: "#93C5FD", data: s?.subtasks ?? [] },
+    { key: "comments", title: "Comments created", color: "#F9A8D4", data: s?.comments ?? [] },
+    { key: "activity", title: "Activity created", color: "#A5B4FC", data: s?.activity ?? [] },
+    { key: "attachments", title: "Attachments created", color: "#FDBA74", data: s?.attachments ?? [] },
     { key: "pages", title: "Pages created", color: "#C4B5FD", data: s?.pages ?? [] },
   ];
 });
@@ -285,14 +299,14 @@ const maxProjectTasks = computed(() =>
 
         <template v-else-if="stats">
           <!-- Totals -->
-          <div class="grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
+          <div class="grid gap-3 sm:grid-cols-3 lg:grid-cols-4">
             <Card v-for="card in totalCards" :key="card.label" class="gap-0 py-4">
               <CardHeader class="flex flex-row items-center justify-between space-y-0 px-4 pb-1.5">
                 <CardDescription class="text-xs">{{ card.label }}</CardDescription>
                 <component :is="card.icon" :class="['size-4', card.color]" />
               </CardHeader>
               <CardContent class="px-4">
-                <div class="text-2xl font-bold tracking-tight">{{ card.value.toLocaleString() }}</div>
+                <div class="text-2xl font-bold tracking-tight">{{ card.value }}</div>
               </CardContent>
             </Card>
           </div>
@@ -307,7 +321,7 @@ const maxProjectTasks = computed(() =>
             </div>
 
             <div class="grid gap-3 lg:grid-cols-3">
-              <Card v-for="chart in trendCharts" :key="chart.key" class="gap-3 py-4">
+              <Card v-for="(chart, i) in trendCharts" :key="chart.key" class="gap-3 py-4" :style="{ order: i < 2 ? i + 1 : i + 2 }">
                 <CardHeader class="px-4 pb-1">
                   <CardTitle class="text-base">{{ chart.title }}</CardTitle>
                 </CardHeader>
@@ -345,8 +359,8 @@ const maxProjectTasks = computed(() =>
                 </CardContent>
               </Card>
 
-              <!-- Views created, stacked by visibility -->
-              <Card class="gap-3 py-4">
+              <!-- Views created, stacked by visibility (placed as the third trend) -->
+              <Card class="gap-3 py-4" :style="{ order: 3 }">
                 <CardHeader class="flex flex-row items-center justify-between space-y-0 px-4 pb-1">
                   <CardTitle class="text-base">Views created</CardTitle>
                   <div class="flex items-center gap-3 text-xs text-muted-foreground">

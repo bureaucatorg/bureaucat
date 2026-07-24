@@ -12,6 +12,163 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const activityCreatedPerDay = `-- name: ActivityCreatedPerDay :many
+SELECT d::date AS day, COUNT(al.id)::int AS count
+FROM generate_series(
+    $1::date,
+    $2::date,
+    INTERVAL '1 day'
+) d
+LEFT JOIN activity_log al
+    ON al.created_at::date = d::date
+    AND al.activity_type NOT IN ('comment_created', 'comment_updated', 'comment_deleted')
+GROUP BY d
+ORDER BY d ASC
+`
+
+type ActivityCreatedPerDayParams struct {
+	FromDate pgtype.Date `json:"from_date"`
+	ToDate   pgtype.Date `json:"to_date"`
+}
+
+type ActivityCreatedPerDayRow struct {
+	Day   pgtype.Date `json:"day"`
+	Count int32       `json:"count"`
+}
+
+// All activity_log events except comment lifecycle events (state changes,
+// assignee/label edits, task lifecycle, etc.).
+func (q *Queries) ActivityCreatedPerDay(ctx context.Context, arg ActivityCreatedPerDayParams) ([]ActivityCreatedPerDayRow, error) {
+	rows, err := q.db.Query(ctx, activityCreatedPerDay, arg.FromDate, arg.ToDate)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ActivityCreatedPerDayRow{}
+	for rows.Next() {
+		var i ActivityCreatedPerDayRow
+		if err := rows.Scan(&i.Day, &i.Count); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const attachmentsCreatedPerDay = `-- name: AttachmentsCreatedPerDay :many
+SELECT d::date AS day, COUNT(a.id)::int AS count
+FROM generate_series(
+    $1::date,
+    $2::date,
+    INTERVAL '1 day'
+) d
+LEFT JOIN attachments a
+    ON a.created_at::date = d::date
+GROUP BY d
+ORDER BY d ASC
+`
+
+type AttachmentsCreatedPerDayParams struct {
+	FromDate pgtype.Date `json:"from_date"`
+	ToDate   pgtype.Date `json:"to_date"`
+}
+
+type AttachmentsCreatedPerDayRow struct {
+	Day   pgtype.Date `json:"day"`
+	Count int32       `json:"count"`
+}
+
+func (q *Queries) AttachmentsCreatedPerDay(ctx context.Context, arg AttachmentsCreatedPerDayParams) ([]AttachmentsCreatedPerDayRow, error) {
+	rows, err := q.db.Query(ctx, attachmentsCreatedPerDay, arg.FromDate, arg.ToDate)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []AttachmentsCreatedPerDayRow{}
+	for rows.Next() {
+		var i AttachmentsCreatedPerDayRow
+		if err := rows.Scan(&i.Day, &i.Count); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const attachmentsTotalSize = `-- name: AttachmentsTotalSize :one
+SELECT COALESCE(SUM(u.size_bytes), 0)::bigint AS total_bytes
+FROM attachments a
+JOIN uploads u ON u.id = a.upload_id
+`
+
+func (q *Queries) AttachmentsTotalSize(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, attachmentsTotalSize)
+	var total_bytes int64
+	err := row.Scan(&total_bytes)
+	return total_bytes, err
+}
+
+const commentsCreatedPerDay = `-- name: CommentsCreatedPerDay :many
+SELECT d::date AS day, COUNT(c.id)::int AS count
+FROM generate_series(
+    $1::date,
+    $2::date,
+    INTERVAL '1 day'
+) d
+LEFT JOIN comments c
+    ON c.created_at::date = d::date
+    AND c.deleted_at IS NULL
+GROUP BY d
+ORDER BY d ASC
+`
+
+type CommentsCreatedPerDayParams struct {
+	FromDate pgtype.Date `json:"from_date"`
+	ToDate   pgtype.Date `json:"to_date"`
+}
+
+type CommentsCreatedPerDayRow struct {
+	Day   pgtype.Date `json:"day"`
+	Count int32       `json:"count"`
+}
+
+func (q *Queries) CommentsCreatedPerDay(ctx context.Context, arg CommentsCreatedPerDayParams) ([]CommentsCreatedPerDayRow, error) {
+	rows, err := q.db.Query(ctx, commentsCreatedPerDay, arg.FromDate, arg.ToDate)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []CommentsCreatedPerDayRow{}
+	for rows.Next() {
+		var i CommentsCreatedPerDayRow
+		if err := rows.Scan(&i.Day, &i.Count); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const countAttachments = `-- name: CountAttachments :one
+SELECT COUNT(*) FROM attachments
+`
+
+func (q *Queries) CountAttachments(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, countAttachments)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const countPages = `-- name: CountPages :one
 SELECT COUNT(*) FROM pages WHERE deleted_at IS NULL
 `

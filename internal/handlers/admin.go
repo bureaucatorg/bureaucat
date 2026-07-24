@@ -615,12 +615,14 @@ type ViewDayCount struct {
 // AdminStatsResponse is the aggregate stats payload for the admin stats page.
 type AdminStatsResponse struct {
 	Totals struct {
-		Workspaces int64 `json:"workspaces"`
-		Projects   int64 `json:"projects"`
-		Tasks      int64 `json:"tasks"`
-		Subtasks   int64 `json:"subtasks"`
-		Pages      int64 `json:"pages"`
-		Users      int64 `json:"users"`
+		Workspaces       int64 `json:"workspaces"`
+		Projects         int64 `json:"projects"`
+		Tasks            int64 `json:"tasks"`
+		Subtasks         int64 `json:"subtasks"`
+		Pages            int64 `json:"pages"`
+		Users            int64 `json:"users"`
+		Attachments      int64 `json:"attachments"`
+		AttachmentsBytes int64 `json:"attachments_bytes"`
 	} `json:"totals"`
 	TasksByState         []StatCount     `json:"tasks_by_state"`
 	TasksByPriority      []StatCount     `json:"tasks_by_priority"`
@@ -630,10 +632,13 @@ type AdminStatsResponse struct {
 		From     string     `json:"from"`
 		To       string     `json:"to"`
 		Days     int        `json:"days"`
-		Tasks    []DayCount     `json:"tasks"`
-		Subtasks []DayCount     `json:"subtasks"`
-		Pages    []DayCount     `json:"pages"`
-		Views    []ViewDayCount `json:"views"`
+		Tasks       []DayCount     `json:"tasks"`
+		Subtasks    []DayCount     `json:"subtasks"`
+		Pages       []DayCount     `json:"pages"`
+		Views       []ViewDayCount `json:"views"`
+		Comments    []DayCount     `json:"comments"`
+		Activity    []DayCount     `json:"activity"`
+		Attachments []DayCount     `json:"attachments"`
 	} `json:"series"`
 }
 
@@ -708,6 +713,12 @@ func (h *AdminHandler) GetStats(c *echo.Context) error {
 	}
 	if resp.Totals.Users, err = h.store.CountUsers(ctx); err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to count users")
+	}
+	if resp.Totals.Attachments, err = h.store.CountAttachments(ctx); err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to count attachments")
+	}
+	if resp.Totals.AttachmentsBytes, err = h.store.AttachmentsTotalSize(ctx); err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to sum attachment sizes")
 	}
 
 	states, err := h.store.TasksByStateType(ctx)
@@ -795,6 +806,33 @@ func (h *AdminHandler) GetStats(c *echo.Context) error {
 			Private: int(d.PrivateCount),
 			Shared:  int(d.SharedCount),
 		}
+	}
+
+	commentsSeries, err := h.store.CommentsCreatedPerDay(ctx, store.CommentsCreatedPerDayParams{FromDate: from, ToDate: to})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to load comments series")
+	}
+	resp.Series.Comments = make([]DayCount, len(commentsSeries))
+	for i, d := range commentsSeries {
+		resp.Series.Comments[i] = DayCount{Day: d.Day.Time.Format(dateLayout), Count: int(d.Count)}
+	}
+
+	activitySeries, err := h.store.ActivityCreatedPerDay(ctx, store.ActivityCreatedPerDayParams{FromDate: from, ToDate: to})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to load activity series")
+	}
+	resp.Series.Activity = make([]DayCount, len(activitySeries))
+	for i, d := range activitySeries {
+		resp.Series.Activity[i] = DayCount{Day: d.Day.Time.Format(dateLayout), Count: int(d.Count)}
+	}
+
+	attachmentsSeries, err := h.store.AttachmentsCreatedPerDay(ctx, store.AttachmentsCreatedPerDayParams{FromDate: from, ToDate: to})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to load attachments series")
+	}
+	resp.Series.Attachments = make([]DayCount, len(attachmentsSeries))
+	for i, d := range attachmentsSeries {
+		resp.Series.Attachments[i] = DayCount{Day: d.Day.Time.Format(dateLayout), Count: int(d.Count)}
 	}
 
 	return c.JSON(http.StatusOK, resp)
