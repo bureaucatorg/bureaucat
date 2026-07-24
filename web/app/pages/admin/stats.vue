@@ -124,6 +124,16 @@ function titleCase(value: string): string {
   return value.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+// The chart tooltip receives the x-axis value, which for our charts is the bar
+// index. These map that index back to a human-readable heading: the day for
+// time series, the category name for the breakdown bars.
+function dayLabelFor(data: { day: string }[]) {
+  return (i: number | Date) => shortDay(data[Math.round(Number(i))]?.day);
+}
+function categoryLabelFor(bars: { label: string }[]) {
+  return (i: number | Date) => bars[Math.round(Number(i))]?.label ?? "";
+}
+
 // Compact axis numbers (1200 -> "1.2k") and integer-only y ticks so unovis
 // doesn't render duplicate fractional labels for small ranges.
 function compactNum(v: number): string {
@@ -183,7 +193,7 @@ const hasViews = computed(() =>
 interface BarPoint {
   label: string;
   count: number;
-  color: string;
+  fill: string;
 }
 
 const barConfig: ChartConfig = {
@@ -211,7 +221,7 @@ const stateBars = computed<BarPoint[]>(() =>
   (stats.value?.tasks_by_state ?? []).map((s) => ({
     label: titleCase(s.label),
     count: s.count,
-    color: STATE_LIGHT[s.label] ?? "#D1D5DB",
+    fill: STATE_LIGHT[s.label] ?? "#D1D5DB",
   }))
 );
 
@@ -219,7 +229,7 @@ const priorityBars = computed<BarPoint[]>(() =>
   (stats.value?.tasks_by_priority ?? []).map((p) => ({
     label: p.label,
     count: p.count,
-    color: PRIORITY_LIGHT[p.label] ?? "#D1D5DB",
+    fill: PRIORITY_LIGHT[p.label] ?? "#D1D5DB",
   }))
 );
 
@@ -353,7 +363,7 @@ const maxProjectTasks = computed(() =>
                         :tick-line="false"
                       />
                       <ChartTooltip />
-                      <ChartCrosshair :template="componentToString(seriesConfig, ChartTooltipContent)" />
+                      <ChartCrosshair :template="componentToString({ count: { label: 'Created', color: chart.color } }, ChartTooltipContent, { labelFormatter: dayLabelFor(chart.data) })" />
                     </VisXYContainer>
                   </ChartContainer>
                 </CardContent>
@@ -403,7 +413,7 @@ const maxProjectTasks = computed(() =>
                         :tick-line="false"
                       />
                       <ChartTooltip />
-                      <ChartCrosshair :template="componentToString(viewsConfig, ChartTooltipContent)" />
+                      <ChartCrosshair :template="componentToString(viewsConfig, ChartTooltipContent, { labelFormatter: dayLabelFor(viewsSeries) })" />
                     </VisXYContainer>
                   </ChartContainer>
                   <p v-else class="py-12 text-center text-sm text-muted-foreground">No views yet</p>
@@ -432,7 +442,7 @@ const maxProjectTasks = computed(() =>
                       <VisGroupedBar
                         :x="(_d: BarPoint, i: number) => i"
                         :y="(d: BarPoint) => d.count"
-                        :color="(d: BarPoint) => d.color"
+                        :color="(d: BarPoint) => d.fill"
                         :rounded-corners="6"
                         :bar-padding="0.35"
                       />
@@ -453,7 +463,7 @@ const maxProjectTasks = computed(() =>
                         :tick-line="false"
                       />
                       <ChartTooltip />
-                      <ChartCrosshair :template="componentToString(barConfig, ChartTooltipContent)" />
+                      <ChartCrosshair :template="componentToString(barConfig, ChartTooltipContent, { labelFormatter: categoryLabelFor(stateBars) })" />
                     </VisXYContainer>
                   </ChartContainer>
                   <p v-else class="py-12 text-center text-sm text-muted-foreground">No tasks yet</p>
@@ -470,7 +480,7 @@ const maxProjectTasks = computed(() =>
                       <VisGroupedBar
                         :x="(_d: BarPoint, i: number) => i"
                         :y="(d: BarPoint) => d.count"
-                        :color="(d: BarPoint) => d.color"
+                        :color="(d: BarPoint) => d.fill"
                         :rounded-corners="6"
                         :bar-padding="0.35"
                       />
@@ -491,7 +501,7 @@ const maxProjectTasks = computed(() =>
                         :tick-line="false"
                       />
                       <ChartTooltip />
-                      <ChartCrosshair :template="componentToString(barConfig, ChartTooltipContent)" />
+                      <ChartCrosshair :template="componentToString(barConfig, ChartTooltipContent, { labelFormatter: categoryLabelFor(priorityBars) })" />
                     </VisXYContainer>
                   </ChartContainer>
                   <p v-else class="py-12 text-center text-sm text-muted-foreground">No tasks yet</p>
