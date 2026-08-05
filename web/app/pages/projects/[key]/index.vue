@@ -103,6 +103,7 @@ const {
 
 const loading = ref(true);
 const error = ref<string | null>(null);
+const isMissing = computed(() => /not found/i.test(error.value || ""));
 
 // Tasks-per-page selection, persisted locally so it survives refreshes.
 const PER_PAGE_OPTIONS = [20, 50, 100] as const;
@@ -494,15 +495,23 @@ onMounted(async () => {
           <Loader2 class="size-8 animate-spin text-muted-foreground" />
         </div>
 
-        <div
+        <NotFoundState
           v-else-if="error"
-          class="flex flex-col items-center justify-center py-20"
+          :code="isMissing ? 404 : '!'"
+          :title="isMissing ? 'Project not found' : 'Could not open this project'"
+          :message="isMissing
+            ? 'No project is registered under this key, or you no longer have access to it.'
+            : error"
+          :reference="projectKey"
+          :stamp="isMissing ? 'NOT ON FILE' : 'RETURNED'"
         >
-          <p class="text-lg text-destructive">{{ error }}</p>
-          <Button class="mt-4" variant="outline" @click="loadProject">
-            Try Again
-          </Button>
-        </div>
+          <template #actions>
+            <Button as-child>
+              <NuxtLink to="/projects">All projects</NuxtLink>
+            </Button>
+            <Button variant="outline" @click="loadProject">Try again</Button>
+          </template>
+        </NotFoundState>
 
         <template v-else-if="currentProject">
           <ProjectHeader

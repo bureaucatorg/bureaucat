@@ -66,6 +66,7 @@ useHead({
 
 const loading = ref(true);
 const error = ref<string | null>(null);
+const isMissing = computed(() => /not found/i.test(error.value || ""));
 const editingTitle = ref(false);
 const editingDescription = ref(false);
 const editTitle = ref("");
@@ -470,17 +471,23 @@ onMounted(() => {
         </div>
 
         <!-- Error -->
-        <div
+        <NotFoundState
           v-else-if="error"
-          class="flex flex-col items-center justify-center py-20"
+          :code="isMissing ? 404 : '!'"
+          :title="isMissing ? 'Task not found' : 'Could not open this task'"
+          :message="isMissing
+            ? 'No task with this number exists in the project — it may have been deleted or moved elsewhere.'
+            : error"
+          :reference="`${projectKey}-${taskNum}`"
+          :stamp="isMissing ? 'NOT ON FILE' : 'RETURNED'"
         >
-          <p class="text-lg text-destructive">{{ error }}</p>
-          <Button class="mt-4" variant="outline" as-child>
-            <NuxtLink :to="`/projects/${projectKey}`">
-              Back to Project
-            </NuxtLink>
-          </Button>
-        </div>
+          <template #actions>
+            <Button as-child>
+              <NuxtLink :to="`/projects/${projectKey}`">Back to project</NuxtLink>
+            </Button>
+            <Button variant="outline" @click="loadData">Try again</Button>
+          </template>
+        </NotFoundState>
 
         <!-- Task content -->
         <template v-else-if="currentTask">
