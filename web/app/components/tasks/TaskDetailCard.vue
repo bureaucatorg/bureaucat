@@ -2,6 +2,7 @@
 import {
   Maximize2,
   Loader2,
+  Paperclip,
   Calendar as CalendarIcon,
   Clock,
   Pencil,
@@ -262,6 +263,42 @@ async function onRelationChanged() {
   emit("updated");
 }
 
+// --- Attachments ---
+const { listAttachments, attachFile, deleteAttachment } = useAttachments();
+const { uploadFiles, uploading: attachmentsUploading } = useFileAttach();
+
+const attachments = ref<import("~/composables/useAttachments").Attachment[]>([]);
+const attachmentsLoading = ref(false);
+
+async function loadAttachments() {
+  attachmentsLoading.value = true;
+  const result = await listAttachments(props.projectKey, props.taskNumber, "task");
+  if (result.success && result.data) attachments.value = result.data;
+  attachmentsLoading.value = false;
+}
+
+async function handleTaskFiles(files: File[]) {
+  const uploaded = await uploadFiles(files);
+  for (const file of uploaded) {
+    const result = await attachFile(props.projectKey, props.taskNumber, "task", file.uploadId);
+    if (result.success && result.data) {
+      attachments.value.push(result.data);
+    } else {
+      toast.error(`Failed to attach ${file.filename}`);
+    }
+  }
+  if (uploaded.length) emit("updated");
+}
+
+async function handleDeleteAttachment(attachmentId: string) {
+  const result = await deleteAttachment(props.projectKey, props.taskNumber, "task", attachmentId);
+  if (result.success) {
+    attachments.value = attachments.value.filter((a) => a.id !== attachmentId);
+  } else {
+    toast.error(result.error || "Failed to remove attachment");
+  }
+}
+
 // --- Comments ---
 // Managed locally (direct fetch), NOT via useComments(): that composable holds a
 // module-level shared comment list bound to the parent task's activity feed, so
@@ -270,6 +307,15 @@ const comments = ref<Comment[]>([]);
 const commentsLoading = ref(false);
 const commentContent = ref("");
 const submittingComment = ref(false);
+
+// Files picked for the comment being written; linked once it is posted.
+const {
+  pending: pendingCommentFiles,
+  uploading: commentUploading,
+  addFiles: addCommentFiles,
+  remove: removeCommentFile,
+  attachAll: attachCommentFiles,
+} = usePendingAttachments();
 
 // Sort preference is shared with the task page's activity feed for consistency.
 const SORT_KEY = "bureaucat-activity-sort";
@@ -317,16 +363,18 @@ async function loadComments() {
 }
 
 async function submitComment() {
-  if (isCommentEmpty.value) return;
+  if (isCommentEmpty.value && !pendingCommentFiles.value.length) return;
   const trimmed = trimHtmlContent(commentContent.value);
   submittingComment.value = true;
   try {
     const res = await fetch(commentsEndpoint.value, {
       method: "POST",
       headers: { "Content-Type": "application/json", ...getAuthHeader() },
-      body: JSON.stringify({ content: trimmed }),
+      body: JSON.stringify({ content: trimmed || "(attachment)" }),
     });
     if (res.ok) {
+      const created: Comment = await res.json();
+      await attachCommentFiles(props.projectKey, props.taskNumber, created.id);
       commentContent.value = "";
       await loadComments();
     } else {
@@ -350,6 +398,7 @@ function handleCommentKeydown(event: KeyboardEvent) {
 onMounted(() => {
   loadTask();
   loadComments();
+  loadAttachments();
 });
 </script>
 
@@ -451,7 +500,9 @@ onMounted(() => {
             <TiptapEditor
               v-model="editDescription"
               :disabled="updating"
+              :uploading="attachmentsUploading"
               :members="members"
+              @files-dropped="handleTaskFiles"
             />
             <div class="flex gap-2">
               <Button size="sm" :disabled="updating" @click="saveDescription">
@@ -481,6 +532,39 @@ onMounted(() => {
             </button>
             <p v-else class="text-sm italic text-muted-foreground">No description</p>
           </template>
+
+          <!-- Task attachments -->
+          <FileDropZone
+            v-if="isMember"
+            :uploading="attachmentsUploading"
+            accept="*/*"
+            @files-dropped="handleTaskFiles"
+          >
+            <AttachmentList
+              :attachments="attachments"
+              :can-delete="isMember"
+              :loading="attachmentsLoading"
+              @delete="handleDeleteAttachment"
+            />
+            <!-- An empty list renders nothing, so keep a target to drop on. -->
+            <template #button="{ openFilePicker }">
+              <button
+                v-if="!attachments.length && !attachmentsLoading"
+                type="button"
+                class="mt-2 flex w-full items-center justify-center gap-2 rounded-lg border border-dashed p-3 text-sm text-muted-foreground transition-colors hover:border-solid hover:bg-muted/50"
+                @click="openFilePicker"
+              >
+                <Loader2 v-if="attachmentsUploading" class="size-3.5 animate-spin" />
+                <Paperclip v-else class="size-3.5" />
+                Drop files here or click to attach
+              </button>
+            </template>
+          </FileDropZone>
+          <AttachmentList
+            v-else
+            :attachments="attachments"
+            :loading="attachmentsLoading"
+          />
         </div>
 
         <!-- Properties grid -->
@@ -675,14 +759,21 @@ onMounted(() => {
               <TiptapEditor
                 v-model="commentContent"
                 :disabled="submittingComment"
+                :uploading="commentUploading"
                 :members="members"
                 compact
+                @files-dropped="addCommentFiles"
+              />
+              <PendingAttachmentList
+                :files="pendingCommentFiles"
+                :disabled="submittingComment"
+                @remove="removeCommentFile"
               />
               <div class="flex justify-end">
                 <Button
                   type="submit"
                   size="sm"
-                  :disabled="submittingComment || isCommentEmpty"
+                  :disabled="submittingComment || commentUploading || (isCommentEmpty && !pendingCommentFiles.length)"
                 >
                   <Loader2 v-if="submittingComment" class="mr-1.5 size-3.5 animate-spin" />
                   <Send v-else class="mr-1.5 size-3.5" />

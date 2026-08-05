@@ -26,9 +26,16 @@ export function usePendingAttachments() {
     pending.value = [];
   }
 
-  async function attachAll(projectKey: string, taskNum: number) {
+  // Passing a commentId links the files to that comment instead of the task.
+  async function attachAll(projectKey: string, taskNum: number, commentId?: string) {
     for (const file of pending.value) {
-      const result = await attachFile(projectKey, taskNum, "task", file.uploadId);
+      const result = await attachFile(
+        projectKey,
+        taskNum,
+        commentId ? "comment" : "task",
+        file.uploadId,
+        commentId
+      );
       if (!result.success) {
         toast.error(`Failed to attach ${file.filename}`);
       }
