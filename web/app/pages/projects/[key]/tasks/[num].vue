@@ -788,6 +788,18 @@ onMounted(() => {
                   </DropdownMenu>
                 </div>
 
+                <!-- Cycle -->
+                <div class="py-3">
+                  <TaskCycle
+                    :project-key="projectKey"
+                    :task-id="currentTask.id"
+                    :cycle-id="currentTask.cycle_id"
+                    :cycle-title="currentTask.cycle_title"
+                    :can-edit="isAdmin && !isDisabled"
+                    @refresh="refreshTask"
+                  />
+                </div>
+
                 <!-- Start date -->
                 <div
                   class="py-3"

@@ -128,6 +128,8 @@ type TaskResponse struct {
 	ParentTaskNumber *int              `json:"parent_task_number,omitempty"`
 	ParentTaskTitle  *string           `json:"parent_task_title,omitempty"`
 	SubtaskCount     int               `json:"subtask_count"`
+	CycleID          *uuid.UUID        `json:"cycle_id,omitempty"`
+	CycleTitle       *string           `json:"cycle_title,omitempty"`
 	CreatedAt       time.Time          `json:"created_at"`
 	UpdatedAt       time.Time          `json:"updated_at"`
 }
@@ -703,6 +705,7 @@ func (h *TaskHandler) GetTask(c *echo.Context) error {
 	// Get assignees and labels
 	assignees := h.getTaskAssignees(ctx, task.ID)
 	labels := h.getTaskLabels(ctx, task.ID)
+	cycleID, cycleTitle := h.getTaskCycle(ctx, task.ID)
 
 	return c.JSON(http.StatusOK, TaskResponse{
 		ID:              task.ID,
@@ -729,9 +732,25 @@ func (h *TaskHandler) GetTask(c *echo.Context) error {
 		ParentTaskNumber: pgInt4ToIntPtr(task.ParentTaskNumber),
 		ParentTaskTitle:  textToStringPtr(task.ParentTaskTitle),
 		SubtaskCount:     int(task.SubtaskCount),
+		CycleID:          cycleID,
+		CycleTitle:       cycleTitle,
 		CreatedAt:       task.CreatedAt.Time,
 		UpdatedAt:       task.UpdatedAt.Time,
 	})
+}
+
+// getTaskCycle returns the cycle a task belongs to, if any. A task belongs to
+// at most one cycle.
+func (h *TaskHandler) getTaskCycle(ctx context.Context, taskID uuid.UUID) (*uuid.UUID, *string) {
+	cycleID, err := h.store.GetTaskCycleID(ctx, taskID)
+	if err != nil {
+		return nil, nil
+	}
+	cycle, err := h.store.GetCycleByID(ctx, cycleID)
+	if err != nil {
+		return &cycleID, nil
+	}
+	return &cycleID, &cycle.Title
 }
 
 // UpdateTask updates a task.

@@ -24,6 +24,8 @@ export interface Task {
   parent_task_number?: number;
   parent_task_title?: string;
   subtask_count?: number;
+  cycle_id?: string;
+  cycle_title?: string;
   created_at: string;
   updated_at: string;
 }
