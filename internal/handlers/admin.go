@@ -639,6 +639,8 @@ type AdminStatsResponse struct {
 		Comments    []DayCount     `json:"comments"`
 		Activity    []DayCount     `json:"activity"`
 		Attachments []DayCount     `json:"attachments"`
+		Cycles      []DayCount     `json:"cycles"`
+		Modules     []DayCount     `json:"modules"`
 	} `json:"series"`
 }
 
@@ -833,6 +835,24 @@ func (h *AdminHandler) GetStats(c *echo.Context) error {
 	resp.Series.Attachments = make([]DayCount, len(attachmentsSeries))
 	for i, d := range attachmentsSeries {
 		resp.Series.Attachments[i] = DayCount{Day: d.Day.Time.Format(dateLayout), Count: int(d.Count)}
+	}
+
+	cyclesSeries, err := h.store.CyclesCreatedPerDay(ctx, store.CyclesCreatedPerDayParams{FromDate: from, ToDate: to})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to load cycles series")
+	}
+	resp.Series.Cycles = make([]DayCount, len(cyclesSeries))
+	for i, d := range cyclesSeries {
+		resp.Series.Cycles[i] = DayCount{Day: d.Day.Time.Format(dateLayout), Count: int(d.Count)}
+	}
+
+	modulesSeries, err := h.store.ModulesCreatedPerDay(ctx, store.ModulesCreatedPerDayParams{FromDate: from, ToDate: to})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to load modules series")
+	}
+	resp.Series.Modules = make([]DayCount, len(modulesSeries))
+	for i, d := range modulesSeries {
+		resp.Series.Modules[i] = DayCount{Day: d.Day.Time.Format(dateLayout), Count: int(d.Count)}
 	}
 
 	return c.JSON(http.StatusOK, resp)

@@ -166,6 +166,8 @@ const trendCharts = computed(() => {
     { key: "activity", title: "Activity created", color: "#A5B4FC", data: s?.activity ?? [] },
     { key: "attachments", title: "Attachments created", color: "#FDBA74", data: s?.attachments ?? [] },
     { key: "pages", title: "Pages created", color: "#C4B5FD", data: s?.pages ?? [] },
+    { key: "cycles", title: "Cycles created", color: "#F0ABFC", data: s?.cycles ?? [] },
+    { key: "modules", title: "Modules created", color: "#5EEAD4", data: s?.modules ?? [] },
   ];
 });
 

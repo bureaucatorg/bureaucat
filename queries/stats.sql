@@ -149,3 +149,29 @@ LEFT JOIN project_views v
     AND v.deleted_at IS NULL
 GROUP BY d
 ORDER BY d ASC;
+
+-- name: CyclesCreatedPerDay :many
+SELECT d::date AS day, COUNT(cy.id)::int AS count
+FROM generate_series(
+    sqlc.arg('from_date')::date,
+    sqlc.arg('to_date')::date,
+    INTERVAL '1 day'
+) d
+LEFT JOIN cycles cy
+    ON cy.created_at::date = d::date
+    AND cy.deleted_at IS NULL
+GROUP BY d
+ORDER BY d ASC;
+
+-- name: ModulesCreatedPerDay :many
+SELECT d::date AS day, COUNT(m.id)::int AS count
+FROM generate_series(
+    sqlc.arg('from_date')::date,
+    sqlc.arg('to_date')::date,
+    INTERVAL '1 day'
+) d
+LEFT JOIN modules m
+    ON m.created_at::date = d::date
+    AND m.deleted_at IS NULL
+GROUP BY d
+ORDER BY d ASC;

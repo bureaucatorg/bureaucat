@@ -87,6 +87,8 @@ export interface AdminStats {
     comments: DayCount[];
     activity: DayCount[];
     attachments: DayCount[];
+    cycles: DayCount[];
+    modules: DayCount[];
   };
 }
 

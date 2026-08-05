@@ -103,6 +103,7 @@ type Querier interface {
 	CreateUser(ctx context.Context, arg CreateUserParams) (CreateUserRow, error)
 	// ==================== WORKSPACES ====================
 	CreateWorkspace(ctx context.Context, arg CreateWorkspaceParams) (Workspace, error)
+	CyclesCreatedPerDay(ctx context.Context, arg CyclesCreatedPerDayParams) ([]CyclesCreatedPerDayRow, error)
 	DeleteAttachment(ctx context.Context, id uuid.UUID) error
 	DeleteAttachmentsByEntity(ctx context.Context, arg DeleteAttachmentsByEntityParams) error
 	DeleteExpiredRefreshTokens(ctx context.Context) (int64, error)
@@ -253,6 +254,7 @@ type Querier interface {
 	ListWorkspaceMembers(ctx context.Context, workspaceID uuid.UUID) ([]ListWorkspaceMembersRow, error)
 	MarkAllNotificationsRead(ctx context.Context, recipientID uuid.UUID) error
 	MarkNotificationRead(ctx context.Context, arg MarkNotificationReadParams) error
+	ModulesCreatedPerDay(ctx context.Context, arg ModulesCreatedPerDayParams) ([]ModulesCreatedPerDayRow, error)
 	// Move a task to a different project, assigning a new project-local task number
 	// and state. Cycle/module links and labels are handled separately by the caller.
 	MoveTask(ctx context.Context, arg MoveTaskParams) (MoveTaskRow, error)

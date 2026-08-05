@@ -224,6 +224,94 @@ func (q *Queries) CountWorkspaces(ctx context.Context) (int64, error) {
 	return count, err
 }
 
+const cyclesCreatedPerDay = `-- name: CyclesCreatedPerDay :many
+SELECT d::date AS day, COUNT(cy.id)::int AS count
+FROM generate_series(
+    $1::date,
+    $2::date,
+    INTERVAL '1 day'
+) d
+LEFT JOIN cycles cy
+    ON cy.created_at::date = d::date
+    AND cy.deleted_at IS NULL
+GROUP BY d
+ORDER BY d ASC
+`
+
+type CyclesCreatedPerDayParams struct {
+	FromDate pgtype.Date `json:"from_date"`
+	ToDate   pgtype.Date `json:"to_date"`
+}
+
+type CyclesCreatedPerDayRow struct {
+	Day   pgtype.Date `json:"day"`
+	Count int32       `json:"count"`
+}
+
+func (q *Queries) CyclesCreatedPerDay(ctx context.Context, arg CyclesCreatedPerDayParams) ([]CyclesCreatedPerDayRow, error) {
+	rows, err := q.db.Query(ctx, cyclesCreatedPerDay, arg.FromDate, arg.ToDate)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []CyclesCreatedPerDayRow{}
+	for rows.Next() {
+		var i CyclesCreatedPerDayRow
+		if err := rows.Scan(&i.Day, &i.Count); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const modulesCreatedPerDay = `-- name: ModulesCreatedPerDay :many
+SELECT d::date AS day, COUNT(m.id)::int AS count
+FROM generate_series(
+    $1::date,
+    $2::date,
+    INTERVAL '1 day'
+) d
+LEFT JOIN modules m
+    ON m.created_at::date = d::date
+    AND m.deleted_at IS NULL
+GROUP BY d
+ORDER BY d ASC
+`
+
+type ModulesCreatedPerDayParams struct {
+	FromDate pgtype.Date `json:"from_date"`
+	ToDate   pgtype.Date `json:"to_date"`
+}
+
+type ModulesCreatedPerDayRow struct {
+	Day   pgtype.Date `json:"day"`
+	Count int32       `json:"count"`
+}
+
+func (q *Queries) ModulesCreatedPerDay(ctx context.Context, arg ModulesCreatedPerDayParams) ([]ModulesCreatedPerDayRow, error) {
+	rows, err := q.db.Query(ctx, modulesCreatedPerDay, arg.FromDate, arg.ToDate)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ModulesCreatedPerDayRow{}
+	for rows.Next() {
+		var i ModulesCreatedPerDayRow
+		if err := rows.Scan(&i.Day, &i.Count); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const pagesCreatedPerDay = `-- name: PagesCreatedPerDay :many
 SELECT d::date AS day, COUNT(pg.id)::int AS count
 FROM generate_series(
