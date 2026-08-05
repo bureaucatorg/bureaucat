@@ -30,8 +30,8 @@ const props = withDefaults(
   { states: () => [], members: () => [], projectLabels: () => [], isMember: false }
 );
 
-// Bubbles up whenever a field changes so the parent subtask list can refresh
-// the affected row (state badge, title, avatars, ...).
+// Bubbles up whenever a field changes so the host list (subtasks, board, ...)
+// can refresh the affected row.
 const emit = defineEmits<{ updated: [] }>();
 
 const { getAuthHeader, user } = useAuth();
@@ -91,7 +91,7 @@ async function loadTask() {
     );
     if (!response.ok) {
       const body = await response.json().catch(() => ({}));
-      error.value = body.message || "Failed to load subtask";
+      error.value = body.message || "Failed to load task";
       return;
     }
     task.value = await response.json();
@@ -265,7 +265,7 @@ async function onRelationChanged() {
 // --- Comments ---
 // Managed locally (direct fetch), NOT via useComments(): that composable holds a
 // module-level shared comment list bound to the parent task's activity feed, so
-// loading/pushing the subtask's comments there would clobber the parent's feed.
+// loading/pushing this task's comments there would clobber the parent's feed.
 const comments = ref<Comment[]>([]);
 const commentsLoading = ref(false);
 const commentContent = ref("");

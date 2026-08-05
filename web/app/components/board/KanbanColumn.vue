@@ -1,16 +1,22 @@
 <script setup lang="ts">
-import type { Task } from "~/types";
+import type { Task, ProjectState, ProjectMember, ProjectLabel } from "~/types";
 
-const props = defineProps<{
-  columnId: string;
-  label: string;
-  color: string;
-  tasks: Task[];
-  projectKey: string;
-  isMember: boolean;
-  /** Disable drop target (e.g. due_bucket grouping, where moves are ambiguous). */
-  dropLocked?: boolean;
-}>();
+const props = withDefaults(
+  defineProps<{
+    columnId: string;
+    label: string;
+    color: string;
+    tasks: Task[];
+    projectKey: string;
+    isMember: boolean;
+    /** Disable drop target (e.g. due_bucket grouping, where moves are ambiguous). */
+    dropLocked?: boolean;
+    states?: ProjectState[];
+    members?: ProjectMember[];
+    labels?: ProjectLabel[];
+  }>(),
+  { states: () => [], members: () => [], labels: () => [] }
+);
 
 const emit = defineEmits<{
   /**
@@ -18,6 +24,7 @@ const emit = defineEmits<{
    * source column (may equal columnId — parent should noop in that case).
    */
   drop: [task: Task, fromColumnId: string, toColumnId: string];
+  refresh: [];
 }>();
 
 const isDragOver = ref(false);
@@ -82,8 +89,13 @@ function handleDragLeave() {
         :key="task.id + ':' + columnId"
         :task="task"
         :project-key="projectKey"
-        :is-member="isMember && !dropLocked"
+        :is-member="isMember"
+        :can-drag="isMember && !dropLocked"
         :column-id="columnId"
+        :states="states"
+        :members="members"
+        :labels="labels"
+        @refresh="emit('refresh')"
       />
     </div>
   </div>

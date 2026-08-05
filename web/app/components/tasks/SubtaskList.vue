@@ -160,7 +160,7 @@ function involvedPeople(subtask: Subtask) {
         :collision-padding="16"
         class="w-[48rem] max-w-[calc(100vw-2rem)] max-h-[min(75vh,var(--reka-popover-content-available-height))] overflow-y-auto shadow-lg"
       >
-        <SubtaskDetailCard
+        <TaskDetailCard
           v-if="openId === subtask.id"
           :project-key="projectKey"
           :task-number="subtask.task_number"

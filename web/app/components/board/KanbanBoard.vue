@@ -338,7 +338,11 @@ async function handleDrop(task: Task, fromColumnId: string, toColumnId: string) 
         :project-key="projectKey"
         :is-member="isMember"
         :drop-locked="column.dropLocked"
+        :states="states"
+        :members="members"
+        :labels="labels"
         @drop="handleDrop"
+        @refresh="emit('refresh')"
       />
     </div>
   </div>
