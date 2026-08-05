@@ -4,7 +4,9 @@ import tailwindcss from "@tailwindcss/vite";
 export default defineNuxtConfig({
   compatibilityDate: "2025-07-15",
   devtools: { enabled: true },
-  css: ["~/assets/css/tailwind.css"],
+  // vue-sonner v2 ships its toast styles separately; without this the toaster
+  // renders as unstyled text in the document flow.
+  css: ["~/assets/css/tailwind.css", "vue-sonner/style.css"],
 
   app: {
     head: {

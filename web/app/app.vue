@@ -12,6 +12,11 @@ const { isAuthenticated } = useAuth();
     <div :class="isAuthenticated && 'pl-12'">
       <NuxtPage />
     </div>
-    <Sonner position="bottom-right" :expand="true" rich-colors />
+    <Sonner
+      position="top-right"
+      :expand="true"
+      rich-colors
+      :toast-options="{ class: '[&_[data-title]]:break-words [&_[data-description]]:break-words' }"
+    />
   </div>
 </template>

@@ -14,13 +14,8 @@ export function usePendingAttachments() {
 
   async function addFiles(files: File[]) {
     if (!files.length) return;
-    const uploaded = await uploadFiles(files);
-    pending.value.push(...uploaded);
-
-    const failed = files.length - uploaded.length;
-    if (failed > 0) {
-      toast.error(`${failed} file${failed > 1 ? "s" : ""} failed to upload`);
-    }
+    // Per-file upload failures are reported by useFileAttach().
+    pending.value.push(...(await uploadFiles(files)));
   }
 
   function remove(uploadId: string) {
