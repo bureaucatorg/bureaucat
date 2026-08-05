@@ -12,6 +12,7 @@ import {
   Calendar as CalendarIcon,
   Clock,
   Link,
+  Paperclip,
   Circle,
   CircleDot,
   CheckCircle2,
@@ -677,7 +678,6 @@ onMounted(() => {
                 <!-- Task attachments -->
                 <FileDropZone
                   v-if="isMember"
-                  :show-button="false"
                   :uploading="descriptionUploading"
                   accept="*/*"
                   @files-dropped="handleDescriptionFilesDropped"
@@ -688,6 +688,20 @@ onMounted(() => {
                     :loading="taskAttachmentsLoading"
                     @delete="handleDeleteTaskAttachment"
                   />
+                  <!-- Without attachments the list renders nothing, leaving no
+                       drop target — so offer one. -->
+                  <template #button="{ openFilePicker }">
+                    <button
+                      v-if="!taskAttachments.length && !taskAttachmentsLoading"
+                      type="button"
+                      class="mt-2 flex w-full items-center justify-center gap-2 rounded-lg border border-dashed p-3 text-sm text-muted-foreground transition-colors hover:border-solid hover:bg-muted/50"
+                      @click="openFilePicker"
+                    >
+                      <Loader2 v-if="descriptionUploading" class="size-3.5 animate-spin" />
+                      <Paperclip v-else class="size-3.5" />
+                      Drop files here or click to attach
+                    </button>
+                  </template>
                 </FileDropZone>
                 <AttachmentList
                   v-else
