@@ -30,6 +30,15 @@ const {
 } = useProjects();
 
 const { createTask } = useTasks();
+// Files picked in the description toolbar before the task exists; linked to it
+// right after creation.
+const {
+  pending: pendingFiles,
+  uploading: attachmentsUploading,
+  addFiles: addPendingFiles,
+  remove: removePendingFile,
+  attachAll: attachPendingFiles,
+} = usePendingAttachments();
 
 const pageLoading = ref(true);
 const loading = ref(false);
@@ -101,6 +110,10 @@ async function handleSubmit() {
     assignees: form.value.assignees.length > 0 ? form.value.assignees : undefined,
     labels: form.value.labels.length > 0 ? form.value.labels : undefined,
   });
+
+  if (result.success && result.data) {
+    await attachPendingFiles(projectKey.value, result.data.task_number);
+  }
 
   loading.value = false;
 
@@ -287,7 +300,14 @@ onMounted(() => {
               <TiptapEditor
                 v-model="form.description"
                 :disabled="loading"
+                :uploading="attachmentsUploading"
                 :members="members"
+                @files-dropped="addPendingFiles"
+              />
+              <PendingAttachmentList
+                :files="pendingFiles"
+                :disabled="loading"
+                @remove="removePendingFile"
               />
             </div>
 

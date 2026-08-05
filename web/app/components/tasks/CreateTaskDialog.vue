@@ -53,6 +53,16 @@ const emit = defineEmits<{
 const { getAuthHeader } = useAuth();
 const { currentWorkspace } = useWorkspaces();
 const { createTask, listSubtaskCandidates, attachSubtasks } = useTasks();
+// Files picked in the description toolbar before the task exists; linked to it
+// right after creation.
+const {
+  pending: pendingFiles,
+  uploading: attachmentsUploading,
+  addFiles: addPendingFiles,
+  remove: removePendingFile,
+  clear: clearPendingFiles,
+  attachAll: attachPendingFiles,
+} = usePendingAttachments();
 const { listStates, listLabels, listMembers, listTemplates } = useProjects();
 
 // --- Project selection ---
@@ -134,6 +144,7 @@ function resetForm() {
   };
   selectedTemplateId.value = "";
   error.value = null;
+  clearPendingFiles();
 }
 
 async function loadProjectMeta(key: string) {
@@ -270,6 +281,10 @@ async function handleSubmit() {
     labels: form.value.labels.length > 0 ? form.value.labels : undefined,
     parent_task_number: props.parentTaskNumber,
   });
+
+  if (result.success && result.data) {
+    await attachPendingFiles(result.data.project_key, result.data.task_number);
+  }
 
   loading.value = false;
 
@@ -634,7 +649,14 @@ function removeLabel(labelId: string) {
             <TiptapEditor
               v-model="form.description"
               :disabled="loading"
+              :uploading="attachmentsUploading"
               :members="effMembers"
+              @files-dropped="addPendingFiles"
+            />
+            <PendingAttachmentList
+              :files="pendingFiles"
+              :disabled="loading"
+              @remove="removePendingFile"
             />
           </div>
 

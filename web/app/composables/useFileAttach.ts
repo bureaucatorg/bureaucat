@@ -1,4 +1,4 @@
-interface UploadedFile {
+export interface UploadedFile {
   uploadId: string;
   filename: string;
   mimeType: string;
