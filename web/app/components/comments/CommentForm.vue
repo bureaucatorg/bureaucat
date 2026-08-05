@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Send, Loader2, Paperclip, X, FileText } from "lucide-vue-next";
+import { Send, Loader2, X, FileText } from "lucide-vue-next";
 import { toast } from "vue-sonner";
 import type { ProjectMember } from "~/types";
 
@@ -20,7 +20,6 @@ const { user } = useAuth();
 
 const content = ref("");
 const loading = ref(false);
-const dropZoneRef = ref<InstanceType<typeof FileDropZone> | null>(null);
 
 // Tiptap emits `<p></p>` (and variants) for a visually-empty editor.
 // Strip tags and whitespace to test for genuine emptiness.
@@ -114,7 +113,6 @@ function handleKeyDown(event: KeyboardEvent) {
     </Avatar>
 
     <FileDropZone
-      ref="dropZoneRef"
       class="flex-1"
       :disabled="loading"
       :uploading="uploading"
@@ -166,24 +164,11 @@ function handleKeyDown(event: KeyboardEvent) {
               to submit
             </p>
           </div>
-          <div class="flex items-center gap-1">
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              :disabled="loading || uploading"
-              aria-label="Attach file"
-              @click="dropZoneRef?.openFilePicker()"
-            >
-              <Loader2 v-if="uploading" class="size-3.5 animate-spin" />
-              <Paperclip v-else class="size-3.5" />
-            </Button>
-            <Button type="submit" size="sm" :disabled="loading || uploading || (isContentEmpty && pendingUploads.length === 0)">
-              <Loader2 v-if="loading" class="mr-1.5 size-3.5 animate-spin" />
-              <Send v-else class="mr-1.5 size-3.5" />
-              Comment
-            </Button>
-          </div>
+          <Button type="submit" size="sm" :disabled="loading || uploading || (isContentEmpty && pendingUploads.length === 0)">
+            <Loader2 v-if="loading" class="mr-1.5 size-3.5 animate-spin" />
+            <Send v-else class="mr-1.5 size-3.5" />
+            Comment
+          </Button>
         </div>
       </form>
     </FileDropZone>
