@@ -18,4 +18,10 @@ WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download
 
+# Frontend deps: baked into the image so the empty `bureaucat-vue-node` named
+# volume (see docker-compose.yml) seeds from here on first run. This survives the
+# `./:/app` bind mount, which would otherwise hide /app/web/node_modules at runtime.
+COPY web/package.json web/bun.lock ./web/
+RUN cd web && bun install --frozen-lockfile
+
 CMD ["air", "-c", ".air.toml"]

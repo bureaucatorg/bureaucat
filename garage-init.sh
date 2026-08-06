@@ -1,106 +1,60 @@
 #!/bin/sh
 set -e
 
-GARAGE_ADMIN_TOKEN=$(cat ./garage/garage.toml| grep admin_token | awk -F" " '{print $NF}' | tr -d '"')
+# Provision Garage (cluster layout + bucket + access key) via the garage CLI
+# inside the container, and write the bucket credentials into .env. Uses
+# `docker exec`, so it works for BOTH the dev and prod stacks without needing the
+# admin HTTP port exposed.
 
-API="http://localhost:3903"
-AUTH="Authorization: Bearer ${GARAGE_ADMIN_TOKEN}"
-CT="Content-Type: application/json"
+CONTAINER="${GARAGE_CONTAINER:-bureaucat-garage}"
+BUCKET="${FILES_BUCKET_NAME:-bureaucat}"
+KEY_NAME=bureaucat-bucket-key
+ENV_FILE="./.env"
 
-# Bucket/key definitions
-BUREAUCAT_BUCKET=bureaucat
-BUREAUCAT_KEY_NAME=bureaucat-bucket-key
+g() { docker exec "$CONTAINER" /garage "$@" 2>/dev/null; }
 
-# Wait for API to be ready
-echo "Waiting for Garage admin API..."
-until curl -sf -H "$AUTH" "$API/v2/GetClusterHealth" > /dev/null 2>&1; do
-  sleep 2
-done
-echo "Garage API is up."
+echo "Waiting for Garage ($CONTAINER)..."
+until g status >/dev/null 2>&1; do sleep 2; done
 
-# 1. Get node ID from cluster status
-NODE_ID=$(curl -sf -H "$AUTH" "$API/v2/GetClusterStatus" | jq -r '.nodes[0].id')
-echo "Node ID: $NODE_ID"
-
-
-# 2. Check if layout already has this node
-if [ -z "$HAS_ROLE" ]; then
-  echo "Assigning layout..."
-  curl -sf -X POST -H "$AUTH" -H "$CT" \
-    -d "{\"roles\":[{\"id\":\"$NODE_ID\",\"zone\":\"dc1\",\"capacity\":1000000000,\"tags\":[]}]}" \
-    "$API/v2/UpdateClusterLayout" > /dev/null
-
-  CURRENT_VERSION=$(echo "$LAYOUT" | jq -r '.version')
-  NEXT_VERSION=$((CURRENT_VERSION + 1))
-
-  curl -sf -X POST -H "$AUTH" -H "$CT" \
-    -d "{\"version\":$NEXT_VERSION}" \
-    "$API/v2/ApplyClusterLayout" > /dev/null
-
-  echo "Layout applied (version $NEXT_VERSION). Waiting for cluster to be ready..."
-
-  # Wait until layout is fully active
-  until curl -sf -H "$AUTH" "$API/v2/GetClusterHealth" | jq -e '.status == "healthy"' > /dev/null 2>&1; do
-    sleep 2
-    echo "  ...still waiting for layout to propagate"
-  done
-  echo "Cluster is healthy."
-else
-  echo "Layout already configured, skipping."
+# 1. Assign a cluster layout if this node has no role yet.
+NODE_ID=$(g status | awk '/NO ROLE ASSIGNED/{print $1}' | head -n1)
+if [ -n "$NODE_ID" ]; then
+  echo "Assigning layout to node $NODE_ID..."
+  g layout assign "$NODE_ID" -z dc1 -c 1G >/dev/null
+  g layout apply --version 1 >/dev/null
+  # bucket/key ops fail with "Layout not ready" until the layout is live
+  until g bucket list >/dev/null 2>&1; do sleep 1; done
+  echo "Layout applied."
 fi
 
-# Helper: create a key if it doesn't exist, sets ACCESS_KEY_ID and SECRET_KEY
-create_key() {
-  local KEY_NAME="$1"
-  EXISTING_KEY=$(curl -sf -H "$AUTH" "$API/v2/ListKeys" | jq -r --arg name "$KEY_NAME" '.[] | select(.name == $name) | .id // empty')
+# 2. Create the bucket if it doesn't exist.
+if ! g bucket list | grep -qw "$BUCKET"; then
+  echo "Creating bucket '$BUCKET'..."
+  g bucket create "$BUCKET" >/dev/null
+fi
 
-  if [ -z "$EXISTING_KEY" ]; then
-    echo "Creating key '$KEY_NAME'..."
-    KEY_RESULT=$(curl -sf -X POST -H "$AUTH" -H "$CT" \
-      -d "{\"name\":\"$KEY_NAME\"}" \
-      "$API/v2/CreateKey")
+# 3. Create the access key if missing (Garage only reveals the secret at creation).
+SECRET_KEY=""
+if g key list | grep -qw "$KEY_NAME"; then
+  ACCESS_KEY_ID=$(g key list | awk -v n="$KEY_NAME" '$0 ~ n {print $1}' | head -n1)
+  echo "Key '$KEY_NAME' already exists ($ACCESS_KEY_ID)."
+else
+  echo "Creating key '$KEY_NAME'..."
+  KEY_OUT=$(g key create "$KEY_NAME")
+  ACCESS_KEY_ID=$(echo "$KEY_OUT" | awk -F': *' '/Key ID/{print $2}' | tr -d ' ')
+  SECRET_KEY=$(echo "$KEY_OUT"   | awk -F': *' '/Secret key/{print $2}' | tr -d ' ')
+fi
 
-    ACCESS_KEY_ID=$(echo "$KEY_RESULT" | jq -r '.accessKeyId')
-    SECRET_KEY=$(echo "$KEY_RESULT" | jq -r '.secretAccessKey')
+# 4. Grant the key read+write on the bucket (idempotent).
+g bucket allow --read --write "$BUCKET" --key "$KEY_NAME" >/dev/null
 
-    echo "============================================"
-    echo "[$KEY_NAME] ACCESS KEY ID:     $ACCESS_KEY_ID"
-    echo "[$KEY_NAME] SECRET ACCESS KEY: $SECRET_KEY"
-    echo "============================================"
-  else
-    ACCESS_KEY_ID="$EXISTING_KEY"
-    echo "Key '$KEY_NAME' already exists ($ACCESS_KEY_ID), skipping."
-  fi
-}
-
-# Helper: create a bucket if it doesn't exist and grant key access
-create_bucket() {
-  local BUCKET_NAME="$1"
-  local KEY_ID="$2"
-  EXISTING_BUCKET=$(curl -sf -H "$AUTH" "$API/v2/ListBuckets" | jq -r --arg name "$BUCKET_NAME" '.[] | select(.globalAliases[]? == $name) | .id // empty')
-
-  if [ -z "$EXISTING_BUCKET" ]; then
-    echo "Creating bucket '$BUCKET_NAME'..."
-    BUCKET_RESULT=$(curl -sf -X POST -H "$AUTH" -H "$CT" \
-      -d "{\"globalAlias\":\"$BUCKET_NAME\"}" \
-      "$API/v2/CreateBucket")
-
-    BUCKET_ID=$(echo "$BUCKET_RESULT" | jq -r '.id')
-
-    # Grant read/write access
-    curl -sf -X POST -H "$AUTH" -H "$CT" \
-      -d "{\"bucketId\":\"$BUCKET_ID\",\"accessKeyId\":\"$KEY_ID\",\"permissions\":{\"read\":true,\"write\":true,\"owner\":false}}" \
-      "$API/v2/AllowBucketKey" > /dev/null
-
-    echo "Bucket '$BUCKET_NAME' created and key granted access."
-  else
-    echo "Bucket '$BUCKET_NAME' already exists, skipping."
-  fi
-}
-
-# 3. Create BUREAUCAT key + bucket
-create_key "$BUREAUCAT_KEY_NAME"
-BUREAUCAT_ACCESS_KEY_ID="$ACCESS_KEY_ID"
-create_bucket "$BUREAUCAT_BUCKET" "$BUREAUCAT_ACCESS_KEY_ID"
+# 5. Wire the credentials into .env (only possible right after key creation).
+if [ -n "$SECRET_KEY" ] && [ -f "$ENV_FILE" ]; then
+  sed -i "s|^FILES_BUCKET_ACCESS_KEY_ID=.*|FILES_BUCKET_ACCESS_KEY_ID=${ACCESS_KEY_ID}|" "$ENV_FILE"
+  sed -i "s|^FILES_BUCKET_SECRET_ACCESS_KEY=.*|FILES_BUCKET_SECRET_ACCESS_KEY=${SECRET_KEY}|" "$ENV_FILE"
+  echo "Wrote bucket credentials into $ENV_FILE"
+elif [ -z "$SECRET_KEY" ]; then
+  echo "Key already existed; .env left unchanged (Garage reveals the secret only at creation)."
+fi
 
 echo "Garage init complete."
