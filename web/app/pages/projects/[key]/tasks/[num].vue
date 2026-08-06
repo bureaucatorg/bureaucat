@@ -821,6 +821,17 @@ onMounted(() => {
                   />
                 </div>
 
+                <!-- Modules -->
+                <div class="py-3">
+                  <TaskModules
+                    :project-key="projectKey"
+                    :task-id="currentTask.id"
+                    :modules="currentTask.modules || []"
+                    :can-edit="isAdmin && !isDisabled"
+                    @refresh="refreshTask"
+                  />
+                </div>
+
                 <!-- Start date -->
                 <div
                   class="py-3"

@@ -95,7 +95,7 @@ function formatRange(cycle: CycleSibling): string {
 
 <template>
   <div class="flex items-center justify-between gap-2">
-    <p class="text-xs text-muted-foreground">Cycle</p>
+    <p class="shrink-0 text-xs text-muted-foreground">Cycle</p>
 
     <div class="flex min-w-0 items-center gap-1">
       <!-- Separate from the picker trigger so the title stays aligned with the
@@ -113,7 +113,7 @@ function formatRange(cycle: CycleSibling): string {
         <DropdownMenuTrigger as-child>
           <Button
             variant="ghost"
-            class="h-auto min-w-0 gap-1.5 px-0 py-0 font-medium hover:bg-transparent"
+            class="h-auto min-w-0 shrink gap-1.5 px-0 py-0 font-medium hover:bg-transparent has-[>svg]:pl-0"
             :class="cycleId ? '' : 'text-muted-foreground'"
             :disabled="updating"
           >
@@ -163,7 +163,7 @@ function formatRange(cycle: CycleSibling): string {
       <NuxtLink
         v-else-if="cycleId"
         :to="`/projects/${projectKey}/cycles/${cycleId}`"
-        class="truncate text-sm font-medium hover:underline"
+        class="min-w-0 truncate text-sm font-medium hover:underline"
         :title="cycleTitle"
       >
         {{ cycleTitle }}

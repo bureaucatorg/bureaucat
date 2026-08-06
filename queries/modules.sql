@@ -222,6 +222,14 @@ WHERE mt.module_id = $1
   ))
 ORDER BY ps.position ASC, t.created_at DESC;
 
+-- name: ListTaskModules :many
+-- The modules a task belongs to (a task can be in more than one).
+SELECT m.id, m.title
+FROM module_tasks mt
+JOIN modules m ON mt.module_id = m.id AND m.deleted_at IS NULL
+WHERE mt.task_id = $1
+ORDER BY m.title ASC;
+
 -- name: ListModuleTaskIDs :many
 -- Used by the duplicate dialog to pre-populate the issues checklist.
 SELECT task_id FROM module_tasks WHERE module_id = $1;

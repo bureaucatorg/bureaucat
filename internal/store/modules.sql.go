@@ -845,6 +845,40 @@ func (q *Queries) ListProjectTasksNotInModule(ctx context.Context, arg ListProje
 	return items, nil
 }
 
+const listTaskModules = `-- name: ListTaskModules :many
+SELECT m.id, m.title
+FROM module_tasks mt
+JOIN modules m ON mt.module_id = m.id AND m.deleted_at IS NULL
+WHERE mt.task_id = $1
+ORDER BY m.title ASC
+`
+
+type ListTaskModulesRow struct {
+	ID    uuid.UUID `json:"id"`
+	Title string    `json:"title"`
+}
+
+// The modules a task belongs to (a task can be in more than one).
+func (q *Queries) ListTaskModules(ctx context.Context, taskID uuid.UUID) ([]ListTaskModulesRow, error) {
+	rows, err := q.db.Query(ctx, listTaskModules, taskID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListTaskModulesRow{}
+	for rows.Next() {
+		var i ListTaskModulesRow
+		if err := rows.Scan(&i.ID, &i.Title); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const removeModuleMember = `-- name: RemoveModuleMember :exec
 DELETE FROM module_members
 WHERE module_id = $1 AND user_id = $2

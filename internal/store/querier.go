@@ -235,6 +235,8 @@ type Querier interface {
 	ListTaskAssignees(ctx context.Context, taskID uuid.UUID) ([]ListTaskAssigneesRow, error)
 	ListTaskComments(ctx context.Context, taskID uuid.UUID) ([]ListTaskCommentsRow, error)
 	ListTaskLabels(ctx context.Context, taskID uuid.UUID) ([]ListTaskLabelsRow, error)
+	// The modules a task belongs to (a task can be in more than one).
+	ListTaskModules(ctx context.Context, taskID uuid.UUID) ([]ListTaskModulesRow, error)
 	// ==================== TASK PARTICIPANTS ====================
 	// Everyone involved with a task: its creator, current assignees, and anyone who
 	// has commented (non-deleted comments). Used to fan out notifications.

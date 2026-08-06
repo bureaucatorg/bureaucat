@@ -26,6 +26,7 @@ export interface Task {
   subtask_count?: number;
   cycle_id?: string;
   cycle_title?: string;
+  modules?: TaskModule[];
   created_at: string;
   updated_at: string;
 }
@@ -114,6 +115,12 @@ export interface TaskLabel {
   id: string;
   name: string;
   color: string;
+}
+
+// A module a task belongs to. Tasks can be in several modules at once.
+export interface TaskModule {
+  id: string;
+  title: string;
 }
 
 export interface CreateTaskRequest {

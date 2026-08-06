@@ -130,6 +130,7 @@ type TaskResponse struct {
 	SubtaskCount     int               `json:"subtask_count"`
 	CycleID          *uuid.UUID        `json:"cycle_id,omitempty"`
 	CycleTitle       *string           `json:"cycle_title,omitempty"`
+	Modules          []TaskModuleInfo  `json:"modules,omitempty"`
 	CreatedAt       time.Time          `json:"created_at"`
 	UpdatedAt       time.Time          `json:"updated_at"`
 }
@@ -143,6 +144,12 @@ type AssigneeResponse struct {
 	FirstName string    `json:"first_name"`
 	LastName  string    `json:"last_name"`
 	AvatarURL *string   `json:"avatar_url,omitempty"`
+}
+
+// TaskModuleInfo represents a module a task belongs to.
+type TaskModuleInfo struct {
+	ID    uuid.UUID `json:"id"`
+	Title string    `json:"title"`
 }
 
 // TaskLabelInfo represents a label on a task.
@@ -734,9 +741,23 @@ func (h *TaskHandler) GetTask(c *echo.Context) error {
 		SubtaskCount:     int(task.SubtaskCount),
 		CycleID:          cycleID,
 		CycleTitle:       cycleTitle,
+		Modules:          h.getTaskModules(ctx, task.ID),
 		CreatedAt:       task.CreatedAt.Time,
 		UpdatedAt:       task.UpdatedAt.Time,
 	})
+}
+
+// getTaskModules returns the modules a task belongs to (possibly several).
+func (h *TaskHandler) getTaskModules(ctx context.Context, taskID uuid.UUID) []TaskModuleInfo {
+	rows, err := h.store.ListTaskModules(ctx, taskID)
+	if err != nil {
+		return []TaskModuleInfo{}
+	}
+	modules := make([]TaskModuleInfo, len(rows))
+	for i, r := range rows {
+		modules[i] = TaskModuleInfo{ID: r.ID, Title: r.Title}
+	}
+	return modules
 }
 
 // getTaskCycle returns the cycle a task belongs to, if any. A task belongs to
