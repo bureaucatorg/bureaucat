@@ -3,12 +3,16 @@ import { ChevronDown, Loader2, ArrowUpRight, Check } from "lucide-vue-next";
 import { toast } from "vue-sonner";
 import type { Module, TaskModule } from "~/types";
 
-const props = defineProps<{
-  projectKey: string;
-  taskId: string;
-  modules: TaskModule[];
-  canEdit: boolean;
-}>();
+const props = withDefaults(
+  defineProps<{
+    projectKey: string;
+    taskId: string;
+    modules: TaskModule[];
+    canEdit: boolean;
+    dense?: boolean;
+  }>(),
+  { dense: false }
+);
 
 const emit = defineEmits<{
   refresh: [];
@@ -81,14 +85,14 @@ async function toggleModule(module: Module) {
           <Button
             variant="ghost"
             class="h-auto min-w-0 shrink gap-1.5 px-0 py-0 font-medium hover:bg-transparent has-[>svg]:pl-0"
-            :class="modules.length ? '' : 'text-muted-foreground'"
+            :class="[modules.length ? '' : 'text-muted-foreground', dense ? 'text-xs' : '']"
             :disabled="updating"
           >
             <Loader2 v-if="updating" class="size-3.5 animate-spin" />
             <span class="truncate" :title="modules.map((m) => m.title).join(', ')">
               {{ label }}
             </span>
-            <ChevronDown class="size-3.5 shrink-0 opacity-50" />
+            <ChevronDown class="shrink-0 opacity-50" :class="dense ? 'size-3' : 'size-3.5'" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" class="w-56">
@@ -121,7 +125,8 @@ async function toggleModule(module: Module) {
       <template v-else-if="modules.length">
         <NuxtLink
           :to="`/projects/${projectKey}/modules/${modules[0]!.id}`"
-          class="min-w-0 truncate text-sm font-medium hover:underline"
+          class="min-w-0 truncate font-medium hover:underline"
+          :class="dense ? 'text-xs' : 'text-sm'"
           :title="modules.map((m) => m.title).join(', ')"
         >
           {{ modules[0]!.title }}
@@ -130,7 +135,13 @@ async function toggleModule(module: Module) {
           +{{ modules.length - 1 }}
         </span>
       </template>
-      <span v-else-if="!canEdit" class="text-sm text-muted-foreground">None</span>
+      <span
+        v-else-if="!canEdit"
+        class="text-muted-foreground"
+        :class="dense ? 'text-xs' : 'text-sm'"
+      >
+        None
+      </span>
     </div>
   </div>
 </template>

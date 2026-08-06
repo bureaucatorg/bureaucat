@@ -37,6 +37,15 @@ const emit = defineEmits<{ updated: [] }>();
 
 const { getAuthHeader, user } = useAuth();
 const { updateTask } = useTasks();
+const { currentProject } = useProjects();
+
+// Cycle/module membership is admin-only, matching the task detail page.
+const canEditRelations = computed(
+  () =>
+    currentProject.value?.project_key === props.projectKey &&
+    currentProject.value?.role === "admin" &&
+    !currentProject.value?.disabled
+);
 
 const task = ref<Task | null>(null);
 const loading = ref(false);
@@ -612,6 +621,27 @@ onMounted(() => {
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
+
+          <!-- Cycle -->
+          <TaskCycle
+            :project-key="projectKey"
+            :task-id="task.id"
+            :cycle-id="task.cycle_id"
+            :cycle-title="task.cycle_title"
+            :can-edit="canEditRelations"
+            dense
+            @refresh="onRelationChanged"
+          />
+
+          <!-- Modules -->
+          <TaskModules
+            :project-key="projectKey"
+            :task-id="task.id"
+            :modules="task.modules || []"
+            :can-edit="canEditRelations"
+            dense
+            @refresh="onRelationChanged"
+          />
 
           <!-- Start date -->
           <div class="flex items-center justify-between gap-2">

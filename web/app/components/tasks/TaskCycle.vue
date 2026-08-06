@@ -3,13 +3,17 @@ import { ChevronDown, Loader2, ArrowUpRight, Check } from "lucide-vue-next";
 import { toast } from "vue-sonner";
 import type { CycleSibling } from "~/types";
 
-const props = defineProps<{
-  projectKey: string;
-  taskId: string;
-  cycleId?: string;
-  cycleTitle?: string;
-  canEdit: boolean;
-}>();
+const props = withDefaults(
+  defineProps<{
+    projectKey: string;
+    taskId: string;
+    cycleId?: string;
+    cycleTitle?: string;
+    canEdit: boolean;
+    dense?: boolean;
+  }>(),
+  { dense: false }
+);
 
 const emit = defineEmits<{
   refresh: [];
@@ -114,12 +118,12 @@ function formatRange(cycle: CycleSibling): string {
           <Button
             variant="ghost"
             class="h-auto min-w-0 shrink gap-1.5 px-0 py-0 font-medium hover:bg-transparent has-[>svg]:pl-0"
-            :class="cycleId ? '' : 'text-muted-foreground'"
+            :class="[cycleId ? '' : 'text-muted-foreground', dense ? 'text-xs' : '']"
             :disabled="updating"
           >
             <Loader2 v-if="updating" class="size-3.5 animate-spin" />
             <span class="truncate" :title="cycleTitle">{{ cycleTitle || "None" }}</span>
-            <ChevronDown class="size-3.5 shrink-0 opacity-50" />
+            <ChevronDown class="shrink-0 opacity-50" :class="dense ? 'size-3' : 'size-3.5'" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" class="w-56">
@@ -163,12 +167,13 @@ function formatRange(cycle: CycleSibling): string {
       <NuxtLink
         v-else-if="cycleId"
         :to="`/projects/${projectKey}/cycles/${cycleId}`"
-        class="min-w-0 truncate text-sm font-medium hover:underline"
+        class="min-w-0 truncate font-medium hover:underline"
+        :class="dense ? 'text-xs' : 'text-sm'"
         :title="cycleTitle"
       >
         {{ cycleTitle }}
       </NuxtLink>
-      <span v-else class="text-sm text-muted-foreground">None</span>
+      <span v-else class="text-muted-foreground" :class="dense ? 'text-xs' : 'text-sm'">None</span>
     </div>
   </div>
 </template>
