@@ -131,8 +131,18 @@ type TaskResponse struct {
 	CycleID          *uuid.UUID        `json:"cycle_id,omitempty"`
 	CycleTitle       *string           `json:"cycle_title,omitempty"`
 	Modules          []TaskModuleInfo  `json:"modules,omitempty"`
+	Followers        []FollowerResponse `json:"followers,omitempty"`
 	CreatedAt       time.Time          `json:"created_at"`
 	UpdatedAt       time.Time          `json:"updated_at"`
+}
+
+// FollowerResponse represents a user following a task.
+type FollowerResponse struct {
+	UserID    uuid.UUID `json:"user_id"`
+	Username  string    `json:"username"`
+	FirstName string    `json:"first_name"`
+	LastName  string    `json:"last_name"`
+	AvatarURL *string   `json:"avatar_url,omitempty"`
 }
 
 // AssigneeResponse represents a task assignee.
@@ -742,6 +752,7 @@ func (h *TaskHandler) GetTask(c *echo.Context) error {
 		CycleID:          cycleID,
 		CycleTitle:       cycleTitle,
 		Modules:          h.getTaskModules(ctx, task.ID),
+		Followers:        h.getTaskFollowers(ctx, task.ID),
 		CreatedAt:       task.CreatedAt.Time,
 		UpdatedAt:       task.UpdatedAt.Time,
 	})
@@ -1560,6 +1571,83 @@ func (h *TaskHandler) RemoveAssignee(c *echo.Context) error {
 	return c.JSON(http.StatusOK, map[string]string{"message": "assignee removed"})
 }
 
+// FollowTask subscribes the current user to a task's notifications.
+//
+//	@Summary		Follow task
+//	@Description	Follow a task to receive notifications on its activity.
+//	@Tags			Task Followers
+//	@Produce		json
+//	@Param			projectKey	path		string	true	"Project key"
+//	@Param			taskNum		path		int		true	"Task number"
+//	@Success		200			{object}	MessageResponse
+//	@Failure		400			{object}	ErrorResponse
+//	@Failure		404			{object}	ErrorResponse
+//	@Failure		500			{object}	ErrorResponse
+//	@Security		BearerAuth
+//	@Router			/projects/{projectKey}/tasks/{taskNum}/follow [post]
+func (h *TaskHandler) FollowTask(c *echo.Context) error {
+	return h.setFollowing(c, true)
+}
+
+// UnfollowTask unsubscribes the current user from a task's notifications.
+//
+//	@Summary		Unfollow task
+//	@Description	Stop following a task.
+//	@Tags			Task Followers
+//	@Produce		json
+//	@Param			projectKey	path		string	true	"Project key"
+//	@Param			taskNum		path		int		true	"Task number"
+//	@Success		200			{object}	MessageResponse
+//	@Failure		400			{object}	ErrorResponse
+//	@Failure		404			{object}	ErrorResponse
+//	@Failure		500			{object}	ErrorResponse
+//	@Security		BearerAuth
+//	@Router			/projects/{projectKey}/tasks/{taskNum}/follow [delete]
+func (h *TaskHandler) UnfollowTask(c *echo.Context) error {
+	return h.setFollowing(c, false)
+}
+
+func (h *TaskHandler) setFollowing(c *echo.Context, follow bool) error {
+	projectID, err := uuid.Parse(c.Request().Header.Get(auth.HeaderProjectID))
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "invalid project ID in context")
+	}
+
+	userID, err := uuid.Parse(c.Request().Header.Get(auth.HeaderUserID))
+	if err != nil {
+		return echo.NewHTTPError(http.StatusUnauthorized, "invalid user ID")
+	}
+
+	taskNum, err := strconv.Atoi(c.Param("taskNum"))
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid task number")
+	}
+
+	ctx := c.Request().Context()
+
+	task, err := h.store.GetTaskByProjectAndNumber(ctx, store.GetTaskByProjectAndNumberParams{
+		ProjectID:  projectID,
+		TaskNumber: int32(taskNum),
+	})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusNotFound, "task not found")
+	}
+
+	if follow {
+		err = h.store.FollowTask(ctx, store.FollowTaskParams{TaskID: task.ID, UserID: userID})
+	} else {
+		err = h.store.UnfollowTask(ctx, store.UnfollowTaskParams{TaskID: task.ID, UserID: userID})
+	}
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to update follow status")
+	}
+
+	if follow {
+		return c.JSON(http.StatusOK, map[string]string{"message": "task followed"})
+	}
+	return c.JSON(http.StatusOK, map[string]string{"message": "task unfollowed"})
+}
+
 // AddLabelRequest represents the request to add a label.
 type AddLabelRequest struct {
 	LabelID string `json:"label_id"`
@@ -2229,6 +2317,25 @@ func (h *TaskHandler) getTaskAssignees(ctx context.Context, taskID uuid.UUID) []
 			FirstName: a.FirstName,
 			LastName:  a.LastName,
 			AvatarURL: textToStringPtr(a.AvatarUrl),
+		}
+	}
+	return result
+}
+
+func (h *TaskHandler) getTaskFollowers(ctx context.Context, taskID uuid.UUID) []FollowerResponse {
+	followers, err := h.store.ListTaskFollowers(ctx, taskID)
+	if err != nil {
+		return []FollowerResponse{}
+	}
+
+	result := make([]FollowerResponse, len(followers))
+	for i, f := range followers {
+		result[i] = FollowerResponse{
+			UserID:    f.UserID,
+			Username:  f.Username,
+			FirstName: f.FirstName,
+			LastName:  f.LastName,
+			AvatarURL: textToStringPtr(f.AvatarUrl),
 		}
 	}
 	return result

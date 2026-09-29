@@ -730,6 +730,13 @@ onMounted(() => {
           @refresh="onRelationChanged"
         />
 
+        <TaskFollowers
+          :followers="task.followers || []"
+          :project-key="projectKey"
+          :task-num="taskNumber"
+          @refresh="onRelationChanged"
+        />
+
         <!-- Labels (editable) -->
         <TaskLabels
           :task-labels="task.labels || []"

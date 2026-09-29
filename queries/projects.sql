@@ -575,6 +575,25 @@ SELECT EXISTS (
     WHERE task_id = $1 AND user_id = $2
 ) AS is_assignee;
 
+-- ==================== TASK FOLLOWERS ====================
+
+-- name: FollowTask :exec
+INSERT INTO task_followers (task_id, user_id)
+VALUES ($1, $2)
+ON CONFLICT (task_id, user_id) DO NOTHING;
+
+-- name: UnfollowTask :exec
+DELETE FROM task_followers
+WHERE task_id = $1 AND user_id = $2;
+
+-- name: ListTaskFollowers :many
+SELECT tf.user_id, tf.followed_at,
+       u.username, u.first_name, u.last_name, u.avatar_url
+FROM task_followers tf
+JOIN users u ON tf.user_id = u.id
+WHERE tf.task_id = $1
+ORDER BY tf.followed_at ASC;
+
 -- ==================== TASK LABELS ====================
 
 -- name: AddTaskLabel :exec
@@ -764,8 +783,8 @@ ORDER BY activity_date ASC;
 -- ==================== TASK PARTICIPANTS ====================
 
 -- name: ListTaskParticipants :many
--- Everyone involved with a task: its creator, current assignees, and anyone who
--- has commented (non-deleted comments). Used to fan out notifications.
+-- Everyone involved with a task: its creator, current assignees, followers, and
+-- anyone who has commented (non-deleted comments). Used to fan out notifications.
 SELECT DISTINCT user_id FROM (
   SELECT t.created_by AS user_id
   FROM tasks t
@@ -776,6 +795,12 @@ SELECT DISTINCT user_id FROM (
   SELECT ta.user_id
   FROM task_assignees ta
   WHERE ta.task_id = sqlc.arg('task_id')
+
+  UNION
+
+  SELECT tf.user_id
+  FROM task_followers tf
+  WHERE tf.task_id = sqlc.arg('task_id')
 
   UNION
 

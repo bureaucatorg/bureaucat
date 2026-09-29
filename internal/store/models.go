@@ -507,6 +507,12 @@ type TaskAssignee struct {
 	AssignedBy uuid.UUID          `json:"assigned_by"`
 }
 
+type TaskFollower struct {
+	TaskID     uuid.UUID          `json:"task_id"`
+	UserID     uuid.UUID          `json:"user_id"`
+	FollowedAt pgtype.Timestamptz `json:"followed_at"`
+}
+
 type TaskLabel struct {
 	TaskID  uuid.UUID          `json:"task_id"`
 	LabelID uuid.UUID          `json:"label_id"`

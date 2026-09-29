@@ -627,6 +627,24 @@ func (q *Queries) DeleteTaskTemplate(ctx context.Context, id uuid.UUID) error {
 	return err
 }
 
+const followTask = `-- name: FollowTask :exec
+
+INSERT INTO task_followers (task_id, user_id)
+VALUES ($1, $2)
+ON CONFLICT (task_id, user_id) DO NOTHING
+`
+
+type FollowTaskParams struct {
+	TaskID uuid.UUID `json:"task_id"`
+	UserID uuid.UUID `json:"user_id"`
+}
+
+// ==================== TASK FOLLOWERS ====================
+func (q *Queries) FollowTask(ctx context.Context, arg FollowTaskParams) error {
+	_, err := q.db.Exec(ctx, followTask, arg.TaskID, arg.UserID)
+	return err
+}
+
 const getCommentByID = `-- name: GetCommentByID :one
 SELECT c.id, c.task_id, c.content, c.version, c.created_by, c.created_at, c.updated_at, c.deleted_at,
        u.username, u.first_name, u.last_name, u.avatar_url
@@ -2089,6 +2107,51 @@ func (q *Queries) ListTaskComments(ctx context.Context, taskID uuid.UUID) ([]Lis
 	return items, nil
 }
 
+const listTaskFollowers = `-- name: ListTaskFollowers :many
+SELECT tf.user_id, tf.followed_at,
+       u.username, u.first_name, u.last_name, u.avatar_url
+FROM task_followers tf
+JOIN users u ON tf.user_id = u.id
+WHERE tf.task_id = $1
+ORDER BY tf.followed_at ASC
+`
+
+type ListTaskFollowersRow struct {
+	UserID     uuid.UUID          `json:"user_id"`
+	FollowedAt pgtype.Timestamptz `json:"followed_at"`
+	Username   string             `json:"username"`
+	FirstName  string             `json:"first_name"`
+	LastName   string             `json:"last_name"`
+	AvatarUrl  pgtype.Text        `json:"avatar_url"`
+}
+
+func (q *Queries) ListTaskFollowers(ctx context.Context, taskID uuid.UUID) ([]ListTaskFollowersRow, error) {
+	rows, err := q.db.Query(ctx, listTaskFollowers, taskID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListTaskFollowersRow{}
+	for rows.Next() {
+		var i ListTaskFollowersRow
+		if err := rows.Scan(
+			&i.UserID,
+			&i.FollowedAt,
+			&i.Username,
+			&i.FirstName,
+			&i.LastName,
+			&i.AvatarUrl,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listTaskLabels = `-- name: ListTaskLabels :many
 SELECT tl.task_id, tl.label_id, tl.added_at, tl.added_by,
        pl.name, pl.color
@@ -2149,6 +2212,12 @@ SELECT DISTINCT user_id FROM (
 
   UNION
 
+  SELECT tf.user_id
+  FROM task_followers tf
+  WHERE tf.task_id = $1
+
+  UNION
+
   SELECT c.created_by AS user_id
   FROM comments c
   WHERE c.task_id = $1 AND c.deleted_at IS NULL
@@ -2156,8 +2225,8 @@ SELECT DISTINCT user_id FROM (
 `
 
 // ==================== TASK PARTICIPANTS ====================
-// Everyone involved with a task: its creator, current assignees, and anyone who
-// has commented (non-deleted comments). Used to fan out notifications.
+// Everyone involved with a task: its creator, current assignees, followers, and
+// anyone who has commented (non-deleted comments). Used to fan out notifications.
 func (q *Queries) ListTaskParticipants(ctx context.Context, taskID uuid.UUID) ([]uuid.UUID, error) {
 	rows, err := q.db.Query(ctx, listTaskParticipants, taskID)
 	if err != nil {
@@ -3066,6 +3135,21 @@ WHERE id = $1 AND deleted_at IS NULL
 
 func (q *Queries) SoftDeleteTask(ctx context.Context, id uuid.UUID) error {
 	_, err := q.db.Exec(ctx, softDeleteTask, id)
+	return err
+}
+
+const unfollowTask = `-- name: UnfollowTask :exec
+DELETE FROM task_followers
+WHERE task_id = $1 AND user_id = $2
+`
+
+type UnfollowTaskParams struct {
+	TaskID uuid.UUID `json:"task_id"`
+	UserID uuid.UUID `json:"user_id"`
+}
+
+func (q *Queries) UnfollowTask(ctx context.Context, arg UnfollowTaskParams) error {
+	_, err := q.db.Exec(ctx, unfollowTask, arg.TaskID, arg.UserID)
 	return err
 }
 

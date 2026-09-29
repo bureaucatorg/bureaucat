@@ -115,6 +115,8 @@ type Querier interface {
 	DeleteTaskTemplate(ctx context.Context, id uuid.UUID) error
 	DeleteUpload(ctx context.Context, id uuid.UUID) error
 	DeleteUserByID(ctx context.Context, id uuid.UUID) error
+	// ==================== TASK FOLLOWERS ====================
+	FollowTask(ctx context.Context, arg FollowTaskParams) error
 	GetCommentByID(ctx context.Context, id uuid.UUID) (GetCommentByIDRow, error)
 	GetCycleByID(ctx context.Context, id uuid.UUID) (GetCycleByIDRow, error)
 	GetCycleMetrics(ctx context.Context, cycleID uuid.UUID) (GetCycleMetricsRow, error)
@@ -234,12 +236,13 @@ type Querier interface {
 	ListTaskActivity(ctx context.Context, taskID uuid.UUID) ([]ListTaskActivityRow, error)
 	ListTaskAssignees(ctx context.Context, taskID uuid.UUID) ([]ListTaskAssigneesRow, error)
 	ListTaskComments(ctx context.Context, taskID uuid.UUID) ([]ListTaskCommentsRow, error)
+	ListTaskFollowers(ctx context.Context, taskID uuid.UUID) ([]ListTaskFollowersRow, error)
 	ListTaskLabels(ctx context.Context, taskID uuid.UUID) ([]ListTaskLabelsRow, error)
 	// The modules a task belongs to (a task can be in more than one).
 	ListTaskModules(ctx context.Context, taskID uuid.UUID) ([]ListTaskModulesRow, error)
 	// ==================== TASK PARTICIPANTS ====================
-	// Everyone involved with a task: its creator, current assignees, and anyone who
-	// has commented (non-deleted comments). Used to fan out notifications.
+	// Everyone involved with a task: its creator, current assignees, followers, and
+	// anyone who has commented (non-deleted comments). Used to fan out notifications.
 	ListTaskParticipants(ctx context.Context, taskID uuid.UUID) ([]uuid.UUID, error)
 	ListTaskTemplates(ctx context.Context, projectID uuid.UUID) ([]TaskTemplate, error)
 	ListTasksByAssignee(ctx context.Context, arg ListTasksByAssigneeParams) ([]ListTasksByAssigneeRow, error)
@@ -316,6 +319,7 @@ type Querier interface {
 	TopProjectsByTaskCount(ctx context.Context) ([]TopProjectsByTaskCountRow, error)
 	// When a member leaves a project, keep their shared views alive by reassigning ownership.
 	TransferOwnedSharedViews(ctx context.Context, arg TransferOwnedSharedViewsParams) error
+	UnfollowTask(ctx context.Context, arg UnfollowTaskParams) error
 	UpdateComment(ctx context.Context, arg UpdateCommentParams) (Comment, error)
 	UpdateCycle(ctx context.Context, arg UpdateCycleParams) (Cycle, error)
 	// `status` is passed as plain text; when empty string, no change. Avoids narg

@@ -246,6 +246,32 @@ export function useTasks() {
     }
   }
 
+  // Followers (current user only)
+  async function setFollowing(
+    projectKey: string,
+    taskNum: number,
+    follow: boolean
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      const response = await fetch(
+        `/api/v1/projects/${projectKey}/tasks/${taskNum}/follow`,
+        {
+          method: follow ? "POST" : "DELETE",
+          headers: getAuthHeader(),
+        }
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        return { success: false, error: error.message || "Failed to update follow status" };
+      }
+
+      return { success: true };
+    } catch {
+      return { success: false, error: "Network error" };
+    }
+  }
+
   // Assignees
   async function addAssignee(
     projectKey: string,
@@ -539,6 +565,9 @@ export function useTasks() {
     getTask,
     updateTask,
     deleteTask,
+
+    // Followers
+    setFollowing,
 
     // Assignees
     addAssignee,

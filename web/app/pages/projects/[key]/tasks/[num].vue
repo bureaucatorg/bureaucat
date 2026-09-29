@@ -962,6 +962,16 @@ onMounted(() => {
                   />
                 </div>
 
+                <!-- Followers -->
+                <div class="py-3">
+                  <TaskFollowers
+                    :followers="currentTask.followers || []"
+                    :project-key="projectKey"
+                    :task-num="taskNum"
+                    @refresh="refreshTask"
+                  />
+                </div>
+
                 <!-- Labels -->
                 <div class="py-3">
                   <TaskLabels

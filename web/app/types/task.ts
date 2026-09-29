@@ -27,6 +27,7 @@ export interface Task {
   cycle_id?: string;
   cycle_title?: string;
   modules?: TaskModule[];
+  followers?: TaskFollower[];
   created_at: string;
   updated_at: string;
 }
@@ -106,6 +107,14 @@ export interface TaskAssignee {
   user_id: string;
   username: string;
   email: string;
+  first_name: string;
+  last_name: string;
+  avatar_url?: string;
+}
+
+export interface TaskFollower {
+  user_id: string;
+  username: string;
   first_name: string;
   last_name: string;
   avatar_url?: string;
