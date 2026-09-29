@@ -259,6 +259,14 @@ type Querier interface {
 	ListWorkspaceMembers(ctx context.Context, workspaceID uuid.UUID) ([]ListWorkspaceMembersRow, error)
 	MarkAllNotificationsRead(ctx context.Context, recipientID uuid.UUID) error
 	MarkNotificationRead(ctx context.Context, arg MarkNotificationReadParams) error
+	MergeCopyModuleMembers(ctx context.Context, arg MergeCopyModuleMembersParams) (int64, error)
+	MergeCopyPrivateViews(ctx context.Context, arg MergeCopyPrivateViewsParams) (int64, error)
+	MergeCopyProjectMembers(ctx context.Context, arg MergeCopyProjectMembersParams) (int64, error)
+	MergeCopyTaskAssignees(ctx context.Context, arg MergeCopyTaskAssigneesParams) (int64, error)
+	// Admin "merge user": additively grants the target everything the source has.
+	// The source user is never modified and activity_log is never touched.
+	MergeCopyWorkspaceMembers(ctx context.Context, arg MergeCopyWorkspaceMembersParams) (int64, error)
+	MergeFollowSourceTasks(ctx context.Context, arg MergeFollowSourceTasksParams) (int64, error)
 	ModulesCreatedPerDay(ctx context.Context, arg ModulesCreatedPerDayParams) ([]ModulesCreatedPerDayRow, error)
 	// Move a task to a different project, assigning a new project-local task number
 	// and state. Cycle/module links and labels are handled separately by the caller.

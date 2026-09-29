@@ -16,6 +16,15 @@ interface PaginatedUsersResponse {
   total_pages: number;
 }
 
+export interface MergeUserResult {
+  workspaces: number;
+  projects: number;
+  assignments: number;
+  modules: number;
+  followed_tasks: number;
+  views: number;
+}
+
 interface TokenInfo {
   id: string;
   user_id: string;
@@ -325,6 +334,33 @@ export function useAdmin() {
     }
   }
 
+  async function mergeUser(sourceId: string, targetId: string): Promise<{
+    success: boolean;
+    data?: MergeUserResult;
+    error?: string;
+  }> {
+    try {
+      const response = await fetch(`/api/v1/admin/users/${sourceId}/merge`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...getAuthHeader(),
+        },
+        body: JSON.stringify({ target_user_id: targetId }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        return { success: false, error: error.message || "Failed to merge user" };
+      }
+
+      const data = await response.json();
+      return { success: true, data };
+    } catch {
+      return { success: false, error: "Network error" };
+    }
+  }
+
   async function getStats(from: string, to: string): Promise<{
     success: boolean;
     data?: AdminStats;
@@ -402,6 +438,7 @@ export function useAdmin() {
     deleteUser,
     updateUserRole,
     resetUserPassword,
+    mergeUser,
     listTokens,
     revokeToken,
     cleanupExpiredTokens,

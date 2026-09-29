@@ -108,7 +108,7 @@ func New(devMode bool, dbURL string, authConfig AuthConfig, distFS fs.FS) (*Serv
 	// Initialize handlers
 	if srv.store != nil {
 		srv.authHandler = handlers.NewAuthHandler(srv.store, srv.authManager, devMode)
-		srv.adminHandler = handlers.NewAdminHandler(srv.store, srv.authManager, devMode)
+		srv.adminHandler = handlers.NewAdminHandler(srv.store, srv.pool, srv.authManager, devMode)
 
 		// Initialize upload service (S3-backed)
 		maxUploadSize := int64(10 * 1024 * 1024) // 10MB default

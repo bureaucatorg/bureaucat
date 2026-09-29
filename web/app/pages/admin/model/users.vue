@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { Users, Plus, Trash2, Loader2, ChevronLeft, ChevronRight, Shield, ShieldOff, KeyRound, Search, X } from "lucide-vue-next";
+import { Users, Plus, Trash2, Loader2, ChevronLeft, ChevronRight, Shield, ShieldOff, KeyRound, Search, X, Merge, Check } from "lucide-vue-next";
+import type { MergeUserResult } from "~/composables/useAdmin";
 
 definePageMeta({
   middleware: ["admin"],
@@ -7,7 +8,7 @@ definePageMeta({
 
 useSeoMeta({ title: "Manage Users" });
 
-const { listUsers, createUser, deleteUser, updateUserRole, resetUserPassword } = useAdmin();
+const { listUsers, createUser, deleteUser, updateUserRole, resetUserPassword, mergeUser } = useAdmin();
 
 interface User {
   id: string;
@@ -59,6 +60,17 @@ const passwordLoading = ref(false);
 const passwordError = ref<string | null>(null);
 const userToResetPassword = ref<User | null>(null);
 const newPassword = ref("");
+
+// Merge dialog state
+const showMergeDialog = ref(false);
+const mergeLoading = ref(false);
+const mergeError = ref<string | null>(null);
+const mergeSource = ref<User | null>(null);
+const mergeTarget = ref<User | null>(null);
+const mergeQuery = ref("");
+const mergeCandidates = ref<User[]>([]);
+const mergeResult = ref<MergeUserResult | null>(null);
+let mergeSearchDebounce: ReturnType<typeof setTimeout> | null = null;
 
 async function fetchUsers() {
   loading.value = true;
@@ -169,6 +181,45 @@ async function handleResetPassword() {
   }
 }
 
+function openMerge(user: User) {
+  mergeSource.value = user;
+  mergeTarget.value = null;
+  mergeQuery.value = "";
+  mergeCandidates.value = [];
+  mergeResult.value = null;
+  mergeError.value = null;
+  showMergeDialog.value = true;
+}
+
+function onMergeSearchInput() {
+  if (mergeSearchDebounce) clearTimeout(mergeSearchDebounce);
+  mergeSearchDebounce = setTimeout(async () => {
+    if (!mergeQuery.value.trim()) {
+      mergeCandidates.value = [];
+      return;
+    }
+    const result = await listUsers(1, 10, mergeQuery.value);
+    if (result.success && result.data) {
+      mergeCandidates.value = (result.data.users || []).filter((u) => u.id !== mergeSource.value?.id);
+    }
+  }, 300);
+}
+
+async function handleMerge() {
+  if (!mergeSource.value || !mergeTarget.value) return;
+
+  mergeLoading.value = true;
+  mergeError.value = null;
+  const result = await mergeUser(mergeSource.value.id, mergeTarget.value.id);
+  mergeLoading.value = false;
+
+  if (result.success && result.data) {
+    mergeResult.value = result.data;
+  } else {
+    mergeError.value = result.error || "Failed to merge user";
+  }
+}
+
 function formatDate(dateStr: string) {
   return new Date(dateStr).toLocaleDateString("en-US", {
     year: "numeric",
@@ -266,7 +317,7 @@ onMounted(() => {
                   <TableHead>Name</TableHead>
                   <TableHead>Type</TableHead>
                   <TableHead>Created</TableHead>
-                  <TableHead class="w-[100px]">Actions</TableHead>
+                  <TableHead class="w-[140px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -310,6 +361,15 @@ onMounted(() => {
                         @click="openPasswordReset(user)"
                       >
                         <KeyRound class="size-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label="Merge into another user"
+                        title="Merge into another user"
+                        @click="openMerge(user)"
+                      >
+                        <Merge class="size-4" />
                       </Button>
                       <Button
                         variant="ghost"
@@ -461,6 +521,84 @@ onMounted(() => {
                 </Button>
               </DialogFooter>
             </form>
+          </DialogContent>
+        </Dialog>
+
+        <!-- Merge User Dialog -->
+        <Dialog v-model:open="showMergeDialog">
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Merge User</DialogTitle>
+              <DialogDescription>
+                Give another user everything "{{ mergeSource?.username }}" has: workspaces, projects
+                (higher role wins), task assignments, modules and private views. They will also follow
+                tasks "{{ mergeSource?.username }}" created, follows or commented on.
+                "{{ mergeSource?.username }}" is left unchanged. No notifications are sent.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div v-if="mergeResult" class="space-y-2 text-sm">
+              <p class="font-medium">
+                Merged "{{ mergeSource?.username }}" into "{{ mergeTarget?.username }}".
+              </p>
+              <ul class="space-y-1 text-muted-foreground">
+                <li>Workspaces added: {{ mergeResult.workspaces }}</li>
+                <li>Projects added or upgraded: {{ mergeResult.projects }}</li>
+                <li>Task assignments added: {{ mergeResult.assignments }}</li>
+                <li>Modules added: {{ mergeResult.modules }}</li>
+                <li>Tasks followed: {{ mergeResult.followed_tasks }}</li>
+                <li>Views copied: {{ mergeResult.views }}</li>
+              </ul>
+            </div>
+
+            <div v-else class="space-y-3">
+              <div v-if="mergeError" role="alert" class="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+                {{ mergeError }}
+              </div>
+              <div class="space-y-2">
+                <Label for="merge_target">Merge into</Label>
+                <Input
+                  id="merge_target"
+                  v-model="mergeQuery"
+                  placeholder="Search by username, email, or name..."
+                  autocomplete="off"
+                  :disabled="mergeLoading"
+                  @input="onMergeSearchInput"
+                />
+              </div>
+              <div v-if="mergeCandidates.length" class="max-h-56 overflow-y-auto rounded-md border">
+                <button
+                  v-for="candidate in mergeCandidates"
+                  :key="candidate.id"
+                  type="button"
+                  class="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm hover:bg-accent focus-visible:bg-accent outline-none"
+                  :aria-pressed="mergeTarget?.id === candidate.id"
+                  @click="mergeTarget = candidate"
+                >
+                  <span class="min-w-0 truncate">
+                    <span class="font-medium">{{ candidate.username }}</span>
+                    <span class="text-muted-foreground"> · {{ candidate.email }}</span>
+                  </span>
+                  <Check v-if="mergeTarget?.id === candidate.id" class="size-4 shrink-0" />
+                </button>
+              </div>
+              <p v-else-if="mergeQuery.trim()" class="text-sm text-muted-foreground">No matching users</p>
+            </div>
+
+            <DialogFooter>
+              <template v-if="mergeResult">
+                <Button @click="showMergeDialog = false">Done</Button>
+              </template>
+              <template v-else>
+                <Button variant="outline" @click="showMergeDialog = false" :disabled="mergeLoading">
+                  Cancel
+                </Button>
+                <Button :disabled="mergeLoading || !mergeTarget" @click="handleMerge">
+                  <Loader2 v-if="mergeLoading" class="mr-2 size-4 animate-spin" />
+                  {{ mergeTarget ? `Merge into ${mergeTarget.username}` : 'Merge' }}
+                </Button>
+              </template>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
 

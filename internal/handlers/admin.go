@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/labstack/echo/v5"
 
 	"bereaucat/internal/auth"
@@ -33,14 +34,16 @@ type CleanupResponse struct {
 // AdminHandler handles admin-only endpoints.
 type AdminHandler struct {
 	store       store.Querier
+	pool        *pgxpool.Pool
 	authManager *auth.Manager
 	devMode     bool
 }
 
 // NewAdminHandler creates a new admin handler.
-func NewAdminHandler(store store.Querier, authManager *auth.Manager, devMode bool) *AdminHandler {
+func NewAdminHandler(store store.Querier, pool *pgxpool.Pool, authManager *auth.Manager, devMode bool) *AdminHandler {
 	return &AdminHandler{
 		store:       store,
+		pool:        pool,
 		authManager: authManager,
 		devMode:     devMode,
 	}
@@ -974,4 +977,103 @@ func (h *AdminHandler) RestoreProject(c *echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, MessageResponse{Message: "project restored"})
+}
+
+// MergeUserRequest is the body for POST /admin/users/:id/merge.
+type MergeUserRequest struct {
+	TargetUserID uuid.UUID `json:"target_user_id"`
+}
+
+// MergeUserResponse reports how many rows were copied to the target user.
+type MergeUserResponse struct {
+	Workspaces   int64 `json:"workspaces"`
+	Projects     int64 `json:"projects"`
+	Assignments  int64 `json:"assignments"`
+	Modules      int64 `json:"modules"`
+	FollowedTasks int64 `json:"followed_tasks"`
+	Views        int64 `json:"views"`
+}
+
+// MergeUser grants the target user everything the source user (:id) has.
+//
+//	@Summary		Merge user
+//	@Description	Additively copies the source user's workspace/project/module memberships, task assignments and private views to the target user, and makes the target follow tasks the source created, follows, or commented on. The source user is left unchanged.
+//	@Tags			Admin - Users
+//	@Accept			json
+//	@Produce		json
+//	@Param			id		path		string				true	"Source user ID"
+//	@Param			body	body		MergeUserRequest	true	"Target user"
+//	@Success		200		{object}	MergeUserResponse
+//	@Failure		400		{object}	ErrorResponse
+//	@Failure		404		{object}	ErrorResponse
+//	@Failure		500		{object}	ErrorResponse
+//	@Security		BearerAuth
+//	@Router			/admin/users/{id}/merge [post]
+func (h *AdminHandler) MergeUser(c *echo.Context) error {
+	sourceID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid user ID")
+	}
+
+	var req MergeUserRequest
+	if err := c.Bind(&req); err != nil || req.TargetUserID == uuid.Nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "target_user_id is required")
+	}
+	if req.TargetUserID == sourceID {
+		return echo.NewHTTPError(http.StatusBadRequest, "cannot merge a user into themselves")
+	}
+
+	ctx := c.Request().Context()
+
+	if _, err := h.store.GetUserByID(ctx, sourceID); err != nil {
+		return echo.NewHTTPError(http.StatusNotFound, "source user not found")
+	}
+	if _, err := h.store.GetUserByID(ctx, req.TargetUserID); err != nil {
+		return echo.NewHTTPError(http.StatusNotFound, "target user not found")
+	}
+
+	tx, err := h.pool.Begin(ctx)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to merge user")
+	}
+	defer tx.Rollback(ctx)
+	q := store.New(tx)
+
+	var resp MergeUserResponse
+	steps := []struct {
+		count *int64
+		run   func() (int64, error)
+	}{
+		{&resp.Workspaces, func() (int64, error) {
+			return q.MergeCopyWorkspaceMembers(ctx, store.MergeCopyWorkspaceMembersParams{TargetID: req.TargetUserID, SourceID: sourceID})
+		}},
+		{&resp.Projects, func() (int64, error) {
+			return q.MergeCopyProjectMembers(ctx, store.MergeCopyProjectMembersParams{TargetID: req.TargetUserID, SourceID: sourceID})
+		}},
+		{&resp.Assignments, func() (int64, error) {
+			return q.MergeCopyTaskAssignees(ctx, store.MergeCopyTaskAssigneesParams{TargetID: req.TargetUserID, SourceID: sourceID})
+		}},
+		{&resp.Modules, func() (int64, error) {
+			return q.MergeCopyModuleMembers(ctx, store.MergeCopyModuleMembersParams{TargetID: req.TargetUserID, SourceID: sourceID})
+		}},
+		{&resp.FollowedTasks, func() (int64, error) {
+			return q.MergeFollowSourceTasks(ctx, store.MergeFollowSourceTasksParams{TargetID: req.TargetUserID, SourceID: sourceID})
+		}},
+		{&resp.Views, func() (int64, error) {
+			return q.MergeCopyPrivateViews(ctx, store.MergeCopyPrivateViewsParams{TargetID: req.TargetUserID, SourceID: sourceID})
+		}},
+	}
+	for _, step := range steps {
+		n, err := step.run()
+		if err != nil {
+			return echo.NewHTTPError(http.StatusInternalServerError, "failed to merge user")
+		}
+		*step.count = n
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to merge user")
+	}
+
+	return c.JSON(http.StatusOK, resp)
 }
