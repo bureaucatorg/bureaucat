@@ -861,6 +861,103 @@ func (h *AdminHandler) GetStats(c *echo.Context) error {
 	return c.JSON(http.StatusOK, resp)
 }
 
+// GraphUser is a user node in the admin task graph.
+type GraphUser struct {
+	ID        string  `json:"id"`
+	Username  string  `json:"username"`
+	Email     string  `json:"email"`
+	FirstName string  `json:"first_name"`
+	LastName  string  `json:"last_name"`
+	AvatarURL *string `json:"avatar_url,omitempty"`
+}
+
+// GraphTask is a task node in the admin task graph.
+type GraphTask struct {
+	ID            string  `json:"id"`
+	ProjectKey    string  `json:"project_key"`
+	ProjectName   string  `json:"project_name"`
+	TaskNumber    int32   `json:"task_number"`
+	Title         string  `json:"title"`
+	IsSubtask     bool    `json:"is_subtask"`
+	WorkspaceID   string  `json:"workspace_id"`
+	WorkspaceKey  string  `json:"workspace_key"`
+	WorkspaceName string  `json:"workspace_name"`
+	StateName     string  `json:"state_name"`
+	StateType     string  `json:"state_type"`
+	StateColor    *string `json:"state_color,omitempty"`
+}
+
+// GraphEdge links a user to a task they are assigned to.
+type GraphEdge struct {
+	UserID string `json:"user_id"`
+	TaskID string `json:"task_id"`
+}
+
+// TaskGraphResponse is the payload for the admin graph view.
+type TaskGraphResponse struct {
+	Users []GraphUser `json:"users"`
+	Tasks []GraphTask `json:"tasks"`
+	Edges []GraphEdge `json:"edges"`
+}
+
+// GetTaskGraph returns users and the tasks they are assigned to.
+//
+//	@Summary		Get admin task graph
+//	@Description	Returns user and task nodes with assignment edges for the admin graph view.
+//	@Tags			Admin - Stats
+//	@Produce		json
+//	@Success		200	{object}	TaskGraphResponse
+//	@Failure		500	{object}	ErrorResponse
+//	@Security		BearerAuth
+//	@Router			/admin/graph [get]
+func (h *AdminHandler) GetTaskGraph(c *echo.Context) error {
+	rows, err := h.store.ListTaskAssignmentsForGraph(c.Request().Context())
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to load task graph")
+	}
+
+	resp := TaskGraphResponse{Users: []GraphUser{}, Tasks: []GraphTask{}, Edges: []GraphEdge{}}
+	seenUsers := make(map[string]bool)
+	seenTasks := make(map[string]bool)
+
+	for _, r := range rows {
+		userID := r.UserID.String()
+		taskID := r.TaskID.String()
+
+		if !seenUsers[userID] {
+			seenUsers[userID] = true
+			resp.Users = append(resp.Users, GraphUser{
+				ID:        userID,
+				Username:  r.Username,
+				Email:     r.Email,
+				FirstName: r.FirstName,
+				LastName:  r.LastName,
+				AvatarURL: textToStringPtr(r.AvatarUrl),
+			})
+		}
+		if !seenTasks[taskID] {
+			seenTasks[taskID] = true
+			resp.Tasks = append(resp.Tasks, GraphTask{
+				ID:            taskID,
+				ProjectKey:    r.ProjectKey,
+				ProjectName:   r.ProjectName,
+				TaskNumber:    r.TaskNumber,
+				Title:         r.Title,
+				IsSubtask:     r.IsSubtask,
+				WorkspaceID:   r.WorkspaceID.String(),
+				WorkspaceKey:  r.WorkspaceKey,
+				WorkspaceName: r.WorkspaceName,
+				StateName:     r.StateName,
+				StateType:     r.StateType,
+				StateColor:    textToStringPtr(r.StateColor),
+			})
+		}
+		resp.Edges = append(resp.Edges, GraphEdge{UserID: userID, TaskID: taskID})
+	}
+
+	return c.JSON(http.StatusOK, resp)
+}
+
 // DeletedProjectResponse represents a soft-deleted project in admin responses.
 type DeletedProjectResponse struct {
 	ID              uuid.UUID `json:"id"`

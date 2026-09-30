@@ -235,6 +235,7 @@ type Querier interface {
 	ListSubtasks(ctx context.Context, parentID uuid.UUID) ([]ListSubtasksRow, error)
 	ListTaskActivity(ctx context.Context, taskID uuid.UUID) ([]ListTaskActivityRow, error)
 	ListTaskAssignees(ctx context.Context, taskID uuid.UUID) ([]ListTaskAssigneesRow, error)
+	ListTaskAssignmentsForGraph(ctx context.Context) ([]ListTaskAssignmentsForGraphRow, error)
 	ListTaskComments(ctx context.Context, taskID uuid.UUID) ([]ListTaskCommentsRow, error)
 	ListTaskFollowers(ctx context.Context, taskID uuid.UUID) ([]ListTaskFollowersRow, error)
 	ListTaskLabels(ctx context.Context, taskID uuid.UUID) ([]ListTaskLabelsRow, error)

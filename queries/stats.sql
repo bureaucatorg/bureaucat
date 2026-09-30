@@ -175,3 +175,21 @@ LEFT JOIN modules m
     AND m.deleted_at IS NULL
 GROUP BY d
 ORDER BY d ASC;
+
+-- name: ListTaskAssignmentsForGraph :many
+SELECT t.id AS task_id, t.task_number, t.title,
+       (t.parent_task_id IS NOT NULL)::boolean AS is_subtask,
+       p.project_key, p.name AS project_name,
+       w.id AS workspace_id, w.workspace_key, w.name AS workspace_name,
+       ps.name AS state_name, ps.state_type, ps.color AS state_color,
+       u.id AS user_id, u.username, u.email, u.first_name, u.last_name, u.avatar_url
+FROM tasks t
+JOIN projects p ON t.project_id = p.id
+JOIN workspaces w ON p.workspace_id = w.id
+JOIN project_states ps ON t.state_id = ps.id
+JOIN task_assignees ta ON ta.task_id = t.id
+JOIN users u ON ta.user_id = u.id
+WHERE t.deleted_at IS NULL
+  AND p.deleted_at IS NULL
+  AND w.deleted_at IS NULL
+ORDER BY p.project_key ASC, t.task_number ASC;

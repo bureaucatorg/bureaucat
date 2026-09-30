@@ -101,6 +101,41 @@ export interface AdminStats {
   };
 }
 
+export interface GraphUser {
+  id: string;
+  username: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  avatar_url?: string;
+}
+
+export interface GraphTask {
+  id: string;
+  project_key: string;
+  project_name: string;
+  task_number: number;
+  title: string;
+  is_subtask: boolean;
+  workspace_id: string;
+  workspace_key: string;
+  workspace_name: string;
+  state_name: string;
+  state_type: string;
+  state_color?: string;
+}
+
+export interface GraphEdge {
+  user_id: string;
+  task_id: string;
+}
+
+export interface TaskGraph {
+  users: GraphUser[];
+  tasks: GraphTask[];
+  edges: GraphEdge[];
+}
+
 interface CreateUserData {
   username: string;
   email: string;
@@ -431,8 +466,23 @@ export function useAdmin() {
     }
   }
 
+  async function getTaskGraph(): Promise<{ success: boolean; data?: TaskGraph; error?: string; }> {
+    try {
+      const response = await fetch("/api/v1/admin/graph", { headers: getAuthHeader() });
+      if (!response.ok) {
+        const error = await response.json();
+        return { success: false, error: error.message || "Failed to fetch graph" };
+      }
+      const data = await response.json();
+      return { success: true, data };
+    } catch {
+      return { success: false, error: "Network error" };
+    }
+  }
+
   return {
     getStats,
+    getTaskGraph,
     listUsers,
     createUser,
     deleteUser,

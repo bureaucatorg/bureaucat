@@ -268,6 +268,85 @@ func (q *Queries) CyclesCreatedPerDay(ctx context.Context, arg CyclesCreatedPerD
 	return items, nil
 }
 
+const listTaskAssignmentsForGraph = `-- name: ListTaskAssignmentsForGraph :many
+SELECT t.id AS task_id, t.task_number, t.title,
+       (t.parent_task_id IS NOT NULL)::boolean AS is_subtask,
+       p.project_key, p.name AS project_name,
+       w.id AS workspace_id, w.workspace_key, w.name AS workspace_name,
+       ps.name AS state_name, ps.state_type, ps.color AS state_color,
+       u.id AS user_id, u.username, u.email, u.first_name, u.last_name, u.avatar_url
+FROM tasks t
+JOIN projects p ON t.project_id = p.id
+JOIN workspaces w ON p.workspace_id = w.id
+JOIN project_states ps ON t.state_id = ps.id
+JOIN task_assignees ta ON ta.task_id = t.id
+JOIN users u ON ta.user_id = u.id
+WHERE t.deleted_at IS NULL
+  AND p.deleted_at IS NULL
+  AND w.deleted_at IS NULL
+ORDER BY p.project_key ASC, t.task_number ASC
+`
+
+type ListTaskAssignmentsForGraphRow struct {
+	TaskID        uuid.UUID   `json:"task_id"`
+	TaskNumber    int32       `json:"task_number"`
+	Title         string      `json:"title"`
+	IsSubtask     bool        `json:"is_subtask"`
+	ProjectKey    string      `json:"project_key"`
+	ProjectName   string      `json:"project_name"`
+	WorkspaceID   uuid.UUID   `json:"workspace_id"`
+	WorkspaceKey  string      `json:"workspace_key"`
+	WorkspaceName string      `json:"workspace_name"`
+	StateName     string      `json:"state_name"`
+	StateType     string      `json:"state_type"`
+	StateColor    pgtype.Text `json:"state_color"`
+	UserID        uuid.UUID   `json:"user_id"`
+	Username      string      `json:"username"`
+	Email         string      `json:"email"`
+	FirstName     string      `json:"first_name"`
+	LastName      string      `json:"last_name"`
+	AvatarUrl     pgtype.Text `json:"avatar_url"`
+}
+
+func (q *Queries) ListTaskAssignmentsForGraph(ctx context.Context) ([]ListTaskAssignmentsForGraphRow, error) {
+	rows, err := q.db.Query(ctx, listTaskAssignmentsForGraph)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListTaskAssignmentsForGraphRow{}
+	for rows.Next() {
+		var i ListTaskAssignmentsForGraphRow
+		if err := rows.Scan(
+			&i.TaskID,
+			&i.TaskNumber,
+			&i.Title,
+			&i.IsSubtask,
+			&i.ProjectKey,
+			&i.ProjectName,
+			&i.WorkspaceID,
+			&i.WorkspaceKey,
+			&i.WorkspaceName,
+			&i.StateName,
+			&i.StateType,
+			&i.StateColor,
+			&i.UserID,
+			&i.Username,
+			&i.Email,
+			&i.FirstName,
+			&i.LastName,
+			&i.AvatarUrl,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const modulesCreatedPerDay = `-- name: ModulesCreatedPerDay :many
 SELECT d::date AS day, COUNT(m.id)::int AS count
 FROM generate_series(

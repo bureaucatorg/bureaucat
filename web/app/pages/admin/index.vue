@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Users, Key, Shield, ArrowRight, Loader2, Upload, CheckCircle2, Copy, Check, MessageSquare, MessageCircle, UserPlus, BarChart3, Trash2 } from "lucide-vue-next";
+import { Users, Key, Shield, ArrowRight, Loader2, Upload, CheckCircle2, Copy, Check, MessageSquare, MessageCircle, UserPlus, BarChart3, Trash2, Network } from "lucide-vue-next";
 import { toast } from "vue-sonner";
 import type { SSOSettings, MattermostSettings } from "~/composables/useSettings";
 
@@ -273,6 +273,14 @@ const adminModels = [
     href: "/admin/stats",
     color: "text-green-500",
     bgColor: "bg-green-500/10",
+  },
+  {
+    title: "Graph View",
+    description: "Visualize tasks and the users assigned to them",
+    icon: Network,
+    href: "/admin/graph",
+    color: "text-purple-500",
+    bgColor: "bg-purple-500/10",
   },
   {
     title: "Deleted Projects",
