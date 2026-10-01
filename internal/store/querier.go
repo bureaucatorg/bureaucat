@@ -192,6 +192,9 @@ type Querier interface {
 	ListCycleAssignees(ctx context.Context, cycleID uuid.UUID) ([]ListCycleAssigneesRow, error)
 	ListCycleTasks(ctx context.Context, arg ListCycleTasksParams) ([]ListCycleTasksRow, error)
 	ListDeletedProjects(ctx context.Context, arg ListDeletedProjectsParams) ([]ListDeletedProjectsRow, error)
+	ListGraphProjectOptions(ctx context.Context) ([]ListGraphProjectOptionsRow, error)
+	ListGraphUserOptions(ctx context.Context) ([]ListGraphUserOptionsRow, error)
+	ListGraphWorkspaceOptions(ctx context.Context) ([]ListGraphWorkspaceOptionsRow, error)
 	ListLabelsForTasks(ctx context.Context, taskIds []uuid.UUID) ([]ListLabelsForTasksRow, error)
 	ListModuleMembers(ctx context.Context, moduleID uuid.UUID) ([]ListModuleMembersRow, error)
 	// Used for hydrating the list view with member avatars. Returns up to 4 members
@@ -235,7 +238,7 @@ type Querier interface {
 	ListSubtasks(ctx context.Context, parentID uuid.UUID) ([]ListSubtasksRow, error)
 	ListTaskActivity(ctx context.Context, taskID uuid.UUID) ([]ListTaskActivityRow, error)
 	ListTaskAssignees(ctx context.Context, taskID uuid.UUID) ([]ListTaskAssigneesRow, error)
-	ListTaskAssignmentsForGraph(ctx context.Context) ([]ListTaskAssignmentsForGraphRow, error)
+	ListTaskAssignmentsForGraph(ctx context.Context, arg ListTaskAssignmentsForGraphParams) ([]ListTaskAssignmentsForGraphRow, error)
 	ListTaskComments(ctx context.Context, taskID uuid.UUID) ([]ListTaskCommentsRow, error)
 	ListTaskFollowers(ctx context.Context, taskID uuid.UUID) ([]ListTaskFollowersRow, error)
 	ListTaskLabels(ctx context.Context, taskID uuid.UUID) ([]ListTaskLabelsRow, error)

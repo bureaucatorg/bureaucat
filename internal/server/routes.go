@@ -324,6 +324,7 @@ func (s *Server) registerRoutes() {
 		admin.DELETE("/tokens/expired", s.adminHandler.CleanupExpiredTokens)
 		admin.GET("/stats", s.adminHandler.GetStats)
 		admin.GET("/graph", s.adminHandler.GetTaskGraph)
+		admin.GET("/graph/filters", s.adminHandler.GetTaskGraphFilters)
 		admin.GET("/projects/deleted", s.adminHandler.ListDeletedProjects)
 		admin.POST("/projects/:id/restore", s.adminHandler.RestoreProject)
 

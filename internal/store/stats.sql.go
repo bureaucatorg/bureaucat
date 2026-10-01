@@ -268,6 +268,110 @@ func (q *Queries) CyclesCreatedPerDay(ctx context.Context, arg CyclesCreatedPerD
 	return items, nil
 }
 
+const listGraphProjectOptions = `-- name: ListGraphProjectOptions :many
+SELECT p.project_key, p.name, w.workspace_key
+FROM projects p
+JOIN workspaces w ON p.workspace_id = w.id
+WHERE p.deleted_at IS NULL AND w.deleted_at IS NULL
+ORDER BY p.project_key ASC
+`
+
+type ListGraphProjectOptionsRow struct {
+	ProjectKey   string `json:"project_key"`
+	Name         string `json:"name"`
+	WorkspaceKey string `json:"workspace_key"`
+}
+
+func (q *Queries) ListGraphProjectOptions(ctx context.Context) ([]ListGraphProjectOptionsRow, error) {
+	rows, err := q.db.Query(ctx, listGraphProjectOptions)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListGraphProjectOptionsRow{}
+	for rows.Next() {
+		var i ListGraphProjectOptionsRow
+		if err := rows.Scan(&i.ProjectKey, &i.Name, &i.WorkspaceKey); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listGraphUserOptions = `-- name: ListGraphUserOptions :many
+SELECT username, email, first_name, last_name
+FROM users
+ORDER BY first_name ASC, last_name ASC
+`
+
+type ListGraphUserOptionsRow struct {
+	Username  string `json:"username"`
+	Email     string `json:"email"`
+	FirstName string `json:"first_name"`
+	LastName  string `json:"last_name"`
+}
+
+func (q *Queries) ListGraphUserOptions(ctx context.Context) ([]ListGraphUserOptionsRow, error) {
+	rows, err := q.db.Query(ctx, listGraphUserOptions)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListGraphUserOptionsRow{}
+	for rows.Next() {
+		var i ListGraphUserOptionsRow
+		if err := rows.Scan(
+			&i.Username,
+			&i.Email,
+			&i.FirstName,
+			&i.LastName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listGraphWorkspaceOptions = `-- name: ListGraphWorkspaceOptions :many
+SELECT workspace_key, name
+FROM workspaces
+WHERE deleted_at IS NULL
+ORDER BY name ASC
+`
+
+type ListGraphWorkspaceOptionsRow struct {
+	WorkspaceKey string `json:"workspace_key"`
+	Name         string `json:"name"`
+}
+
+func (q *Queries) ListGraphWorkspaceOptions(ctx context.Context) ([]ListGraphWorkspaceOptionsRow, error) {
+	rows, err := q.db.Query(ctx, listGraphWorkspaceOptions)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListGraphWorkspaceOptionsRow{}
+	for rows.Next() {
+		var i ListGraphWorkspaceOptionsRow
+		if err := rows.Scan(&i.WorkspaceKey, &i.Name); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listTaskAssignmentsForGraph = `-- name: ListTaskAssignmentsForGraph :many
 SELECT t.id AS task_id, t.task_number, t.title,
        (t.parent_task_id IS NOT NULL)::boolean AS is_subtask,
@@ -284,8 +388,19 @@ JOIN users u ON ta.user_id = u.id
 WHERE t.deleted_at IS NULL
   AND p.deleted_at IS NULL
   AND w.deleted_at IS NULL
+  AND ($1::text IS NULL OR w.workspace_key = $1::text)
+  AND (COALESCE(cardinality($2::text[]), 0) = 0 OR p.project_key = ANY($2::text[]))
+  AND (COALESCE(cardinality($3::text[]), 0) = 0 OR ps.state_type::text = ANY($3::text[]))
+  AND (COALESCE(cardinality($4::text[]), 0) = 0 OR u.username = ANY($4::text[]))
 ORDER BY p.project_key ASC, t.task_number ASC
 `
+
+type ListTaskAssignmentsForGraphParams struct {
+	WorkspaceKey pgtype.Text `json:"workspace_key"`
+	ProjectKeys  []string    `json:"project_keys"`
+	StateTypes   []string    `json:"state_types"`
+	Usernames    []string    `json:"usernames"`
+}
 
 type ListTaskAssignmentsForGraphRow struct {
 	TaskID        uuid.UUID   `json:"task_id"`
@@ -308,8 +423,13 @@ type ListTaskAssignmentsForGraphRow struct {
 	AvatarUrl     pgtype.Text `json:"avatar_url"`
 }
 
-func (q *Queries) ListTaskAssignmentsForGraph(ctx context.Context) ([]ListTaskAssignmentsForGraphRow, error) {
-	rows, err := q.db.Query(ctx, listTaskAssignmentsForGraph)
+func (q *Queries) ListTaskAssignmentsForGraph(ctx context.Context, arg ListTaskAssignmentsForGraphParams) ([]ListTaskAssignmentsForGraphRow, error) {
+	rows, err := q.db.Query(ctx, listTaskAssignmentsForGraph,
+		arg.WorkspaceKey,
+		arg.ProjectKeys,
+		arg.StateTypes,
+		arg.Usernames,
+	)
 	if err != nil {
 		return nil, err
 	}

@@ -192,4 +192,26 @@ JOIN users u ON ta.user_id = u.id
 WHERE t.deleted_at IS NULL
   AND p.deleted_at IS NULL
   AND w.deleted_at IS NULL
+  AND (sqlc.narg('workspace_key')::text IS NULL OR w.workspace_key = sqlc.narg('workspace_key')::text)
+  AND (COALESCE(cardinality(sqlc.arg('project_keys')::text[]), 0) = 0 OR p.project_key = ANY(sqlc.arg('project_keys')::text[]))
+  AND (COALESCE(cardinality(sqlc.arg('state_types')::text[]), 0) = 0 OR ps.state_type::text = ANY(sqlc.arg('state_types')::text[]))
+  AND (COALESCE(cardinality(sqlc.arg('usernames')::text[]), 0) = 0 OR u.username = ANY(sqlc.arg('usernames')::text[]))
 ORDER BY p.project_key ASC, t.task_number ASC;
+
+-- name: ListGraphWorkspaceOptions :many
+SELECT workspace_key, name
+FROM workspaces
+WHERE deleted_at IS NULL
+ORDER BY name ASC;
+
+-- name: ListGraphProjectOptions :many
+SELECT p.project_key, p.name, w.workspace_key
+FROM projects p
+JOIN workspaces w ON p.workspace_id = w.id
+WHERE p.deleted_at IS NULL AND w.deleted_at IS NULL
+ORDER BY p.project_key ASC;
+
+-- name: ListGraphUserOptions :many
+SELECT username, email, first_name, last_name
+FROM users
+ORDER BY first_name ASC, last_name ASC;

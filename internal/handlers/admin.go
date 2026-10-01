@@ -893,11 +893,94 @@ type GraphEdge struct {
 	TaskID string `json:"task_id"`
 }
 
+// GraphWorkspaceOption is a workspace choice for the graph view filters.
+type GraphWorkspaceOption struct {
+	Key  string `json:"key"`
+	Name string `json:"name"`
+}
+
+// GraphProjectOption is a project choice for the graph view filters.
+type GraphProjectOption struct {
+	Key          string `json:"key"`
+	Name         string `json:"name"`
+	WorkspaceKey string `json:"workspace_key"`
+}
+
+// GraphUserOption is a user choice for the graph view filters.
+type GraphUserOption struct {
+	Username  string `json:"username"`
+	Email     string `json:"email"`
+	FirstName string `json:"first_name"`
+	LastName  string `json:"last_name"`
+}
+
+// TaskGraphFiltersResponse lists the choices for the graph view filters.
+type TaskGraphFiltersResponse struct {
+	Workspaces []GraphWorkspaceOption `json:"workspaces"`
+	Projects   []GraphProjectOption   `json:"projects"`
+	Users      []GraphUserOption      `json:"users"`
+}
+
 // TaskGraphResponse is the payload for the admin graph view.
 type TaskGraphResponse struct {
 	Users []GraphUser `json:"users"`
 	Tasks []GraphTask `json:"tasks"`
 	Edges []GraphEdge `json:"edges"`
+}
+
+// splitCSVParam splits a comma-separated query value, dropping empty entries.
+func splitCSVParam(v string) []string {
+	out := []string{}
+	for _, s := range strings.Split(v, ",") {
+		if s = strings.TrimSpace(s); s != "" {
+			out = append(out, s)
+		}
+	}
+	return out
+}
+
+// GetTaskGraphFilters returns the workspace, project and user choices for the graph view.
+//
+//	@Summary		Get admin task graph filters
+//	@Description	Returns workspace, project and user options for the admin graph view filters.
+//	@Tags			Admin - Stats
+//	@Produce		json
+//	@Success		200	{object}	TaskGraphFiltersResponse
+//	@Failure		500	{object}	ErrorResponse
+//	@Security		BearerAuth
+//	@Router			/admin/graph/filters [get]
+func (h *AdminHandler) GetTaskGraphFilters(c *echo.Context) error {
+	ctx := c.Request().Context()
+
+	workspaces, err := h.store.ListGraphWorkspaceOptions(ctx)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to load workspaces")
+	}
+	projects, err := h.store.ListGraphProjectOptions(ctx)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to load projects")
+	}
+	users, err := h.store.ListGraphUserOptions(ctx)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to load users")
+	}
+
+	resp := TaskGraphFiltersResponse{
+		Workspaces: make([]GraphWorkspaceOption, len(workspaces)),
+		Projects:   make([]GraphProjectOption, len(projects)),
+		Users:      make([]GraphUserOption, len(users)),
+	}
+	for i, w := range workspaces {
+		resp.Workspaces[i] = GraphWorkspaceOption{Key: w.WorkspaceKey, Name: w.Name}
+	}
+	for i, p := range projects {
+		resp.Projects[i] = GraphProjectOption{Key: p.ProjectKey, Name: p.Name, WorkspaceKey: p.WorkspaceKey}
+	}
+	for i, u := range users {
+		resp.Users[i] = GraphUserOption{Username: u.Username, Email: u.Email, FirstName: u.FirstName, LastName: u.LastName}
+	}
+
+	return c.JSON(http.StatusOK, resp)
 }
 
 // GetTaskGraph returns users and the tasks they are assigned to.
@@ -906,12 +989,27 @@ type TaskGraphResponse struct {
 //	@Description	Returns user and task nodes with assignment edges for the admin graph view.
 //	@Tags			Admin - Stats
 //	@Produce		json
-//	@Success		200	{object}	TaskGraphResponse
-//	@Failure		500	{object}	ErrorResponse
+//	@Param			workspace	query		string	false	"Workspace key"
+//	@Param			projects	query		string	false	"Comma-separated project keys"
+//	@Param			state_types	query		string	false	"Comma-separated state types"
+//	@Param			users		query		string	false	"Comma-separated usernames"
+//	@Success		200			{object}	TaskGraphResponse
+//	@Failure		500			{object}	ErrorResponse
 //	@Security		BearerAuth
 //	@Router			/admin/graph [get]
 func (h *AdminHandler) GetTaskGraph(c *echo.Context) error {
-	rows, err := h.store.ListTaskAssignmentsForGraph(c.Request().Context())
+	ctx := c.Request().Context()
+
+	params := store.ListTaskAssignmentsForGraphParams{
+		ProjectKeys: splitCSVParam(c.QueryParam("projects")),
+		StateTypes:  splitCSVParam(c.QueryParam("state_types")),
+		Usernames:   splitCSVParam(c.QueryParam("users")),
+	}
+	if ws := strings.TrimSpace(c.QueryParam("workspace")); ws != "" {
+		params.WorkspaceKey = pgtype.Text{String: ws, Valid: true}
+	}
+
+	rows, err := h.store.ListTaskAssignmentsForGraph(ctx, params)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to load task graph")
 	}
