@@ -19,7 +19,7 @@ defineProps<{
       v-if="node?.type === 'user'"
       side="top"
       :side-offset="10"
-      class="pointer-events-none w-72 rounded-lg border bg-popover p-0 text-sm text-popover-foreground shadow-lg [&_.rotate-45]:hidden"
+      class="pointer-events-none w-72 rounded-lg border bg-popover p-0 text-sm text-popover-foreground shadow-lg [&_.rotate-45]:hidden!"
     >
       <div class="flex items-center gap-3 p-3">
         <Avatar class="size-10">
@@ -43,12 +43,15 @@ defineProps<{
           {{ node.data.task_count }} {{ node.data.task_count === 1 ? "task" : "tasks" }} in view
         </p>
       </div>
+      <p class="border-t px-3 py-2 text-[11px] text-muted-foreground">
+        Click to highlight · Double-click to open profile
+      </p>
     </TooltipContent>
     <TooltipContent
       v-else-if="node?.type === 'task'"
       side="top"
       :side-offset="10"
-      class="pointer-events-none w-80 rounded-lg border bg-popover p-0 text-sm text-popover-foreground shadow-lg [&_.rotate-45]:hidden"
+      class="pointer-events-none w-80 rounded-lg border bg-popover p-0 text-sm text-popover-foreground shadow-lg [&_.rotate-45]:hidden!"
     >
       <div class="space-y-2 p-3">
         <div class="flex items-center gap-2">
@@ -72,6 +75,9 @@ defineProps<{
           <span class="truncate">{{ node.data.project_name }} · {{ node.data.workspace_name }}</span>
         </span>
       </div>
+      <p class="border-t px-3 py-2 text-[11px] text-muted-foreground">
+        Click to highlight · Double-click to open task
+      </p>
     </TooltipContent>
   </Tooltip>
 </template>

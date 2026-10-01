@@ -32,7 +32,7 @@ useSeoMeta({ title: "Graph View" });
 const route = useRoute();
 const router = useRouter();
 const { getTaskGraph, getTaskGraphFilters } = useAdmin();
-const { fitView, findNode, setCenter } = useVueFlow();
+const { fitView, findNode, findEdge, setCenter } = useVueFlow();
 
 const loading = ref(false);
 const graph = shallowRef<TaskGraph | null>(null);
@@ -47,6 +47,8 @@ const hovered = ref<HoveredGraphNode | null>(null);
 const hoveredEl = ref<HTMLElement | null>(null);
 let hoverTimer: ReturnType<typeof setTimeout> | undefined;
 let requestId = 0;
+const highlightedNode = ref<string | null>(null);
+let highlightedIds = { nodes: [] as string[], edges: [] as string[] };
 
 onMounted(async () => {
   const result = await getTaskGraphFilters();
@@ -70,6 +72,8 @@ async function runGraph() {
   });
   if (id !== requestId) return;
   if (result.success && result.data) {
+    highlightedNode.value = null;
+    highlightedIds = { nodes: [], edges: [] };
     graph.value = result.data;
     appliedKey.value = key;
   } else {
@@ -274,10 +278,43 @@ const sortedUsers = computed(() =>
   ),
 );
 
+// Only the affected nodes/edges get a class; CSS dims everything else.
+function setHighlight(nodeId: string | null) {
+  for (const id of highlightedIds.nodes) {
+    const n = findNode(id);
+    if (n) n.class = undefined;
+  }
+  for (const id of highlightedIds.edges) {
+    const e = findEdge(id);
+    if (e) e.class = undefined;
+  }
+  highlightedIds = { nodes: [], edges: [] };
+  highlightedNode.value = nodeId;
+  if (!nodeId) return;
+
+  const isUser = nodeId.startsWith("u:");
+  const id = nodeId.slice(2);
+  highlightedIds.nodes.push(nodeId);
+  for (const e of filtered.value.edges) {
+    if ((isUser ? e.user_id : e.task_id) !== id) continue;
+    highlightedIds.nodes.push(isUser ? `t:${e.task_id}` : `u:${e.user_id}`);
+    highlightedIds.edges.push(`${e.user_id}:${e.task_id}`);
+  }
+  for (const id of highlightedIds.nodes) {
+    const n = findNode(id);
+    if (n) n.class = id === nodeId ? "highlighted highlight-source" : "highlighted";
+  }
+  for (const id of highlightedIds.edges) {
+    const e = findEdge(id);
+    if (e) e.class = "highlighted";
+  }
+}
+
 function focusUser(user: GraphUser) {
   userSearchOpen.value = false;
   const node = findNode(`u:${user.id}`);
   if (!node) return;
+  setHighlight(`u:${user.id}`);
   setCenter(node.position.x + node.dimensions.width / 2, node.position.y + node.dimensions.height / 2, {
     zoom: 1.5,
     duration: 600,
@@ -300,6 +337,10 @@ function onNodeMouseEnter({ node }: NodeMouseEvent) {
 
 function onNodeClick({ node }: NodeMouseEvent) {
   hideTooltip();
+  setHighlight(highlightedNode.value === node.id ? null : node.id);
+}
+
+function onNodeDoubleClick({ node }: NodeMouseEvent) {
   if (node.type === "task") {
     const t = node.data as GraphTask;
     navigateTo(`/projects/${t.project_key}/tasks/${t.task_number}`);
@@ -509,12 +550,15 @@ function onNodeClick({ node }: NodeMouseEvent) {
       <TooltipProvider v-else>
         <GraphNodeTooltip :node="hovered" :reference="hoveredEl" />
         <VueFlow
-          class="absolute inset-0"
+          :class="['absolute inset-0', { 'graph-highlight': highlightedNode }]"
           :nodes="flow.nodes"
           :edges="flow.edges"
           :nodes-connectable="false"
           :min-zoom="0.05"
+          :zoom-on-double-click="false"
           @node-click="onNodeClick"
+          @node-double-click="onNodeDoubleClick"
+          @pane-click="setHighlight(null)"
           @node-mouse-enter="onNodeMouseEnter"
           @node-mouse-leave="hideTooltip"
           @node-drag-start="hideTooltip"
@@ -545,5 +589,46 @@ function onNodeClick({ node }: NodeMouseEvent) {
 
 .vue-flow__controls-button:hover {
   background: var(--muted);
+}
+
+.vue-flow__node,
+.vue-flow__edge {
+  transition: opacity 150ms;
+}
+
+.graph-highlight .vue-flow__node:not(.highlighted) {
+  opacity: 0.2;
+}
+
+.graph-highlight .vue-flow__edge:not(.highlighted) {
+  opacity: 0.04;
+}
+
+.graph-highlight .vue-flow__node.highlighted {
+  z-index: 1000 !important;
+}
+
+.vue-flow__edge.highlighted path {
+  stroke: var(--foreground) !important;
+  stroke-opacity: 0.35 !important;
+  stroke-width: 1.25;
+}
+
+.vue-flow__node-user.highlighted [data-slot="avatar"] {
+  box-shadow: 0 0 0 2px var(--background), 0 0 0 3px color-mix(in oklch, var(--foreground) 35%, transparent);
+}
+
+.vue-flow__node-task.highlighted > div {
+  border-color: color-mix(in oklch, var(--foreground) 30%, transparent);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.1);
+}
+
+.vue-flow__node-user.highlight-source [data-slot="avatar"] {
+  box-shadow: 0 0 0 2px var(--background), 0 0 0 4px var(--foreground), 0 6px 16px rgb(0 0 0 / 0.18);
+}
+
+.vue-flow__node-task.highlight-source > div {
+  border-color: var(--foreground);
+  box-shadow: 0 0 0 1px var(--foreground), 0 6px 16px rgb(0 0 0 / 0.18);
 }
 </style>
