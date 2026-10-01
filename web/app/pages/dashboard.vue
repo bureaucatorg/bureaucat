@@ -154,7 +154,7 @@ const myTasksAsTask = computed<Task[]>(() =>
 async function fetchMyTasks() {
   myTasksLoading.value = true;
   try {
-    let url = `/api/v1/me/tasks?per_page=5&page=${myTasksPage.value}`;
+    let url = `/api/v1/me/tasks?per_page=20&page=${myTasksPage.value}`;
     // Scope to the active workspace unless the user opted into all workspaces.
     if (!showAllWorkspaces.value && currentWorkspace.value) {
       url += `&workspace_id=${currentWorkspace.value.id}`;
