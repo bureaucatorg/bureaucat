@@ -7,6 +7,8 @@ import {
   Loader2,
   Search,
   Lightbulb,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-vue-next";
 import type { Project, Task, ProjectState } from "~/types";
 
@@ -111,6 +113,8 @@ interface MyTasksResponse {
 const myTasks = ref<MyTask[]>([]);
 const myTasksTotal = ref(0);
 const myTasksLoading = ref(false);
+const myTasksPage = ref(1);
+const myTasksTotalPages = ref(0);
 
 // Adapt the dashboard's lightweight MyTask shape to the full Task shape so we
 // can render the shared TaskList/TaskCard component. Fields the dashboard API
@@ -150,7 +154,7 @@ const myTasksAsTask = computed<Task[]>(() =>
 async function fetchMyTasks() {
   myTasksLoading.value = true;
   try {
-    let url = "/api/v1/me/tasks?per_page=20";
+    let url = `/api/v1/me/tasks?per_page=5&page=${myTasksPage.value}`;
     // Scope to the active workspace unless the user opted into all workspaces.
     if (!showAllWorkspaces.value && currentWorkspace.value) {
       url += `&workspace_id=${currentWorkspace.value.id}`;
@@ -160,6 +164,11 @@ async function fetchMyTasks() {
     });
     if (response.ok) {
       const data: MyTasksResponse = await response.json();
+      if (data.total_pages > 0 && myTasksPage.value > data.total_pages) {
+        myTasksPage.value = data.total_pages;
+        return await fetchMyTasks();
+      }
+      myTasksTotalPages.value = data.total_pages;
       myTasks.value = data.tasks || [];
       myTasksTotal.value = data.total;
       fetchStatesForMyTasks();
@@ -174,8 +183,14 @@ async function fetchMyTasks() {
 // Refetch "Assigned to You" when the workspace changes or the all-workspaces
 // toggle flips (both affect the workspace_id scope).
 watch([currentWorkspace, showAllWorkspaces], () => {
+  myTasksPage.value = 1;
   fetchMyTasks();
 });
+
+function goToMyTasksPage(p: number) {
+  myTasksPage.value = p;
+  fetchMyTasks();
+}
 
 // Per-project state lists, loaded lazily for the projects that own the user's
 // tasks. TaskCard needs these to offer the inline state selector.
@@ -311,7 +326,7 @@ onMounted(async () => {
             </div>
           </div>
 
-          <div v-if="myTasksLoading" class="flex items-center justify-center py-8">
+          <div v-if="myTasksLoading && myTasks.length === 0" class="flex items-center justify-center py-8">
             <Loader2 class="size-6 animate-spin text-muted-foreground" />
           </div>
 
@@ -331,6 +346,33 @@ onMounted(async () => {
             :workspace-by-project="workspaceByProject"
             @updated="fetchMyTasks"
           />
+
+          <div
+            v-if="myTasksTotalPages > 1"
+            class="mt-4 flex items-center justify-end gap-2"
+          >
+            <Button
+              variant="outline"
+              size="sm"
+              :disabled="myTasksLoading || myTasksPage <= 1"
+              @click="goToMyTasksPage(myTasksPage - 1)"
+            >
+              <ChevronLeft class="mr-1 size-4" />
+              Prev
+            </Button>
+            <span class="text-sm text-muted-foreground">
+              Page {{ myTasksPage }} of {{ myTasksTotalPages }}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              :disabled="myTasksLoading || myTasksPage >= myTasksTotalPages"
+              @click="goToMyTasksPage(myTasksPage + 1)"
+            >
+              Next
+              <ChevronRight class="ml-1 size-4" />
+            </Button>
+          </div>
         </div>
 
         <!-- Your Projects Section -->
