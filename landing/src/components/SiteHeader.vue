@@ -20,7 +20,7 @@ function toggleTheme() {
     <div class="mx-auto flex h-12 max-w-6xl items-center justify-between gap-3 px-4 md:px-6">
       <a href="/" class="flex items-center gap-2 font-semibold tracking-tight">
         <CatLogo :size="28" />
-        <span class="text-lg">BureauCat</span>
+        <span class="text-lg">Bureau<span class="text-amber-500">Cat</span></span>
       </a>
       <nav class="flex items-center gap-1 sm:gap-2">
         <a
