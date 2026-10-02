@@ -3,6 +3,7 @@ import { ref } from "vue";
 import { ArrowRight, ArrowDown, Sparkles } from "lucide-vue-next";
 import SiteHeader from "./components/SiteHeader.vue";
 import CatLogo from "./components/CatLogo.vue";
+import HeroWeb from "./components/HeroWeb.vue";
 import LandingStory from "./components/LandingStory.vue";
 import LandingDrawer from "./components/LandingDrawer.vue";
 import { appLink } from "./lib/config";
@@ -33,10 +34,11 @@ const outlineBtn =
       <!-- Hero -->
       <section class="relative">
         <div aria-hidden="true" class="ruled pointer-events-none absolute inset-0 -z-0" />
+        <HeroWeb />
         <div
-          class="relative mx-auto grid min-h-[calc(100svh-3rem)] max-w-6xl items-center gap-14 px-4 pt-14 pb-28 lg:grid-cols-[minmax(0,1fr)_22rem] md:px-6 md:pt-10"
+          class="pointer-events-none relative mx-auto grid min-h-[calc(100svh-3rem)] max-w-6xl items-center gap-14 px-4 pt-14 pb-28 lg:grid-cols-[minmax(0,1fr)_22rem] md:px-6 md:pt-10"
         >
-          <div>
+          <div class="pointer-events-auto">
             <h1 class="rise text-5xl leading-[1.02] font-bold tracking-[-0.035em] sm:text-6xl lg:text-[4.25rem]" style="--d: 120ms">
               <template v-if="!noBS">
                 Bureaucracy<br />
