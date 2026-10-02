@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { LayoutDashboard, FolderKanban, Eye, Repeat, Layers, Timer, MessageCircle, BookOpen, Shield, Settings } from "lucide-vue-next";
+import { LayoutDashboard, FolderKanban, Eye, Repeat, Layers, Timer, MessageCircle, Newspaper, BookOpen, Shield, Settings } from "lucide-vue-next";
 
 const { user } = useAuth();
 const route = useRoute();
@@ -15,9 +15,34 @@ function isActive(path: string): boolean {
 }
 
 const showFeedback = ref(false);
+const showReleases = ref(false);
+
+const SEEN_VERSION_KEY = "bureaucat:last-seen-version";
+const appVersion = ref("");
+const hasUnseenRelease = ref(false);
+
+async function checkUnseenRelease() {
+  try {
+    const res = await fetch("/api/v1/health");
+    if (!res.ok) return;
+    appVersion.value = (await res.json()).version || "";
+    hasUnseenRelease.value = !!appVersion.value && localStorage.getItem(SEEN_VERSION_KEY) !== appVersion.value;
+  } catch {}
+}
+
+function openReleases() {
+  showReleases.value = true;
+  hasUnseenRelease.value = false;
+  if (appVersion.value) {
+    try {
+      localStorage.setItem(SEEN_VERSION_KEY, appVersion.value);
+    } catch {}
+  }
+}
 
 onMounted(() => {
   fetchFeedbackPublicSettings();
+  checkUnseenRelease();
 });
 </script>
 
@@ -117,6 +142,21 @@ onMounted(() => {
         <MessageCircle class="size-4.5" />
       </button>
 
+      <button
+        type="button"
+        title="What's new"
+        aria-label="What's new"
+        class="relative flex size-9 items-center justify-center rounded-md text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+        @click="openReleases"
+      >
+        <Newspaper class="size-4.5" />
+        <span
+          v-if="hasUnseenRelease"
+          class="absolute right-2 top-2 size-1.5 rounded-full bg-red-500"
+          aria-hidden="true"
+        />
+      </button>
+
       <NuxtLink
         to="/docs"
         title="API Docs"
@@ -147,5 +187,6 @@ onMounted(() => {
     </div>
 
     <FeedbackDialog v-model:open="showFeedback" />
+    <ReleasesDialog v-model:open="showReleases" />
   </aside>
 </template>

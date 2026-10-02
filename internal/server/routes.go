@@ -109,6 +109,10 @@ func (s *Server) registerRoutes() {
 			protected.POST("/me/feedback", s.feedbackHandler.SubmitLocalFeedback)
 		}
 
+		if s.releasesHandler != nil {
+			protected.GET("/releases", s.releasesHandler.ListReleases)
+		}
+
 		// Personal Access Token routes (not accessible via PAT)
 		if s.patHandler != nil {
 			patGroup := protected.Group("", auth.RejectPAT())
