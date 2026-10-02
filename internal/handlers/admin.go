@@ -873,18 +873,19 @@ type GraphUser struct {
 
 // GraphTask is a task node in the admin task graph.
 type GraphTask struct {
-	ID            string  `json:"id"`
-	ProjectKey    string  `json:"project_key"`
-	ProjectName   string  `json:"project_name"`
-	TaskNumber    int32   `json:"task_number"`
-	Title         string  `json:"title"`
-	IsSubtask     bool    `json:"is_subtask"`
-	WorkspaceID   string  `json:"workspace_id"`
-	WorkspaceKey  string  `json:"workspace_key"`
-	WorkspaceName string  `json:"workspace_name"`
-	StateName     string  `json:"state_name"`
-	StateType     string  `json:"state_type"`
-	StateColor    *string `json:"state_color,omitempty"`
+	ID            string     `json:"id"`
+	ProjectKey    string     `json:"project_key"`
+	ProjectName   string     `json:"project_name"`
+	TaskNumber    int32      `json:"task_number"`
+	Title         string     `json:"title"`
+	IsSubtask     bool       `json:"is_subtask"`
+	ParentID      *uuid.UUID `json:"parent_id,omitempty"`
+	WorkspaceID   string     `json:"workspace_id"`
+	WorkspaceKey  string     `json:"workspace_key"`
+	WorkspaceName string     `json:"workspace_name"`
+	StateName     string     `json:"state_name"`
+	StateType     string     `json:"state_type"`
+	StateColor    *string    `json:"state_color,omitempty"`
 }
 
 // GraphEdge links a user to a task they are assigned to.
@@ -1042,6 +1043,7 @@ func (h *AdminHandler) GetTaskGraph(c *echo.Context) error {
 				TaskNumber:    r.TaskNumber,
 				Title:         r.Title,
 				IsSubtask:     r.IsSubtask,
+				ParentID:      pgUUIDToUUIDPtr(r.ParentTaskID),
 				WorkspaceID:   r.WorkspaceID.String(),
 				WorkspaceKey:  r.WorkspaceKey,
 				WorkspaceName: r.WorkspaceName,

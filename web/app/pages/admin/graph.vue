@@ -227,11 +227,15 @@ const filtered = computed(() => {
   const users = (graph.value?.users ?? [])
     .filter((u) => taskCounts.has(u.id))
     .map((u) => ({ ...u, task_count: taskCounts.get(u.id)! }));
-  return { users, tasks, edges };
+  const taskIds = new Set(tasks.map((t) => t.id));
+  const subtaskEdges = tasks
+    .filter((t) => t.parent_id && taskIds.has(t.parent_id))
+    .map((t) => ({ parent_id: t.parent_id!, child_id: t.id }));
+  return { users, tasks, edges, subtaskEdges };
 });
 
 const flow = computed(() => {
-  const { users, tasks, edges } = filtered.value;
+  const { users, tasks, edges, subtaskEdges } = filtered.value;
 
   const tasksByUser = new Map<string, string[]>();
   for (const e of edges) {
@@ -252,10 +256,10 @@ const flow = computed(() => {
     }
   }
 
-  const positions = forceLayout(
-    order,
-    edges.map((e) => [`u:${e.user_id}`, `t:${e.task_id}`]),
-  );
+  const positions = forceLayout(order, [
+    ...edges.map((e): [string, string] => [`u:${e.user_id}`, `t:${e.task_id}`]),
+    ...subtaskEdges.map((e): [string, string] => [`t:${e.parent_id}`, `t:${e.child_id}`]),
+  ]);
 
   const nodes: Node[] = [
     ...users.map((u) => ({ id: `u:${u.id}`, type: "user", position: positions.get(`u:${u.id}`)!, data: u })),
@@ -268,6 +272,16 @@ const flow = computed(() => {
     type: "straight",
     style: { stroke: "var(--muted-foreground)", strokeOpacity: 0.4 },
   }));
+  for (const e of subtaskEdges) {
+    flowEdges.push({
+      id: `s:${e.parent_id}:${e.child_id}`,
+      source: `t:${e.parent_id}`,
+      target: `t:${e.child_id}`,
+      type: "straight",
+      class: "subtask",
+      style: { stroke: "var(--chart-1)", strokeOpacity: 0.8, strokeWidth: 1.5 },
+    });
+  }
 
   return { nodes, edges: flowEdges };
 });
@@ -286,7 +300,7 @@ function setHighlight(nodeId: string | null) {
   }
   for (const id of highlightedIds.edges) {
     const e = findEdge(id);
-    if (e) e.class = undefined;
+    if (e) e.class = id.startsWith("s:") ? "subtask" : undefined;
   }
   highlightedIds = { nodes: [], edges: [] };
   highlightedNode.value = nodeId;
@@ -300,13 +314,20 @@ function setHighlight(nodeId: string | null) {
     highlightedIds.nodes.push(isUser ? `t:${e.task_id}` : `u:${e.user_id}`);
     highlightedIds.edges.push(`${e.user_id}:${e.task_id}`);
   }
+  if (!isUser) {
+    for (const e of filtered.value.subtaskEdges) {
+      if (e.parent_id !== id && e.child_id !== id) continue;
+      highlightedIds.nodes.push(`t:${e.parent_id === id ? e.child_id : e.parent_id}`);
+      highlightedIds.edges.push(`s:${e.parent_id}:${e.child_id}`);
+    }
+  }
   for (const id of highlightedIds.nodes) {
     const n = findNode(id);
     if (n) n.class = id === nodeId ? "highlighted highlight-source" : "highlighted";
   }
   for (const id of highlightedIds.edges) {
     const e = findEdge(id);
-    if (e) e.class = "highlighted";
+    if (e) e.class = id.startsWith("s:") ? "subtask highlighted" : "highlighted";
   }
 }
 
@@ -611,6 +632,12 @@ function onNodeDoubleClick({ node }: NodeMouseEvent) {
   stroke: var(--foreground) !important;
   stroke-opacity: 0.35 !important;
   stroke-width: 1.25;
+}
+
+.vue-flow__edge.subtask.highlighted path {
+  stroke: var(--chart-1) !important;
+  stroke-opacity: 1 !important;
+  stroke-width: 2;
 }
 
 .vue-flow__node-user.highlighted [data-slot="avatar"] {

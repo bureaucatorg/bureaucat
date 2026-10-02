@@ -374,7 +374,7 @@ func (q *Queries) ListGraphWorkspaceOptions(ctx context.Context) ([]ListGraphWor
 
 const listTaskAssignmentsForGraph = `-- name: ListTaskAssignmentsForGraph :many
 SELECT t.id AS task_id, t.task_number, t.title,
-       (t.parent_task_id IS NOT NULL)::boolean AS is_subtask,
+       (t.parent_task_id IS NOT NULL)::boolean AS is_subtask, t.parent_task_id,
        p.project_key, p.name AS project_name,
        w.id AS workspace_id, w.workspace_key, w.name AS workspace_name,
        ps.name AS state_name, ps.state_type, ps.color AS state_color,
@@ -407,6 +407,7 @@ type ListTaskAssignmentsForGraphRow struct {
 	TaskNumber    int32       `json:"task_number"`
 	Title         string      `json:"title"`
 	IsSubtask     bool        `json:"is_subtask"`
+	ParentTaskID  pgtype.UUID `json:"parent_task_id"`
 	ProjectKey    string      `json:"project_key"`
 	ProjectName   string      `json:"project_name"`
 	WorkspaceID   uuid.UUID   `json:"workspace_id"`
@@ -442,6 +443,7 @@ func (q *Queries) ListTaskAssignmentsForGraph(ctx context.Context, arg ListTaskA
 			&i.TaskNumber,
 			&i.Title,
 			&i.IsSubtask,
+			&i.ParentTaskID,
 			&i.ProjectKey,
 			&i.ProjectName,
 			&i.WorkspaceID,

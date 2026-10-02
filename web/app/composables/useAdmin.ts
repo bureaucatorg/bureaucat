@@ -117,6 +117,7 @@ export interface GraphTask {
   task_number: number;
   title: string;
   is_subtask: boolean;
+  parent_id?: string;
   workspace_id: string;
   workspace_key: string;
   workspace_name: string;
