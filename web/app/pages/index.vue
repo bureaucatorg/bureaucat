@@ -126,7 +126,7 @@ const features = computed(() =>
 
             <!-- Main headline -->
             <h1
-              class="animate-fade-in-up font-display text-5xl font-bold leading-[1.1] tracking-tight md:text-6xl lg:text-7xl"
+              class="animate-fade-in-up text-5xl font-bold leading-[1.1] tracking-tight md:text-6xl lg:text-7xl"
               style="animation-delay: 100ms"
             >
               <template v-if="!noBS">
@@ -257,7 +257,7 @@ const features = computed(() =>
         <div class="mx-auto max-w-6xl px-6">
           <div class="mx-auto max-w-2xl text-center">
             <h2
-              class="font-display text-3xl font-bold tracking-tight md:text-4xl"
+              class="text-3xl font-bold tracking-tight md:text-4xl"
             >
               <template v-if="!noBS">
                 Ready to make bureaucracy<br />work for you?
@@ -305,12 +305,6 @@ const features = computed(() =>
 </template>
 
 <style>
-@import url("https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&display=swap");
-
-.font-display {
-  font-family: "DM Sans", system-ui, sans-serif;
-}
-
 @keyframes fade-in {
   from {
     opacity: 0;

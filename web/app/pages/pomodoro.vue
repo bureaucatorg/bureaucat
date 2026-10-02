@@ -1004,7 +1004,7 @@ function bezelTickStyle(i: number): Record<string, string> {
 .side-engrave {
   writing-mode: vertical-rl;
   transform: rotate(180deg);
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--font-mono);
   font-size: 8px;
   letter-spacing: 0.28em;
   color: var(--w-ink-soft);
@@ -1167,7 +1167,7 @@ function bezelTickStyle(i: number): Record<string, string> {
   box-shadow: 0 0 6px rgba(245, 158, 11, 0.45);
 }
 .subdial-count {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--font-mono);
   font-size: 9px;
   color: var(--w-ink-strong);
 }

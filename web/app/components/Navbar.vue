@@ -82,7 +82,7 @@ async function handleLogout() {
     <div class="mx-auto flex h-12 max-w-6xl items-center justify-between px-6">
       <NuxtLink to="/" class="flex items-center gap-2.5">
         <BurecatLogo :size="28" />
-        <span class="font-display text-lg font-semibold tracking-tight">{{ appName }}</span>
+        <span class="text-lg font-semibold tracking-tight">{{ appName }}</span>
       </NuxtLink>
 
       <div class="flex items-center gap-4">
@@ -195,9 +195,3 @@ async function handleLogout() {
     </div>
   </header>
 </template>
-
-<style scoped>
-.font-display {
-  font-family: 'DM Sans', system-ui, sans-serif;
-}
-</style>
