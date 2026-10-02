@@ -1,14 +1,13 @@
 <script setup lang="ts">
-import { Clock, Shield, Eye, Zap, Sparkles } from "lucide-vue-next";
+import { ArrowRight, ArrowDown, Sparkles } from "lucide-vue-next";
 
 const { isAuthenticated } = useAuth();
-const { appName, branding, fetchBranding } = useSettings();
+const { appName, branding, fetchBranding, signupSettings, fetchSignupSettings } = useSettings();
 
 if (import.meta.client) {
   fetchBranding();
+  fetchSignupSettings();
 }
-
-const isBranded = computed(() => branding.value.enabled && !!branding.value.app_name);
 
 if (import.meta.client && isAuthenticated.value) {
   navigateTo("/dashboard");
@@ -29,309 +28,271 @@ useSeoMeta({
   twitterImage: "/api/v1/og-image",
 });
 
+const isBranded = computed(() => branding.value.enabled && !!branding.value.app_name);
 const userNoBS = ref(false);
 const noBS = computed(() => isBranded.value || userNoBS.value);
 
-const features = computed(() =>
-  noBS.value
-    ? [
-        {
-          icon: Clock,
-          stat: "60%",
-          title: "Less waiting",
-          description: "Tasks go to the right person. No email chains.",
-        },
-        {
-          icon: Shield,
-          stat: "100%",
-          title: "Everything logged",
-          description: "Full audit trail. Zero effort.",
-        },
-        {
-          icon: Eye,
-          stat: "0",
-          title: "Nothing lost",
-          description: "Every request tracked. Nothing slips.",
-        },
-      ]
-    : [
-        {
-          icon: Clock,
-          stat: "60%",
-          title: "Less time chasing",
-          description:
-            "Automated routing gets requests to the right people instantly. No more email chains.",
-        },
-        {
-          icon: Shield,
-          stat: "100%",
-          title: "Audit coverage",
-          description:
-            "Every action logged, every decision tracked. Complete compliance without overhead.",
-        },
-        {
-          icon: Eye,
-          stat: "0",
-          title: "Requests lost",
-          description:
-            "Real-time visibility into every request. Nothing falls through the cracks.",
-        },
-      ],
-);
+function scrollToStory() {
+  document.getElementById("chapter-1")?.scrollIntoView({ behavior: "smooth" });
+}
+
+const version = ref("");
+onMounted(async () => {
+  try {
+    const res = await fetch("/api/v1/health");
+    if (res.ok) version.value = (await res.json()).version || "";
+  } catch {}
+});
 </script>
 
 <template>
-  <div class="relative flex min-h-screen flex-col overflow-hidden">
-    <!-- Grain overlay -->
+  <div class="landing relative flex min-h-screen flex-col overflow-x-clip bg-[oklch(0.988_0.004_85)] dark:bg-background">
     <div
-      class="pointer-events-none fixed inset-0 z-50 opacity-[0.015] dark:opacity-[0.03]"
-      style="
-        background-image: url(&quot;data:image/svg+xml,%3Csvg viewBox=%220 0 256 256%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noise%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.9%22 numOctaves=%224%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noise)%22/%3E%3C/svg%3E&quot;);
-      "
+      aria-hidden="true"
+      class="pointer-events-none fixed inset-0 z-50 opacity-[0.025] dark:opacity-[0.04]"
+      style="background-image: url(&quot;data:image/svg+xml,%3Csvg viewBox=%220 0 256 256%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22n%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.9%22 numOctaves=%224%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23n)%22/%3E%3C/svg%3E&quot;)"
     />
 
-    <!-- Header -->
     <Navbar />
 
     <main id="main-content" class="flex-1">
-      <!-- Hero Section -->
+      <!-- Hero -->
       <section class="relative">
-        <!-- Background decoration -->
-        <div class="absolute inset-0 -z-10 overflow-hidden">
-          <div
-            class="absolute -right-1/4 -top-1/4 h-[600px] w-[600px] rounded-full bg-amber-500/5 blur-3xl dark:bg-amber-500/10"
-          />
-          <div
-            class="absolute -bottom-1/4 -left-1/4 h-[400px] w-[400px] rounded-full bg-amber-500/5 blur-3xl dark:bg-amber-500/10"
-          />
-          <!-- Grid pattern -->
-          <div
-            class="absolute inset-0 bg-[linear-gradient(to_right,transparent_0%,transparent_49%,var(--border)_49%,var(--border)_51%,transparent_51%,transparent_100%)] bg-[length:80px_80px] opacity-30"
-          />
-          <div
-            class="absolute inset-0 bg-[linear-gradient(to_bottom,transparent_0%,transparent_49%,var(--border)_49%,var(--border)_51%,transparent_51%,transparent_100%)] bg-[length:80px_80px] opacity-30"
-          />
-        </div>
+        <div aria-hidden="true" class="ruled pointer-events-none absolute inset-0 -z-0" />
+        <div
+          class="relative mx-auto grid min-h-[calc(100svh-3rem)] max-w-6xl items-center gap-14 px-4 pt-14 pb-28 lg:grid-cols-[minmax(0,1fr)_22rem] md:px-6 md:pt-10"
+        >
+          <div>
+            <p class="rise font-mono text-[11px] tracking-[0.2em] text-amber-700 uppercase dark:text-amber-400">
+              Form BC-00 · Request for motion<span v-if="version"> · {{ version }}</span>
+            </p>
 
-        <div class="mx-auto max-w-6xl px-6 pb-24 pt-20 md:pb-32 md:pt-28">
-          <div class="flex flex-col items-start">
-            <!-- Badge -->
-            <div
-              class="animate-fade-in mb-8 inline-flex items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/10 px-4 py-1.5 text-sm text-amber-700 dark:text-amber-400"
-            >
-              <Zap class="size-3.5" />
-              <span v-if="!noBS">Workflow automation for modern teams</span>
-              <span v-else>It's a task manager</span>
-            </div>
-
-            <!-- Main headline -->
-            <h1
-              class="animate-fade-in-up text-5xl font-bold leading-[1.1] tracking-tight md:text-6xl lg:text-7xl"
-              style="animation-delay: 100ms"
-            >
+            <h1 class="rise mt-6 text-5xl leading-[1.02] font-bold tracking-[-0.035em] sm:text-6xl lg:text-[4.25rem]" style="--d: 120ms">
               <template v-if="!noBS">
                 Bureaucracy<br />
-                <span class="relative">
-                  That Actually
-                  <span
-                    class="relative z-10 text-amber-600 dark:text-amber-500"
-                  >
-                    Moves</span
-                  >
-                  <svg
-                    class="absolute -bottom-2 left-0 w-full"
-                    viewBox="0 0 300 12"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path
-                      d="M2 10C50 2 150 2 298 10"
-                      stroke="currentColor"
-                      stroke-width="3"
-                      stroke-linecap="round"
-                      class="text-amber-500/40"
-                    />
+                That Actually
+                <span class="relative inline-block text-amber-600 dark:text-amber-500">
+                  Moves
+                  <svg class="absolute -bottom-2 left-0 w-full" viewBox="0 0 300 14" fill="none" aria-hidden="true">
+                    <path class="underline-draw" d="M3 10C60 3 170 2 297 9" pathLength="1" stroke="currentColor" stroke-opacity="0.45" stroke-width="5" stroke-linecap="round" />
                   </svg>
                 </span>
               </template>
               <template v-else>
                 A No-Nonsense<br />
-                <span class="relative">
-                  <span class="relative z-10 text-amber-600 dark:text-amber-500"
-                    >Task Manager</span
-                  >
-                  <svg
-                    class="absolute -bottom-2 left-0 w-full"
-                    viewBox="0 0 300 12"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path
-                      d="M2 10C50 2 150 2 298 10"
-                      stroke="currentColor"
-                      stroke-width="3"
-                      stroke-linecap="round"
-                      class="text-amber-500/40"
-                    />
+                <span class="relative inline-block text-amber-600 dark:text-amber-500">
+                  Task Manager
+                  <svg class="absolute -bottom-2 left-0 w-full" viewBox="0 0 300 14" fill="none" aria-hidden="true">
+                    <path class="underline-draw" d="M3 10C60 3 170 2 297 9" pathLength="1" stroke="currentColor" stroke-opacity="0.45" stroke-width="5" stroke-linecap="round" />
                   </svg>
                 </span>
               </template>
             </h1>
 
-            <p
-              class="animate-fade-in-up mt-8 max-w-xl text-lg leading-relaxed text-muted-foreground md:text-xl"
-              style="animation-delay: 200ms"
-            >
+            <p class="rise mt-8 max-w-xl text-lg leading-relaxed text-muted-foreground md:text-xl" style="--d: 240ms">
               <template v-if="!noBS">
-                Route approvals intelligently. Track everything automatically.
-                Ship faster without sacrificing compliance.
+                A self-hosted tracker that turns requests, sign-offs and to-dos into tasks that move.
+                They pass through states you define, land with the people who own them, and leave a paper
+                trail you can verify.
               </template>
-              <template v-else>
-                Create tasks. Assign people. Track progress. That's it.
-              </template>
+              <template v-else>Create tasks. Assign people. Track progress. That's it.</template>
             </p>
 
-            <!-- No BS button — hidden when custom branding is active -->
-            <Button
-              v-if="!isBranded"
-              variant="outline"
-              size="sm"
-              class="animate-fade-in-up mt-6 gap-2 border-amber-500/30 text-amber-700 hover:bg-amber-500/10 hover:text-amber-800 dark:text-amber-400 dark:hover:text-amber-300"
-              style="animation-delay: 300ms"
-              @click="userNoBS = !userNoBS"
-            >
-              <Sparkles class="size-3.5" />
-              {{ userNoBS ? "Add the BS back" : "Cut the BS" }}
-            </Button>
+            <div class="rise mt-9 flex flex-wrap items-center gap-3" style="--d: 360ms">
+              <Button v-if="signupSettings.enabled" as-child size="lg" class="gap-2 bg-amber-500 text-amber-950 hover:bg-amber-400">
+                <NuxtLink to="/signup">Get started <ArrowRight class="size-4" /></NuxtLink>
+              </Button>
+              <Button as-child size="lg" variant="outline">
+                <NuxtLink to="/signin">Sign in</NuxtLink>
+              </Button>
+              <Button
+                v-if="!isBranded"
+                variant="ghost"
+                size="lg"
+                class="gap-2 text-amber-700 hover:bg-amber-500/10 hover:text-amber-800 dark:text-amber-400 dark:hover:text-amber-300"
+                :aria-pressed="userNoBS"
+                @click="userNoBS = !userNoBS"
+              >
+                <Sparkles class="size-4" />
+                {{ userNoBS ? "Add the BS back" : "Cut the BS" }}
+              </Button>
+            </div>
           </div>
-        </div>
-      </section>
 
-      <!-- Stats Section -->
-      <section id="features" class="border-y border-border/50 bg-muted/30">
-        <div class="mx-auto max-w-6xl px-6">
-          <div
-            class="grid divide-y divide-border/50 md:grid-cols-3 md:divide-x md:divide-y-0"
-          >
-            <div
-              v-for="(feature, index) in features"
-              :key="feature.title"
-              class="group relative px-6 py-12 transition-colors hover:bg-muted/50 md:px-10"
-              :style="`animation-delay: ${index * 100}ms`"
-            >
-              <div class="mb-6 flex items-center justify-between">
-                <div
-                  class="flex size-12 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 transition-colors group-hover:bg-amber-500/20 dark:text-amber-500"
-                >
-                  <component :is="feature.icon" class="size-5" />
-                </div>
-                <span
-                  class="font-mono text-4xl font-bold tracking-tighter text-foreground/10 transition-colors group-hover:text-amber-500/30"
-                >
-                  {{ feature.stat }}
-                </span>
+          <!-- Dossier -->
+          <div aria-hidden="true" class="dossier relative mx-auto w-full max-w-[22rem] md:max-w-sm">
+            <div class="sheet-back absolute inset-0 rounded-2xl border bg-card shadow-sm" />
+            <div class="sheet-mid absolute inset-0 rounded-2xl border bg-card shadow-sm" />
+            <div class="peek absolute -top-11 right-10">
+              <BurecatLogo :size="64" />
+            </div>
+            <div class="sheet-front relative rounded-2xl border bg-card p-6 shadow-[0_30px_60px_-30px_rgb(0_0_0/0.35)]">
+              <div class="flex items-center justify-between font-mono text-[10px] tracking-[0.18em] text-muted-foreground uppercase">
+                <span>Form BC-00</span><span>DEVOP-780</span>
               </div>
-              <h2 class="text-lg font-semibold">{{ feature.title }}</h2>
-              <p class="mt-2 text-sm leading-relaxed text-muted-foreground">
-                {{ feature.description }}
-              </p>
+              <p class="mt-4 text-xl leading-snug font-semibold tracking-tight">Request for things to actually move</p>
+              <div class="relative my-5 border-t border-dashed">
+                <span class="absolute -top-2.5 -left-[34px] size-5 rounded-full border bg-[oklch(0.988_0.004_85)] dark:bg-background" />
+                <span class="absolute -top-2.5 -right-[34px] size-5 rounded-full border bg-[oklch(0.988_0.004_85)] dark:bg-background" />
+              </div>
+              <dl class="grid grid-cols-[6.5rem_1fr] items-center gap-y-3.5 text-sm">
+                <dt class="font-mono text-[10px] tracking-[0.18em] text-muted-foreground uppercase">State</dt>
+                <dd class="relative h-6">
+                  <span class="state-a absolute inset-y-0 left-0 inline-flex items-center gap-1.5 rounded-full border border-amber-500/40 bg-amber-500/10 px-2.5 font-mono text-xs">
+                    <span class="size-2 rounded-full bg-[#F59E0B]" /> Approval Pending
+                  </span>
+                  <span class="state-b absolute inset-y-0 left-0 inline-flex items-center gap-1.5 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2.5 font-mono text-xs">
+                    <span class="size-2 rounded-full bg-[#10B981]" /> In Progress
+                  </span>
+                </dd>
+                <dt class="font-mono text-[10px] tracking-[0.18em] text-muted-foreground uppercase">Priority</dt>
+                <dd class="inline-flex items-center gap-2 font-mono text-xs text-[#F97316]">
+                  <span class="flex items-end gap-[2px]">
+                    <span class="h-1 w-[3px] rounded-[1px] bg-current" /><span class="h-2 w-[3px] rounded-[1px] bg-current" /><span class="h-3 w-[3px] rounded-[1px] bg-current" /><span class="h-4 w-[3px] rounded-[1px] bg-muted-foreground/25" />
+                  </span>
+                  High
+                </dd>
+                <dt class="font-mono text-[10px] tracking-[0.18em] text-muted-foreground uppercase">Assignees</dt>
+                <dd class="flex -space-x-1.5">
+                  <span class="grid size-6 place-items-center rounded-full bg-sky-100 font-mono text-[9px] font-bold text-sky-800 ring-2 ring-card">AR</span>
+                  <span class="grid size-6 place-items-center rounded-full bg-violet-100 font-mono text-[9px] font-bold text-violet-800 ring-2 ring-card">KM</span>
+                </dd>
+                <dt class="font-mono text-[10px] tracking-[0.18em] text-muted-foreground uppercase">Filed by</dt>
+                <dd class="font-mono text-xs">you, just now</dd>
+              </dl>
+              <div class="stamp pointer-events-none absolute mix-blend-multiply dark:mix-blend-screen right-5 top-[11.5rem] rounded-md border-[3px] border-amber-600 px-3 py-1 font-mono text-lg font-bold tracking-[0.25em] text-amber-600">
+                <span class="block rounded-sm border border-amber-600/70 px-2">MOVED</span>
+              </div>
             </div>
           </div>
         </div>
+
+        <button
+          type="button"
+          class="rise absolute bottom-6 left-1/2 flex -translate-x-1/2 flex-col items-center gap-2 font-mono text-[10px] tracking-[0.25em] text-muted-foreground uppercase transition-colors hover:text-foreground"
+          style="--d: 900ms"
+          @click="scrollToStory"
+        >
+          Scroll to file
+          <ArrowDown class="cue size-4" />
+        </button>
       </section>
 
-      <!-- CTA Section -->
-      <section
-        class="relative overflow-hidden border-t border-border/50 py-24 md:py-32"
-      >
-        <!-- Background -->
-        <div class="absolute inset-0 -z-10">
-          <div
-            class="absolute inset-0 bg-gradient-to-br from-amber-500/5 via-transparent to-amber-500/5"
-          />
-          <div
-            class="absolute -right-40 -top-40 h-80 w-80 rounded-full bg-amber-500/10 blur-3xl"
-          />
-        </div>
+      <LandingStory :no-bs="noBS" />
 
-        <div class="mx-auto max-w-6xl px-6">
-          <div class="mx-auto max-w-2xl text-center">
-            <h2
-              class="text-3xl font-bold tracking-tight md:text-4xl"
-            >
-              <template v-if="!noBS">
-                Ready to make bureaucracy<br />work for you?
-              </template>
-              <template v-else> Ready to get things done? </template>
-            </h2>
-            <p class="mt-6 text-lg text-muted-foreground">
-              <template v-if="!noBS">
-                Join hundreds of teams that have transformed their approval
-                workflows.
-              </template>
-              <template v-else>
-                Sign up. Create a project. Start tracking.
-              </template>
-            </p>
+      <LandingDrawer :no-bs="noBS" />
+
+      <!-- Closing -->
+      <section class="relative overflow-hidden border-t border-border/60">
+        <div aria-hidden="true" class="pointer-events-none absolute -top-40 left-1/2 h-80 w-[40rem] max-w-full -translate-x-1/2 rounded-full bg-amber-500/10 blur-3xl" />
+        <div class="relative mx-auto max-w-3xl px-4 py-24 text-center md:py-32">
+          <BurecatLogo :size="44" class="mx-auto" />
+          <h2 class="mt-6 text-3xl font-bold tracking-tight md:text-5xl">
+            <template v-if="!noBS">Ready to make bureaucracy<br class="hidden sm:block" /> work for you?</template>
+            <template v-else>Ready to get things done?</template>
+          </h2>
+          <p class="mt-5 text-lg text-muted-foreground">Sign up, create a project, file your first task.</p>
+          <div class="mt-9 flex flex-wrap justify-center gap-3">
+            <Button v-if="signupSettings.enabled" as-child size="lg" class="gap-2 bg-amber-500 text-amber-950 hover:bg-amber-400">
+              <NuxtLink to="/signup">Get started <ArrowRight class="size-4" /></NuxtLink>
+            </Button>
+            <Button as-child size="lg" variant="outline">
+              <NuxtLink to="/signin">Sign in</NuxtLink>
+            </Button>
           </div>
         </div>
       </section>
     </main>
 
-    <!-- Footer -->
-    <footer class="border-t border-border/50">
-      <div class="mx-auto max-w-6xl px-6 py-8">
-        <div
-          class="flex flex-col items-center justify-between gap-4 md:flex-row"
-        >
-          <div class="flex items-center gap-2">
-            <BurecatLogo :size="20" />
-            <span class="text-sm text-muted-foreground">{{ appName }} &copy; 2026</span>
-          </div>
-          <p class="text-center text-sm text-muted-foreground">
-            Crafted by
-            <a
-              href="https://codingcoffee.dev"
-              target="_blank"
-              rel="noopener noreferrer"
-              class="underline underline-offset-4 hover:text-foreground transition-colors"
-              >Ameya Shenoy</a
-            >
-          </p>
+    <footer class="border-t border-border/60">
+      <div class="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-4 py-8 md:flex-row md:px-6">
+        <div class="flex items-center gap-2">
+          <BurecatLogo :size="20" />
+          <span class="text-sm text-muted-foreground">{{ appName }} &copy; 2026</span>
         </div>
+        <p class="text-center text-sm text-muted-foreground">
+          Crafted by
+          <a
+            href="https://codingcoffee.dev"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="underline underline-offset-4 transition-colors hover:text-foreground"
+          >Ameya Shenoy</a>
+        </p>
       </div>
     </footer>
   </div>
 </template>
 
-<style>
-@keyframes fade-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
+<style scoped>
+.ruled {
+  background-image: repeating-linear-gradient(to bottom, transparent 0 31px, var(--border) 31px 32px);
+  mask-image: radial-gradient(ellipse 70% 60% at 50% 40%, black 20%, transparent 75%);
+  opacity: 0.55;
 }
 
-@keyframes fade-in-up {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+.rise {
+  animation: rise 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) var(--d, 0ms) both;
+}
+@keyframes rise {
+  from { opacity: 0; transform: translateY(18px); }
 }
 
-.animate-fade-in {
-  animation: fade-in 0.6s ease-out forwards;
-  opacity: 0;
+.underline-draw {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: draw 0.9s cubic-bezier(0.65, 0, 0.35, 1) 0.7s forwards;
+}
+@keyframes draw {
+  to { stroke-dashoffset: 0; }
 }
 
-.animate-fade-in-up {
-  animation: fade-in-up 0.6s ease-out forwards;
-  opacity: 0;
+.dossier {
+  animation: rise 1s cubic-bezier(0.2, 0.8, 0.2, 1) 0.3s both;
+}
+.sheet-back { transform: rotate(-7deg) translate(-14px, 10px); animation: drift-a 7s ease-in-out 2s infinite; }
+.sheet-mid { transform: rotate(4deg) translate(12px, 6px); animation: drift-b 8s ease-in-out 2s infinite; }
+.sheet-front { animation: thud 0.45s ease-out 1.55s both; }
+@keyframes drift-a { 50% { transform: rotate(-5.5deg) translate(-10px, 4px); } }
+@keyframes drift-b { 50% { transform: rotate(5.5deg) translate(16px, 10px); } }
+@keyframes thud {
+  0%, 100% { transform: none; }
+  25% { transform: translateY(3px) rotate(-0.6deg); }
+  60% { transform: translateY(-1px) rotate(0.3deg); }
+}
+
+.stamp {
+  transform: rotate(-14deg);
+  opacity: 0.9;
+  animation: stamp 0.4s cubic-bezier(0.5, 0, 0.75, 0) 1.2s both;
+}
+@keyframes stamp {
+  from { opacity: 0; transform: rotate(-20deg) scale(2.6); }
+  to { opacity: 0.9; transform: rotate(-14deg) scale(1); }
+}
+
+.state-a { animation: fade-out 0.3s ease 1.6s both; }
+.state-b { animation: fade-in 0.4s ease 1.75s both; }
+@keyframes fade-out { to { opacity: 0; transform: translateY(-6px); } }
+@keyframes fade-in { from { opacity: 0; transform: translateY(6px); } }
+
+.peek {
+  z-index: 0;
+  animation: peek 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) 2.1s both;
+}
+.sheet-front { z-index: 1; }
+@keyframes peek {
+  from { transform: translateY(60%) rotate(8deg); opacity: 0; }
+}
+
+.cue { animation: cue 1.8s ease-in-out infinite; }
+@keyframes cue { 50% { transform: translateY(5px); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .rise, .dossier, .sheet-back, .sheet-mid, .sheet-front, .stamp, .state-a, .state-b, .peek, .cue, .underline-draw {
+    animation: none;
+  }
+  .underline-draw { stroke-dashoffset: 0; }
+  .state-a { opacity: 0; }
 }
 </style>
