@@ -12,12 +12,12 @@ const emit = defineEmits<{
 
 <template>
   <Dialog :open="open" @update:open="emit('update:open', $event)">
-    <DialogContent class="max-w-[90vw] max-h-[90vh] border-none bg-transparent p-0 shadow-none">
+    <DialogContent class="w-auto max-w-[95vw] sm:max-w-[95vw] max-h-[95vh] border-none bg-transparent p-0 shadow-none">
       <DialogTitle class="sr-only">{{ alt || 'Image preview' }}</DialogTitle>
       <img
         :src="src"
         :alt="alt || 'Image preview'"
-        class="max-h-[85vh] w-full rounded-lg object-contain"
+        class="h-auto max-h-[90vh] w-auto max-w-[95vw] rounded-lg object-contain"
       />
     </DialogContent>
   </Dialog>
