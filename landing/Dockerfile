@@ -4,6 +4,7 @@ WORKDIR /app
 COPY landing/package.json landing/bun.lock ./
 RUN bun install --frozen-lockfile
 COPY landing/index.html landing/vite.config.ts landing/tsconfig.json ./
+COPY landing/scripts ./scripts
 COPY landing/src ./src
 COPY landing/public ./public
 RUN bun run build

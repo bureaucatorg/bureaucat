@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, onMounted } from "vue";
 import { Star, Sun, Moon } from "lucide-vue-next";
 import CatLogo from "./CatLogo.vue";
 import { appLink } from "../lib/config";
 
-const dark = ref(document.documentElement.classList.contains("dark"));
+const dark = ref(false);
+onMounted(() => (dark.value = document.documentElement.classList.contains("dark")));
 
 function toggleTheme() {
   dark.value = !dark.value;
@@ -18,7 +19,7 @@ function toggleTheme() {
 <template>
   <header class="sticky top-0 z-40 border-b border-border/60 bg-paper/80 backdrop-blur-xl">
     <div class="mx-auto flex h-12 max-w-6xl items-center justify-between gap-3 px-4 md:px-6">
-      <a href="/" class="flex items-center gap-2 font-semibold tracking-tight">
+      <a href="/" aria-label="BureauCat home" class="flex items-center gap-2 font-semibold tracking-tight">
         <CatLogo :size="28" />
         <span class="text-lg">Bureau<span class="text-amber-500">Cat</span></span>
       </a>

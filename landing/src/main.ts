@@ -1,5 +1,6 @@
-import { createApp } from "vue";
+import { createApp, createSSRApp } from "vue";
 import App from "./App.vue";
 import "./style.css";
 
-createApp(App).mount("#app");
+const prerendered = document.getElementById("app")?.hasChildNodes();
+(prerendered ? createSSRApp : createApp)(App).mount("#app");

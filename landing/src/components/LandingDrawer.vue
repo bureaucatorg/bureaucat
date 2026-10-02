@@ -6,7 +6,7 @@ defineProps<{ noBs: boolean }>();
 
 const items = [
   { icon: KeyRound, title: "Single sign-on", body: "Google and Zitadel, alongside passwords." },
-  { icon: Terminal, title: "Tokens & CLI", body: "Read-only or read-write access tokens, plus a CLI." },
+  { icon: Terminal, title: "Tokens & CLI", body: "Read-only or read-write API tokens, plus a CLI." },
   { icon: BookOpen, title: "API docs", body: "Every endpoint, documented.", to: appLink("/docs") },
   { icon: Filter, title: "Saved views", body: "Filter, group and sort. Keep it private or share it." },
   { icon: FileText, title: "Pages", body: "Rich-text docs that live next to the project." },
@@ -19,11 +19,11 @@ const items = [
 </script>
 
 <template>
-  <section class="mx-auto max-w-6xl px-4 py-24 md:px-6 md:py-32">
+  <section aria-labelledby="drawer-title" class="mx-auto max-w-6xl px-4 py-24 md:px-6 md:py-32">
     <p class="font-mono text-[11px] tracking-[0.2em] text-amber-700 uppercase dark:text-amber-400">
       § 08 · Also in the drawer
     </p>
-    <h2 class="mt-4 text-3xl font-bold tracking-tight md:text-5xl">
+    <h2 id="drawer-title" class="mt-4 text-3xl font-bold tracking-tight md:text-5xl">
       {{ noBs ? "Also included." : "The rest of the paperwork." }}
     </h2>
 
@@ -33,7 +33,7 @@ const items = [
         :key="item.title"
         class="group relative border-r border-b border-border/70 bg-card/40 p-6 transition-colors hover:bg-card"
       >
-        <span class="font-mono text-[10px] tracking-widest text-muted-foreground/70">
+        <span aria-hidden="true" class="font-mono text-[10px] tracking-widest text-muted-foreground/70">
           {{ String(i + 1).padStart(2, "0") }}
         </span>
         <component

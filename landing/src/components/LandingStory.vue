@@ -26,7 +26,7 @@ const chapters = [
   {
     form: "PLANNING",
     title: "Plan the work.",
-    body: "Break a task into subtasks, move cards across the board, and slot work into cycles and modules to see the bigger picture.",
+    body: "Break a task into subtasks, move cards across the kanban board, and slot work into cycles and modules to see the bigger picture.",
     blunt: "Subtasks. Boards. Cycles. Modules.",
   },
   {
@@ -44,7 +44,7 @@ const chapters = [
   {
     form: "RECORD",
     title: "On the record.",
-    body: "Every change lands in an append-only activity log, each entry hash-chained to the one before. One click verifies nothing was rewritten.",
+    body: "Every change lands in an append-only audit log, each entry hash-chained to the one before. One click verifies nothing was rewritten.",
     blunt: "Audit log. Tamper-evident.",
   },
 ];

@@ -5,7 +5,7 @@ server {
     server_tokens off;
 
     gzip on;
-    gzip_types text/css application/javascript image/svg+xml;
+    gzip_types text/css text/plain text/xml application/xml application/javascript application/manifest+json image/svg+xml;
 
     # The app URL is injected into index.html at serve time so one image fits every deployment.
     location = /index.html {
@@ -15,14 +15,28 @@ server {
         sub_filter_once off;
     }
 
-    location /assets/ {
+    location ~ ^/(robots\.txt|sitemap\.xml)$ {
+        include /etc/nginx/snippets/security-headers.conf;
+        add_header Cache-Control "public, max-age=3600" always;
+    }
+
+    location ^~ /assets/ {
         include /etc/nginx/snippets/security-headers.conf;
         add_header Cache-Control "public, max-age=31536000, immutable" always;
         try_files $uri =404;
     }
 
+    location ~* \.(png|ico|svg|woff2|webmanifest)$ {
+        include /etc/nginx/snippets/security-headers.conf;
+        add_header Cache-Control "public, max-age=604800" always;
+        try_files $uri =404;
+    }
+
+    # Single-page site: unknown paths get a real 404 (with the landing page as the body) instead of a soft 404.
+    error_page 404 /index.html;
+
     location / {
         include /etc/nginx/snippets/security-headers.conf;
-        try_files $uri /index.html;
+        try_files $uri $uri/ =404;
     }
 }

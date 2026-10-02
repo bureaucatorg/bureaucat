@@ -22,6 +22,10 @@ const outlineBtn =
 
 <template>
   <div class="relative flex min-h-screen flex-col overflow-x-clip">
+    <a
+      href="#main-content"
+      class="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[60] focus:rounded-md focus:bg-background focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:shadow-md"
+    >Skip to content</a>
     <div
       aria-hidden="true"
       class="pointer-events-none fixed inset-0 z-50 opacity-[0.025] dark:opacity-[0.04]"
@@ -32,14 +36,17 @@ const outlineBtn =
 
     <main id="main-content" class="flex-1">
       <!-- Hero -->
-      <section class="relative">
+      <section aria-labelledby="hero-title" class="relative">
         <div aria-hidden="true" class="ruled pointer-events-none absolute inset-0 -z-0" />
         <HeroWeb />
         <div
           class="pointer-events-none relative mx-auto grid min-h-[calc(100svh-3rem)] max-w-6xl items-center gap-14 px-4 pt-14 pb-28 lg:grid-cols-[minmax(0,1fr)_22rem] md:px-6 md:pt-10"
         >
           <div class="pointer-events-auto">
-            <h1 class="rise text-5xl leading-[1.02] font-bold tracking-[-0.035em] sm:text-6xl lg:text-[4.25rem]" style="--d: 120ms">
+            <h1 id="hero-title" class="rise text-5xl leading-[1.02] font-bold tracking-[-0.035em] sm:text-6xl lg:text-[4.25rem]" style="--d: 120ms">
+              <span class="mb-5 block font-mono text-[11px] font-medium tracking-[0.2em] text-amber-700 uppercase dark:text-amber-400">
+                Self-hosted · Open-source task manager
+              </span>
               <template v-if="!noBS">
                 Bureaucracy<br />
                 That Actually
@@ -63,7 +70,7 @@ const outlineBtn =
 
             <p class="rise mt-8 max-w-xl text-lg leading-relaxed text-muted-foreground md:text-xl" style="--d: 240ms">
               <template v-if="!noBS">
-                Requests, sign-offs and to-dos, turned into tasks that move. Open Source. Self-hosted.
+                Requests, sign-offs and to-dos, turned into tasks that move, with approval workflows, kanban boards and a tamper-evident audit log.
               </template>
               <template v-else>Create tasks. Assign people. Track progress. That's it.<br/>Open Source. Self-hosted.</template>
             </p>
@@ -147,11 +154,11 @@ const outlineBtn =
       <LandingDrawer :no-bs="noBS" />
 
       <!-- Closing -->
-      <section class="relative overflow-hidden border-t border-border/60">
+      <section aria-labelledby="closing-title" class="relative overflow-hidden border-t border-border/60">
         <div aria-hidden="true" class="pointer-events-none absolute -top-40 left-1/2 h-80 w-[40rem] max-w-full -translate-x-1/2 rounded-full bg-amber-500/10 blur-3xl" />
         <div class="relative mx-auto max-w-3xl px-4 py-24 text-center md:py-32">
           <CatLogo :size="44" class="mx-auto" />
-          <h2 class="mt-6 text-3xl font-bold tracking-tight md:text-5xl">
+          <h2 id="closing-title" class="mt-6 text-3xl font-bold tracking-tight md:text-5xl">
             <template v-if="!noBS">Ready to make bureaucracy<br class="hidden sm:block" /> work for you?</template>
             <template v-else>Ready to get things done?</template>
           </h2>
