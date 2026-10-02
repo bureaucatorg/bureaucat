@@ -341,12 +341,11 @@ function onNodeClick({ node }: NodeMouseEvent) {
 }
 
 function onNodeDoubleClick({ node }: NodeMouseEvent) {
-  if (node.type === "task") {
-    const t = node.data as GraphTask;
-    navigateTo(`/projects/${t.project_key}/tasks/${t.task_number}`);
-  } else {
-    navigateTo(`/profile/${(node.data as GraphUser).id}`);
-  }
+  const path =
+    node.type === "task"
+      ? `/projects/${(node.data as GraphTask).project_key}/tasks/${(node.data as GraphTask).task_number}`
+      : `/profile/${(node.data as GraphUser).id}`;
+  navigateTo(path, { open: { target: "_blank" } });
 }
 </script>
 
