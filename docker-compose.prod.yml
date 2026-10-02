@@ -1,4 +1,15 @@
 services:
+  landing:
+    image: codingcoffee/bureaucat-landing:${VERSION:-latest}
+    build:
+      context: ./
+      dockerfile: landing/Dockerfile
+    restart: unless-stopped
+    ports:
+      - 8080:8080
+    environment:
+      APP_URL: ${APP_URL:?set APP_URL to the app's public URL, e.g. https://app.example.com}
+
   app:
     image: docker.io/codingcoffee/bureaucat:${VERSION:-latest}
     build:
