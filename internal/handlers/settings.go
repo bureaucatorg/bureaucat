@@ -4,10 +4,15 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"net/mail"
 	"strings"
 
+	"github.com/google/uuid"
 	"github.com/labstack/echo/v5"
 
+	"bereaucat/internal/auth"
+	"bereaucat/internal/mailer"
+	"bereaucat/internal/notifications"
 	"bereaucat/internal/notifier"
 	"bereaucat/internal/store"
 )
@@ -531,6 +536,157 @@ func (h *SettingsHandler) LoadMattermostSettings(ctx context.Context) (*Mattermo
 		return nil, err
 	}
 	return &mm, nil
+}
+
+// --- SMTP Settings ---
+
+// GetSMTPSettings returns the SMTP config with the password masked (admin only).
+//
+//	@Summary		Get SMTP settings
+//	@Description	Returns SMTP email configuration with password masked. Requires admin role.
+//	@Tags			Admin - Settings
+//	@Produce		json
+//	@Success		200	{object}	mailer.Settings
+//	@Security		BearerAuth
+//	@Router			/admin/settings/smtp [get]
+func (h *SettingsHandler) GetSMTPSettings(c *echo.Context) error {
+	cfg, err := mailer.Load(c.Request().Context(), h.store)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to load SMTP settings")
+	}
+	if cfg.Port == 0 {
+		cfg.Port = 587
+	}
+	if cfg.TLSMode == "" {
+		cfg.TLSMode = mailer.TLSModeStartTLS
+	}
+	cfg.Password = maskSecret(cfg.Password)
+	return c.JSON(http.StatusOK, cfg)
+}
+
+// UpdateSMTPSettings saves the SMTP config (admin only).
+//
+//	@Summary		Update SMTP settings
+//	@Description	Update SMTP email configuration. A masked password is preserved. Requires admin role.
+//	@Tags			Admin - Settings
+//	@Accept			json
+//	@Produce		json
+//	@Param			body	body		mailer.Settings	true	"SMTP configuration"
+//	@Success		200		{object}	mailer.Settings
+//	@Failure		400		{object}	ErrorResponse
+//	@Failure		500		{object}	ErrorResponse
+//	@Security		BearerAuth
+//	@Router			/admin/settings/smtp [put]
+func (h *SettingsHandler) UpdateSMTPSettings(c *echo.Context) error {
+	var req mailer.Settings
+	if err := c.Bind(&req); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid request body")
+	}
+
+	ctx := c.Request().Context()
+
+	existing, err := mailer.Load(ctx, h.store)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to load SMTP settings")
+	}
+	if isSecretMasked(req.Password) && req.Username != "" {
+		req.Password = existing.Password
+	}
+	if req.Username == "" {
+		req.Password = ""
+	}
+
+	if req.Enabled {
+		if err := req.Validate(); err != nil {
+			return echo.NewHTTPError(http.StatusBadRequest, "invalid SMTP settings: "+err.Error())
+		}
+	}
+
+	value, err := json.Marshal(req)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to marshal settings")
+	}
+
+	if _, err := h.store.UpsertSetting(ctx, store.UpsertSettingParams{
+		Key:   mailer.SettingKey,
+		Value: value,
+	}); err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to update SMTP settings")
+	}
+
+	req.Password = maskSecret(req.Password)
+	return c.JSON(http.StatusOK, req)
+}
+
+// TestSMTPRequest picks the test email recipient (empty means the requesting admin) and
+// template: "connection" (default) or an activity type to preview that notification email.
+type TestSMTPRequest struct {
+	To       string `json:"to"`
+	Template string `json:"template"`
+}
+
+// TestSMTPSettings sends a test email to the given address using the saved settings.
+//
+//	@Summary		Send test email
+//	@Description	Sends a test email to the given address (default: current admin) using the saved SMTP settings. Requires admin role.
+//	@Tags			Admin - Settings
+//	@Accept			json
+//	@Produce		json
+//	@Param			body	body		TestSMTPRequest	false	"Recipient"
+//	@Success		200	{object}	MessageResponse
+//	@Failure		400	{object}	ErrorResponse
+//	@Failure		500	{object}	ErrorResponse
+//	@Security		BearerAuth
+//	@Router			/admin/settings/smtp/test [post]
+func (h *SettingsHandler) TestSMTPSettings(c *echo.Context) error {
+	ctx := c.Request().Context()
+
+	cfg, err := mailer.Load(ctx, h.store)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to load SMTP settings")
+	}
+	if !cfg.Enabled {
+		return echo.NewHTTPError(http.StatusBadRequest, "SMTP is not configured or not enabled")
+	}
+
+	var req TestSMTPRequest
+	if err := c.Bind(&req); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid request body")
+	}
+
+	userID, err := uuid.Parse(c.Request().Header.Get(auth.HeaderUserID))
+	if err != nil {
+		return echo.NewHTTPError(http.StatusUnauthorized, "invalid user ID")
+	}
+	user, err := h.store.GetUserByID(ctx, userID)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusNotFound, "user not found")
+	}
+
+	to := strings.TrimSpace(req.To)
+	if to == "" {
+		to = user.Email
+	}
+	addr, err := mail.ParseAddress(to)
+	if err != nil || addr.Name != "" {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid recipient email address")
+	}
+
+	var msg mailer.Message
+	if req.Template == "" || req.Template == "connection" {
+		msg, err = notifications.TestEmail(cfg.AppURL, addr.Address, user.FirstName, user.LastName)
+	} else {
+		msg, err = notifications.SampleEmail(cfg.AppURL, addr.Address, req.Template, user.FirstName, user.LastName)
+	}
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid email template")
+	}
+
+	if err := mailer.Send(ctx, cfg, msg); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "failed to send test email: "+err.Error())
+	}
+
+	return c.JSON(http.StatusOK, map[string]string{"message": "test email sent to " + addr.Address})
 }
 
 // maskSecret replaces all but the last 4 characters with asterisks.

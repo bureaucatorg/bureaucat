@@ -12,6 +12,90 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const claimEmailNotifications = `-- name: ClaimEmailNotifications :many
+
+UPDATE notifications n
+SET emailed_at = NOW()
+FROM users r, users a, tasks t, projects p, project_states s
+WHERE n.emailed_at IS NULL
+  AND n.created_at <= $1
+  AND n.read_at IS NULL
+  AND r.id = n.recipient_id
+  AND r.email_notifications
+  AND a.id = n.actor_id
+  AND t.id = n.task_id
+  AND t.deleted_at IS NULL
+  AND p.id = t.project_id
+  AND s.id = t.state_id
+RETURNING n.id, n.task_id, n.recipient_id, n.activity_type, n.comment_id, n.event_count, n.created_at, n.updated_at,
+          r.email AS recipient_email,
+          a.first_name AS actor_first_name, a.last_name AS actor_last_name,
+          t.task_number, t.title AS task_title,
+          p.project_key, p.name AS project_name,
+          s.name AS state_name, s.color AS state_color
+`
+
+type ClaimEmailNotificationsRow struct {
+	ID             uuid.UUID          `json:"id"`
+	TaskID         uuid.UUID          `json:"task_id"`
+	RecipientID    uuid.UUID          `json:"recipient_id"`
+	ActivityType   string             `json:"activity_type"`
+	CommentID      pgtype.UUID        `json:"comment_id"`
+	EventCount     int32              `json:"event_count"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
+	RecipientEmail string             `json:"recipient_email"`
+	ActorFirstName string             `json:"actor_first_name"`
+	ActorLastName  string             `json:"actor_last_name"`
+	TaskNumber     int32              `json:"task_number"`
+	TaskTitle      string             `json:"task_title"`
+	ProjectKey     string             `json:"project_key"`
+	ProjectName    string             `json:"project_name"`
+	StateName      string             `json:"state_name"`
+	StateColor     pgtype.Text        `json:"state_color"`
+}
+
+// ==================== EMAIL DIGEST ====================
+// Claim unread notifications whose coalescing window has closed, for opted-in
+// recipients, marking them emailed. Atomic, so concurrent workers never double-send.
+func (q *Queries) ClaimEmailNotifications(ctx context.Context, cutoff pgtype.Timestamptz) ([]ClaimEmailNotificationsRow, error) {
+	rows, err := q.db.Query(ctx, claimEmailNotifications, cutoff)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ClaimEmailNotificationsRow{}
+	for rows.Next() {
+		var i ClaimEmailNotificationsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.TaskID,
+			&i.RecipientID,
+			&i.ActivityType,
+			&i.CommentID,
+			&i.EventCount,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.RecipientEmail,
+			&i.ActorFirstName,
+			&i.ActorLastName,
+			&i.TaskNumber,
+			&i.TaskTitle,
+			&i.ProjectKey,
+			&i.ProjectName,
+			&i.StateName,
+			&i.StateColor,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const coalesceNotification = `-- name: CoalesceNotification :exec
 UPDATE notifications
 SET event_count   = event_count + 1,
@@ -172,6 +256,79 @@ func (q *Queries) GetOpenNotification(ctx context.Context, arg GetOpenNotificati
 	return i, err
 }
 
+const getUserEmailNotifications = `-- name: GetUserEmailNotifications :one
+SELECT email_notifications FROM users WHERE id = $1
+`
+
+func (q *Queries) GetUserEmailNotifications(ctx context.Context, id uuid.UUID) (bool, error) {
+	row := q.db.QueryRow(ctx, getUserEmailNotifications, id)
+	var email_notifications bool
+	err := row.Scan(&email_notifications)
+	return email_notifications, err
+}
+
+const listEmailActivity = `-- name: ListEmailActivity :many
+SELECT al.activity_type, al.field_name, al.old_value, al.new_value, u.first_name, u.last_name
+FROM activity_log al
+JOIN users u ON u.id = al.actor_id
+WHERE al.task_id = $1
+  AND al.actor_id <> $2
+  AND al.created_at >= $3
+  AND al.created_at <= $4
+ORDER BY al.created_at ASC
+LIMIT 20
+`
+
+type ListEmailActivityParams struct {
+	TaskID      uuid.UUID          `json:"task_id"`
+	RecipientID uuid.UUID          `json:"recipient_id"`
+	Since       pgtype.Timestamptz `json:"since"`
+	Until       pgtype.Timestamptz `json:"until"`
+}
+
+type ListEmailActivityRow struct {
+	ActivityType string      `json:"activity_type"`
+	FieldName    pgtype.Text `json:"field_name"`
+	OldValue     []byte      `json:"old_value"`
+	NewValue     []byte      `json:"new_value"`
+	FirstName    string      `json:"first_name"`
+	LastName     string      `json:"last_name"`
+}
+
+// The activity batched into one notification: other users' changes to the task
+// within the notification's lifetime, oldest first.
+func (q *Queries) ListEmailActivity(ctx context.Context, arg ListEmailActivityParams) ([]ListEmailActivityRow, error) {
+	rows, err := q.db.Query(ctx, listEmailActivity,
+		arg.TaskID,
+		arg.RecipientID,
+		arg.Since,
+		arg.Until,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListEmailActivityRow{}
+	for rows.Next() {
+		var i ListEmailActivityRow
+		if err := rows.Scan(
+			&i.ActivityType,
+			&i.FieldName,
+			&i.OldValue,
+			&i.NewValue,
+			&i.FirstName,
+			&i.LastName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listNotifications = `-- name: ListNotifications :many
 SELECT n.id, n.task_id, n.activity_type, n.actor_id, n.comment_id, n.event_count, n.read_at, n.created_at, n.updated_at,
        u.username, u.first_name, u.last_name, u.avatar_url,
@@ -276,5 +433,34 @@ type MarkNotificationReadParams struct {
 
 func (q *Queries) MarkNotificationRead(ctx context.Context, arg MarkNotificationReadParams) error {
 	_, err := q.db.Exec(ctx, markNotificationRead, arg.ID, arg.RecipientID)
+	return err
+}
+
+const skipEmailNotifications = `-- name: SkipEmailNotifications :exec
+UPDATE notifications
+SET emailed_at = NOW()
+WHERE emailed_at IS NULL
+  AND created_at <= $1
+`
+
+// Mark the remaining closed-window rows processed so they are never emailed later.
+func (q *Queries) SkipEmailNotifications(ctx context.Context, cutoff pgtype.Timestamptz) error {
+	_, err := q.db.Exec(ctx, skipEmailNotifications, cutoff)
+	return err
+}
+
+const updateUserEmailNotifications = `-- name: UpdateUserEmailNotifications :exec
+UPDATE users
+SET email_notifications = $2, updated_at = NOW()
+WHERE id = $1
+`
+
+type UpdateUserEmailNotificationsParams struct {
+	ID                 uuid.UUID `json:"id"`
+	EmailNotifications bool      `json:"email_notifications"`
+}
+
+func (q *Queries) UpdateUserEmailNotifications(ctx context.Context, arg UpdateUserEmailNotificationsParams) error {
+	_, err := q.db.Exec(ctx, updateUserEmailNotifications, arg.ID, arg.EmailNotifications)
 	return err
 }

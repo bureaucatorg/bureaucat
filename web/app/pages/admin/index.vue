@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { Users, Key, Shield, ArrowRight, Loader2, Upload, CheckCircle2, Copy, Check, MessageSquare, MessageCircle, UserPlus, BarChart3, Trash2, Network } from "lucide-vue-next";
+import { Users, Key, Shield, ArrowRight, Loader2, Upload, CheckCircle2, Copy, Check, MessageSquare, MessageCircle, Mail, UserPlus, BarChart3, Trash2, Network } from "lucide-vue-next";
 import { toast } from "vue-sonner";
-import type { SSOSettings, MattermostSettings } from "~/composables/useSettings";
+import type { SSOSettings, MattermostSettings, SMTPSettings } from "~/composables/useSettings";
+import { ACTIVITY_TYPE_LABELS } from "~/types";
 
 definePageMeta({
   middleware: ["admin"],
@@ -9,8 +10,8 @@ definePageMeta({
 
 useSeoMeta({ title: "Admin" });
 
-const { branding, updateBranding, signupSettings, updateSignupSettings, fetchSignupSettings, fetchSSOSettings, updateSSOSettings, fetchMattermostSettings, updateMattermostSettings, testMattermostConnection } = useSettings();
-const { getAuthHeader } = useAuth();
+const { branding, updateBranding, signupSettings, updateSignupSettings, fetchSignupSettings, fetchSSOSettings, updateSSOSettings, fetchMattermostSettings, updateMattermostSettings, testMattermostConnection, fetchSMTPSettings, updateSMTPSettings, testSMTPSettings } = useSettings();
+const { getAuthHeader, user } = useAuth();
 
 const brandingForm = ref({
   enabled: branding.value.enabled,
@@ -243,10 +244,85 @@ async function handleTestMattermost() {
   }
 }
 
+// SMTP Settings
+const smtpForm = ref<SMTPSettings>({
+  enabled: false,
+  host: "",
+  port: 587,
+  username: "",
+  password: "",
+  from_address: "",
+  from_name: "",
+  tls_mode: "starttls",
+  app_url: "",
+});
+const savingSMTP = ref(false);
+const testingSMTP = ref(false);
+const smtpLoaded = ref(false);
+
+async function loadSMTPSettings() {
+  const result = await fetchSMTPSettings();
+  if (result.success && result.data) {
+    smtpForm.value = { ...smtpForm.value, ...result.data };
+  }
+  if (!smtpForm.value.app_url) {
+    smtpForm.value.app_url = window.location.origin;
+  }
+  smtpLoaded.value = true;
+}
+
+async function handleSaveSMTP() {
+  savingSMTP.value = true;
+  const result = await updateSMTPSettings({ ...smtpForm.value, port: Number(smtpForm.value.port) });
+  savingSMTP.value = false;
+
+  if (result.success) {
+    if (result.data) {
+      smtpForm.value = { ...smtpForm.value, ...result.data };
+    }
+    toast.success("Email settings saved");
+  } else {
+    toast.error(result.error || "Failed to save email settings");
+  }
+}
+
+const showTestEmailDialog = ref(false);
+const testEmailTo = ref("");
+const testEmailTemplate = ref("connection");
+const testEmailTemplates = [
+  { value: "connection", label: "Connection test" },
+  ...Object.entries(ACTIVITY_TYPE_LABELS)
+    .filter(([value]) => value !== "task_deleted")
+    .map(([value, label]) => ({
+      value,
+      label: `Notification: ${label}`,
+    })),
+  { value: "batched", label: "Notification: several updates batched" },
+];
+
+function openTestEmailDialog() {
+  testEmailTo.value = user.value?.email || "";
+  showTestEmailDialog.value = true;
+}
+
+async function handleTestSMTP() {
+  testingSMTP.value = true;
+  const result = await testSMTPSettings(testEmailTo.value.trim(), testEmailTemplate.value);
+  testingSMTP.value = false;
+
+  if (result.success) {
+    showTestEmailDialog.value = false;
+    toast.success(result.message || "Test email sent");
+  } else {
+    toast.error(result.error || "Failed to send test email");
+  }
+}
+
 onMounted(() => {
   fetchSignupSettings();
   loadSSOSettings();
   loadMattermostSettings();
+  loadSMTPSettings();
 });
 
 const adminModels = [
@@ -734,7 +810,190 @@ const adminModels = [
               </div>
             </CardContent>
           </Card>
+          <Card class="mt-4">
+            <CardContent class="pt-6">
+              <div class="space-y-6">
+                <div class="flex items-center justify-between gap-4">
+                  <div class="flex items-center gap-3">
+                    <Mail class="size-5 shrink-0 text-muted-foreground" />
+                    <div>
+                      <p class="font-medium">Email (SMTP)</p>
+                      <p class="text-sm text-muted-foreground">
+                        Email users their notifications. Users opt in from their settings page.
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    :checked="smtpForm.enabled"
+                    @update:checked="smtpForm.enabled = $event"
+                  />
+                </div>
+
+                <div v-if="smtpForm.enabled" class="space-y-4">
+                  <div class="grid gap-4 sm:grid-cols-[1fr_8rem_10rem]">
+                    <div class="space-y-2">
+                      <Label for="smtp-host">Host</Label>
+                      <Input
+                        id="smtp-host"
+                        v-model="smtpForm.host"
+                        placeholder="smtp.example.com"
+                        :disabled="savingSMTP"
+                      />
+                    </div>
+                    <div class="space-y-2">
+                      <Label for="smtp-port">Port</Label>
+                      <Input
+                        id="smtp-port"
+                        v-model.number="smtpForm.port"
+                        type="number"
+                        min="1"
+                        max="65535"
+                        :disabled="savingSMTP"
+                      />
+                    </div>
+                    <div class="space-y-2">
+                      <Label for="smtp-tls">Encryption</Label>
+                      <Select v-model="smtpForm.tls_mode" :disabled="savingSMTP">
+                        <SelectTrigger id="smtp-tls" class="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="starttls">STARTTLS</SelectItem>
+                          <SelectItem value="tls">TLS</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <p class="-mt-2 text-xs text-muted-foreground">
+                    Usually STARTTLS on port 587, or TLS on port 465
+                  </p>
+
+                  <div class="grid gap-4 sm:grid-cols-2">
+                    <div class="space-y-2">
+                      <Label for="smtp-username">Username</Label>
+                      <Input
+                        id="smtp-username"
+                        v-model="smtpForm.username"
+                        autocomplete="off"
+                        placeholder="Leave empty if no auth"
+                        :disabled="savingSMTP"
+                      />
+                    </div>
+                    <div class="space-y-2">
+                      <Label for="smtp-password">Password</Label>
+                      <Input
+                        id="smtp-password"
+                        v-model="smtpForm.password"
+                        type="password"
+                        autocomplete="new-password"
+                        :disabled="savingSMTP || !smtpForm.username"
+                      />
+                    </div>
+                  </div>
+
+                  <div class="grid gap-4 sm:grid-cols-2">
+                    <div class="space-y-2">
+                      <Label for="smtp-from-address">From address</Label>
+                      <Input
+                        id="smtp-from-address"
+                        v-model="smtpForm.from_address"
+                        type="email"
+                        placeholder="notifications@example.com"
+                        :disabled="savingSMTP"
+                      />
+                    </div>
+                    <div class="space-y-2">
+                      <Label for="smtp-from-name">From name</Label>
+                      <Input
+                        id="smtp-from-name"
+                        v-model="smtpForm.from_name"
+                        placeholder="Bureaucat"
+                        :disabled="savingSMTP"
+                      />
+                    </div>
+                  </div>
+
+                  <div class="space-y-2">
+                    <Label for="smtp-app-url">App URL</Label>
+                    <Input
+                      id="smtp-app-url"
+                      v-model="smtpForm.app_url"
+                      placeholder="https://bureaucat.example.com"
+                      :disabled="savingSMTP"
+                    />
+                    <p class="text-xs text-muted-foreground">
+                      Used to build task links in emails
+                    </p>
+                  </div>
+                </div>
+
+                <div class="flex flex-wrap items-center justify-end gap-2 pt-2">
+                  <Button
+                    v-if="smtpForm.enabled && smtpLoaded"
+                    variant="outline"
+                    @click="openTestEmailDialog"
+                    :disabled="savingSMTP"
+                  >
+                    Send Test Email
+                  </Button>
+                  <Button @click="handleSaveSMTP" :disabled="savingSMTP">
+                    <Loader2 v-if="savingSMTP" class="mr-2 size-4 animate-spin" />
+                    Save Changes
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
+
+        <Dialog v-model:open="showTestEmailDialog">
+          <DialogContent class="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Send test email</DialogTitle>
+              <DialogDescription>
+                Uses the saved SMTP settings. Save any changes first.
+              </DialogDescription>
+            </DialogHeader>
+            <form class="space-y-4" @submit.prevent="handleTestSMTP">
+              <div class="space-y-2">
+                <Label for="smtp-test-to">Recipient</Label>
+                <Input
+                  id="smtp-test-to"
+                  v-model="testEmailTo"
+                  type="email"
+                  required
+                  placeholder="user@example.com"
+                  :disabled="testingSMTP"
+                />
+              </div>
+              <div class="space-y-2">
+                <Label for="smtp-test-template">Email</Label>
+                <Select v-model="testEmailTemplate" :disabled="testingSMTP">
+                  <SelectTrigger id="smtp-test-template" class="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem v-for="t in testEmailTemplates" :key="t.value" :value="t.value">
+                      {{ t.label }}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                <p v-if="testEmailTemplate !== 'connection'" class="text-xs text-muted-foreground">
+                  Sent exactly as users receive it, with you as the actor and a placeholder task (DEMO-1).
+                </p>
+              </div>
+              <DialogFooter class="gap-2">
+                <Button type="button" variant="outline" :disabled="testingSMTP" @click="showTestEmailDialog = false">
+                  Cancel
+                </Button>
+                <Button type="submit" :disabled="testingSMTP || !testEmailTo.trim()">
+                  <Loader2 v-if="testingSMTP" class="mr-2 size-4 animate-spin" />
+                  Send
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
 
         <!-- Feedback panel (links to the dedicated management page) -->
         <div class="mt-12">

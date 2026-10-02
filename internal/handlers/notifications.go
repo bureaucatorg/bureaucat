@@ -9,6 +9,7 @@ import (
 	"github.com/labstack/echo/v5"
 
 	"bereaucat/internal/auth"
+	"bereaucat/internal/mailer"
 	"bereaucat/internal/store"
 )
 
@@ -172,6 +173,63 @@ func (h *NotificationHandler) MarkAllRead(c *echo.Context) error {
 
 	if err := h.store.MarkAllNotificationsRead(c.Request().Context(), userID); err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to mark notifications read")
+	}
+
+	return c.NoContent(http.StatusNoContent)
+}
+
+// NotificationSettingsResponse is the current user's notification preferences.
+type NotificationSettingsResponse struct {
+	EmailEnabled   bool `json:"email_enabled"`
+	EmailAvailable bool `json:"email_available"`
+}
+
+// UpdateNotificationSettingsRequest updates the current user's notification preferences.
+type UpdateNotificationSettingsRequest struct {
+	EmailEnabled bool `json:"email_enabled"`
+}
+
+// GetNotificationSettings returns the current user's notification preferences.
+func (h *NotificationHandler) GetNotificationSettings(c *echo.Context) error {
+	userID, err := uuid.Parse(c.Request().Header.Get(auth.HeaderUserID))
+	if err != nil {
+		return echo.NewHTTPError(http.StatusUnauthorized, "invalid user")
+	}
+
+	ctx := c.Request().Context()
+
+	enabled, err := h.store.GetUserEmailNotifications(ctx, userID)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to load notification settings")
+	}
+	cfg, err := mailer.Load(ctx, h.store)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to load notification settings")
+	}
+
+	return c.JSON(http.StatusOK, NotificationSettingsResponse{
+		EmailEnabled:   enabled,
+		EmailAvailable: cfg.Enabled,
+	})
+}
+
+// UpdateNotificationSettings updates the current user's notification preferences.
+func (h *NotificationHandler) UpdateNotificationSettings(c *echo.Context) error {
+	userID, err := uuid.Parse(c.Request().Header.Get(auth.HeaderUserID))
+	if err != nil {
+		return echo.NewHTTPError(http.StatusUnauthorized, "invalid user")
+	}
+
+	var req UpdateNotificationSettingsRequest
+	if err := c.Bind(&req); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid request body")
+	}
+
+	if err := h.store.UpdateUserEmailNotifications(c.Request().Context(), store.UpdateUserEmailNotificationsParams{
+		ID:                 userID,
+		EmailNotifications: req.EmailEnabled,
+	}); err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to update notification settings")
 	}
 
 	return c.NoContent(http.StatusNoContent)

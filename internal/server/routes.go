@@ -98,6 +98,8 @@ func (s *Server) registerRoutes() {
 			protected.GET("/me/notifications/unread_count", s.notificationsHandler.GetUnreadCount)
 			protected.POST("/me/notifications/:id/read", s.notificationsHandler.MarkRead)
 			protected.POST("/me/notifications/read_all", s.notificationsHandler.MarkAllRead)
+			protected.GET("/me/notification_settings", s.notificationsHandler.GetNotificationSettings)
+			protected.PUT("/me/notification_settings", s.notificationsHandler.UpdateNotificationSettings)
 		}
 
 		// Local mirror of outbound feedback. Authenticated — the sidebar
@@ -337,6 +339,9 @@ func (s *Server) registerRoutes() {
 			admin.GET("/settings/mattermost", s.settingsHandler.GetMattermostSettings)
 			admin.PUT("/settings/mattermost", s.settingsHandler.UpdateMattermostSettings)
 			admin.POST("/settings/mattermost/test", s.settingsHandler.TestMattermostConnection)
+			admin.GET("/settings/smtp", s.settingsHandler.GetSMTPSettings)
+			admin.PUT("/settings/smtp", s.settingsHandler.UpdateSMTPSettings)
+			admin.POST("/settings/smtp/test", s.settingsHandler.TestSMTPSettings)
 		}
 
 		// Admin data import

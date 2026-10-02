@@ -38,6 +38,10 @@ type Querier interface {
 	// Soft-delete all children of a task (cascade-together on parent delete).
 	CascadeSoftDeleteSubtasks(ctx context.Context, parentID uuid.UUID) error
 	CheckCycleOverlap(ctx context.Context, arg CheckCycleOverlapParams) (int32, error)
+	// ==================== EMAIL DIGEST ====================
+	// Claim unread notifications whose coalescing window has closed, for opted-in
+	// recipients, marking them emailed. Atomic, so concurrent workers never double-send.
+	ClaimEmailNotifications(ctx context.Context, cutoff pgtype.Timestamptz) ([]ClaimEmailNotificationsRow, error)
 	// Merge a new activity into an existing open notification: bump the count,
 	// update the latest actor/type/comment, and re-surface as unread.
 	CoalesceNotification(ctx context.Context, arg CoalesceNotificationParams) error
@@ -167,6 +171,7 @@ type Querier interface {
 	GetUserByEmailOrUsername(ctx context.Context, email string) (GetUserByEmailOrUsernameRow, error)
 	GetUserByID(ctx context.Context, id uuid.UUID) (GetUserByIDRow, error)
 	GetUserByProviderID(ctx context.Context, arg GetUserByProviderIDParams) (GetUserByProviderIDRow, error)
+	GetUserEmailNotifications(ctx context.Context, id uuid.UUID) (bool, error)
 	GetWorkspaceByID(ctx context.Context, id uuid.UUID) (Workspace, error)
 	GetWorkspaceByKey(ctx context.Context, workspaceKey string) (Workspace, error)
 	GetWorkspaceMember(ctx context.Context, arg GetWorkspaceMemberParams) (GetWorkspaceMemberRow, error)
@@ -192,6 +197,9 @@ type Querier interface {
 	ListCycleAssignees(ctx context.Context, cycleID uuid.UUID) ([]ListCycleAssigneesRow, error)
 	ListCycleTasks(ctx context.Context, arg ListCycleTasksParams) ([]ListCycleTasksRow, error)
 	ListDeletedProjects(ctx context.Context, arg ListDeletedProjectsParams) ([]ListDeletedProjectsRow, error)
+	// The activity batched into one notification: other users' changes to the task
+	// within the notification's lifetime, oldest first.
+	ListEmailActivity(ctx context.Context, arg ListEmailActivityParams) ([]ListEmailActivityRow, error)
 	ListGraphProjectOptions(ctx context.Context) ([]ListGraphProjectOptionsRow, error)
 	ListGraphUserOptions(ctx context.Context) ([]ListGraphUserOptionsRow, error)
 	ListGraphWorkspaceOptions(ctx context.Context) ([]ListGraphWorkspaceOptionsRow, error)
@@ -314,6 +322,8 @@ type Querier interface {
 	// Sets (or clears) a task's parent. Used to attach/re-parent an existing task
 	// as a subtask.
 	SetTaskParent(ctx context.Context, arg SetTaskParentParams) error
+	// Mark the remaining closed-window rows processed so they are never emailed later.
+	SkipEmailNotifications(ctx context.Context, cutoff pgtype.Timestamptz) error
 	SoftDeleteComment(ctx context.Context, id uuid.UUID) error
 	SoftDeleteCycle(ctx context.Context, id uuid.UUID) error
 	SoftDeleteModule(ctx context.Context, id uuid.UUID) error
@@ -349,6 +359,7 @@ type Querier interface {
 	UpdateTask(ctx context.Context, arg UpdateTaskParams) (UpdateTaskRow, error)
 	UpdateTaskTemplate(ctx context.Context, arg UpdateTaskTemplateParams) (TaskTemplate, error)
 	UpdateUserAvatarURL(ctx context.Context, arg UpdateUserAvatarURLParams) error
+	UpdateUserEmailNotifications(ctx context.Context, arg UpdateUserEmailNotificationsParams) error
 	UpdateUserPassword(ctx context.Context, arg UpdateUserPasswordParams) error
 	UpdateUserType(ctx context.Context, arg UpdateUserTypeParams) error
 	UpdateWorkspace(ctx context.Context, arg UpdateWorkspaceParams) (Workspace, error)

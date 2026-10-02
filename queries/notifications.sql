@@ -70,3 +70,56 @@ UPDATE notifications
 SET read_at = NOW()
 WHERE recipient_id = sqlc.arg('recipient_id')
   AND read_at IS NULL;
+
+-- ==================== EMAIL DIGEST ====================
+
+-- name: ClaimEmailNotifications :many
+-- Claim unread notifications whose coalescing window has closed, for opted-in
+-- recipients, marking them emailed. Atomic, so concurrent workers never double-send.
+UPDATE notifications n
+SET emailed_at = NOW()
+FROM users r, users a, tasks t, projects p, project_states s
+WHERE n.emailed_at IS NULL
+  AND n.created_at <= sqlc.arg('cutoff')
+  AND n.read_at IS NULL
+  AND r.id = n.recipient_id
+  AND r.email_notifications
+  AND a.id = n.actor_id
+  AND t.id = n.task_id
+  AND t.deleted_at IS NULL
+  AND p.id = t.project_id
+  AND s.id = t.state_id
+RETURNING n.id, n.task_id, n.recipient_id, n.activity_type, n.comment_id, n.event_count, n.created_at, n.updated_at,
+          r.email AS recipient_email,
+          a.first_name AS actor_first_name, a.last_name AS actor_last_name,
+          t.task_number, t.title AS task_title,
+          p.project_key, p.name AS project_name,
+          s.name AS state_name, s.color AS state_color;
+
+-- name: ListEmailActivity :many
+-- The activity batched into one notification: other users' changes to the task
+-- within the notification's lifetime, oldest first.
+SELECT al.activity_type, al.field_name, al.old_value, al.new_value, u.first_name, u.last_name
+FROM activity_log al
+JOIN users u ON u.id = al.actor_id
+WHERE al.task_id = sqlc.arg('task_id')
+  AND al.actor_id <> sqlc.arg('recipient_id')
+  AND al.created_at >= sqlc.arg('since')
+  AND al.created_at <= sqlc.arg('until')
+ORDER BY al.created_at ASC
+LIMIT 20;
+
+-- name: SkipEmailNotifications :exec
+-- Mark the remaining closed-window rows processed so they are never emailed later.
+UPDATE notifications
+SET emailed_at = NOW()
+WHERE emailed_at IS NULL
+  AND created_at <= sqlc.arg('cutoff');
+
+-- name: GetUserEmailNotifications :one
+SELECT email_notifications FROM users WHERE id = $1;
+
+-- name: UpdateUserEmailNotifications :exec
+UPDATE users
+SET email_notifications = $2, updated_at = NOW()
+WHERE id = $1;

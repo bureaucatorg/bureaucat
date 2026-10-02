@@ -381,6 +381,7 @@ type Notification struct {
 	CreatedAt    pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
 	CommentID    pgtype.UUID        `json:"comment_id"`
+	EmailedAt    pgtype.Timestamptz `json:"emailed_at"`
 }
 
 type Page struct {
@@ -542,18 +543,19 @@ type Upload struct {
 }
 
 type User struct {
-	ID             uuid.UUID          `json:"id"`
-	Username       string             `json:"username"`
-	Email          string             `json:"email"`
-	PasswordHash   pgtype.Text        `json:"password_hash"`
-	FirstName      string             `json:"first_name"`
-	LastName       string             `json:"last_name"`
-	UserType       string             `json:"user_type"`
-	CreatedAt      pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
-	AuthProvider   pgtype.Text        `json:"auth_provider"`
-	ProviderUserID pgtype.Text        `json:"provider_user_id"`
-	AvatarUrl      pgtype.Text        `json:"avatar_url"`
+	ID                 uuid.UUID          `json:"id"`
+	Username           string             `json:"username"`
+	Email              string             `json:"email"`
+	PasswordHash       pgtype.Text        `json:"password_hash"`
+	FirstName          string             `json:"first_name"`
+	LastName           string             `json:"last_name"`
+	UserType           string             `json:"user_type"`
+	CreatedAt          pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt          pgtype.Timestamptz `json:"updated_at"`
+	AuthProvider       pgtype.Text        `json:"auth_provider"`
+	ProviderUserID     pgtype.Text        `json:"provider_user_id"`
+	AvatarUrl          pgtype.Text        `json:"avatar_url"`
+	EmailNotifications bool               `json:"email_notifications"`
 }
 
 type Workspace struct {

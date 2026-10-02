@@ -62,6 +62,7 @@ type Server struct {
 	notificationsService *notifications.Service
 	notificationsHandler *handlers.NotificationHandler
 	uploadService        *uploads.Service
+	stopWorkers          context.CancelFunc
 	distFS               fs.FS
 }
 
@@ -135,6 +136,10 @@ func New(devMode bool, dbURL string, authConfig AuthConfig, distFS fs.FS) (*Serv
 		srv.notificationsService = notifications.NewService(srv.store)
 		srv.notificationsHandler = handlers.NewNotificationHandler(srv.store)
 
+		workerCtx, stopWorkers := context.WithCancel(context.Background())
+		srv.stopWorkers = stopWorkers
+		go srv.notificationsService.RunEmailDigest(workerCtx)
+
 		// Initialize activity service
 		srv.activityService = activity.NewService(srv.store, srv.notificationsService)
 
@@ -177,6 +182,9 @@ func New(devMode bool, dbURL string, authConfig AuthConfig, distFS fs.FS) (*Serv
 
 // Close closes any open resources
 func (s *Server) Close() error {
+	if s.stopWorkers != nil {
+		s.stopWorkers()
+	}
 	if s.pool != nil {
 		s.pool.Close()
 	}

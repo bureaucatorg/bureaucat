@@ -50,6 +50,24 @@ services:
       retries: 3
       start_period: 10s
 
+  mailpit:
+    image: axllent/mailpit:v1.31.3
+    container_name: mailpit
+    restart: unless-stopped
+    volumes:
+      - /tmp/mailpit/data:/data
+      - ./mailpit-certs:/certs:ro
+    ports:
+      - 8025:8025
+      - 1025:1025
+    environment:
+      MP_MAX_MESSAGES: 5000
+      MP_DATABASE: /data/mailpit.db
+      MP_SMTP_AUTH_ACCEPT_ANY: 1
+      MP_SMTP_AUTH_ALLOW_INSECURE: 1
+      MP_SMTP_TLS_CERT: /certs/mailpit.crt
+      MP_SMTP_TLS_KEY: /certs/mailpit.key
+
   pgweb:
     image: sosedoff/pgweb:0.17.0
     env_file:

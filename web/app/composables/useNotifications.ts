@@ -73,8 +73,38 @@ export function useNotifications() {
     }
   }
 
+  async function fetchNotificationSettings(): Promise<{
+    success: boolean;
+    data?: { email_enabled: boolean; email_available: boolean };
+  }> {
+    try {
+      const response = await fetch("/api/v1/me/notification_settings", {
+        headers: getAuthHeader(),
+      });
+      if (!response.ok) return { success: false };
+      return { success: true, data: await response.json() };
+    } catch {
+      return { success: false };
+    }
+  }
+
+  async function updateEmailNotifications(enabled: boolean): Promise<{ success: boolean }> {
+    try {
+      const response = await fetch("/api/v1/me/notification_settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", ...getAuthHeader() },
+        body: JSON.stringify({ email_enabled: enabled }),
+      });
+      return { success: response.ok };
+    } catch {
+      return { success: false };
+    }
+  }
+
   return {
     unreadCount,
+    fetchNotificationSettings,
+    updateEmailNotifications,
     listNotifications,
     refreshUnreadCount,
     markRead,

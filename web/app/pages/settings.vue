@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Key, Trash2, Loader2, Plus, Copy, Check, Eye, EyeOff, CalendarIcon, X, Clock } from "lucide-vue-next";
+import { Key, Bell, Trash2, Loader2, Plus, Copy, Check, Eye, EyeOff, CalendarIcon, X, Clock } from "lucide-vue-next";
 import { getLocalTimeZone, today } from "@internationalized/date";
 import { cn } from "@/lib/utils";
 import type { DateValue } from "reka-ui";
@@ -171,8 +171,33 @@ function onExpirySelect(date: DateValue) {
   expiryDate.value = date;
 }
 
+const { fetchNotificationSettings, updateEmailNotifications } = useNotifications();
+const emailEnabled = ref(false);
+const emailAvailable = ref(false);
+const emailSaving = ref(false);
+
+async function loadNotificationSettings() {
+  const result = await fetchNotificationSettings();
+  if (result.success && result.data) {
+    emailEnabled.value = result.data.email_enabled;
+    emailAvailable.value = result.data.email_available;
+  }
+}
+
+async function toggleEmailNotifications(enabled: boolean) {
+  emailSaving.value = true;
+  const result = await updateEmailNotifications(enabled);
+  emailSaving.value = false;
+  if (result.success) {
+    emailEnabled.value = enabled;
+  } else {
+    error.value = "Failed to update email notifications";
+  }
+}
+
 onMounted(() => {
   fetchTokens();
+  loadNotificationSettings();
 });
 </script>
 
@@ -187,6 +212,37 @@ onMounted(() => {
           <p class="mt-2 text-muted-foreground">
             Manage your account settings
           </p>
+        </div>
+
+        <!-- Notifications Section -->
+        <div class="mb-12">
+          <div class="mb-4">
+            <h2 class="flex items-center gap-2 text-lg font-semibold">
+              <Bell class="size-5" />
+              Notifications
+            </h2>
+          </div>
+          <Card>
+            <CardContent class="flex items-center justify-between gap-4 pt-6">
+              <div>
+                <p class="font-medium">Email notifications</p>
+                <p class="text-sm text-muted-foreground">
+                  <template v-if="emailAvailable">
+                    Receive your notifications by email. Activity on a task within 15 minutes is batched into one email, which is skipped if you have already read it here.
+                  </template>
+                  <template v-else>
+                    Email is not configured on this instance yet. Ask an admin to set it up.
+                  </template>
+                </p>
+              </div>
+              <Switch
+                :checked="emailEnabled"
+                :disabled="emailSaving || (!emailAvailable && !emailEnabled)"
+                aria-label="Email notifications"
+                @update:checked="toggleEmailNotifications"
+              />
+            </CardContent>
+          </Card>
         </div>
 
         <!-- Personal Access Tokens Section -->
