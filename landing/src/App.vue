@@ -63,10 +63,9 @@ const outlineBtn =
 
             <p class="rise mt-8 max-w-xl text-lg leading-relaxed text-muted-foreground md:text-xl" style="--d: 240ms">
               <template v-if="!noBS">
-                Requests, sign-offs and to-dos, turned into tasks that move. Self-hosted, with a paper
-                trail you can verify.
+                Requests, sign-offs and to-dos, turned into tasks that move. Open Source. Self-hosted.
               </template>
-              <template v-else>Create tasks. Assign people. Track progress. That's it.</template>
+              <template v-else>Create tasks. Assign people. Track progress. That's it.<br/>Open Source. Self-hosted.</template>
             </p>
 
             <div class="rise mt-9 flex flex-wrap items-center gap-3" style="--d: 360ms">
