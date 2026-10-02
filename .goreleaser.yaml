@@ -81,6 +81,7 @@ dockers:
       - landing/index.html
       - landing/vite.config.ts
       - landing/tsconfig.json
+      - landing/scripts
       - landing/src
       - landing/public
       - landing/nginx
