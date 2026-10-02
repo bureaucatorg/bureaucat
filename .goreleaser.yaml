@@ -46,8 +46,7 @@ changelog:
   # the default "git" source only exposes the raw author name, not a login.
   use: github
   sort: asc
-  # Prefix each entry with the author's @mention(s) when GitHub can resolve them.
-  format: "{{ if .Logins }}{{ .Logins }} {{ end }}{{ .SHA }} {{ .Message }}"
+  format: "{{ .SHA }} {{ .Message }}"
   filters:
     exclude:
       - "^docs:"
