@@ -20,7 +20,7 @@ function toggleTheme() {
     <div class="mx-auto flex h-12 max-w-6xl items-center justify-between gap-3 px-4 md:px-6">
       <a href="/" class="flex items-center gap-2 font-semibold tracking-tight">
         <CatLogo :size="28" />
-        <span class="text-lg">Bureaucat</span>
+        <span class="text-lg">BureauCat</span>
       </a>
       <nav class="flex items-center gap-1 sm:gap-2">
         <a
@@ -28,7 +28,7 @@ function toggleTheme() {
           target="_blank"
           rel="noopener noreferrer"
           class="inline-flex h-8 items-center gap-1.5 rounded-md border border-border/70 px-2 text-xs text-muted-foreground transition-colors hover:text-foreground sm:px-2.5"
-          aria-label="Star Bureaucat on GitHub"
+          aria-label="Star BureauCat on GitHub"
         >
           <Star class="size-3.5" />
           <span class="hidden sm:inline">Star on GitHub</span>

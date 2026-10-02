@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { appLink } from "../lib/config";
-import { KeyRound, Terminal, BookOpen, Filter, FileText, Search, Palette, Download, Timer, Users } from "lucide-vue-next";
+import { KeyRound, Terminal, BookOpen, Filter, FileText, Search, Palette, Network, Timer, Users } from "lucide-vue-next";
 
 defineProps<{ noBs: boolean }>();
 
@@ -12,7 +12,7 @@ const items = [
   { icon: FileText, title: "Pages", body: "Rich-text docs that live next to the project." },
   { icon: Search, title: "Search & quick create", body: "Ctrl K to find anything. Shift C to file a task." },
   { icon: Palette, title: "Your branding", body: "Rename the app for your organisation." },
-  { icon: Download, title: "Plane import", body: "Bring your projects over from Plane." },
+  { icon: Network, title: "Graph view", body: "See who is on what and how tasks connect." },
   { icon: Timer, title: "Pomodoro", body: "A focus timer. The forms won't fill themselves.", to: appLink("/pomodoro") },
   { icon: Users, title: "Admin tools", body: "Merge users, restore projects, instance stats." },
 ];

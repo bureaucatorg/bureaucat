@@ -37,11 +37,7 @@ const outlineBtn =
           class="relative mx-auto grid min-h-[calc(100svh-3rem)] max-w-6xl items-center gap-14 px-4 pt-14 pb-28 lg:grid-cols-[minmax(0,1fr)_22rem] md:px-6 md:pt-10"
         >
           <div>
-            <p class="rise font-mono text-[11px] tracking-[0.2em] text-amber-700 uppercase dark:text-amber-400">
-              Form BC-00 · Request for motion
-            </p>
-
-            <h1 class="rise mt-6 text-5xl leading-[1.02] font-bold tracking-[-0.035em] sm:text-6xl lg:text-[4.25rem]" style="--d: 120ms">
+            <h1 class="rise text-5xl leading-[1.02] font-bold tracking-[-0.035em] sm:text-6xl lg:text-[4.25rem]" style="--d: 120ms">
               <template v-if="!noBS">
                 Bureaucracy<br />
                 That Actually
@@ -65,8 +61,7 @@ const outlineBtn =
 
             <p class="rise mt-8 max-w-xl text-lg leading-relaxed text-muted-foreground md:text-xl" style="--d: 240ms">
               <template v-if="!noBS">
-                A self-hosted tracker that turns requests, sign-offs and to-dos into tasks that move.
-                They pass through states you define, land with the people who own them, and leave a paper
+                Requests, sign-offs and to-dos, turned into tasks that move. Self-hosted, with a paper
                 trail you can verify.
               </template>
               <template v-else>Create tasks. Assign people. Track progress. That's it.</template>
@@ -96,9 +91,9 @@ const outlineBtn =
             </div>
             <div class="sheet-front relative rounded-2xl border bg-card p-6 shadow-[0_30px_60px_-30px_rgb(0_0_0/0.35)]">
               <div class="flex items-center justify-between font-mono text-[10px] tracking-[0.18em] text-muted-foreground uppercase">
-                <span>Form BC-00</span><span>DEVOP-780</span>
+                <span>Form BC-00</span><span>DEVOPS-780</span>
               </div>
-              <p class="mt-4 text-xl leading-snug font-semibold tracking-tight">Request for things to actually move</p>
+              <p class="mt-4 text-xl leading-snug font-semibold tracking-tight">Host Qwen3.8:27B on the GPU Cluster</p>
               <div class="relative my-5 border-t border-dashed">
                 <span class="absolute -top-2.5 -left-[34px] size-5 rounded-full border bg-paper" />
                 <span class="absolute -top-2.5 -right-[34px] size-5 rounded-full border bg-paper" />
@@ -122,14 +117,14 @@ const outlineBtn =
                 </dd>
                 <dt class="font-mono text-[10px] tracking-[0.18em] text-muted-foreground uppercase">Assignees</dt>
                 <dd class="flex -space-x-1.5">
-                  <span class="grid size-6 place-items-center rounded-full bg-sky-100 font-mono text-[9px] font-bold text-sky-800 ring-2 ring-card">AR</span>
-                  <span class="grid size-6 place-items-center rounded-full bg-violet-100 font-mono text-[9px] font-bold text-violet-800 ring-2 ring-card">KM</span>
+                  <span class="grid size-6 place-items-center rounded-full bg-sky-100 font-mono text-[9px] font-bold text-sky-800 ring-2 ring-card">AS</span>
+                  <span class="grid size-6 place-items-center rounded-full bg-violet-100 font-mono text-[9px] font-bold text-violet-800 ring-2 ring-card">CC</span>
                 </dd>
                 <dt class="font-mono text-[10px] tracking-[0.18em] text-muted-foreground uppercase">Filed by</dt>
                 <dd class="font-mono text-xs">you, just now</dd>
               </dl>
               <div class="stamp pointer-events-none absolute mix-blend-multiply dark:mix-blend-screen right-5 top-[11.5rem] rounded-md border-[3px] border-amber-600 px-3 py-1 font-mono text-lg font-bold tracking-[0.25em] text-amber-600">
-                <span class="block rounded-sm border border-amber-600/70 px-2">MOVED</span>
+                <span class="block rounded-sm border border-amber-600/70 px-2">APPROVED</span>
               </div>
             </div>
           </div>
@@ -172,7 +167,7 @@ const outlineBtn =
       <div class="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-4 py-8 md:flex-row md:px-6">
         <div class="flex items-center gap-2">
           <CatLogo :size="20" />
-          <span class="text-sm text-muted-foreground">Bureaucat &copy; 2026</span>
+          <span class="text-sm text-muted-foreground">BureauCat &copy; 2026</span>
         </div>
         <p class="text-center text-sm text-muted-foreground">
           Crafted by

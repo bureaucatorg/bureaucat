@@ -167,14 +167,14 @@ function sceneHierarchy(): Scene {
     h("rect", { x: 136, y: 166, width: 18, height: 18, rx: 5, class: "fill-amber-500" }),
     mono(145, 179.5, 10, "D", "fill-amber-950", { "text-anchor": "middle", "font-weight": 700 }),
     mono(164, 180, 12, "PROJECT", "fill-muted-foreground", { "letter-spacing": 1.5 }),
-    mono(228, 180, 12, "DEVOP", "fill-foreground", { "font-weight": 700, "letter-spacing": 1.5 }),
+    mono(228, 180, 12, "DEVOPS", "fill-foreground", { "font-weight": 700, "letter-spacing": 1.5 }),
   ]);
   root.append(back, wsFill, wsLine, wsLabel, prLine, prLabel);
 
   const tasks = [
-    { id: "DEVOP-778", title: "Q3 vendor audit", s: 6 },
-    { id: "DEVOP-779", title: "Laptop request", s: 3 },
-    { id: "DEVOP-780", title: "Renew contract", s: 2 },
+    { id: "DEVOPS-778", title: "Q3 vendor audit", s: 6 },
+    { id: "DEVOPS-779", title: "Laptop request", s: 3 },
+    { id: "DEVOPS-780", title: "Renew contract", s: 2 },
   ];
   const cards = tasks.map((tk, k) => {
     const x = 136 + k * 180;
@@ -192,7 +192,7 @@ function sceneHierarchy(): Scene {
   });
   const ghost = h("g", {}, [
     h("rect", { x: 136, y: 334, width: 168, height: 108, rx: 10, class: "fill-none stroke-amber-500/70", "stroke-dasharray": "5 5", "stroke-width": 1.4 }),
-    mono(150, 362, 11, "DEVOP-781", "fill-amber-600 dark:fill-amber-500", { "font-weight": 700 }),
+    mono(150, 362, 11, "DEVOPS-781", "fill-amber-600 dark:fill-amber-500", { "font-weight": 700 }),
     sans(150, 386, 15, "New task", "fill-muted-foreground", { "font-weight": 600 }),
   ]);
   const caret = h("rect", { x: 216, y: 373, width: 1.6, height: 17, class: "fill-amber-500" });
@@ -296,7 +296,7 @@ function sceneLifecycle(shared: Shared): Scene {
     h("circle", { cx: C.x, cy: C.y + 88, r: 7, class: "fill-background stroke-border" }),
     h("circle", { cx: C.x + 400, cy: C.y + 88, r: 7, class: "fill-background stroke-border" }),
     h("line", { x1: C.x + 14, y1: C.y + 88, x2: C.x + 386, y2: C.y + 88, class: "stroke-border", "stroke-dasharray": "4 5", "stroke-width": 1.2 }),
-    mono(C.x + 24, C.y + 34, 11.5, "DEVOP-780", "fill-muted-foreground", { "letter-spacing": 1 }),
+    mono(C.x + 24, C.y + 34, 11.5, "DEVOPS-780", "fill-muted-foreground", { "letter-spacing": 1 }),
     sans(C.x + 24, C.y + 64, 21, "Renew vendor contract", "fill-foreground", { "font-weight": 650, "letter-spacing": -0.4 }),
     mono(C.x + 24, C.y + 118, 10, "STATE", "fill-muted-foreground/80", { "letter-spacing": 1.5 }),
     mono(C.x + 24, C.y + 152, 10, "PRIORITY", "fill-muted-foreground/80", { "letter-spacing": 1.5 }),
@@ -388,7 +388,7 @@ function scenePlanning(): Scene {
   const root = h("g");
   const parent = h("g", {}, [
     card(250, 40, 300, 56, 12),
-    mono(268, 63, 11, "DEVOP-780", "fill-muted-foreground"),
+    mono(268, 63, 11, "DEVOPS-780", "fill-muted-foreground"),
     sans(268, 83, 15, "Renew vendor contract", "fill-foreground", { "font-weight": 600 }),
     h("rect", { x: 462, y: 56, width: 74, height: 22, rx: 11, class: "fill-amber-500/12 stroke-amber-500/40", "stroke-width": 1 }),
     mono(499, 71, 10.5, "3 subtasks", "fill-amber-700 dark:fill-amber-400", { "text-anchor": "middle" }),
@@ -409,9 +409,9 @@ function scenePlanning(): Scene {
     );
   });
   const fillers = [
-    { col: 0, slot: 1, id: "DEVOP-776", title: "Insurance renewal", label: "#0EA5E9" },
-    { col: 2, slot: 1, id: "DEVOP-771", title: "Access review", label: "#A855F7" },
-    { col: 1, slot: 1, id: "DEVOP-774", title: "Budget sign-off", label: "#F43F5E" },
+    { col: 0, slot: 1, id: "DEVOPS-776", title: "Insurance renewal", label: "#0EA5E9" },
+    { col: 2, slot: 1, id: "DEVOPS-771", title: "Access review", label: "#A855F7" },
+    { col: 1, slot: 1, id: "DEVOPS-774", title: "Budget sign-off", label: "#F43F5E" },
   ].map((f) => {
     const x = cols[f.col]!.x + 8;
     const y = 262 + f.slot * 52;
@@ -427,9 +427,9 @@ function scenePlanning(): Scene {
   root.append(board);
 
   const subs = [
-    { id: "DEVOP-781", title: "Collect quotes", col: 2, label: "#10B981" },
-    { id: "DEVOP-782", title: "Legal review", col: 1, label: "#A855F7" },
-    { id: "DEVOP-783", title: "Sign & file", col: 0, label: "#F59E0B" },
+    { id: "DEVOPS-781", title: "Collect quotes", col: 2, label: "#10B981" },
+    { id: "DEVOPS-782", title: "Legal review", col: 1, label: "#A855F7" },
+    { id: "DEVOPS-783", title: "Sign & file", col: 0, label: "#F59E0B" },
   ];
   const tree = subs.map((_, k) => {
     const y = 132 + k * 46;
@@ -527,10 +527,10 @@ function sceneGraph(): Scene {
   root.append(cam);
   type N = { id: string; x: number; y: number; kind: "user" | "task"; tone?: Tone; el?: SVGElement };
   const nodes: N[] = [
-    { id: "DEVOP-780", x: 400, y: 300, kind: "task" },
-    { id: "DEVOP-781", x: 280, y: 210, kind: "task" },
-    { id: "DEVOP-782", x: 525, y: 205, kind: "task" },
-    { id: "DEVOP-783", x: 405, y: 430, kind: "task" },
+    { id: "DEVOPS-780", x: 400, y: 300, kind: "task" },
+    { id: "DEVOPS-781", x: 280, y: 210, kind: "task" },
+    { id: "DEVOPS-782", x: 525, y: 205, kind: "task" },
+    { id: "DEVOPS-783", x: 405, y: 430, kind: "task" },
     { id: "ACCT-91", x: 125, y: 315, kind: "task" },
     { id: "ACCT-92", x: 680, y: 330, kind: "task" },
     { id: "AR", x: 185, y: 130, kind: "user", tone: "sky" },
@@ -539,16 +539,16 @@ function sceneGraph(): Scene {
     { id: "DP", x: 620, y: 485, kind: "user", tone: "rose" },
   ];
   const edges: [string, string, boolean][] = [
-    ["DEVOP-780", "DEVOP-781", true],
-    ["DEVOP-780", "DEVOP-782", true],
-    ["DEVOP-780", "DEVOP-783", true],
-    ["AR", "DEVOP-781", false],
+    ["DEVOPS-780", "DEVOPS-781", true],
+    ["DEVOPS-780", "DEVOPS-782", true],
+    ["DEVOPS-780", "DEVOPS-783", true],
+    ["AR", "DEVOPS-781", false],
     ["AR", "ACCT-91", false],
-    ["KM", "DEVOP-782", false],
+    ["KM", "DEVOPS-782", false],
     ["KM", "ACCT-92", false],
-    ["SN", "DEVOP-783", false],
+    ["SN", "DEVOPS-783", false],
     ["SN", "ACCT-91", false],
-    ["DP", "DEVOP-780", false],
+    ["DP", "DEVOPS-780", false],
     ["DP", "ACCT-92", false],
   ];
   const edgeEls = edges.map(([, , sub]) => {
@@ -569,7 +569,7 @@ function sceneGraph(): Scene {
       const proj = n.id.split("-")[0];
       n.el = h("g", {}, [
         h("rect", { x: -w / 2, y: -16, width: w, height: 32, rx: 9, class: "fill-card stroke-border", "stroke-width": 1.2 }),
-        h("rect", { x: -w / 2, y: -16, width: 4, height: 32, rx: 2, class: proj === "DEVOP" ? "fill-amber-500" : "fill-sky-500" }),
+        h("rect", { x: -w / 2, y: -16, width: 4, height: 32, rx: 2, class: proj === "DEVOPS" ? "fill-amber-500" : "fill-sky-500" }),
         mono(2, 4.5, 12, n.id, "fill-foreground", { "text-anchor": "middle", "font-weight": 500 }),
       ]);
     }
@@ -627,7 +627,7 @@ function sceneNotify(): Scene {
     card(60, 50, 410, 190, 16),
     avatar(96, 88, 18, "SN", "emerald"),
     sans(124, 85, 13.5, "S. Nair", "fill-foreground", { "font-weight": 600 }),
-    mono(124, 102, 10.5, "commented on DEVOP-780", "fill-muted-foreground"),
+    mono(124, 102, 10.5, "commented on DEVOPS-780", "fill-muted-foreground"),
     sans(84, 138, 15, "Quotes are in, see attached.", "fill-foreground"),
     h("rect", { x: 82, y: 148, width: 62, height: 23, rx: 6, class: "fill-amber-500/15" }),
     sans(88, 165, 15, "@Kiran", "fill-amber-700 dark:fill-amber-400", { "font-weight": 600 }),
@@ -651,7 +651,7 @@ function sceneNotify(): Scene {
   const note = h("g", {}, [
     card(500, 150, 240, 64, 12),
     h("circle", { cx: 518, cy: 170, r: 4, class: "fill-amber-500" }),
-    mono(530, 174, 11, "DEVOP-780", "fill-muted-foreground"),
+    mono(530, 174, 11, "DEVOPS-780", "fill-muted-foreground"),
     sans(518, 198, 13.5, "Renew vendor contract", "fill-foreground", { "font-weight": 600 }),
     h("rect", { x: 688, y: 160, width: 42, height: 22, rx: 11, class: "fill-amber-500" }),
   ]);
@@ -693,7 +693,7 @@ function sceneNotify(): Scene {
   const dm = h("g", {}, [
     h("path", { d: "M-92 -30 h184 a10 10 0 0 1 10 10 v36 a10 10 0 0 1 -10 10 h-160 l-14 12 v-12 h-10 a10 10 0 0 1 -10 -10 v-36 a10 10 0 0 1 10 -10 z", class: "fill-card stroke-foreground/70", "stroke-width": 1.8 }),
     mono(-88, -10, 10.5, "bureaucat bot", "fill-muted-foreground"),
-    sans(-88, 10, 13, "4 updates on DEVOP-780", "fill-foreground", { "font-weight": 600 }),
+    sans(-88, 10, 13, "4 updates on DEVOPS-780", "fill-foreground", { "font-weight": 600 }),
     mono(0, 56, 10.5, "MATTERMOST DM", "fill-muted-foreground", { "text-anchor": "middle", "letter-spacing": 1 }),
   ]);
   root.append(env, dm);
@@ -768,7 +768,7 @@ function sceneNotify(): Scene {
 function sceneAudit(): Scene {
   const root = h("g");
   const rows = [
-    { type: "task_created", detail: "DEVOP-780 · Renew vendor contract", hash: "3f9a…c21e", color: "#6B7280" },
+    { type: "task_created", detail: "DEVOPS-780 · Renew vendor contract", hash: "3f9a…c21e", color: "#6B7280" },
     { type: "assignee_added", detail: "+ Kiran", hash: "b71d…04a9", color: "#3B82F6" },
     { type: "state_changed", detail: "Todo → Approval Pending", hash: "e02c…9f3b", color: "#F59E0B" },
     { type: "comment_created", detail: "“Signed off.”", hash: "5c48…ad17", color: "#8B5CF6" },

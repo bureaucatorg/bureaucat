@@ -8,13 +8,13 @@ const chapters = [
   {
     form: "INTAKE",
     title: "Meet the cat.",
-    body: "Requests, sign-offs and to-dos pile up. Bureaucat files every one of them as a task, so nothing stays loose on someone's desk.",
+    body: "Requests, sign-offs and to-dos pile up. BureauCat files every one of them as a task, so nothing stays loose on someone's desk.",
     blunt: "It's a task manager. With a cat.",
   },
   {
     form: "STRUCTURE",
     title: "Everything has a place.",
-    body: "Workspaces hold projects, and projects hold tasks. Each task gets a numbered key like DEVOP-780, not \"that thing from Tuesday\".",
+    body: "Workspaces hold projects, and projects hold tasks. Each task gets a numbered key like DEVOPS-780, not \"that thing from Tuesday\".",
     blunt: "Workspaces → projects → tasks.",
   },
   {
@@ -87,7 +87,7 @@ const pad = (n: number) => String(n).padStart(2, "0");
 <template>
   <section
     ref="section"
-    aria-label="What Bureaucat does"
+    aria-label="What BureauCat does"
     class="relative"
     :style="{ height: `calc(${CHAPTERS * CHAPTER_VH * 100}vh + 100vh - 3rem)` }"
   >
