@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Handle, Position } from "@vue-flow/core";
-import type { GraphTask } from "~/composables/useAdmin";
+import type { GraphTask } from "~/composables/useTaskGraph";
 
 defineProps<{ data: GraphTask }>();
 

@@ -273,6 +273,8 @@ SELECT p.project_key, p.name, w.workspace_key
 FROM projects p
 JOIN workspaces w ON p.workspace_id = w.id
 WHERE p.deleted_at IS NULL AND w.deleted_at IS NULL
+  AND ($1::uuid IS NULL OR EXISTS (
+      SELECT 1 FROM project_members vm WHERE vm.project_id = p.id AND vm.user_id = $1::uuid))
 ORDER BY p.project_key ASC
 `
 
@@ -282,8 +284,8 @@ type ListGraphProjectOptionsRow struct {
 	WorkspaceKey string `json:"workspace_key"`
 }
 
-func (q *Queries) ListGraphProjectOptions(ctx context.Context) ([]ListGraphProjectOptionsRow, error) {
-	rows, err := q.db.Query(ctx, listGraphProjectOptions)
+func (q *Queries) ListGraphProjectOptions(ctx context.Context, viewerID pgtype.UUID) ([]ListGraphProjectOptionsRow, error) {
+	rows, err := q.db.Query(ctx, listGraphProjectOptions, viewerID)
 	if err != nil {
 		return nil, err
 	}
@@ -303,9 +305,14 @@ func (q *Queries) ListGraphProjectOptions(ctx context.Context) ([]ListGraphProje
 }
 
 const listGraphUserOptions = `-- name: ListGraphUserOptions :many
-SELECT username, email, first_name, last_name
-FROM users
-ORDER BY first_name ASC, last_name ASC
+SELECT u.username, u.email, u.first_name, u.last_name
+FROM users u
+WHERE $1::uuid IS NULL OR EXISTS (
+    SELECT 1 FROM project_members um
+    JOIN project_members vm ON vm.project_id = um.project_id
+    JOIN projects p ON p.id = um.project_id AND p.deleted_at IS NULL
+    WHERE um.user_id = u.id AND vm.user_id = $1::uuid)
+ORDER BY u.first_name ASC, u.last_name ASC
 `
 
 type ListGraphUserOptionsRow struct {
@@ -315,8 +322,8 @@ type ListGraphUserOptionsRow struct {
 	LastName  string `json:"last_name"`
 }
 
-func (q *Queries) ListGraphUserOptions(ctx context.Context) ([]ListGraphUserOptionsRow, error) {
-	rows, err := q.db.Query(ctx, listGraphUserOptions)
+func (q *Queries) ListGraphUserOptions(ctx context.Context, viewerID pgtype.UUID) ([]ListGraphUserOptionsRow, error) {
+	rows, err := q.db.Query(ctx, listGraphUserOptions, viewerID)
 	if err != nil {
 		return nil, err
 	}
@@ -341,10 +348,14 @@ func (q *Queries) ListGraphUserOptions(ctx context.Context) ([]ListGraphUserOpti
 }
 
 const listGraphWorkspaceOptions = `-- name: ListGraphWorkspaceOptions :many
-SELECT workspace_key, name
-FROM workspaces
-WHERE deleted_at IS NULL
-ORDER BY name ASC
+SELECT w.workspace_key, w.name
+FROM workspaces w
+WHERE w.deleted_at IS NULL
+  AND ($1::uuid IS NULL OR EXISTS (
+      SELECT 1 FROM projects p
+      JOIN project_members vm ON vm.project_id = p.id
+      WHERE p.workspace_id = w.id AND p.deleted_at IS NULL AND vm.user_id = $1::uuid))
+ORDER BY w.name ASC
 `
 
 type ListGraphWorkspaceOptionsRow struct {
@@ -352,8 +363,8 @@ type ListGraphWorkspaceOptionsRow struct {
 	Name         string `json:"name"`
 }
 
-func (q *Queries) ListGraphWorkspaceOptions(ctx context.Context) ([]ListGraphWorkspaceOptionsRow, error) {
-	rows, err := q.db.Query(ctx, listGraphWorkspaceOptions)
+func (q *Queries) ListGraphWorkspaceOptions(ctx context.Context, viewerID pgtype.UUID) ([]ListGraphWorkspaceOptionsRow, error) {
+	rows, err := q.db.Query(ctx, listGraphWorkspaceOptions, viewerID)
 	if err != nil {
 		return nil, err
 	}
@@ -392,6 +403,8 @@ WHERE t.deleted_at IS NULL
   AND (COALESCE(cardinality($2::text[]), 0) = 0 OR p.project_key = ANY($2::text[]))
   AND (COALESCE(cardinality($3::text[]), 0) = 0 OR ps.state_type::text = ANY($3::text[]))
   AND (COALESCE(cardinality($4::text[]), 0) = 0 OR u.username = ANY($4::text[]))
+  AND ($5::uuid IS NULL OR EXISTS (
+      SELECT 1 FROM project_members vm WHERE vm.project_id = p.id AND vm.user_id = $5::uuid))
 ORDER BY p.project_key ASC, t.task_number ASC
 `
 
@@ -400,6 +413,7 @@ type ListTaskAssignmentsForGraphParams struct {
 	ProjectKeys  []string    `json:"project_keys"`
 	StateTypes   []string    `json:"state_types"`
 	Usernames    []string    `json:"usernames"`
+	ViewerID     pgtype.UUID `json:"viewer_id"`
 }
 
 type ListTaskAssignmentsForGraphRow struct {
@@ -430,6 +444,7 @@ func (q *Queries) ListTaskAssignmentsForGraph(ctx context.Context, arg ListTaskA
 		arg.ProjectKeys,
 		arg.StateTypes,
 		arg.Usernames,
+		arg.ViewerID,
 	)
 	if err != nil {
 		return nil, err

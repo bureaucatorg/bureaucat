@@ -138,6 +138,8 @@ func (s *Server) registerRoutes() {
 		protected.GET("/users/:id", s.authHandler.GetUserProfile)
 		protected.GET("/users/:id/activity", s.authHandler.GetUserActivity)
 		protected.GET("/users/:id/activity/graph", s.authHandler.GetUserActivityGraph)
+		protected.GET("/graph", s.adminHandler.GetMyTaskGraph)
+		protected.GET("/graph/filters", s.adminHandler.GetMyTaskGraphFilters)
 
 		// File uploads (authenticated)
 		if s.uploadHandler != nil {

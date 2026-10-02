@@ -2,7 +2,7 @@
 import { FolderKanban, ListTodo, Mail } from "lucide-vue-next";
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "~/components/ui/tooltip";
-import type { HoveredGraphNode } from "~/composables/useAdmin";
+import type { HoveredGraphNode } from "~/composables/useTaskGraph";
 
 defineProps<{
   node: HoveredGraphNode | null;

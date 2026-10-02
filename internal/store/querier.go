@@ -200,9 +200,9 @@ type Querier interface {
 	// The activity batched into one notification: other users' changes to the task
 	// within the notification's lifetime, oldest first.
 	ListEmailActivity(ctx context.Context, arg ListEmailActivityParams) ([]ListEmailActivityRow, error)
-	ListGraphProjectOptions(ctx context.Context) ([]ListGraphProjectOptionsRow, error)
-	ListGraphUserOptions(ctx context.Context) ([]ListGraphUserOptionsRow, error)
-	ListGraphWorkspaceOptions(ctx context.Context) ([]ListGraphWorkspaceOptionsRow, error)
+	ListGraphProjectOptions(ctx context.Context, viewerID pgtype.UUID) ([]ListGraphProjectOptionsRow, error)
+	ListGraphUserOptions(ctx context.Context, viewerID pgtype.UUID) ([]ListGraphUserOptionsRow, error)
+	ListGraphWorkspaceOptions(ctx context.Context, viewerID pgtype.UUID) ([]ListGraphWorkspaceOptionsRow, error)
 	ListLabelsForTasks(ctx context.Context, taskIds []uuid.UUID) ([]ListLabelsForTasksRow, error)
 	ListModuleMembers(ctx context.Context, moduleID uuid.UUID) ([]ListModuleMembersRow, error)
 	// Used for hydrating the list view with member avatars. Returns up to 4 members

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Handle, Position } from "@vue-flow/core";
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
-import type { GraphUser } from "~/composables/useAdmin";
+import type { GraphUser } from "~/composables/useTaskGraph";
 
 defineProps<{ data: GraphUser }>();
 

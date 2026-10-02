@@ -951,17 +951,50 @@ func splitCSVParam(v string) []string {
 //	@Security		BearerAuth
 //	@Router			/admin/graph/filters [get]
 func (h *AdminHandler) GetTaskGraphFilters(c *echo.Context) error {
+	return h.taskGraphFilters(c, pgtype.UUID{})
+}
+
+// GetMyTaskGraphFilters returns graph view filter choices limited to the caller's member projects.
+//
+//	@Summary		Get task graph filters
+//	@Description	Returns workspace, project and user options for the graph view, limited to projects the caller is a member of.
+//	@Tags			Graph
+//	@Produce		json
+//	@Success		200	{object}	TaskGraphFiltersResponse
+//	@Failure		401	{object}	ErrorResponse
+//	@Failure		500	{object}	ErrorResponse
+//	@Security		BearerAuth
+//	@Router			/graph/filters [get]
+func (h *AdminHandler) GetMyTaskGraphFilters(c *echo.Context) error {
+	viewer, err := graphViewer(c)
+	if err != nil {
+		return err
+	}
+	return h.taskGraphFilters(c, viewer)
+}
+
+// graphViewer returns the caller's ID for scoping graph queries to their member projects.
+func graphViewer(c *echo.Context) (pgtype.UUID, error) {
+	userID, err := uuid.Parse(c.Request().Header.Get(auth.HeaderUserID))
+	if err != nil {
+		return pgtype.UUID{}, echo.NewHTTPError(http.StatusUnauthorized, "invalid user ID")
+	}
+	return pgtype.UUID{Bytes: userID, Valid: true}, nil
+}
+
+// taskGraphFilters lists filter choices; a null viewer means no membership scoping.
+func (h *AdminHandler) taskGraphFilters(c *echo.Context, viewer pgtype.UUID) error {
 	ctx := c.Request().Context()
 
-	workspaces, err := h.store.ListGraphWorkspaceOptions(ctx)
+	workspaces, err := h.store.ListGraphWorkspaceOptions(ctx, viewer)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to load workspaces")
 	}
-	projects, err := h.store.ListGraphProjectOptions(ctx)
+	projects, err := h.store.ListGraphProjectOptions(ctx, viewer)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to load projects")
 	}
-	users, err := h.store.ListGraphUserOptions(ctx)
+	users, err := h.store.ListGraphUserOptions(ctx, viewer)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to load users")
 	}
@@ -999,12 +1032,41 @@ func (h *AdminHandler) GetTaskGraphFilters(c *echo.Context) error {
 //	@Security		BearerAuth
 //	@Router			/admin/graph [get]
 func (h *AdminHandler) GetTaskGraph(c *echo.Context) error {
+	return h.taskGraph(c, pgtype.UUID{})
+}
+
+// GetMyTaskGraph returns the task graph limited to the caller's member projects.
+//
+//	@Summary		Get task graph
+//	@Description	Returns user and task nodes with assignment edges, limited to projects the caller is a member of.
+//	@Tags			Graph
+//	@Produce		json
+//	@Param			workspace	query		string	false	"Workspace key"
+//	@Param			projects	query		string	false	"Comma-separated project keys"
+//	@Param			state_types	query		string	false	"Comma-separated state types"
+//	@Param			users		query		string	false	"Comma-separated usernames"
+//	@Success		200			{object}	TaskGraphResponse
+//	@Failure		401			{object}	ErrorResponse
+//	@Failure		500			{object}	ErrorResponse
+//	@Security		BearerAuth
+//	@Router			/graph [get]
+func (h *AdminHandler) GetMyTaskGraph(c *echo.Context) error {
+	viewer, err := graphViewer(c)
+	if err != nil {
+		return err
+	}
+	return h.taskGraph(c, viewer)
+}
+
+// taskGraph builds the graph payload; a null viewer means no membership scoping.
+func (h *AdminHandler) taskGraph(c *echo.Context, viewer pgtype.UUID) error {
 	ctx := c.Request().Context()
 
 	params := store.ListTaskAssignmentsForGraphParams{
 		ProjectKeys: splitCSVParam(c.QueryParam("projects")),
 		StateTypes:  splitCSVParam(c.QueryParam("state_types")),
 		Usernames:   splitCSVParam(c.QueryParam("users")),
+		ViewerID:    viewer,
 	}
 	if ws := strings.TrimSpace(c.QueryParam("workspace")); ws != "" {
 		params.WorkspaceKey = pgtype.Text{String: ws, Valid: true}
