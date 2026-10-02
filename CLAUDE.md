@@ -36,6 +36,8 @@ bureaucat/
 │   ├── store/               # sqlc-generated database layer
 │   └── database/            # Migration management
 │
+├── landing/                 # Marketing site (Vite + Vue, own nginx image; APP_URL env)
+│
 ├── migrations/              # SQL migration files (####_name.up/down.sql)
 ├── queries/                 # sqlc query definitions (*.sql)
 │
@@ -159,6 +161,7 @@ docker-compose up
 
 - Go API: http://localhost:1341
 - Nuxt dev server: http://localhost:3041
+- Landing dev server: http://localhost:3042 (`/` in the app redirects to `/signin`)
 - Hot reload enabled for both
 
 ## Production Build

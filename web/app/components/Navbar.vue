@@ -1,12 +1,10 @@
 <script setup lang="ts">
-import { User, LogOut, LayoutDashboard, FolderKanban, Shield, Star, Settings, Search } from "lucide-vue-next";
+import { User, LogOut, LayoutDashboard, FolderKanban, Shield, Settings, Search } from "lucide-vue-next";
 
 const { user, isAuthenticated, logout } = useAuth();
 const { appName, signupSettings, fetchSignupSettings } = useSettings();
 const { showAllWorkspaces } = useDashboardScope();
 const route = useRoute();
-
-const isLandingPage = computed(() => route.path === "/");
 
 const searchOpen = ref(false);
 
@@ -86,18 +84,6 @@ async function handleLogout() {
       </NuxtLink>
 
       <div class="flex items-center gap-4">
-        <a
-          v-if="isLandingPage"
-          href="https://github.com/bureaucatorg/bureaucat"
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label="Star on GitHub"
-          class="inline-flex items-center gap-1.5 rounded-md border border-border/60 px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:border-amber-500/40 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 outline-none"
-        >
-          <Star class="size-3.5" />
-          <span class="hidden sm:inline">Star on GitHub</span>
-        </a>
-
         <div class="flex items-center gap-0.5">
           <Button
             v-if="isAuthenticated"

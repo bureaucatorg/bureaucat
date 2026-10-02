@@ -1,4 +1,16 @@
 services:
+  landing:
+    image: oven/bun:1.3.7-slim
+    restart: unless-stopped
+    working_dir: /app
+    volumes:
+      - ./landing:/app
+    command: sh -c "bun install && bun run dev --host 0.0.0.0"
+    ports:
+      - 127.0.0.1:3042:3042
+    environment:
+      VITE_APP_URL: http://localhost:1341
+
   app:
     restart: unless-stopped
     build:
@@ -8,7 +20,7 @@ services:
       - ./:/app
     working_dir: /app
     ports:
-      - 1341:1341
+      - 127.0.0.1:1341:1341
     depends_on:
       postgres:
         condition: service_healthy
@@ -24,7 +36,7 @@ services:
     volumes:
       - ./garage/garage.toml:/etc/garage.toml
     ports:
-      - 3909:3909
+      - 127.0.0.1:3909:3909
     depends_on:
       garage:
         condition: service_healthy
@@ -37,8 +49,8 @@ services:
     restart: unless-stopped
     container_name: bureaucat-garage
     ports:
-      - 3900:3900 # S3 API
-      - 3903:3903 # admin API
+      - 127.0.0.1:3900:3900 # S3 API
+      - 127.0.0.1:3903:3903 # admin API
     volumes:
       - ./garage/garage.toml:/etc/garage.toml
       - ./garage/meta:/var/lib/garage/meta
@@ -58,8 +70,8 @@ services:
       - /tmp/mailpit/data:/data
       - ./mailpit-certs:/certs:ro
     ports:
-      - 8025:8025
-      - 1025:1025
+      - 127.0.0.1:8025:8025
+      - 127.0.0.1:1025:1025
     environment:
       MP_MAX_MESSAGES: 5000
       MP_DATABASE: /data/mailpit.db
@@ -73,7 +85,7 @@ services:
     env_file:
       - .pgweb.env
     ports:
-      - 8081:8081
+      - 127.0.0.1:8081:8081
     depends_on:
       postgres:
         condition: service_healthy

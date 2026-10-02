@@ -70,6 +70,28 @@ dockers:
       - "--label=org.opencontainers.image.version={{ .Tag }}"
       - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
 
+  # Static marketing site (nginx). It ignores the binary goreleaser copies into the context.
+  - id: landing
+    goos: linux
+    goarch: amd64
+    dockerfile: landing/Dockerfile
+    extra_files:
+      - landing/package.json
+      - landing/bun.lock
+      - landing/index.html
+      - landing/vite.config.ts
+      - landing/tsconfig.json
+      - landing/src
+      - landing/public
+      - landing/nginx
+    image_templates:
+      - "docker.io/codingcoffee/bureaucat-landing:{{ .Tag }}"
+      - "docker.io/codingcoffee/bureaucat-landing:latest"
+    build_flag_templates:
+      - "--label=org.opencontainers.image.title={{ .ProjectName }}-landing"
+      - "--label=org.opencontainers.image.version={{ .Tag }}"
+      - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
+
 release:
   # origin -> github.com:bureaucatorg/bureaucat (auto-detected)
   github:

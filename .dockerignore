@@ -34,3 +34,5 @@ Dockerfile
 .git
 
 garage/
+landing/node_modules
+landing/dist
