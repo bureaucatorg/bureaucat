@@ -857,20 +857,20 @@ function buildCat(): Cat {
   const earL = h("g", {}, [h("path", { d: "M5.5 14L2.5 3L13 10Z", class: "fill-amber-500" }), h("path", { d: "M7 12L4.5 5.5L11.5 9.5Z", class: "fill-amber-600" })]);
   const earR = h("g", {}, [h("path", { d: "M26.5 14L29.5 3L19 10Z", class: "fill-amber-500" }), h("path", { d: "M25 12L27.5 5.5L20.5 9.5Z", class: "fill-amber-600" })]);
   const head = h("circle", { cx: 16, cy: 18, r: 11, class: "fill-amber-500" });
-  const glass = (cx: number) => h("circle", { cx, cy: 16.5, r: 3.8, pathLength: 1, "stroke-dasharray": "1 1", class: "stroke-foreground", "stroke-width": 1, fill: "none" });
+  const glass = (cx: number) => h("circle", { cx, cy: 16.5, r: 3.8, pathLength: 1, "stroke-dasharray": "1 1", class: "stroke-zinc-950", "stroke-width": 1, fill: "none" });
   const gL = glass(11.5);
   const gR = glass(20.5);
-  const bridge = h("path", { d: "M15.3 16C15.5 15.2 16.5 15.2 16.7 16", pathLength: 1, "stroke-dasharray": "1 1", class: "stroke-foreground", "stroke-width": 0.8, fill: "none" });
+  const bridge = h("path", { d: "M15.3 16C15.5 15.2 16.5 15.2 16.7 16", pathLength: 1, "stroke-dasharray": "1 1", class: "stroke-zinc-950", "stroke-width": 0.8, fill: "none" });
   const eye = (cx: number) => {
-    const look = h("g", {}, [h("circle", { cx: cx + 0.3, cy: 16.2, r: 0.9, class: "fill-amber-500" }), h("circle", { cx: cx + 0.8, cy: 15.7, r: 0.45, class: "fill-background" })]);
-    const g = h("g", {}, [h("ellipse", { cx, cy: 16.8, rx: 1.8, ry: 2, class: "fill-foreground" }), look]);
+    const look = h("g", {}, [h("circle", { cx: cx + 0.3, cy: 16.2, r: 0.9, class: "fill-amber-500" }), h("circle", { cx: cx + 0.8, cy: 15.7, r: 0.45, class: "fill-zinc-50" })]);
+    const g = h("g", {}, [h("ellipse", { cx, cy: 16.8, rx: 1.8, ry: 2, class: "fill-zinc-950" }), look]);
     return { g, look, cx };
   };
   const eL = eye(11.5);
   const eR = eye(20.5);
   const shut = h("g", {}, [
-    h("path", { d: "M9.8 17.2 q1.7 -1.6 3.4 0", class: "stroke-foreground", "stroke-width": 0.8, fill: "none", "stroke-linecap": "round" }),
-    h("path", { d: "M18.8 17.2 q1.7 -1.6 3.4 0", class: "stroke-foreground", "stroke-width": 0.8, fill: "none", "stroke-linecap": "round" }),
+    h("path", { d: "M9.8 17.2 q1.7 -1.6 3.4 0", class: "stroke-zinc-950", "stroke-width": 0.8, fill: "none", "stroke-linecap": "round" }),
+    h("path", { d: "M18.8 17.2 q1.7 -1.6 3.4 0", class: "stroke-zinc-950", "stroke-width": 0.8, fill: "none", "stroke-linecap": "round" }),
   ]);
   const face = h("g", {}, [
     h("path", { d: "M14.8 21L16 20L17.2 21Z", class: "fill-amber-700" }),
