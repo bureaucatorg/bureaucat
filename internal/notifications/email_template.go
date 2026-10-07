@@ -41,7 +41,6 @@ const (
 	fontMono     = `ui-monospace,SFMono-Regular,Menlo,Consolas,monospace`
 	excerptRunes = 280
 	neutralColor = "#a1a1aa"
-	logoPath     = "/email-logo.png"
 )
 
 var (
@@ -77,8 +76,7 @@ var emailHTML = template.Must(template.New("email").Funcs(template.FuncMap{
 
 <tr><td class="px" style="padding:16px 28px">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
-<td width="28" valign="middle"><img src="{{.LogoURL}}" width="28" height="28" alt="" border="0"></td>
-<td valign="middle" style="padding-left:8px;font-family:{{sans}};font-size:15px;line-height:26px;color:#09090b"><b>Bureaucat</b></td>
+<td valign="middle" style="font-family:{{sans}};font-size:17px;line-height:26px;color:#09090b"><b>Bureau<span style="color:#f59e0b">Cat</span></b></td>
 <td align="right" valign="middle" style="font-family:{{sans}};font-size:12px;line-height:26px;color:#71717a">{{.ProjectName}}</td>
 </tr></table>
 </td></tr>
@@ -157,7 +155,6 @@ type emailEvent struct {
 }
 
 type emailData struct {
-	LogoURL      string
 	ProjectName  string
 	TaskKey      string
 	TaskTitle    string
@@ -250,7 +247,6 @@ func notificationEmail(appURL string, row store.ClaimEmailNotificationsRow, even
 	}
 
 	data := emailData{
-		LogoURL:      base + logoPath,
 		ProjectName:  row.ProjectName,
 		TaskKey:      taskKey,
 		TaskTitle:    row.TaskTitle,
@@ -268,7 +264,6 @@ func notificationEmail(appURL string, row store.ClaimEmailNotificationsRow, even
 // TestEmail builds the SMTP connection test email in the same layout as notifications.
 func TestEmail(appURL, to, senderFirstName, senderLastName string) (mailer.Message, error) {
 	data := emailData{
-		LogoURL:     strings.TrimRight(appURL, "/") + logoPath,
 		ProjectName: "Admin",
 		TaskKey:     "SMTP TEST",
 		TaskTitle:   "Email delivery is working",
