@@ -108,7 +108,7 @@ type Querier interface {
 	// ==================== WORKSPACES ====================
 	CreateWorkspace(ctx context.Context, arg CreateWorkspaceParams) (Workspace, error)
 	CyclesCreatedPerDay(ctx context.Context, arg CyclesCreatedPerDayParams) ([]CyclesCreatedPerDayRow, error)
-	DeleteAttachment(ctx context.Context, id uuid.UUID) error
+	DeleteAttachment(ctx context.Context, arg DeleteAttachmentParams) (int64, error)
 	DeleteAttachmentsByEntity(ctx context.Context, arg DeleteAttachmentsByEntityParams) error
 	DeleteExpiredRefreshTokens(ctx context.Context) (int64, error)
 	DeletePersonalAccessToken(ctx context.Context, arg DeletePersonalAccessTokenParams) error
@@ -226,6 +226,7 @@ type Querier interface {
 	// (HTML tags stripped from content so markup/attributes don't produce matches).
 	ListProjectPages(ctx context.Context, arg ListProjectPagesParams) ([]ListProjectPagesRow, error)
 	ListProjectStates(ctx context.Context, projectID uuid.UUID) ([]ProjectState, error)
+	ListProjectTaskIDsIn(ctx context.Context, arg ListProjectTaskIDsInParams) ([]uuid.UUID, error)
 	ListProjectTasks(ctx context.Context, arg ListProjectTasksParams) ([]ListProjectTasksRow, error)
 	// Picker source: project tasks that are NOT already in the given module. A task
 	// can belong to many modules, so we only exclude by the target module.

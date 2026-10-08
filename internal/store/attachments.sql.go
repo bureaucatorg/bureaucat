@@ -44,13 +44,22 @@ func (q *Queries) CreateAttachment(ctx context.Context, arg CreateAttachmentPara
 	return i, err
 }
 
-const deleteAttachment = `-- name: DeleteAttachment :exec
-DELETE FROM attachments WHERE id = $1
+const deleteAttachment = `-- name: DeleteAttachment :execrows
+DELETE FROM attachments WHERE id = $1 AND entity_type = $2 AND entity_id = $3
 `
 
-func (q *Queries) DeleteAttachment(ctx context.Context, id uuid.UUID) error {
-	_, err := q.db.Exec(ctx, deleteAttachment, id)
-	return err
+type DeleteAttachmentParams struct {
+	ID         uuid.UUID `json:"id"`
+	EntityType string    `json:"entity_type"`
+	EntityID   uuid.UUID `json:"entity_id"`
+}
+
+func (q *Queries) DeleteAttachment(ctx context.Context, arg DeleteAttachmentParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteAttachment, arg.ID, arg.EntityType, arg.EntityID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const deleteAttachmentsByEntity = `-- name: DeleteAttachmentsByEntity :exec

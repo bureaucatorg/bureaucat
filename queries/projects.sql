@@ -425,6 +425,11 @@ SELECT COUNT(*)
 FROM tasks
 WHERE project_id = $1 AND deleted_at IS NULL;
 
+-- name: ListProjectTaskIDsIn :many
+SELECT id
+FROM tasks
+WHERE project_id = @project_id AND id = ANY(@task_ids::uuid[]) AND deleted_at IS NULL;
+
 -- Filtered list and count are now built dynamically by internal/store/tasks_filter.go
 -- from a FilterTree. The projection here is documented for reference by that runner.
 

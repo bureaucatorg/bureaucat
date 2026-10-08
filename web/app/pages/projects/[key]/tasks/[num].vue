@@ -22,6 +22,7 @@ import { toast } from "vue-sonner";
 import { marked } from "marked";
 import { CalendarDate, type DateValue } from "@internationalized/date";
 import { PRIORITY_LABELS } from "~/types";
+import { renderRichText } from "~/utils/markdown";
 
 const renderer = new marked.Renderer();
 renderer.link = ({ href, title, text }) => {
@@ -401,9 +402,7 @@ async function refreshComments() {
 
 const renderedDescription = computed(() => {
   const desc = currentTask.value?.description;
-  if (!desc) return "";
-  // If already HTML (from tiptap), render directly; otherwise convert markdown
-  return desc.startsWith("<") ? desc : (marked(desc) as string);
+  return renderRichText(desc);
 });
 
 function formatDate(dateStr: string): string {

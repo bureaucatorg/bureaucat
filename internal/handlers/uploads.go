@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"io"
+	"mime"
 	"net/http"
 
 	"github.com/google/uuid"
@@ -11,6 +12,14 @@ import (
 	"bereaucat/internal/store"
 	"bereaucat/internal/uploads"
 )
+
+var inlineMediaTypes = map[string]bool{
+	"image/png":       true,
+	"image/jpeg":      true,
+	"image/gif":       true,
+	"image/webp":      true,
+	"application/pdf": true,
+}
 
 // UploadHandler handles file upload endpoints.
 type UploadHandler struct {
@@ -129,9 +138,18 @@ func (h *UploadHandler) Serve(c *echo.Context) error {
 	}
 	defer reader.Close()
 
-	// Set response headers
-	c.Response().Header().Set("Content-Type", upload.MimeType)
-	c.Response().Header().Set("Cache-Control", "public, max-age=3600")
+	header := c.Response().Header()
+	header.Set("Content-Type", upload.MimeType)
+	header.Set("Cache-Control", "public, max-age=3600")
+	header.Set("X-Content-Type-Options", "nosniff")
+	// The stored MIME type is client-supplied, so anything that could execute on our origin is forced to download.
+	if mediaType, _, _ := mime.ParseMediaType(upload.MimeType); !inlineMediaTypes[mediaType] {
+		disposition := mime.FormatMediaType("attachment", map[string]string{"filename": upload.Filename})
+		if disposition == "" {
+			disposition = "attachment"
+		}
+		header.Set("Content-Disposition", disposition)
+	}
 
 	c.Response().WriteHeader(http.StatusOK)
 	_, err = io.Copy(c.Response(), reader)

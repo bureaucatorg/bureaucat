@@ -18,6 +18,7 @@ import { marked } from "marked";
 import { CalendarDate, type DateValue } from "@internationalized/date";
 import type { Task, ProjectState, ProjectMember, ProjectLabel, Comment } from "~/types";
 import { PRIORITY_LABELS } from "~/types";
+import { renderRichText } from "~/utils/markdown";
 
 const props = withDefaults(
   defineProps<{
@@ -65,8 +66,7 @@ const priority = computed(() => {
 
 const renderedDescription = computed(() => {
   const desc = task.value?.description;
-  if (!desc) return "";
-  return desc.startsWith("<") ? desc : (marked(desc) as string);
+  return renderRichText(desc);
 });
 
 const taskLink = computed(() => `/projects/${props.projectKey}/tasks/${props.taskNumber}`);

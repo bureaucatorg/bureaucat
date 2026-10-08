@@ -3,8 +3,8 @@ INSERT INTO attachments (upload_id, entity_type, entity_id, created_by)
 VALUES ($1, $2, $3, $4)
 RETURNING id, upload_id, entity_type, entity_id, created_by, created_at;
 
--- name: DeleteAttachment :exec
-DELETE FROM attachments WHERE id = $1;
+-- name: DeleteAttachment :execrows
+DELETE FROM attachments WHERE id = $1 AND entity_type = $2 AND entity_id = $3;
 
 -- name: DeleteAttachmentsByEntity :exec
 DELETE FROM attachments WHERE entity_type = $1 AND entity_id = $2;

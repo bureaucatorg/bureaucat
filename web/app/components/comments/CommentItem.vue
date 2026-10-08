@@ -4,6 +4,7 @@ import { marked } from "marked";
 import { toast } from "vue-sonner";
 import type { Comment, ProjectMember } from "~/types";
 import type { Attachment } from "~/composables/useAttachments";
+import { renderMarkdown } from "~/utils/markdown";
 
 const renderer = new marked.Renderer();
 renderer.link = ({ href, title, text }) => {
@@ -66,7 +67,7 @@ const attachments = ref<Attachment[]>([]);
 const attachmentsLoading = ref(false);
 
 const renderedContent = computed(() => {
-  return marked(props.comment.content) as string;
+  return renderMarkdown(props.comment.content);
 });
 
 async function loadAttachments() {
@@ -309,7 +310,7 @@ onMounted(() => {
             </p>
             <div
               class="prose prose-sm max-w-none break-words text-muted-foreground dark:prose-invert"
-              v-html="marked(version.content) as string"
+              v-html="renderMarkdown(version.content)"
             />
           </div>
         </div>

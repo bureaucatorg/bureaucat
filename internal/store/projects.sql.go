@@ -1676,6 +1676,37 @@ func (q *Queries) ListProjectStates(ctx context.Context, projectID uuid.UUID) ([
 	return items, nil
 }
 
+const listProjectTaskIDsIn = `-- name: ListProjectTaskIDsIn :many
+SELECT id
+FROM tasks
+WHERE project_id = $1 AND id = ANY($2::uuid[]) AND deleted_at IS NULL
+`
+
+type ListProjectTaskIDsInParams struct {
+	ProjectID uuid.UUID   `json:"project_id"`
+	TaskIds   []uuid.UUID `json:"task_ids"`
+}
+
+func (q *Queries) ListProjectTaskIDsIn(ctx context.Context, arg ListProjectTaskIDsInParams) ([]uuid.UUID, error) {
+	rows, err := q.db.Query(ctx, listProjectTaskIDsIn, arg.ProjectID, arg.TaskIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []uuid.UUID{}
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listProjectTasks = `-- name: ListProjectTasks :many
 SELECT t.id, t.project_id, t.task_number, t.title, t.description, t.state_id, t.priority, t.created_by, t.created_at, t.updated_at, t.deleted_at,
        p.project_key,

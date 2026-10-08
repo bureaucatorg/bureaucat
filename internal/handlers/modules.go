@@ -874,6 +874,9 @@ func (h *ModuleHandler) DuplicateModule(c *echo.Context) error {
 			}
 			taskIDs = append(taskIDs, id)
 		}
+		if err := requireProjectTasks(ctx, h.store, projectID, taskIDs); err != nil {
+			return err
+		}
 		if err := h.store.AddModuleTasksBulk(ctx, store.AddModuleTasksBulkParams{
 			ModuleID: created.ID,
 			TaskIds:  taskIDs,
@@ -1038,6 +1041,9 @@ func (h *ModuleHandler) AddModuleTasks(c *echo.Context) error {
 			return echo.NewHTTPError(http.StatusBadRequest, "invalid task id: "+s)
 		}
 		taskIDs = append(taskIDs, id)
+	}
+	if err := requireProjectTasks(ctx, h.store, projectID, taskIDs); err != nil {
+		return err
 	}
 
 	if err := h.store.AddModuleTasksBulk(ctx, store.AddModuleTasksBulkParams{

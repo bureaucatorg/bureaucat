@@ -1,3 +1,4 @@
+import DOMPurify from "dompurify";
 import { marked } from "marked";
 
 const renderer = new marked.Renderer();
@@ -19,4 +20,17 @@ export function mdToHtml(value: string | null | undefined): string {
   const str = value ?? "";
   if (!str) return "";
   return str.startsWith("<") ? str : (marked(str) as string);
+}
+
+// Every user-authored HTML string must pass through this before reaching v-html.
+export function sanitizeHtml(html: string): string {
+  return DOMPurify.sanitize(html, { ADD_ATTR: ["target"] });
+}
+
+export function renderRichText(value: string | null | undefined): string {
+  return sanitizeHtml(mdToHtml(value));
+}
+
+export function renderMarkdown(value: string | null | undefined): string {
+  return sanitizeHtml(marked(value ?? "") as string);
 }

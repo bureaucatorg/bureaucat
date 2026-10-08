@@ -2,6 +2,7 @@
 import { Loader2, Trash2, Lock, Check, Link, Cloud } from "lucide-vue-next";
 import { toast } from "vue-sonner";
 import { marked } from "marked";
+import { renderRichText } from "~/utils/markdown";
 
 const renderer = new marked.Renderer();
 renderer.link = ({ href, title, text }) => {
@@ -52,9 +53,7 @@ const isMember = computed(
 
 const renderedContent = computed(() => {
   const c = currentPage.value?.content;
-  if (!c) return "";
-  // If already HTML (from tiptap), render directly; otherwise convert markdown.
-  return c.startsWith("<") ? c : (marked(c) as string);
+  return renderRichText(c);
 });
 
 async function loadData() {

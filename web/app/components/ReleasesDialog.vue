@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ExternalLink, Loader2 } from "lucide-vue-next";
+import { sanitizeHtml } from "~/utils/markdown";
 
 interface Release {
   name: string;
@@ -29,9 +30,8 @@ const error = ref(false);
 
 const normalize = (v: string) => v.trim().replace(/^v/i, "");
 
-// GitHub sanitizes body_html; we only force links to open in a new tab.
 function bodyHTML(html: string): string {
-  return html.replace(/<a /g, '<a target="_blank" rel="noopener noreferrer" ');
+  return sanitizeHtml(html).replace(/<a /g, '<a target="_blank" rel="noopener noreferrer" ');
 }
 
 function formatDate(s: string): string {
