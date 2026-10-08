@@ -92,11 +92,14 @@ func (h *ReleasesHandler) getReleases(c *echo.Context) ([]Release, error) {
 		return h.staleOr(err)
 	}
 
+	current, hasCurrent := parseVersion(buildinfo.Version)
 	releases := make([]Release, 0, len(all))
 	for _, r := range all {
-		if !r.Draft && isAtLeastMin(r.TagName) {
-			releases = append(releases, r)
+		v, ok := parseVersion(r.TagName)
+		if r.Draft || !ok || !atLeast(v, minReleaseVersion) || (hasCurrent && !atLeast(v, current)) {
+			continue
 		}
+		releases = append(releases, r)
 	}
 
 	h.cached = releases
@@ -111,19 +114,27 @@ func (h *ReleasesHandler) staleOr(err error) ([]Release, error) {
 	return nil, err
 }
 
-func isAtLeastMin(tag string) bool {
+func parseVersion(tag string) ([3]int, bool) {
+	var v [3]int
 	core, _, _ := strings.Cut(strings.TrimPrefix(tag, "v"), "-")
 	parts := strings.Split(core, ".")
 	if len(parts) != 3 {
-		return false
+		return v, false
 	}
 	for i, p := range parts {
 		n, err := strconv.Atoi(p)
 		if err != nil {
-			return false
+			return v, false
 		}
-		if n != minReleaseVersion[i] {
-			return n > minReleaseVersion[i]
+		v[i] = n
+	}
+	return v, true
+}
+
+func atLeast(v, floor [3]int) bool {
+	for i := range v {
+		if v[i] != floor[i] {
+			return v[i] > floor[i]
 		}
 	}
 	return true
