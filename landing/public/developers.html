@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BureauCat Developers — API, OpenAPI Spec and CLI</title>
+    <meta name="description" content="Build on BureauCat: REST API reference, OpenAPI spec, personal access tokens, the bureaucat CLI and self-hosting quickstart." />
+    <link rel="canonical" href="https://www.bureaucat.org/developers" />
+    <meta name="theme-color" content="#F59E0B" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="BureauCat" />
+    <meta property="og:url" content="https://www.bureaucat.org/developers" />
+    <meta property="og:title" content="BureauCat Developers — API, OpenAPI Spec and CLI" />
+    <meta property="og:description" content="Build on BureauCat: REST API reference, OpenAPI spec, personal access tokens, the bureaucat CLI and self-hosting quickstart." />
+    <meta property="og:image" content="https://www.bureaucat.org/og-image.png" />
+    <link rel="icon" type="image/svg+xml" href="/logo.svg" />
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" sizes="any" />
+    <link rel="stylesheet" href="/pages.css" />
+    <script>
+      try {
+        var m = localStorage.getItem("bureaucat-color-mode");
+        if (m === "dark" || (!m && matchMedia("(prefers-color-scheme: dark)").matches)) {
+          document.documentElement.classList.add("dark");
+        }
+      } catch (e) {}
+    </script>
+  </head>
+  <body>
+    <header class="bar">
+      <div>
+        <a href="/" class="brand"><img src="/logo.svg" alt="" width="24" height="24" />Bureau<span>Cat</span></a>
+        <nav aria-label="Primary">
+          <a href="/developers">Developers</a>
+          <a href="https://github.com/bureaucatorg/bureaucat">GitHub</a>
+        </nav>
+      </div>
+    </header>
+    <main>
+      <p class="eyebrow">Developers</p>
+      <h1>BureauCat for developers</h1>
+      <p>Everything in BureauCat is available over a documented REST API. Use it to file tasks from scripts, sync work from other tools, or let an AI agent read and update tasks on your behalf.</p>
+
+      <h2>Resources</h2>
+      <ul>
+        <li><a href="__APP_URL__/docs">API reference</a>: interactive docs for every endpoint</li>
+        <li><a href="/openapi.json">OpenAPI spec</a>: machine-readable spec of the REST API (<code>/api/v1/openapi.json</code> on any instance)</li>
+        <li><a href="https://github.com/bureaucatorg/bureaucat/releases">Releases</a>: <code>bureaucat</code> binaries for Linux and macOS (amd64, arm64)</li>
+        <li><a href="/llms.txt">llms.txt</a>: a summary of BureauCat for AI agents</li>
+      </ul>
+
+      <h2>Authentication</h2>
+      <p>Create a personal access token under <a href="__APP_URL__/settings">Settings</a> in the app. Tokens start with <code>bcat_</code> and are either <strong>read-only</strong> (GET requests only) or <strong>read-write</strong>. Send the token as a Bearer token. All routes live under <code>/api/v1/</code>, and errors come back as JSON with a <code>message</code> field.</p>
+
+      <h2>Quickstart</h2>
+      <pre><code># Who am I?
+curl -H "Authorization: Bearer $BUREAUCAT_TOKEN" \
+  __APP_URL__/api/v1/me
+
+# Tasks assigned to me
+curl -H "Authorization: Bearer $BUREAUCAT_TOKEN" \
+  __APP_URL__/api/v1/me/tasks
+
+# Projects I can see
+curl -H "Authorization: Bearer $BUREAUCAT_TOKEN" \
+  __APP_URL__/api/v1/projects</code></pre>
+
+      <h2>CLI</h2>
+      <p>The <code>bureaucat</code> binary is both the server and a command-line client. Download it from <a href="https://github.com/bureaucatorg/bureaucat/releases">GitHub releases</a>, then:</p>
+      <pre><code>bureaucat login --url __APP_URL__ --token $BUREAUCAT_TOKEN
+bureaucat mytasks
+bureaucat projects
+bureaucat task create DEVOPS --title "Renew vendor contract"
+bureaucat comment DEVOPS-780 "Approved, go ahead"</code></pre>
+
+      <h2>Self-hosting</h2>
+      <p>Run the binary or the <code>codingcoffee/bureaucat</code> Docker image with PostgreSQL. Set <code>DATABASE_URL</code> and <code>JWT_SECRET</code> (32+ characters), then start it with <code>bureaucat serve --migrate</code>. The web app and API are served from one port (default 1341).</p>
+    </main>
+    <footer>
+      <div>
+        <span>BureauCat &copy; 2026 · AGPL-3.0</span>
+        <nav aria-label="Footer">
+          <a href="/about">About</a>
+          <a href="/developers">Developers</a>
+          <a href="/contact">Contact</a>
+          <a href="/privacy">Privacy</a>
+        </nav>
+      </div>
+    </footer>
+  </body>
+</html>

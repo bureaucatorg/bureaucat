@@ -23,13 +23,29 @@ BureauCat is not a fit for: a managed SaaS with no hosting responsibility, time 
 
 ## Developers
 
+- [Developer guide](https://www.bureaucat.org/developers): Authentication, quickstart and CLI
 - [API reference](__APP_URL__/docs): Interactive docs for every endpoint
-- [OpenAPI spec](__APP_URL__/api/v1/openapi.json): Machine-readable spec of the REST API (base path `/api/v1/`, Bearer token auth)
+- [OpenAPI spec](https://www.bureaucat.org/openapi.json): Machine-readable spec of the REST API (served at `/api/v1/openapi.json` on every instance)
+- [API catalog](https://www.bureaucat.org/.well-known/api-catalog): RFC 9727 linkset pointing to the spec and docs
 - [Releases](https://github.com/bureaucatorg/bureaucat/releases): Prebuilt `bureaucat` binaries for Linux and macOS (amd64, arm64)
 - [Docker image](https://hub.docker.com/r/codingcoffee/bureaucat): `codingcoffee/bureaucat`
 
-The `bureaucat` binary is both the server and a CLI. Authenticate with `bureaucat login --url <server> --token <api-token>`, then use commands such as `projects`, `tasks`, `mytasks`, `task create`, `task update` and `comment`. Create API tokens (read-only or read-write) from the web app.
+## How to call the API
+
+1. Ask the user for their BureauCat server URL and a personal access token. Tokens are created under Settings in the web app, start with `bcat_`, and are read-only (GET only) or read-write.
+2. Send `Authorization: Bearer <token>` on every request. All routes are under `/api/v1/`. Errors are JSON: `{"message": "..."}` with a matching HTTP status.
+3. Useful starting points: `GET /api/v1/me` (current user), `GET /api/v1/me/tasks` (tasks assigned to the user), `GET /api/v1/projects` (projects the user can see). Read the OpenAPI spec for everything else.
+
+Tasks are addressed as `<PROJECT-KEY>-<number>`, e.g. `DEVOPS-780`.
+
+The `bureaucat` binary is both the server and a CLI. Authenticate with `bureaucat login --url <server> --token <api-token>`, then use commands such as `projects`, `tasks`, `mytasks`, `task create`, `task update` and `comment`.
 
 ## Self-hosting
 
 Run `bureaucat serve --migrate` with `DATABASE_URL` (PostgreSQL) and `JWT_SECRET` (32+ characters) set. The web UI and API are served from the same port (default 1341).
+
+## About
+
+- [About](https://www.bureaucat.org/about): Who builds BureauCat and why
+- [Contact](https://www.bureaucat.org/contact): shenoy.ameya@gmail.com, GitHub issues, security reports
+- [Privacy policy](https://www.bureaucat.org/privacy)

@@ -180,6 +180,12 @@ const outlineBtn =
           <CatLogo :size="20" />
           <span class="text-sm text-muted-foreground">BureauCat &copy; 2026</span>
         </div>
+        <nav aria-label="Footer" class="flex flex-wrap justify-center gap-x-5 gap-y-2 text-sm text-muted-foreground">
+          <a href="/about" class="transition-colors hover:text-foreground">About</a>
+          <a href="/developers" class="transition-colors hover:text-foreground">Developers</a>
+          <a href="/contact" class="transition-colors hover:text-foreground">Contact</a>
+          <a href="/privacy" class="transition-colors hover:text-foreground">Privacy</a>
+        </nav>
         <p class="text-center text-sm text-muted-foreground">
           Crafted by
           <a

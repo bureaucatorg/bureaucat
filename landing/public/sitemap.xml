@@ -8,4 +8,24 @@
       <image:loc>https://www.bureaucat.org/og-image.png</image:loc>
     </image:image>
   </url>
+  <url>
+    <loc>https://www.bureaucat.org/developers</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://www.bureaucat.org/about</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://www.bureaucat.org/contact</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://www.bureaucat.org/privacy</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.3</priority>
+  </url>
 </urlset>

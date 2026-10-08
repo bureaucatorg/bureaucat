@@ -83,8 +83,14 @@ server {
     # Unknown paths get a real 404: the landing page for browsers, a short Markdown body for agents.
     error_page 404 $not_found_page;
 
+    location = /openapi.json {
+        return 302 ${APP_URL}/api/v1/openapi.json;
+    }
+
     location / {
         include /etc/nginx/snippets/security-headers.conf;
-        try_files $uri $uri/ =404;
+        sub_filter "__APP_URL__" "${APP_URL}";
+        sub_filter_once off;
+        try_files $uri $uri.html $uri/ =404;
     }
 }

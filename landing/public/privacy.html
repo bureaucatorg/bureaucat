@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Privacy Policy — BureauCat</title>
+    <meta name="description" content="Privacy policy for the BureauCat website and demo instance. No analytics, no tracking cookies, no advertising." />
+    <link rel="canonical" href="https://www.bureaucat.org/privacy" />
+    <meta name="theme-color" content="#F59E0B" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="BureauCat" />
+    <meta property="og:url" content="https://www.bureaucat.org/privacy" />
+    <meta property="og:title" content="Privacy Policy — BureauCat" />
+    <meta property="og:description" content="Privacy policy for the BureauCat website and demo instance. No analytics, no tracking cookies, no advertising." />
+    <meta property="og:image" content="https://www.bureaucat.org/og-image.png" />
+    <link rel="icon" type="image/svg+xml" href="/logo.svg" />
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" sizes="any" />
+    <link rel="stylesheet" href="/pages.css" />
+    <script>
+      try {
+        var m = localStorage.getItem("bureaucat-color-mode");
+        if (m === "dark" || (!m && matchMedia("(prefers-color-scheme: dark)").matches)) {
+          document.documentElement.classList.add("dark");
+        }
+      } catch (e) {}
+    </script>
+  </head>
+  <body>
+    <header class="bar">
+      <div>
+        <a href="/" class="brand"><img src="/logo.svg" alt="" width="24" height="24" />Bureau<span>Cat</span></a>
+        <nav aria-label="Primary">
+          <a href="/developers">Developers</a>
+          <a href="https://github.com/bureaucatorg/bureaucat">GitHub</a>
+        </nav>
+      </div>
+    </header>
+    <main>
+      <p class="eyebrow">Privacy</p>
+      <h1>Privacy Policy</h1>
+      <p class="meta">Effective 8 October 2026</p>
+
+      <p>BureauCat is open-source software. This policy explains what data the BureauCat project handles on the services it runs itself: this website (<code>www.bureaucat.org</code>) and the public demo instance linked from it. It does not cover copies of BureauCat that other people or organisations host.</p>
+
+      <h2>Self-hosted instances</h2>
+      <p>When you self-host BureauCat, all data stays on your infrastructure and the organisation running the instance is responsible for it. The software does not send telemetry, usage data or content back to the BureauCat project.</p>
+
+      <h2>This website</h2>
+      <p>The website is a static page. It uses no analytics, no tracking cookies, no advertising and no third-party scripts; fonts are served from this domain. Your theme preference (light or dark) is stored in your browser's local storage and never leaves your device. Like most web servers, ours may record standard request logs (IP address, user agent, requested URL and time) for security and troubleshooting. These logs are kept for a limited time and are not used to profile visitors.</p>
+
+      <h2>Demo instance</h2>
+      <p>If you create an account on the demo instance, we store what is needed to run it: your name, username, email address, a bcrypt hash of your password, and the projects, tasks, comments and files you add. A sign-in cookie keeps you logged in; it is used only for authentication. If you sign in with a third-party provider such as Google, we receive your basic profile (name and email) from that provider. Email notifications are off unless you turn them on. The demo is for evaluation: do not store confidential or sensitive information in it, and data may be reset without notice.</p>
+
+      <h2>Sharing</h2>
+      <p>We do not sell, rent or share personal data with third parties for marketing. Data is disclosed only when required by law, or to the hosting providers that run the infrastructure.</p>
+
+      <h2>Your rights</h2>
+      <p>You can ask us to access, correct or delete the personal data we hold about you by emailing <a href="mailto:shenoy.ameya@gmail.com">shenoy.ameya@gmail.com</a>. Depending on where you live, you may have further rights under laws such as the GDPR or India's Digital Personal Data Protection Act, 2023.</p>
+
+      <h2>Changes</h2>
+      <p>If this policy changes, the updated version will be posted on this page with a new effective date. Questions? Email <a href="mailto:shenoy.ameya@gmail.com">shenoy.ameya@gmail.com</a>.</p>
+    </main>
+    <footer>
+      <div>
+        <span>BureauCat &copy; 2026 · AGPL-3.0</span>
+        <nav aria-label="Footer">
+          <a href="/about">About</a>
+          <a href="/developers">Developers</a>
+          <a href="/contact">Contact</a>
+          <a href="/privacy">Privacy</a>
+        </nav>
+      </div>
+    </footer>
+  </body>
+</html>

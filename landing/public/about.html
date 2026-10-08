@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>About BureauCat — Open-Source Task Manager</title>
+    <meta name="description" content="BureauCat is an open-source, self-hosted task manager with approval workflows, built by Ameya Shenoy and released under AGPL-3.0." />
+    <link rel="canonical" href="https://www.bureaucat.org/about" />
+    <meta name="theme-color" content="#F59E0B" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="BureauCat" />
+    <meta property="og:url" content="https://www.bureaucat.org/about" />
+    <meta property="og:title" content="About BureauCat — Open-Source Task Manager" />
+    <meta property="og:description" content="BureauCat is an open-source, self-hosted task manager with approval workflows, built by Ameya Shenoy and released under AGPL-3.0." />
+    <meta property="og:image" content="https://www.bureaucat.org/og-image.png" />
+    <link rel="icon" type="image/svg+xml" href="/logo.svg" />
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" sizes="any" />
+    <link rel="stylesheet" href="/pages.css" />
+    <script>
+      try {
+        var m = localStorage.getItem("bureaucat-color-mode");
+        if (m === "dark" || (!m && matchMedia("(prefers-color-scheme: dark)").matches)) {
+          document.documentElement.classList.add("dark");
+        }
+      } catch (e) {}
+    </script>
+  </head>
+  <body>
+    <header class="bar">
+      <div>
+        <a href="/" class="brand"><img src="/logo.svg" alt="" width="24" height="24" />Bureau<span>Cat</span></a>
+        <nav aria-label="Primary">
+          <a href="/developers">Developers</a>
+          <a href="https://github.com/bureaucatorg/bureaucat">GitHub</a>
+        </nav>
+      </div>
+    </header>
+    <main>
+      <p class="eyebrow">About</p>
+      <h1>About BureauCat</h1>
+      <p>BureauCat is an open-source, self-hosted task manager for teams whose work runs on requests and sign-offs. Purchase requests, access reviews, vendor renewals and everyday to-dos become numbered tasks, such as <code>DEVOPS-780</code>, that move through states you define. The default workflow includes <strong>Approval Pending</strong>, so a sign-off is a column on a board instead of an email thread.</p>
+
+      <h2>What it does</h2>
+      <ul>
+        <li>Workspaces, projects and numbered tasks with priorities, assignees and followers</li>
+        <li>Subtasks, kanban boards, cycles and modules for planning</li>
+        <li>Comments with @mentions and attachments, and batched notifications in-app, by email digest or as Mattermost DMs</li>
+        <li>An append-only audit log where each entry is SHA-256 hash-chained to the one before it, so tampering is detectable</li>
+        <li>Single sign-on with Google and Zitadel, API tokens, a CLI and a documented REST API</li>
+      </ul>
+
+      <h2>Why it exists</h2>
+      <p>Bureaucracy is not the problem; bureaucracy that stalls is. BureauCat keeps the useful parts of process, a clear owner, an explicit approval and a record of what happened, while making sure requests keep moving and nothing sits forgotten on someone's desk.</p>
+
+      <h2>Who builds it</h2>
+      <p>BureauCat is created and maintained by <a href="https://codingcoffee.dev">Ameya Shenoy</a>, with contributions from the open-source community. The source code, issue tracker and releases live on <a href="https://github.com/bureaucatorg/bureaucat">GitHub</a>.</p>
+
+      <h2>License</h2>
+      <p>BureauCat is free software licensed under the <a href="https://www.gnu.org/licenses/agpl-3.0.html">GNU Affero General Public License v3.0</a>. You can run it, study it, change it and share it. If you run a modified version as a network service, the AGPL requires you to offer its source to your users.</p>
+
+      <p>Have a question? See the <a href="/contact">contact page</a>.</p>
+    </main>
+    <footer>
+      <div>
+        <span>BureauCat &copy; 2026 · AGPL-3.0</span>
+        <nav aria-label="Footer">
+          <a href="/about">About</a>
+          <a href="/developers">Developers</a>
+          <a href="/contact">Contact</a>
+          <a href="/privacy">Privacy</a>
+        </nav>
+      </div>
+    </footer>
+  </body>
+</html>
