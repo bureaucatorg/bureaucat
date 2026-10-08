@@ -80,7 +80,8 @@ async function handleLogout() {
     <div class="mx-auto flex h-12 max-w-6xl items-center justify-between px-6">
       <NuxtLink to="/" class="flex items-center gap-2.5">
         <BurecatLogo :size="28" />
-        <span class="text-lg font-semibold tracking-tight">{{ appName }}</span>
+        <span v-if="appName === 'Bureaucat'" class="text-lg font-semibold tracking-tight">Bureau<span class="text-amber-500">Cat</span></span>
+        <span v-else class="text-lg font-semibold tracking-tight">{{ appName }}</span>
       </NuxtLink>
 
       <div class="flex items-center gap-4">
