@@ -1,3 +1,13 @@
+map $http_accept $home_page {
+    default             /index.html;
+    "~*text/markdown"   /index.md;
+}
+
+map $http_accept $not_found_page {
+    default             /index.html;
+    "~*text/markdown"   /404.md;
+}
+
 server {
     listen 8080;
     server_name _;
@@ -5,14 +15,52 @@ server {
     server_tokens off;
 
     gzip on;
-    gzip_types text/css text/plain text/xml application/xml application/javascript application/manifest+json image/svg+xml;
+    gzip_types text/css text/plain text/markdown text/xml application/xml application/javascript application/manifest+json application/linkset+json image/svg+xml;
+
+    location = / {
+        rewrite ^ $home_page last;
+    }
 
     # The app URL is injected into index.html at serve time so one image fits every deployment.
     location = /index.html {
         include /etc/nginx/snippets/security-headers.conf;
         add_header Cache-Control "no-cache" always;
+        add_header Vary "Accept" always;
+        add_header Link '</index.md>; rel="alternate"; type="text/markdown", </llms.txt>; rel="describedby"; type="text/plain", </sitemap.xml>; rel="sitemap"; type="application/xml", </.well-known/api-catalog>; rel="api-catalog"' always;
         sub_filter "__APP_URL__" "${APP_URL}";
         sub_filter_once off;
+    }
+
+    location ~ \.md$ {
+        include /etc/nginx/snippets/security-headers.conf;
+        types { }
+        default_type text/markdown;
+        charset utf-8;
+        charset_types text/markdown;
+        add_header Cache-Control "no-cache" always;
+        add_header Vary "Accept" always;
+        sub_filter "__APP_URL__" "${APP_URL}";
+        sub_filter_once off;
+        sub_filter_types text/markdown;
+    }
+
+    location = /llms.txt {
+        include /etc/nginx/snippets/security-headers.conf;
+        charset utf-8;
+        add_header Cache-Control "public, max-age=3600" always;
+        sub_filter "__APP_URL__" "${APP_URL}";
+        sub_filter_once off;
+        sub_filter_types text/plain;
+    }
+
+    location = /.well-known/api-catalog {
+        include /etc/nginx/snippets/security-headers.conf;
+        types { }
+        default_type application/linkset+json;
+        add_header Cache-Control "public, max-age=3600" always;
+        sub_filter "__APP_URL__" "${APP_URL}";
+        sub_filter_once off;
+        sub_filter_types application/linkset+json;
     }
 
     location ~ ^/(robots\.txt|sitemap\.xml)$ {
@@ -32,8 +80,8 @@ server {
         try_files $uri =404;
     }
 
-    # Single-page site: unknown paths get a real 404 (with the landing page as the body) instead of a soft 404.
-    error_page 404 /index.html;
+    # Unknown paths get a real 404: the landing page for browsers, a short Markdown body for agents.
+    error_page 404 $not_found_page;
 
     location / {
         include /etc/nginx/snippets/security-headers.conf;

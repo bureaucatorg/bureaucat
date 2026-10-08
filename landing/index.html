@@ -6,7 +6,7 @@
     <title>BureauCat — Open-Source Task Manager with Approval Workflows</title>
     <meta name="description" content="BureauCat is an open-source, self-hosted task manager. Turn requests and sign-offs into tasks with approval workflows, kanban boards and a verifiable audit log." />
     <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
-    <link rel="canonical" href="https://bureaucat.org/" />
+    <link rel="canonical" href="https://www.bureaucat.org/" />
     <meta name="author" content="Ameya Shenoy" />
     <meta name="application-name" content="BureauCat" />
     <meta name="theme-color" content="#F59E0B" />
@@ -16,11 +16,11 @@
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="BureauCat" />
     <meta property="og:locale" content="en_US" />
-    <meta property="og:url" content="https://bureaucat.org/" />
+    <meta property="og:url" content="https://www.bureaucat.org/" />
     <meta property="og:title" content="BureauCat — Bureaucracy That Actually Moves" />
     <meta property="og:description" content="Requests, sign-offs and to-dos, turned into tasks that move. Open-source, self-hosted, with approval workflows and an audit log." />
-    <meta property="og:image" content="https://bureaucat.org/og-image.png" />
-    <meta property="og:image:secure_url" content="https://bureaucat.org/og-image.png" />
+    <meta property="og:image" content="https://www.bureaucat.org/og-image.png" />
+    <meta property="og:image:secure_url" content="https://www.bureaucat.org/og-image.png" />
     <meta property="og:image:type" content="image/png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
@@ -29,13 +29,14 @@
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="BureauCat — Bureaucracy That Actually Moves" />
     <meta name="twitter:description" content="Requests, sign-offs and to-dos, turned into tasks that move. Open-source, self-hosted, with approval workflows and an audit log." />
-    <meta name="twitter:image" content="https://bureaucat.org/og-image.png" />
+    <meta name="twitter:image" content="https://www.bureaucat.org/og-image.png" />
     <meta name="twitter:image:alt" content="BureauCat logo beside the headline 'Bureaucracy That Actually Moves' and a task card stamped Approved" />
 
     <link rel="icon" type="image/svg+xml" href="/logo.svg" />
     <link rel="icon" type="image/x-icon" href="/favicon.ico" sizes="any" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/site.webmanifest" />
+    <link rel="alternate" type="text/markdown" href="/index.md" title="BureauCat (Markdown)" />
     <link rel="preload" href="/fonts/InterVariable.woff2" as="font" type="font/woff2" crossorigin />
 
     <script type="application/ld+json">
@@ -44,43 +45,45 @@
         "@graph": [
           {
             "@type": "Organization",
-            "@id": "https://bureaucat.org/#organization",
+            "@id": "https://www.bureaucat.org/#organization",
             "name": "BureauCat",
-            "url": "https://bureaucat.org/",
-            "logo": { "@type": "ImageObject", "url": "https://bureaucat.org/icon-512.png", "width": 512, "height": 512 },
+            "url": "https://www.bureaucat.org/",
+            "logo": { "@type": "ImageObject", "url": "https://www.bureaucat.org/icon-512.png", "width": 512, "height": 512 },
             "sameAs": ["https://github.com/bureaucatorg/bureaucat"]
           },
           {
             "@type": "WebSite",
-            "@id": "https://bureaucat.org/#website",
-            "url": "https://bureaucat.org/",
+            "@id": "https://www.bureaucat.org/#website",
+            "url": "https://www.bureaucat.org/",
             "name": "BureauCat",
             "description": "Open-source, self-hosted task manager with approval workflows.",
             "inLanguage": "en",
-            "publisher": { "@id": "https://bureaucat.org/#organization" }
+            "publisher": { "@id": "https://www.bureaucat.org/#organization" }
           },
           {
             "@type": "WebPage",
-            "@id": "https://bureaucat.org/#webpage",
-            "url": "https://bureaucat.org/",
+            "@id": "https://www.bureaucat.org/#webpage",
+            "url": "https://www.bureaucat.org/",
             "name": "BureauCat — Open-Source Task Manager with Approval Workflows",
             "description": "BureauCat is an open-source, self-hosted task manager. Turn requests and sign-offs into tasks with approval workflows, kanban boards and a verifiable audit log.",
             "inLanguage": "en",
-            "isPartOf": { "@id": "https://bureaucat.org/#website" },
-            "about": { "@id": "https://bureaucat.org/#software" },
-            "primaryImageOfPage": { "@type": "ImageObject", "url": "https://bureaucat.org/og-image.png", "width": 1200, "height": 630 }
+            "isPartOf": { "@id": "https://www.bureaucat.org/#website" },
+            "about": { "@id": "https://www.bureaucat.org/#software" },
+            "primaryImageOfPage": { "@type": "ImageObject", "url": "https://www.bureaucat.org/og-image.png", "width": 1200, "height": 630 }
           },
           {
             "@type": "SoftwareApplication",
-            "@id": "https://bureaucat.org/#software",
+            "@id": "https://www.bureaucat.org/#software",
             "name": "BureauCat",
-            "url": "https://bureaucat.org/",
+            "url": "https://www.bureaucat.org/",
             "description": "Open-source, self-hosted task manager that turns requests, sign-offs and to-dos into tracked tasks with approval workflows, kanban boards, cycles, modules and a hash-chained audit log.",
             "applicationCategory": "BusinessApplication",
             "applicationSubCategory": "Project management",
             "operatingSystem": "Web, Linux, Docker",
-            "image": "https://bureaucat.org/og-image.png",
+            "image": "https://www.bureaucat.org/og-image.png",
             "isAccessibleForFree": true,
+            "license": "https://www.gnu.org/licenses/agpl-3.0.html",
+            "downloadUrl": "https://github.com/bureaucatorg/bureaucat/releases",
             "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
             "featureList": [
               "Workspaces, projects and numbered tasks",
@@ -97,7 +100,7 @@
               "Custom branding and admin tools"
             ],
             "author": { "@type": "Person", "name": "Ameya Shenoy", "url": "https://codingcoffee.dev" },
-            "publisher": { "@id": "https://bureaucat.org/#organization" },
+            "publisher": { "@id": "https://www.bureaucat.org/#organization" },
             "sameAs": ["https://github.com/bureaucatorg/bureaucat"]
           }
         ]

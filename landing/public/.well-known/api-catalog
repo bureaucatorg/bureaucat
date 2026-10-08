@@ -1,0 +1,10 @@
+{
+  "linkset": [
+    {
+      "anchor": "__APP_URL__/api/v1/",
+      "service-desc": [{ "href": "__APP_URL__/api/v1/openapi.json", "type": "application/json" }],
+      "service-doc": [{ "href": "__APP_URL__/docs", "type": "text/html" }],
+      "status": [{ "href": "__APP_URL__/api/v1/health", "type": "application/json" }]
+    }
+  ]
+}

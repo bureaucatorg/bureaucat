@@ -6,6 +6,7 @@ import CatLogo from "./components/CatLogo.vue";
 import HeroWeb from "./components/HeroWeb.vue";
 import LandingStory from "./components/LandingStory.vue";
 import LandingDrawer from "./components/LandingDrawer.vue";
+import LandingFaq from "./components/LandingFaq.vue";
 import { appLink } from "./lib/config";
 
 const noBS = ref(false);
@@ -152,6 +153,8 @@ const outlineBtn =
       <LandingStory :no-bs="noBS" />
 
       <LandingDrawer :no-bs="noBS" />
+
+      <LandingFaq />
 
       <!-- Closing -->
       <section aria-labelledby="closing-title" class="relative overflow-hidden border-t border-border/60">
