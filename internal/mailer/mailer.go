@@ -69,9 +69,10 @@ type InlineFile struct {
 	Data        []byte
 }
 
-// Load reads the SMTP settings. A missing row returns zero (disabled) settings.
+// Load reads the SMTP settings. A missing row returns disabled settings.
+// Keys absent from the stored JSON keep these defaults, so older rows get EmbedLogo on.
 func Load(ctx context.Context, s store.Querier) (Settings, error) {
-	var cfg Settings
+	cfg := Settings{EmbedLogo: true}
 	setting, err := s.GetSetting(ctx, SettingKey)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return cfg, nil

@@ -255,7 +255,7 @@ const smtpForm = ref<SMTPSettings>({
   from_name: "",
   tls_mode: "starttls",
   app_url: "",
-  embed_logo: false,
+  embed_logo: true,
 });
 const savingSMTP = ref(false);
 const testingSMTP = ref(false);
