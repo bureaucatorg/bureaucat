@@ -289,8 +289,8 @@ const flow = computed(() => {
       target: `t:${e.child_id}`,
       type: "directed",
       class: "subtask",
-      data: { color: "var(--chart-1)" },
-      style: { stroke: "var(--chart-1)", strokeOpacity: 0.8, strokeWidth: 1.5 },
+      data: { color: "var(--graph-subtask)" },
+      style: { stroke: "var(--graph-subtask)", strokeOpacity: 0.8, strokeWidth: 1.5 },
     });
   }
   for (const e of blockerEdges) {
@@ -637,8 +637,8 @@ function onNodeDoubleClick({ node }: NodeMouseEvent) {
             </div>
             <div class="flex items-center gap-2">
               <svg width="28" height="8" aria-hidden="true">
-                <line x1="0" y1="4" x2="28" y2="4" style="stroke: var(--chart-1)" stroke-width="2" />
-                <path d="M10 0 L18 4 L10 8 Z" style="fill: var(--chart-1)" />
+                <line x1="0" y1="4" x2="28" y2="4" style="stroke: var(--graph-subtask)" stroke-width="2" />
+                <path d="M10 0 L18 4 L10 8 Z" style="fill: var(--graph-subtask)" />
               </svg>
               Parent → subtask
             </div>
@@ -701,6 +701,10 @@ function onNodeDoubleClick({ node }: NodeMouseEvent) {
 </template>
 
 <style>
+:root {
+  --graph-subtask: #eab308;
+}
+
 .vue-flow__controls-button {
   background: var(--card);
   border-color: var(--border);
@@ -736,7 +740,7 @@ function onNodeDoubleClick({ node }: NodeMouseEvent) {
 }
 
 .vue-flow__edge.subtask.highlighted path.vue-flow__edge-path {
-  stroke: var(--chart-1) !important;
+  stroke: var(--graph-subtask) !important;
   stroke-opacity: 1 !important;
   stroke-width: 2;
 }
