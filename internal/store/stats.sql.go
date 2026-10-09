@@ -268,6 +268,39 @@ func (q *Queries) CyclesCreatedPerDay(ctx context.Context, arg CyclesCreatedPerD
 	return items, nil
 }
 
+const listBlockerLinksForGraph = `-- name: ListBlockerLinksForGraph :many
+SELECT task_id, blocker_task_id
+FROM task_blockers
+WHERE task_id = ANY($1::uuid[])
+  AND blocker_task_id = ANY($1::uuid[])
+`
+
+type ListBlockerLinksForGraphRow struct {
+	TaskID        uuid.UUID `json:"task_id"`
+	BlockerTaskID uuid.UUID `json:"blocker_task_id"`
+}
+
+// Blocker links where both tasks are already on the graph.
+func (q *Queries) ListBlockerLinksForGraph(ctx context.Context, taskIds []uuid.UUID) ([]ListBlockerLinksForGraphRow, error) {
+	rows, err := q.db.Query(ctx, listBlockerLinksForGraph, taskIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListBlockerLinksForGraphRow{}
+	for rows.Next() {
+		var i ListBlockerLinksForGraphRow
+		if err := rows.Scan(&i.TaskID, &i.BlockerTaskID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listGraphProjectOptions = `-- name: ListGraphProjectOptions :many
 SELECT p.project_key, p.name, w.workspace_key
 FROM projects p

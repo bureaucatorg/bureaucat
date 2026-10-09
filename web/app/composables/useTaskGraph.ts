@@ -28,10 +28,16 @@ export interface GraphEdge {
   task_id: string;
 }
 
+export interface GraphBlockerEdge {
+  blocker_id: string;
+  blocked_id: string;
+}
+
 export interface TaskGraph {
   users: GraphUser[];
   tasks: GraphTask[];
   edges: GraphEdge[];
+  blocker_edges: GraphBlockerEdge[];
 }
 
 export interface TaskGraphFilterOptions {

@@ -220,11 +220,14 @@ const filtered = computed(() => {
   const subtaskEdges = tasks
     .filter((t) => t.parent_id && taskIds.has(t.parent_id))
     .map((t) => ({ parent_id: t.parent_id!, child_id: t.id }));
-  return { users, tasks, edges, subtaskEdges };
+  const blockerEdges = (graph.value?.blocker_edges ?? []).filter(
+    (e) => taskIds.has(e.blocker_id) && taskIds.has(e.blocked_id),
+  );
+  return { users, tasks, edges, subtaskEdges, blockerEdges };
 });
 
 const flow = computed(() => {
-  const { users, tasks, edges, subtaskEdges } = filtered.value;
+  const { users, tasks, edges, subtaskEdges, blockerEdges } = filtered.value;
 
   const tasksByUser = new Map<string, string[]>();
   for (const e of edges) {
@@ -248,6 +251,7 @@ const flow = computed(() => {
   const positions = forceLayout(order, [
     ...edges.map((e): [string, string] => [`u:${e.user_id}`, `t:${e.task_id}`]),
     ...subtaskEdges.map((e): [string, string] => [`t:${e.parent_id}`, `t:${e.child_id}`]),
+    ...blockerEdges.map((e): [string, string] => [`t:${e.blocker_id}`, `t:${e.blocked_id}`]),
   ]);
 
   const nodes: Node[] = [
@@ -266,9 +270,21 @@ const flow = computed(() => {
       id: `s:${e.parent_id}:${e.child_id}`,
       source: `t:${e.parent_id}`,
       target: `t:${e.child_id}`,
-      type: "straight",
+      type: "directed",
       class: "subtask",
+      data: { color: "var(--chart-1)" },
       style: { stroke: "var(--chart-1)", strokeOpacity: 0.8, strokeWidth: 1.5 },
+    });
+  }
+  for (const e of blockerEdges) {
+    flowEdges.push({
+      id: `b:${e.blocker_id}:${e.blocked_id}`,
+      source: `t:${e.blocker_id}`,
+      target: `t:${e.blocked_id}`,
+      type: "directed",
+      class: "blocker",
+      data: { color: "var(--destructive)" },
+      style: { stroke: "var(--destructive)", strokeOpacity: 0.8, strokeWidth: 1.5, strokeDasharray: "6 4" },
     });
   }
 
@@ -281,6 +297,12 @@ const sortedUsers = computed(() =>
   ),
 );
 
+function edgeClass(id: string) {
+  if (id.startsWith("s:")) return "subtask";
+  if (id.startsWith("b:")) return "blocker";
+  return undefined;
+}
+
 // Only the affected nodes/edges get a class; CSS dims everything else.
 function setHighlight(nodeId: string | null) {
   for (const id of highlightedIds.nodes) {
@@ -289,7 +311,7 @@ function setHighlight(nodeId: string | null) {
   }
   for (const id of highlightedIds.edges) {
     const e = findEdge(id);
-    if (e) e.class = id.startsWith("s:") ? "subtask" : undefined;
+    if (e) e.class = edgeClass(id);
   }
   highlightedIds = { nodes: [], edges: [] };
   highlightedNode.value = nodeId;
@@ -309,6 +331,11 @@ function setHighlight(nodeId: string | null) {
       highlightedIds.nodes.push(`t:${e.parent_id === id ? e.child_id : e.parent_id}`);
       highlightedIds.edges.push(`s:${e.parent_id}:${e.child_id}`);
     }
+    for (const e of filtered.value.blockerEdges) {
+      if (e.blocker_id !== id && e.blocked_id !== id) continue;
+      highlightedIds.nodes.push(`t:${e.blocker_id === id ? e.blocked_id : e.blocker_id}`);
+      highlightedIds.edges.push(`b:${e.blocker_id}:${e.blocked_id}`);
+    }
   }
   for (const id of highlightedIds.nodes) {
     const n = findNode(id);
@@ -316,7 +343,7 @@ function setHighlight(nodeId: string | null) {
   }
   for (const id of highlightedIds.edges) {
     const e = findEdge(id);
-    if (e) e.class = id.startsWith("s:") ? "subtask highlighted" : "highlighted";
+    if (e) e.class = [edgeClass(id), "highlighted"].filter(Boolean).join(" ");
   }
 }
 
@@ -536,12 +563,33 @@ function onNodeDoubleClick({ node }: NodeMouseEvent) {
           </PopoverContent>
         </Popover>
 
-        <span
-          v-if="graph"
-          class="ml-auto rounded-md bg-background/90 px-2 py-1 text-xs text-muted-foreground shadow-sm backdrop-blur"
-        >
-          {{ filtered.users.length }} users · {{ filtered.tasks.length }} tasks
-        </span>
+        <div v-if="graph" class="ml-auto flex flex-col items-end gap-2">
+          <span class="rounded-md bg-background/90 px-2 py-1 text-xs text-muted-foreground shadow-sm backdrop-blur">
+            {{ filtered.users.length }} users · {{ filtered.tasks.length }} tasks
+          </span>
+          <div class="space-y-1 rounded-md border bg-background/90 px-3 py-2 text-xs text-muted-foreground shadow-sm backdrop-blur">
+            <div class="flex items-center gap-2">
+              <svg width="28" height="8" aria-hidden="true">
+                <line x1="0" y1="4" x2="28" y2="4" style="stroke: var(--muted-foreground)" stroke-width="2" />
+              </svg>
+              User → assigned task
+            </div>
+            <div class="flex items-center gap-2">
+              <svg width="28" height="8" aria-hidden="true">
+                <line x1="0" y1="4" x2="28" y2="4" style="stroke: var(--chart-1)" stroke-width="2" />
+                <path d="M10 0 L18 4 L10 8 Z" style="fill: var(--chart-1)" />
+              </svg>
+              Parent → subtask
+            </div>
+            <div class="flex items-center gap-2">
+              <svg width="28" height="8" aria-hidden="true">
+                <line x1="0" y1="4" x2="28" y2="4" style="stroke: var(--destructive)" stroke-width="2" stroke-dasharray="4 3" />
+                <path d="M10 0 L18 4 L10 8 Z" style="fill: var(--destructive)" />
+              </svg>
+              Blocker → blocked task
+            </div>
+          </div>
+        </div>
       </div>
 
       <div v-if="!graph" class="flex h-full items-center justify-center text-sm text-muted-foreground">
@@ -580,6 +628,9 @@ function onNodeDoubleClick({ node }: NodeMouseEvent) {
           <template #node-task="{ data }">
             <GraphTaskNode :data="data" />
           </template>
+          <template #edge-directed="edgeProps">
+            <GraphDirectedEdge v-bind="edgeProps" />
+          </template>
           <Background :gap="20" />
           <Controls :show-interactive="false" />
         </VueFlow>
@@ -617,14 +668,20 @@ function onNodeDoubleClick({ node }: NodeMouseEvent) {
   z-index: 1000 !important;
 }
 
-.vue-flow__edge.highlighted path {
+.vue-flow__edge.highlighted path.vue-flow__edge-path {
   stroke: var(--foreground) !important;
   stroke-opacity: 0.35 !important;
   stroke-width: 1.25;
 }
 
-.vue-flow__edge.subtask.highlighted path {
+.vue-flow__edge.subtask.highlighted path.vue-flow__edge-path {
   stroke: var(--chart-1) !important;
+  stroke-opacity: 1 !important;
+  stroke-width: 2;
+}
+
+.vue-flow__edge.blocker.highlighted path.vue-flow__edge-path {
+  stroke: var(--destructive) !important;
   stroke-opacity: 1 !important;
   stroke-width: 2;
 }

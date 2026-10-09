@@ -205,6 +205,8 @@ type Querier interface {
 	// Project tasks that can be linked to the given task in either direction:
 	// excludes the task itself and tasks already linked to it.
 	ListBlockerCandidates(ctx context.Context, arg ListBlockerCandidatesParams) ([]ListBlockerCandidatesRow, error)
+	// Blocker links where both tasks are already on the graph.
+	ListBlockerLinksForGraph(ctx context.Context, taskIds []uuid.UUID) ([]ListBlockerLinksForGraphRow, error)
 	ListCycleAssignees(ctx context.Context, cycleID uuid.UUID) ([]ListCycleAssigneesRow, error)
 	ListCycleTasks(ctx context.Context, arg ListCycleTasksParams) ([]ListCycleTasksRow, error)
 	ListDeletedProjects(ctx context.Context, arg ListDeletedProjectsParams) ([]ListDeletedProjectsRow, error)

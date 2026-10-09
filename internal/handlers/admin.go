@@ -894,6 +894,12 @@ type GraphEdge struct {
 	TaskID string `json:"task_id"`
 }
 
+// GraphBlockerEdge links a blocker task to the task it blocks.
+type GraphBlockerEdge struct {
+	BlockerID string `json:"blocker_id"`
+	BlockedID string `json:"blocked_id"`
+}
+
 // GraphWorkspaceOption is a workspace choice for the graph view filters.
 type GraphWorkspaceOption struct {
 	Key  string `json:"key"`
@@ -924,9 +930,10 @@ type TaskGraphFiltersResponse struct {
 
 // TaskGraphResponse is the payload for the admin graph view.
 type TaskGraphResponse struct {
-	Users []GraphUser `json:"users"`
-	Tasks []GraphTask `json:"tasks"`
-	Edges []GraphEdge `json:"edges"`
+	Users        []GraphUser        `json:"users"`
+	Tasks        []GraphTask        `json:"tasks"`
+	Edges        []GraphEdge        `json:"edges"`
+	BlockerEdges []GraphBlockerEdge `json:"blocker_edges"`
 }
 
 // splitCSVParam splits a comma-separated query value, dropping empty entries.
@@ -1077,7 +1084,8 @@ func (h *AdminHandler) taskGraph(c *echo.Context, viewer pgtype.UUID) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to load task graph")
 	}
 
-	resp := TaskGraphResponse{Users: []GraphUser{}, Tasks: []GraphTask{}, Edges: []GraphEdge{}}
+	resp := TaskGraphResponse{Users: []GraphUser{}, Tasks: []GraphTask{}, Edges: []GraphEdge{}, BlockerEdges: []GraphBlockerEdge{}}
+	taskIDs := []uuid.UUID{}
 	seenUsers := make(map[string]bool)
 	seenTasks := make(map[string]bool)
 
@@ -1098,6 +1106,7 @@ func (h *AdminHandler) taskGraph(c *echo.Context, viewer pgtype.UUID) error {
 		}
 		if !seenTasks[taskID] {
 			seenTasks[taskID] = true
+			taskIDs = append(taskIDs, r.TaskID)
 			resp.Tasks = append(resp.Tasks, GraphTask{
 				ID:            taskID,
 				ProjectKey:    r.ProjectKey,
@@ -1115,6 +1124,19 @@ func (h *AdminHandler) taskGraph(c *echo.Context, viewer pgtype.UUID) error {
 			})
 		}
 		resp.Edges = append(resp.Edges, GraphEdge{UserID: userID, TaskID: taskID})
+	}
+
+	if len(taskIDs) > 0 {
+		links, err := h.store.ListBlockerLinksForGraph(ctx, taskIDs)
+		if err != nil {
+			return echo.NewHTTPError(http.StatusInternalServerError, "failed to load task graph")
+		}
+		for _, l := range links {
+			resp.BlockerEdges = append(resp.BlockerEdges, GraphBlockerEdge{
+				BlockerID: l.BlockerTaskID.String(),
+				BlockedID: l.TaskID.String(),
+			})
+		}
 	}
 
 	return c.JSON(http.StatusOK, resp)

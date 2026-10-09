@@ -200,6 +200,13 @@ WHERE t.deleted_at IS NULL
       SELECT 1 FROM project_members vm WHERE vm.project_id = p.id AND vm.user_id = sqlc.narg('viewer_id')::uuid))
 ORDER BY p.project_key ASC, t.task_number ASC;
 
+-- name: ListBlockerLinksForGraph :many
+-- Blocker links where both tasks are already on the graph.
+SELECT task_id, blocker_task_id
+FROM task_blockers
+WHERE task_id = ANY(sqlc.arg('task_ids')::uuid[])
+  AND blocker_task_id = ANY(sqlc.arg('task_ids')::uuid[]);
+
 -- name: ListGraphWorkspaceOptions :many
 SELECT w.workspace_key, w.name
 FROM workspaces w
