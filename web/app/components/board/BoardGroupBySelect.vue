@@ -11,7 +11,7 @@ const emit = defineEmits<{
 }>();
 
 const OPTIONS: { id: ViewGroupBy; label: string; hint?: string }[] = [
-  { id: "state_type", label: "Status category", hint: "Backlog / To Do / In Progress / Done" },
+  { id: "state_type", label: "Status category", hint: "Backlog / Unstarted / Started / Completed / Cancelled" },
   { id: "state", label: "State" },
   { id: "priority", label: "Priority" },
   { id: "assignee", label: "Assignee" },

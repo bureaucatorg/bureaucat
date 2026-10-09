@@ -33,9 +33,9 @@ const updating = ref(false);
 const STATE_TYPE_ORDER = ["backlog", "unstarted", "started", "completed", "cancelled"] as const;
 const STATE_TYPE_LABELS: Record<string, string> = {
   backlog: "Backlog",
-  unstarted: "To Do",
-  started: "In Progress",
-  completed: "Done",
+  unstarted: "Unstarted",
+  started: "Started",
+  completed: "Completed",
   cancelled: "Cancelled",
 };
 
