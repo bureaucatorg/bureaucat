@@ -2,6 +2,8 @@ import type {
   Task,
   Subtask,
   SubtaskCandidate,
+  TaskBlockers,
+  BlockerRelation,
   PaginatedTasksResponse,
   CreateTaskRequest,
   UpdateTaskRequest,
@@ -544,6 +546,117 @@ export function useTasks() {
     }
   }
 
+  // Detach a subtask (by UUID) from its parent; it becomes a top-level task.
+  async function detachSubtask(
+    projectKey: string,
+    parentTaskNum: number,
+    subtaskId: string
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      const response = await fetch(
+        `/api/v1/projects/${projectKey}/tasks/${parentTaskNum}/subtasks/${subtaskId}`,
+        { method: "DELETE", headers: getAuthHeader() }
+      );
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        return { success: false, error: error.message || "Failed to detach subtask" };
+      }
+      return { success: true };
+    } catch {
+      return { success: false, error: "Network error" };
+    }
+  }
+
+  // Blockers
+  async function listBlockers(
+    projectKey: string,
+    taskNum: number
+  ): Promise<{ success: boolean; data?: TaskBlockers; error?: string }> {
+    try {
+      const response = await fetch(
+        `/api/v1/projects/${projectKey}/tasks/${taskNum}/blockers`,
+        { headers: getAuthHeader() }
+      );
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        return { success: false, error: error.message || "Failed to fetch blockers" };
+      }
+      const data: TaskBlockers = await response.json();
+      return { success: true, data };
+    } catch {
+      return { success: false, error: "Network error" };
+    }
+  }
+
+  async function listBlockerCandidates(
+    projectKey: string,
+    taskNum: number,
+    search = "",
+    limit = 100
+  ): Promise<{ success: boolean; data?: SubtaskCandidate[]; error?: string }> {
+    try {
+      const params = new URLSearchParams({ limit: String(limit) });
+      if (search) params.set("search", search);
+      const response = await fetch(
+        `/api/v1/projects/${projectKey}/tasks/${taskNum}/blockers/candidates?${params}`,
+        { headers: getAuthHeader() }
+      );
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        return { success: false, error: error.message || "Failed to fetch tasks" };
+      }
+      const data: SubtaskCandidate[] = await response.json();
+      return { success: true, data };
+    } catch {
+      return { success: false, error: "Network error" };
+    }
+  }
+
+  async function addBlockers(
+    projectKey: string,
+    taskNum: number,
+    taskIds: string[],
+    relation: BlockerRelation
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      const response = await fetch(
+        `/api/v1/projects/${projectKey}/tasks/${taskNum}/blockers`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json", ...getAuthHeader() },
+          body: JSON.stringify({ task_ids: taskIds, relation }),
+        }
+      );
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        return { success: false, error: error.message || "Failed to add blockers" };
+      }
+      return { success: true };
+    } catch {
+      return { success: false, error: "Network error" };
+    }
+  }
+
+  async function removeBlocker(
+    projectKey: string,
+    taskNum: number,
+    otherTaskId: string
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      const response = await fetch(
+        `/api/v1/projects/${projectKey}/tasks/${taskNum}/blockers/${otherTaskId}`,
+        { method: "DELETE", headers: getAuthHeader() }
+      );
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        return { success: false, error: error.message || "Failed to remove blocker" };
+      }
+      return { success: true };
+    } catch {
+      return { success: false, error: "Network error" };
+    }
+  }
+
   function clearCurrentTask() {
     state.currentTask = null;
   }
@@ -588,6 +701,13 @@ export function useTasks() {
     listSubtasks,
     listSubtaskCandidates,
     attachSubtasks,
+    detachSubtask,
+
+    // Blockers
+    listBlockers,
+    listBlockerCandidates,
+    addBlockers,
+    removeBlocker,
 
     // Utils
     clearCurrentTask,

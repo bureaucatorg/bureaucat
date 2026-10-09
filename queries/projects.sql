@@ -407,6 +407,12 @@ UPDATE tasks
 SET parent_task_id = sqlc.narg('parent_task_id'), updated_at = NOW()
 WHERE id = $1 AND deleted_at IS NULL;
 
+-- name: DetachSubtask :execrows
+-- Turns a subtask back into a top-level task, only if it belongs to parent_id.
+UPDATE tasks
+SET parent_task_id = NULL, updated_at = NOW()
+WHERE id = sqlc.arg('id')::uuid AND parent_task_id = sqlc.arg('parent_id')::uuid AND deleted_at IS NULL;
+
 -- name: ListProjectTasks :many
 SELECT t.id, t.project_id, t.task_number, t.title, t.description, t.state_id, t.priority, t.created_by, t.created_at, t.updated_at, t.deleted_at,
        p.project_key,
@@ -598,6 +604,86 @@ FROM task_followers tf
 JOIN users u ON tf.user_id = u.id
 WHERE tf.task_id = $1
 ORDER BY tf.followed_at ASC;
+
+-- ==================== TASK BLOCKERS ====================
+
+-- name: ListTaskBlockerLinks :many
+-- Both sides of a task's blocker links: is_blocked_by is true when the row is a
+-- blocker of the given task, false when the given task blocks it.
+SELECT (tb.task_id = sqlc.arg('task_id')::uuid)::boolean AS is_blocked_by,
+       t.id, t.task_number, t.title, t.state_id, t.priority,
+       t.created_by, u.first_name as creator_first_name, u.last_name as creator_last_name, u.avatar_url as creator_avatar_url,
+       p.project_key, ps.name as state_name, ps.state_type, ps.color as state_color
+FROM task_blockers tb
+JOIN tasks t ON t.id = CASE WHEN tb.task_id = sqlc.arg('task_id')::uuid THEN tb.blocker_task_id ELSE tb.task_id END
+JOIN projects p ON t.project_id = p.id
+JOIN project_states ps ON t.state_id = ps.id
+JOIN users u ON t.created_by = u.id
+WHERE (tb.task_id = sqlc.arg('task_id')::uuid OR tb.blocker_task_id = sqlc.arg('task_id')::uuid)
+  AND t.deleted_at IS NULL
+ORDER BY t.task_number ASC;
+
+-- name: ListBlockerCandidates :many
+-- Project tasks that can be linked to the given task in either direction:
+-- excludes the task itself and tasks already linked to it.
+SELECT t.id, t.project_id, t.task_number, t.title, t.state_id, t.priority,
+       p.project_key, ps.name as state_name, ps.state_type, ps.color as state_color
+FROM tasks t
+JOIN projects p ON t.project_id = p.id
+JOIN project_states ps ON t.state_id = ps.id
+WHERE t.project_id = $1 AND t.deleted_at IS NULL
+  AND t.id <> sqlc.arg('task_id')::uuid
+  AND NOT EXISTS (
+      SELECT 1 FROM task_blockers tb
+      WHERE (tb.task_id = sqlc.arg('task_id')::uuid AND tb.blocker_task_id = t.id)
+         OR (tb.blocker_task_id = sqlc.arg('task_id')::uuid AND tb.task_id = t.id)
+  )
+  AND (sqlc.narg('search')::text IS NULL
+       OR t.title ILIKE '%' || sqlc.narg('search') || '%')
+ORDER BY t.created_at DESC
+LIMIT $2;
+
+-- name: GetBlockerTaskRef :one
+SELECT id, project_id, task_number, title
+FROM tasks
+WHERE id = $1 AND deleted_at IS NULL;
+
+-- name: BlockerLinkWouldCycle :one
+-- True if blocked_id already (transitively) blocks blocker_id, so adding
+-- "blocker_id blocks blocked_id" would close a cycle.
+WITH RECURSIVE downstream AS (
+    SELECT tb.task_id
+    FROM task_blockers tb
+    JOIN tasks t ON t.id = tb.task_id AND t.deleted_at IS NULL
+    WHERE tb.blocker_task_id = sqlc.arg('blocked_id')::uuid
+  UNION
+    SELECT tb.task_id
+    FROM task_blockers tb
+    JOIN downstream d ON tb.blocker_task_id = d.task_id
+    JOIN tasks t ON t.id = tb.task_id AND t.deleted_at IS NULL
+)
+SELECT EXISTS (
+    SELECT 1 FROM downstream WHERE task_id = sqlc.arg('blocker_id')::uuid
+)::boolean AS would_cycle;
+
+-- name: LockProjectBlockers :exec
+-- Serializes blocker writes per project so concurrent adds can't form a cycle.
+SELECT pg_advisory_xact_lock(hashtextextended('task_blockers:' || sqlc.arg('project_id')::uuid::text, 0));
+
+-- name: AddTaskBlocker :execrows
+INSERT INTO task_blockers (task_id, blocker_task_id)
+VALUES ($1, $2)
+ON CONFLICT (task_id, blocker_task_id) DO NOTHING;
+
+-- name: RemoveTaskBlockerLink :many
+-- Removes the link between two tasks in whichever direction it exists.
+DELETE FROM task_blockers
+WHERE (task_id = sqlc.arg('a_id')::uuid AND blocker_task_id = sqlc.arg('b_id')::uuid)
+   OR (task_id = sqlc.arg('b_id')::uuid AND blocker_task_id = sqlc.arg('a_id')::uuid)
+RETURNING task_id, blocker_task_id;
+
+-- name: DeleteTaskBlockerLinks :exec
+DELETE FROM task_blockers WHERE task_id = $1 OR blocker_task_id = $1;
 
 -- ==================== TASK LABELS ====================
 

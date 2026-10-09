@@ -12,9 +12,11 @@ import {
   MessageSquareDiff,
   MessageSquareX,
   Circle,
+  Link2,
+  Link2Off,
 } from "lucide-vue-next";
 import type { ActivityLogEntry, ActivityType } from "~/types";
-import { ACTIVITY_TYPE_LABELS } from "~/types";
+import { activityLabel } from "~/types";
 
 const props = defineProps<{
   activity: ActivityLogEntry;
@@ -33,10 +35,12 @@ const iconMap: Record<ActivityType, typeof Plus> = {
   comment_created: MessageSquarePlus,
   comment_updated: MessageSquareDiff,
   comment_deleted: MessageSquareX,
+  blocker_added: Link2,
+  blocker_removed: Link2Off,
 };
 
 const Icon = computed(() => iconMap[props.activity.activity_type] || Circle);
-const label = computed(() => ACTIVITY_TYPE_LABELS[props.activity.activity_type] || props.activity.activity_type);
+const label = computed(() => activityLabel(props.activity));
 
 function formatDate(dateStr: string): string {
   const date = new Date(dateStr);
@@ -61,7 +65,7 @@ function formatDate(dateStr: string): string {
 // Parse value changes
 const fieldLabel = computed(() => {
   const field = props.activity.field_name;
-  if (!field) return null;
+  if (!field || props.activity.activity_type.startsWith("blocker_")) return null;
 
   const labels: Record<string, string> = {
     title: "title",

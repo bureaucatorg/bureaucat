@@ -86,6 +86,25 @@ func (q *Queries) AddTaskAssignee(ctx context.Context, arg AddTaskAssigneeParams
 	return i, err
 }
 
+const addTaskBlocker = `-- name: AddTaskBlocker :execrows
+INSERT INTO task_blockers (task_id, blocker_task_id)
+VALUES ($1, $2)
+ON CONFLICT (task_id, blocker_task_id) DO NOTHING
+`
+
+type AddTaskBlockerParams struct {
+	TaskID        uuid.UUID `json:"task_id"`
+	BlockerTaskID uuid.UUID `json:"blocker_task_id"`
+}
+
+func (q *Queries) AddTaskBlocker(ctx context.Context, arg AddTaskBlockerParams) (int64, error) {
+	result, err := q.db.Exec(ctx, addTaskBlocker, arg.TaskID, arg.BlockerTaskID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const addTaskLabel = `-- name: AddTaskLabel :exec
 
 INSERT INTO task_labels (task_id, label_id, added_by)
@@ -102,6 +121,37 @@ type AddTaskLabelParams struct {
 func (q *Queries) AddTaskLabel(ctx context.Context, arg AddTaskLabelParams) error {
 	_, err := q.db.Exec(ctx, addTaskLabel, arg.TaskID, arg.LabelID, arg.AddedBy)
 	return err
+}
+
+const blockerLinkWouldCycle = `-- name: BlockerLinkWouldCycle :one
+WITH RECURSIVE downstream AS (
+    SELECT tb.task_id
+    FROM task_blockers tb
+    JOIN tasks t ON t.id = tb.task_id AND t.deleted_at IS NULL
+    WHERE tb.blocker_task_id = $2::uuid
+  UNION
+    SELECT tb.task_id
+    FROM task_blockers tb
+    JOIN downstream d ON tb.blocker_task_id = d.task_id
+    JOIN tasks t ON t.id = tb.task_id AND t.deleted_at IS NULL
+)
+SELECT EXISTS (
+    SELECT 1 FROM downstream WHERE task_id = $1::uuid
+)::boolean AS would_cycle
+`
+
+type BlockerLinkWouldCycleParams struct {
+	BlockerID uuid.UUID `json:"blocker_id"`
+	BlockedID uuid.UUID `json:"blocked_id"`
+}
+
+// True if blocked_id already (transitively) blocks blocker_id, so adding
+// "blocker_id blocks blocked_id" would close a cycle.
+func (q *Queries) BlockerLinkWouldCycle(ctx context.Context, arg BlockerLinkWouldCycleParams) (bool, error) {
+	row := q.db.QueryRow(ctx, blockerLinkWouldCycle, arg.BlockerID, arg.BlockedID)
+	var would_cycle bool
+	err := row.Scan(&would_cycle)
+	return would_cycle, err
 }
 
 const cascadeSoftDeleteSubtasks = `-- name: CascadeSoftDeleteSubtasks :exec
@@ -600,6 +650,15 @@ func (q *Queries) DeleteProjectState(ctx context.Context, id uuid.UUID) error {
 	return err
 }
 
+const deleteTaskBlockerLinks = `-- name: DeleteTaskBlockerLinks :exec
+DELETE FROM task_blockers WHERE task_id = $1 OR blocker_task_id = $1
+`
+
+func (q *Queries) DeleteTaskBlockerLinks(ctx context.Context, taskID uuid.UUID) error {
+	_, err := q.db.Exec(ctx, deleteTaskBlockerLinks, taskID)
+	return err
+}
+
 const deleteTaskCycleLinks = `-- name: DeleteTaskCycleLinks :exec
 DELETE FROM cycle_tasks WHERE task_id = $1
 `
@@ -627,6 +686,26 @@ func (q *Queries) DeleteTaskTemplate(ctx context.Context, id uuid.UUID) error {
 	return err
 }
 
+const detachSubtask = `-- name: DetachSubtask :execrows
+UPDATE tasks
+SET parent_task_id = NULL, updated_at = NOW()
+WHERE id = $1::uuid AND parent_task_id = $2::uuid AND deleted_at IS NULL
+`
+
+type DetachSubtaskParams struct {
+	ID       uuid.UUID `json:"id"`
+	ParentID uuid.UUID `json:"parent_id"`
+}
+
+// Turns a subtask back into a top-level task, only if it belongs to parent_id.
+func (q *Queries) DetachSubtask(ctx context.Context, arg DetachSubtaskParams) (int64, error) {
+	result, err := q.db.Exec(ctx, detachSubtask, arg.ID, arg.ParentID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const followTask = `-- name: FollowTask :exec
 
 INSERT INTO task_followers (task_id, user_id)
@@ -643,6 +722,31 @@ type FollowTaskParams struct {
 func (q *Queries) FollowTask(ctx context.Context, arg FollowTaskParams) error {
 	_, err := q.db.Exec(ctx, followTask, arg.TaskID, arg.UserID)
 	return err
+}
+
+const getBlockerTaskRef = `-- name: GetBlockerTaskRef :one
+SELECT id, project_id, task_number, title
+FROM tasks
+WHERE id = $1 AND deleted_at IS NULL
+`
+
+type GetBlockerTaskRefRow struct {
+	ID         uuid.UUID `json:"id"`
+	ProjectID  uuid.UUID `json:"project_id"`
+	TaskNumber int32     `json:"task_number"`
+	Title      string    `json:"title"`
+}
+
+func (q *Queries) GetBlockerTaskRef(ctx context.Context, id uuid.UUID) (GetBlockerTaskRefRow, error) {
+	row := q.db.QueryRow(ctx, getBlockerTaskRef, id)
+	var i GetBlockerTaskRefRow
+	err := row.Scan(
+		&i.ID,
+		&i.ProjectID,
+		&i.TaskNumber,
+		&i.Title,
+	)
+	return i, err
 }
 
 const getCommentByID = `-- name: GetCommentByID :one
@@ -1389,6 +1493,83 @@ func (q *Queries) ListAssigneesForTasks(ctx context.Context, taskIds []uuid.UUID
 	return items, nil
 }
 
+const listBlockerCandidates = `-- name: ListBlockerCandidates :many
+SELECT t.id, t.project_id, t.task_number, t.title, t.state_id, t.priority,
+       p.project_key, ps.name as state_name, ps.state_type, ps.color as state_color
+FROM tasks t
+JOIN projects p ON t.project_id = p.id
+JOIN project_states ps ON t.state_id = ps.id
+WHERE t.project_id = $1 AND t.deleted_at IS NULL
+  AND t.id <> $3::uuid
+  AND NOT EXISTS (
+      SELECT 1 FROM task_blockers tb
+      WHERE (tb.task_id = $3::uuid AND tb.blocker_task_id = t.id)
+         OR (tb.blocker_task_id = $3::uuid AND tb.task_id = t.id)
+  )
+  AND ($4::text IS NULL
+       OR t.title ILIKE '%' || $4 || '%')
+ORDER BY t.created_at DESC
+LIMIT $2
+`
+
+type ListBlockerCandidatesParams struct {
+	ProjectID uuid.UUID   `json:"project_id"`
+	Limit     int32       `json:"limit"`
+	TaskID    uuid.UUID   `json:"task_id"`
+	Search    pgtype.Text `json:"search"`
+}
+
+type ListBlockerCandidatesRow struct {
+	ID         uuid.UUID   `json:"id"`
+	ProjectID  uuid.UUID   `json:"project_id"`
+	TaskNumber int32       `json:"task_number"`
+	Title      string      `json:"title"`
+	StateID    uuid.UUID   `json:"state_id"`
+	Priority   int32       `json:"priority"`
+	ProjectKey string      `json:"project_key"`
+	StateName  string      `json:"state_name"`
+	StateType  string      `json:"state_type"`
+	StateColor pgtype.Text `json:"state_color"`
+}
+
+// Project tasks that can be linked to the given task in either direction:
+// excludes the task itself and tasks already linked to it.
+func (q *Queries) ListBlockerCandidates(ctx context.Context, arg ListBlockerCandidatesParams) ([]ListBlockerCandidatesRow, error) {
+	rows, err := q.db.Query(ctx, listBlockerCandidates,
+		arg.ProjectID,
+		arg.Limit,
+		arg.TaskID,
+		arg.Search,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListBlockerCandidatesRow{}
+	for rows.Next() {
+		var i ListBlockerCandidatesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.ProjectID,
+			&i.TaskNumber,
+			&i.Title,
+			&i.StateID,
+			&i.Priority,
+			&i.ProjectKey,
+			&i.StateName,
+			&i.StateType,
+			&i.StateColor,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listDeletedProjects = `-- name: ListDeletedProjects :many
 SELECT p.id, p.project_key, p.name, p.description, p.created_by, p.created_at, p.updated_at, p.deleted_at, p.workspace_id,
        w.name AS workspace_name,
@@ -2081,6 +2262,77 @@ func (q *Queries) ListTaskAssignees(ctx context.Context, taskID uuid.UUID) ([]Li
 	return items, nil
 }
 
+const listTaskBlockerLinks = `-- name: ListTaskBlockerLinks :many
+
+SELECT (tb.task_id = $1::uuid)::boolean AS is_blocked_by,
+       t.id, t.task_number, t.title, t.state_id, t.priority,
+       t.created_by, u.first_name as creator_first_name, u.last_name as creator_last_name, u.avatar_url as creator_avatar_url,
+       p.project_key, ps.name as state_name, ps.state_type, ps.color as state_color
+FROM task_blockers tb
+JOIN tasks t ON t.id = CASE WHEN tb.task_id = $1::uuid THEN tb.blocker_task_id ELSE tb.task_id END
+JOIN projects p ON t.project_id = p.id
+JOIN project_states ps ON t.state_id = ps.id
+JOIN users u ON t.created_by = u.id
+WHERE (tb.task_id = $1::uuid OR tb.blocker_task_id = $1::uuid)
+  AND t.deleted_at IS NULL
+ORDER BY t.task_number ASC
+`
+
+type ListTaskBlockerLinksRow struct {
+	IsBlockedBy      bool        `json:"is_blocked_by"`
+	ID               uuid.UUID   `json:"id"`
+	TaskNumber       int32       `json:"task_number"`
+	Title            string      `json:"title"`
+	StateID          uuid.UUID   `json:"state_id"`
+	Priority         int32       `json:"priority"`
+	CreatedBy        uuid.UUID   `json:"created_by"`
+	CreatorFirstName string      `json:"creator_first_name"`
+	CreatorLastName  string      `json:"creator_last_name"`
+	CreatorAvatarUrl pgtype.Text `json:"creator_avatar_url"`
+	ProjectKey       string      `json:"project_key"`
+	StateName        string      `json:"state_name"`
+	StateType        string      `json:"state_type"`
+	StateColor       pgtype.Text `json:"state_color"`
+}
+
+// ==================== TASK BLOCKERS ====================
+// Both sides of a task's blocker links: is_blocked_by is true when the row is a
+// blocker of the given task, false when the given task blocks it.
+func (q *Queries) ListTaskBlockerLinks(ctx context.Context, taskID uuid.UUID) ([]ListTaskBlockerLinksRow, error) {
+	rows, err := q.db.Query(ctx, listTaskBlockerLinks, taskID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListTaskBlockerLinksRow{}
+	for rows.Next() {
+		var i ListTaskBlockerLinksRow
+		if err := rows.Scan(
+			&i.IsBlockedBy,
+			&i.ID,
+			&i.TaskNumber,
+			&i.Title,
+			&i.StateID,
+			&i.Priority,
+			&i.CreatedBy,
+			&i.CreatorFirstName,
+			&i.CreatorLastName,
+			&i.CreatorAvatarUrl,
+			&i.ProjectKey,
+			&i.StateName,
+			&i.StateType,
+			&i.StateColor,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listTaskComments = `-- name: ListTaskComments :many
 SELECT c.id, c.task_id, c.content, c.version, c.created_by, c.created_at, c.updated_at, c.deleted_at,
        u.username, u.first_name, u.last_name, u.avatar_url
@@ -2666,6 +2918,16 @@ func (q *Queries) ListUserProjectsFiltered(ctx context.Context, arg ListUserProj
 	return items, nil
 }
 
+const lockProjectBlockers = `-- name: LockProjectBlockers :exec
+SELECT pg_advisory_xact_lock(hashtextextended('task_blockers:' || $1::uuid::text, 0))
+`
+
+// Serializes blocker writes per project so concurrent adds can't form a cycle.
+func (q *Queries) LockProjectBlockers(ctx context.Context, projectID uuid.UUID) error {
+	_, err := q.db.Exec(ctx, lockProjectBlockers, projectID)
+	return err
+}
+
 const moveTask = `-- name: MoveTask :one
 UPDATE tasks
 SET project_id = $1,
@@ -2771,6 +3033,44 @@ type RemoveTaskAssigneeParams struct {
 func (q *Queries) RemoveTaskAssignee(ctx context.Context, arg RemoveTaskAssigneeParams) error {
 	_, err := q.db.Exec(ctx, removeTaskAssignee, arg.TaskID, arg.UserID)
 	return err
+}
+
+const removeTaskBlockerLink = `-- name: RemoveTaskBlockerLink :many
+DELETE FROM task_blockers
+WHERE (task_id = $1::uuid AND blocker_task_id = $2::uuid)
+   OR (task_id = $2::uuid AND blocker_task_id = $1::uuid)
+RETURNING task_id, blocker_task_id
+`
+
+type RemoveTaskBlockerLinkParams struct {
+	AID uuid.UUID `json:"a_id"`
+	BID uuid.UUID `json:"b_id"`
+}
+
+type RemoveTaskBlockerLinkRow struct {
+	TaskID        uuid.UUID `json:"task_id"`
+	BlockerTaskID uuid.UUID `json:"blocker_task_id"`
+}
+
+// Removes the link between two tasks in whichever direction it exists.
+func (q *Queries) RemoveTaskBlockerLink(ctx context.Context, arg RemoveTaskBlockerLinkParams) ([]RemoveTaskBlockerLinkRow, error) {
+	rows, err := q.db.Query(ctx, removeTaskBlockerLink, arg.AID, arg.BID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []RemoveTaskBlockerLinkRow{}
+	for rows.Next() {
+		var i RemoveTaskBlockerLinkRow
+		if err := rows.Scan(&i.TaskID, &i.BlockerTaskID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const removeTaskLabel = `-- name: RemoveTaskLabel :exec

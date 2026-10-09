@@ -18,9 +18,11 @@ import {
   Circle,
   ChevronLeft,
   ChevronRight,
+  Link2,
+  Link2Off,
 } from "lucide-vue-next";
 import type { ActivityType, UserActivityEntry, UserActivityDateCount } from "~/types";
-import { ACTIVITY_TYPE_LABELS } from "~/types";
+import { activityLabel } from "~/types";
 
 definePageMeta({
   middleware: ["auth"],
@@ -164,6 +166,8 @@ const iconMap: Record<ActivityType, typeof Plus> = {
   comment_created: MessageSquarePlus,
   comment_updated: MessageSquareDiff,
   comment_deleted: MessageSquareX,
+  blocker_added: Link2,
+  blocker_removed: Link2Off,
 };
 
 // Contribution graph logic
@@ -449,8 +453,8 @@ onMounted(async () => {
                 <div class="min-w-0 flex-1 pt-0.5">
                   <p class="text-sm">
                     <span class="text-muted-foreground">
-                      {{ ACTIVITY_TYPE_LABELS[activity.activity_type] || activity.activity_type }}
-                      <template v-if="activity.field_name">
+                      {{ activityLabel(activity) }}
+                      <template v-if="activity.field_name && !activity.activity_type.startsWith('blocker_')">
                         <span class="font-medium text-foreground">{{ activity.field_name }}</span>
                       </template>
                     </span>

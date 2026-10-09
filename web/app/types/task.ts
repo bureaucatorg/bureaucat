@@ -68,6 +68,14 @@ export interface SubtaskCandidate {
   parent_title?: string;
 }
 
+export type BlockerRelation = "blocked_by" | "blocking";
+
+// Tasks on either side of this task's blocker links, shaped like subtasks.
+export interface TaskBlockers {
+  blocked_by: Subtask[];
+  blocking: Subtask[];
+}
+
 export interface PaginatedTasksResponse {
   tasks: Task[];
   total: number;

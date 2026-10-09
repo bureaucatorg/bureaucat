@@ -281,6 +281,14 @@ func (s *Server) registerRoutes() {
 				projectGroup.GET("/tasks/:taskNum/subtasks/candidates", s.taskHandler.ListSubtaskCandidates)
 				// Attach existing tasks as subtasks (re-parenting allowed).
 				projectGroup.POST("/tasks/:taskNum/subtasks", s.taskHandler.AttachSubtasks, auth.ProjectRoleMiddleware("member"))
+				// Detach a subtask (it becomes a top-level task again).
+				projectGroup.DELETE("/tasks/:taskNum/subtasks/:taskId", s.taskHandler.DetachSubtask, auth.ProjectRoleMiddleware("member"))
+
+				// Task blockers (same-project links, both directions)
+				projectGroup.GET("/tasks/:taskNum/blockers", s.taskHandler.ListTaskBlockers)
+				projectGroup.GET("/tasks/:taskNum/blockers/candidates", s.taskHandler.ListBlockerCandidates)
+				projectGroup.POST("/tasks/:taskNum/blockers", s.taskHandler.AddTaskBlockers, auth.ProjectRoleMiddleware("member"))
+				projectGroup.DELETE("/tasks/:taskNum/blockers/:taskId", s.taskHandler.RemoveTaskBlocker, auth.ProjectRoleMiddleware("member"))
 
 				// Task assignees
 				projectGroup.POST("/tasks/:taskNum/assignees", s.taskHandler.AddAssignee, auth.ProjectRoleMiddleware("member"))

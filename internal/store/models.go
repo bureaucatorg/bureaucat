@@ -26,6 +26,8 @@ const (
 	ActivityTypeCommentCreated  ActivityType = "comment_created"
 	ActivityTypeCommentUpdated  ActivityType = "comment_updated"
 	ActivityTypeCommentDeleted  ActivityType = "comment_deleted"
+	ActivityTypeBlockerAdded    ActivityType = "blocker_added"
+	ActivityTypeBlockerRemoved  ActivityType = "blocker_removed"
 )
 
 func (e *ActivityType) Scan(src interface{}) error {
@@ -506,6 +508,12 @@ type TaskAssignee struct {
 	UserID     uuid.UUID          `json:"user_id"`
 	AssignedAt pgtype.Timestamptz `json:"assigned_at"`
 	AssignedBy uuid.UUID          `json:"assigned_by"`
+}
+
+type TaskBlocker struct {
+	TaskID        uuid.UUID          `json:"task_id"`
+	BlockerTaskID uuid.UUID          `json:"blocker_task_id"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
 }
 
 type TaskFollower struct {

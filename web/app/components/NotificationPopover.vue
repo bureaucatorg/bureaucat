@@ -15,6 +15,8 @@ import {
   MessageSquareX,
   Circle,
   CheckCheck,
+  Link2,
+  Link2Off,
 } from "lucide-vue-next";
 import type { ActivityType, NotificationEntry } from "~/types";
 import { ACTIVITY_TYPE_LABELS } from "~/types";
@@ -44,6 +46,8 @@ const iconMap: Record<ActivityType, typeof Plus> = {
   comment_created: MessageSquarePlus,
   comment_updated: MessageSquareDiff,
   comment_deleted: MessageSquareX,
+  blocker_added: Link2,
+  blocker_removed: Link2Off,
 };
 
 function formatRelativeDate(dateStr: string): string {

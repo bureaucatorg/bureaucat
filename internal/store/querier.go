@@ -27,6 +27,7 @@ type Querier interface {
 	AddProjectMembersToWorkspace(ctx context.Context, arg AddProjectMembersToWorkspaceParams) error
 	// ==================== TASK ASSIGNEES ====================
 	AddTaskAssignee(ctx context.Context, arg AddTaskAssigneeParams) (TaskAssignee, error)
+	AddTaskBlocker(ctx context.Context, arg AddTaskBlockerParams) (int64, error)
 	// ==================== TASK LABELS ====================
 	AddTaskLabel(ctx context.Context, arg AddTaskLabelParams) error
 	// ==================== CYCLE TASKS ====================
@@ -35,6 +36,9 @@ type Querier interface {
 	AddWorkspaceMember(ctx context.Context, arg AddWorkspaceMemberParams) (WorkspaceMember, error)
 	AttachmentsCreatedPerDay(ctx context.Context, arg AttachmentsCreatedPerDayParams) ([]AttachmentsCreatedPerDayRow, error)
 	AttachmentsTotalSize(ctx context.Context) (int64, error)
+	// True if blocked_id already (transitively) blocks blocker_id, so adding
+	// "blocker_id blocks blocked_id" would close a cycle.
+	BlockerLinkWouldCycle(ctx context.Context, arg BlockerLinkWouldCycleParams) (bool, error)
 	// Soft-delete all children of a task (cascade-together on parent delete).
 	CascadeSoftDeleteSubtasks(ctx context.Context, parentID uuid.UUID) error
 	CheckCycleOverlap(ctx context.Context, arg CheckCycleOverlapParams) (int32, error)
@@ -114,13 +118,17 @@ type Querier interface {
 	DeletePersonalAccessToken(ctx context.Context, arg DeletePersonalAccessTokenParams) error
 	DeleteProjectLabel(ctx context.Context, id uuid.UUID) error
 	DeleteProjectState(ctx context.Context, id uuid.UUID) error
+	DeleteTaskBlockerLinks(ctx context.Context, taskID uuid.UUID) error
 	DeleteTaskCycleLinks(ctx context.Context, taskID uuid.UUID) error
 	DeleteTaskModuleLinks(ctx context.Context, taskID uuid.UUID) error
 	DeleteTaskTemplate(ctx context.Context, id uuid.UUID) error
 	DeleteUpload(ctx context.Context, id uuid.UUID) error
 	DeleteUserByID(ctx context.Context, id uuid.UUID) error
+	// Turns a subtask back into a top-level task, only if it belongs to parent_id.
+	DetachSubtask(ctx context.Context, arg DetachSubtaskParams) (int64, error)
 	// ==================== TASK FOLLOWERS ====================
 	FollowTask(ctx context.Context, arg FollowTaskParams) error
+	GetBlockerTaskRef(ctx context.Context, id uuid.UUID) (GetBlockerTaskRefRow, error)
 	GetCommentByID(ctx context.Context, id uuid.UUID) (GetCommentByIDRow, error)
 	GetCycleByID(ctx context.Context, id uuid.UUID) (GetCycleByIDRow, error)
 	GetCycleMetrics(ctx context.Context, cycleID uuid.UUID) (GetCycleMetricsRow, error)
@@ -194,6 +202,9 @@ type Querier interface {
 	// from a FilterTree. The projection here is documented for reference by that runner.
 	ListAssigneesForTasks(ctx context.Context, taskIds []uuid.UUID) ([]ListAssigneesForTasksRow, error)
 	ListAttachmentsByEntity(ctx context.Context, arg ListAttachmentsByEntityParams) ([]ListAttachmentsByEntityRow, error)
+	// Project tasks that can be linked to the given task in either direction:
+	// excludes the task itself and tasks already linked to it.
+	ListBlockerCandidates(ctx context.Context, arg ListBlockerCandidatesParams) ([]ListBlockerCandidatesRow, error)
 	ListCycleAssignees(ctx context.Context, cycleID uuid.UUID) ([]ListCycleAssigneesRow, error)
 	ListCycleTasks(ctx context.Context, arg ListCycleTasksParams) ([]ListCycleTasksRow, error)
 	ListDeletedProjects(ctx context.Context, arg ListDeletedProjectsParams) ([]ListDeletedProjectsRow, error)
@@ -248,6 +259,10 @@ type Querier interface {
 	ListTaskActivity(ctx context.Context, taskID uuid.UUID) ([]ListTaskActivityRow, error)
 	ListTaskAssignees(ctx context.Context, taskID uuid.UUID) ([]ListTaskAssigneesRow, error)
 	ListTaskAssignmentsForGraph(ctx context.Context, arg ListTaskAssignmentsForGraphParams) ([]ListTaskAssignmentsForGraphRow, error)
+	// ==================== TASK BLOCKERS ====================
+	// Both sides of a task's blocker links: is_blocked_by is true when the row is a
+	// blocker of the given task, false when the given task blocks it.
+	ListTaskBlockerLinks(ctx context.Context, taskID uuid.UUID) ([]ListTaskBlockerLinksRow, error)
 	ListTaskComments(ctx context.Context, taskID uuid.UUID) ([]ListTaskCommentsRow, error)
 	ListTaskFollowers(ctx context.Context, taskID uuid.UUID) ([]ListTaskFollowersRow, error)
 	ListTaskLabels(ctx context.Context, taskID uuid.UUID) ([]ListTaskLabelsRow, error)
@@ -270,6 +285,8 @@ type Querier interface {
 	ListUserWorkspacesFiltered(ctx context.Context, arg ListUserWorkspacesFilteredParams) ([]Workspace, error)
 	ListUsersPaginated(ctx context.Context, arg ListUsersPaginatedParams) ([]ListUsersPaginatedRow, error)
 	ListWorkspaceMembers(ctx context.Context, workspaceID uuid.UUID) ([]ListWorkspaceMembersRow, error)
+	// Serializes blocker writes per project so concurrent adds can't form a cycle.
+	LockProjectBlockers(ctx context.Context, projectID uuid.UUID) error
 	MarkAllNotificationsRead(ctx context.Context, recipientID uuid.UUID) error
 	MarkNotificationRead(ctx context.Context, arg MarkNotificationReadParams) error
 	MergeCopyModuleMembers(ctx context.Context, arg MergeCopyModuleMembersParams) (int64, error)
@@ -292,6 +309,8 @@ type Querier interface {
 	RemoveModuleTask(ctx context.Context, arg RemoveModuleTaskParams) error
 	RemoveProjectMember(ctx context.Context, arg RemoveProjectMemberParams) error
 	RemoveTaskAssignee(ctx context.Context, arg RemoveTaskAssigneeParams) error
+	// Removes the link between two tasks in whichever direction it exists.
+	RemoveTaskBlockerLink(ctx context.Context, arg RemoveTaskBlockerLinkParams) ([]RemoveTaskBlockerLinkRow, error)
 	RemoveTaskFromCycle(ctx context.Context, arg RemoveTaskFromCycleParams) error
 	RemoveTaskLabel(ctx context.Context, arg RemoveTaskLabelParams) error
 	RemoveWorkspaceMember(ctx context.Context, arg RemoveWorkspaceMemberParams) error

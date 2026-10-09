@@ -24,7 +24,9 @@ export type ActivityType =
   | "state_changed"
   | "comment_created"
   | "comment_updated"
-  | "comment_deleted";
+  | "comment_deleted"
+  | "blocker_added"
+  | "blocker_removed";
 
 export const ACTIVITY_TYPE_LABELS: Record<ActivityType, string> = {
   task_created: "created the task",
@@ -38,7 +40,25 @@ export const ACTIVITY_TYPE_LABELS: Record<ActivityType, string> = {
   comment_created: "added a comment",
   comment_updated: "edited a comment",
   comment_deleted: "deleted a comment",
+  blocker_added: "linked a blocker",
+  blocker_removed: "unlinked a blocker",
 };
+
+// field_name holds the relation as seen from the task the entry belongs to.
+const BLOCKER_LABELS: Record<string, string> = {
+  "blocker_added:blocked_by": "marked as blocked by",
+  "blocker_added:blocking": "marked as blocking",
+  "blocker_removed:blocked_by": "removed blocker",
+  "blocker_removed:blocking": "removed blocked task",
+};
+
+export function activityLabel(entry: ActivityLogEntry): string {
+  return (
+    BLOCKER_LABELS[`${entry.activity_type}:${entry.field_name}`] ||
+    ACTIVITY_TYPE_LABELS[entry.activity_type] ||
+    entry.activity_type
+  );
+}
 
 export interface VerifyActivityResponse {
   valid: boolean;

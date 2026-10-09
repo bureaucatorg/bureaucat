@@ -52,7 +52,18 @@ const {
   listLabels,
 } = useProjects();
 
-const { currentTask, getTask, updateTask, deleteTask, listSubtasks } = useTasks();
+const {
+  currentTask,
+  getTask,
+  updateTask,
+  deleteTask,
+  listSubtasks,
+  detachSubtask,
+  listBlockers,
+  listBlockerCandidates,
+  addBlockers,
+  removeBlocker,
+} = useTasks();
 const { comments, loading: commentsLoading, listComments } = useComments();
 const { activities, loading: activitiesLoading, listActivity } = useActivity();
 const { listAttachments, attachFile, deleteAttachment } = useAttachments();
@@ -144,6 +155,7 @@ async function loadData() {
     listActivity(projectKey.value, taskNum.value),
     loadTaskAttachments(),
     loadSubtasks(),
+    loadBlockers(),
   ]);
 
   loading.value = false;
@@ -377,8 +389,80 @@ async function loadSubtasks() {
   subtasksLoading.value = false;
 }
 
+const detachingSubtaskId = ref<string | null>(null);
+
+async function handleDetachSubtask(subtask: import("~/types").Subtask) {
+  detachingSubtaskId.value = subtask.id;
+  const result = await detachSubtask(projectKey.value, taskNum.value, subtask.id);
+  detachingSubtaskId.value = null;
+  if (result.success) {
+    toast.success(`Detached ${subtask.task_id}`);
+    await Promise.all([loadSubtasks(), refreshTask()]);
+  } else {
+    toast.error(result.error || "Failed to detach subtask");
+  }
+}
+
 async function onSubtaskCreated() {
   await Promise.all([loadSubtasks(), refreshTask()]);
+}
+
+// Blockers (same-project links in both directions)
+const blockedBy = ref<import("~/types").Subtask[]>([]);
+const blocking = ref<import("~/types").Subtask[]>([]);
+const blockersLoading = ref(false);
+const removingBlockerId = ref<string | null>(null);
+const showBlockerPicker = ref(false);
+const blockerRelation = ref<import("~/types").BlockerRelation>("blocked_by");
+
+const blockerSections = computed(() => [
+  { relation: "blocked_by" as const, label: "Blocked by", tasks: blockedBy.value, empty: "Nothing is blocking this task." },
+  { relation: "blocking" as const, label: "Blocking", tasks: blocking.value, empty: "This task isn't blocking anything." },
+]);
+
+const blockerPickerCopy = computed(() =>
+  blockerRelation.value === "blocked_by"
+    ? { title: "Add blockers", description: "Pick tasks that block this one, or create a new one." }
+    : { title: "Add blocked tasks", description: "Pick tasks that this one blocks, or create a new one." }
+);
+
+async function loadBlockers() {
+  blockersLoading.value = true;
+  const result = await listBlockers(projectKey.value, taskNum.value);
+  if (result.success && result.data) {
+    blockedBy.value = result.data.blocked_by;
+    blocking.value = result.data.blocking;
+  }
+  blockersLoading.value = false;
+}
+
+function openBlockerPicker(relation: import("~/types").BlockerRelation) {
+  blockerRelation.value = relation;
+  showBlockerPicker.value = true;
+}
+
+function loadBlockerCandidates(search: string, limit: number) {
+  return listBlockerCandidates(projectKey.value, taskNum.value, search, limit);
+}
+
+function addSelectedBlockers(taskIds: string[]) {
+  return addBlockers(projectKey.value, taskNum.value, taskIds, blockerRelation.value);
+}
+
+async function onBlockersChanged() {
+  await Promise.all([loadBlockers(), listActivity(projectKey.value, taskNum.value)]);
+}
+
+async function handleRemoveBlocker(task: import("~/types").Subtask) {
+  removingBlockerId.value = task.id;
+  const result = await removeBlocker(projectKey.value, taskNum.value, task.id);
+  removingBlockerId.value = null;
+  if (result.success) {
+    toast.success(`Unlinked ${task.task_id}`);
+    await onBlockersChanged();
+  } else {
+    toast.error(result.error || "Failed to remove blocker");
+  }
 }
 
 function handleTaskMoved(payload: { targetKey: string; newTaskNumber?: number }) {
@@ -735,10 +819,50 @@ onMounted(() => {
                   :members="members"
                   :labels="projectLabels"
                   :is-member="isMember"
+                  :removable="isMember"
+                  :removing-id="detachingSubtaskId"
                   @updated="loadSubtasks"
+                  @remove="handleDetachSubtask"
                 />
                 <p v-else-if="!subtasksLoading" class="text-sm italic text-muted-foreground">
                   No subtasks yet.
+                </p>
+              </div>
+
+              <!-- Blockers -->
+              <div v-for="section in blockerSections" :key="section.relation" class="space-y-3">
+                <div class="flex items-center justify-between">
+                  <h2 class="text-sm font-semibold text-muted-foreground">
+                    {{ section.label }}
+                    <span v-if="section.tasks.length" class="ml-1 font-normal">({{ section.tasks.length }})</span>
+                  </h2>
+                  <Button
+                    v-if="isMember"
+                    variant="outline"
+                    size="sm"
+                    class="h-7 gap-1.5"
+                    @click="openBlockerPicker(section.relation)"
+                  >
+                    <Plus class="size-3.5" />
+                    Add
+                  </Button>
+                </div>
+                <SubtaskList
+                  v-if="section.tasks.length"
+                  :subtasks="section.tasks"
+                  :project-key="projectKey"
+                  :states="states"
+                  :members="members"
+                  :labels="projectLabels"
+                  :is-member="isMember"
+                  :removable="isMember"
+                  :removing-id="removingBlockerId"
+                  strike-resolved
+                  @updated="loadBlockers"
+                  @remove="handleRemoveBlocker"
+                />
+                <p v-else-if="!blockersLoading" class="text-sm italic text-muted-foreground">
+                  {{ section.empty }}
                 </p>
               </div>
 
@@ -1058,6 +1182,19 @@ onMounted(() => {
           :members="members"
           :parent-task-number="taskNum"
           @created="onSubtaskCreated"
+        />
+
+        <!-- Link blockers -->
+        <AddTasksDialog
+          v-model:open="showBlockerPicker"
+          :project-key="projectKey"
+          :collection-id="String(taskNum)"
+          :title="blockerPickerCopy.title"
+          :description="blockerPickerCopy.description"
+          empty-hint="No linkable tasks found."
+          :load-tasks="loadBlockerCandidates"
+          :add-tasks="addSelectedBlockers"
+          @added="onBlockersChanged"
         />
 
         <!-- Delete confirmation -->

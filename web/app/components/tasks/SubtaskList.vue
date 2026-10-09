@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Maximize2 } from "lucide-vue-next";
+import { Loader2, Maximize2, X } from "lucide-vue-next";
 import type { Subtask, ProjectState, ProjectMember, ProjectLabel } from "~/types";
 
 const props = withDefaults(
@@ -10,11 +10,27 @@ const props = withDefaults(
     members?: ProjectMember[];
     labels?: ProjectLabel[];
     isMember?: boolean;
+    // Adds an unlink button per row (used for blocker lists); emits `remove`.
+    removable?: boolean;
+    removingId?: string | null;
+    strikeResolved?: boolean;
   }>(),
-  { states: () => [], members: () => [], labels: () => [], isMember: false }
+  {
+    states: () => [],
+    members: () => [],
+    labels: () => [],
+    isMember: false,
+    removable: false,
+    removingId: null,
+    strikeResolved: false,
+  }
 );
 
-const emit = defineEmits<{ updated: [] }>();
+const emit = defineEmits<{ updated: []; remove: [subtask: Subtask] }>();
+
+function isResolved(subtask: Subtask) {
+  return subtask.state_type === "completed" || subtask.state_type === "cancelled";
+}
 
 const { updateTask } = useTasks();
 const updatingId = ref<string | null>(null);
@@ -80,6 +96,7 @@ function involvedPeople(subtask: Subtask) {
         >
           <div
             class="subtask-row group grid items-center bg-background/50 px-3 py-2.5 transition-colors hover:bg-muted/50"
+            :class="{ 'subtask-row--removable': removable }"
           >
             <!-- Col 1: Task ID (opens the full page) -->
             <NuxtLink
@@ -93,7 +110,12 @@ function involvedPeople(subtask: Subtask) {
             </NuxtLink>
 
             <!-- Col 2: Title -->
-            <span class="truncate text-sm font-medium min-w-0">{{ subtask.title }}</span>
+            <span
+              class="truncate text-sm font-medium min-w-0"
+              :class="strikeResolved && isResolved(subtask) ? 'text-muted-foreground line-through' : ''"
+            >
+              {{ subtask.title }}
+            </span>
 
             <!-- Col 3: State badge (editable for members) -->
             <div class="justify-self-end" @click.stop.prevent>
@@ -151,6 +173,21 @@ function involvedPeople(subtask: Subtask) {
                 </Avatar>
               </div>
             </div>
+
+            <!-- Col 5 (optional): Unlink -->
+            <div v-if="removable" class="flex justify-end" @click.stop.prevent>
+              <Button
+                variant="ghost"
+                size="icon"
+                class="size-6 text-muted-foreground hover:text-destructive"
+                :aria-label="`Unlink ${subtask.task_id}`"
+                :disabled="removingId === subtask.id"
+                @click="emit('remove', subtask)"
+              >
+                <Loader2 v-if="removingId === subtask.id" class="size-3.5 animate-spin" />
+                <X v-else class="size-3.5" />
+              </Button>
+            </div>
           </div>
         </button>
       </PopoverTrigger>
@@ -179,5 +216,9 @@ function involvedPeople(subtask: Subtask) {
 .subtask-row {
   grid-template-columns: auto 1fr 10rem 5rem;
   column-gap: 0.375rem;
+}
+
+.subtask-row--removable {
+  grid-template-columns: auto 1fr 10rem 5rem 1.5rem;
 }
 </style>

@@ -15,10 +15,12 @@ import {
   MessageSquare,
   Circle,
   ArrowUpDown,
+  Link2,
+  Link2Off,
 } from "lucide-vue-next";
 import { toast } from "vue-sonner";
 import type { ActivityLogEntry, ActivityType, Comment, ProjectMember } from "~/types";
-import { ACTIVITY_TYPE_LABELS } from "~/types";
+import { activityLabel } from "~/types";
 
 const props = defineProps<{
   activities: ActivityLogEntry[];
@@ -63,6 +65,8 @@ const iconMap: Record<ActivityType, typeof Plus> = {
   comment_created: MessageSquare,
   comment_updated: Edit2,
   comment_deleted: Trash2,
+  blocker_added: Link2,
+  blocker_removed: Link2Off,
 };
 
 type FeedItem =
@@ -199,7 +203,7 @@ function formatDate(dateStr: string): string {
 }
 
 function getActivityLabel(activity: ActivityLogEntry): string {
-  return ACTIVITY_TYPE_LABELS[activity.activity_type] || activity.activity_type;
+  return activityLabel(activity);
 }
 
 function getFieldLabel(fieldName?: string): string | null {
@@ -260,6 +264,13 @@ function getActivityDetail(activity: ActivityLogEntry): string | null {
     const data = parseActivityValue(activity.new_value);
     if (data?.name) {
       return data.name as string;
+    }
+  }
+
+  if (type === "blocker_added" || type === "blocker_removed") {
+    const data = parseActivityValue(type === "blocker_added" ? activity.new_value : activity.old_value);
+    if (data?.task_id) {
+      return data.title ? `${data.task_id} ${data.title}` : (data.task_id as string);
     }
   }
 

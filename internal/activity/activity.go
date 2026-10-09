@@ -33,6 +33,8 @@ const (
 	CommentCreated  ActivityType = "comment_created"
 	CommentUpdated  ActivityType = "comment_updated"
 	CommentDeleted  ActivityType = "comment_deleted"
+	BlockerAdded    ActivityType = "blocker_added"
+	BlockerRemoved  ActivityType = "blocker_removed"
 )
 
 // Notifier fans out a logged activity to per-user notifications. It is defined
@@ -125,7 +127,8 @@ func (s *Service) LogActivity(ctx context.Context, params LogActivityParams) err
 
 	// Fan out to per-user notifications (best-effort, off the request path).
 	// This single point covers every activity-logging call site.
-	if s.notifier != nil {
+	// Blocker links are recorded in the feed only; they don't notify.
+	if s.notifier != nil && params.ActivityType != BlockerAdded && params.ActivityType != BlockerRemoved {
 		commentID := commentIDFromParams(params)
 		go s.notifier.EnqueueForActivity(context.Background(), params.TaskID, string(params.ActivityType), params.ActorID, commentID)
 	}
