@@ -3,15 +3,61 @@ export interface Point {
   y: number;
 }
 
+const GRID_COL_WIDTH = 200;
+const GRID_ROW_HEIGHT = 70;
+const GRID_GAP = 120;
+
 /**
- * Fruchterman-Reingold layout. Nodes start on a circle in the given order,
- * so the result is deterministic for the same input.
+ * Lays out linked nodes with a force simulation, then packs nodes that have no
+ * edges into a grid just below them (repulsion would otherwise push them far out).
  */
 export function forceLayout(
   ids: string[],
   edges: [string, string][],
   iterations = 300,
   k = 110,
+): Map<string, Point> {
+  const known = new Set(ids);
+  const linked = new Set<string>();
+  for (const [a, b] of edges) {
+    if (known.has(a) && known.has(b)) {
+      linked.add(a);
+      linked.add(b);
+    }
+  }
+  const positions = simulate(ids.filter((id) => linked.has(id)), edges, iterations, k);
+
+  const isolated = ids.filter((id) => !linked.has(id));
+  if (!isolated.length) return positions;
+
+  let minX = 0;
+  let maxX = 0;
+  let maxY = -GRID_GAP;
+  if (positions.size) {
+    const pts = [...positions.values()];
+    minX = Math.min(...pts.map((p) => p.x));
+    maxX = Math.max(...pts.map((p) => p.x));
+    maxY = Math.max(...pts.map((p) => p.y));
+  }
+  const cols = Math.max(4, Math.round((maxX - minX) / GRID_COL_WIDTH) + 1);
+  isolated.forEach((id, i) => {
+    positions.set(id, {
+      x: minX + (i % cols) * GRID_COL_WIDTH,
+      y: maxY + GRID_GAP + Math.floor(i / cols) * GRID_ROW_HEIGHT,
+    });
+  });
+  return positions;
+}
+
+/**
+ * Fruchterman-Reingold layout. Nodes start on a circle in the given order,
+ * so the result is deterministic for the same input.
+ */
+function simulate(
+  ids: string[],
+  edges: [string, string][],
+  iterations: number,
+  k: number,
 ): Map<string, Point> {
   const n = ids.length;
   const index = new Map(ids.map((id, i) => [id, i]));

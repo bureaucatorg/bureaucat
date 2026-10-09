@@ -223,7 +223,9 @@ const filtered = computed(() => {
   const blockerEdges = (graph.value?.blocker_edges ?? []).filter(
     (e) => taskIds.has(e.blocker_id) && taskIds.has(e.blocked_id),
   );
-  return { users, tasks, edges, subtaskEdges, blockerEdges };
+  const assignedIds = new Set(edges.map((e) => e.task_id));
+  const unassignedCount = tasks.filter((t) => !assignedIds.has(t.id)).length;
+  return { users, tasks, edges, subtaskEdges, blockerEdges, unassignedCount };
 });
 
 const flow = computed(() => {
@@ -246,6 +248,9 @@ const flow = computed(() => {
       placed.add(taskId);
       order.push(`t:${taskId}`);
     }
+  }
+  for (const t of tasks) {
+    if (!placed.has(t.id)) order.push(`t:${t.id}`);
   }
 
   const positions = forceLayout(order, [
@@ -566,6 +571,7 @@ function onNodeDoubleClick({ node }: NodeMouseEvent) {
         <div v-if="graph" class="ml-auto flex flex-col items-end gap-2">
           <span class="rounded-md bg-background/90 px-2 py-1 text-xs text-muted-foreground shadow-sm backdrop-blur">
             {{ filtered.users.length }} users · {{ filtered.tasks.length }} tasks
+            <template v-if="filtered.unassignedCount">({{ filtered.unassignedCount }} unassigned)</template>
           </span>
           <div class="space-y-1 rounded-md border bg-background/90 px-3 py-2 text-xs text-muted-foreground shadow-sm backdrop-blur">
             <div class="flex items-center gap-2">

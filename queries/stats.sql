@@ -177,6 +177,7 @@ GROUP BY d
 ORDER BY d ASC;
 
 -- name: ListTaskAssignmentsForGraph :many
+-- One row per (task, assignee); unassigned tasks come back once with NULL user columns.
 SELECT t.id AS task_id, t.task_number, t.title,
        (t.parent_task_id IS NOT NULL)::boolean AS is_subtask, t.parent_task_id,
        p.project_key, p.name AS project_name,
@@ -187,8 +188,8 @@ FROM tasks t
 JOIN projects p ON t.project_id = p.id
 JOIN workspaces w ON p.workspace_id = w.id
 JOIN project_states ps ON t.state_id = ps.id
-JOIN task_assignees ta ON ta.task_id = t.id
-JOIN users u ON ta.user_id = u.id
+LEFT JOIN task_assignees ta ON ta.task_id = t.id
+LEFT JOIN users u ON ta.user_id = u.id
 WHERE t.deleted_at IS NULL
   AND p.deleted_at IS NULL
   AND w.deleted_at IS NULL

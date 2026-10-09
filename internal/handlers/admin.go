@@ -1024,10 +1024,10 @@ func (h *AdminHandler) taskGraphFilters(c *echo.Context, viewer pgtype.UUID) err
 	return c.JSON(http.StatusOK, resp)
 }
 
-// GetTaskGraph returns users and the tasks they are assigned to.
+// GetTaskGraph returns tasks and the users assigned to them.
 //
 //	@Summary		Get admin task graph
-//	@Description	Returns user and task nodes with assignment edges for the admin graph view.
+//	@Description	Returns task nodes (assigned or not), user nodes and assignment edges for the admin graph view.
 //	@Tags			Admin - Stats
 //	@Produce		json
 //	@Param			workspace	query		string	false	"Workspace key"
@@ -1045,7 +1045,7 @@ func (h *AdminHandler) GetTaskGraph(c *echo.Context) error {
 // GetMyTaskGraph returns the task graph limited to the caller's member projects.
 //
 //	@Summary		Get task graph
-//	@Description	Returns user and task nodes with assignment edges, limited to projects the caller is a member of.
+//	@Description	Returns task nodes (assigned or not), user nodes and assignment edges, limited to projects the caller is a member of.
 //	@Tags			Graph
 //	@Produce		json
 //	@Param			workspace	query		string	false	"Workspace key"
@@ -1090,20 +1090,8 @@ func (h *AdminHandler) taskGraph(c *echo.Context, viewer pgtype.UUID) error {
 	seenTasks := make(map[string]bool)
 
 	for _, r := range rows {
-		userID := r.UserID.String()
 		taskID := r.TaskID.String()
 
-		if !seenUsers[userID] {
-			seenUsers[userID] = true
-			resp.Users = append(resp.Users, GraphUser{
-				ID:        userID,
-				Username:  r.Username,
-				Email:     r.Email,
-				FirstName: r.FirstName,
-				LastName:  r.LastName,
-				AvatarURL: textToStringPtr(r.AvatarUrl),
-			})
-		}
 		if !seenTasks[taskID] {
 			seenTasks[taskID] = true
 			taskIDs = append(taskIDs, r.TaskID)
@@ -1121,6 +1109,23 @@ func (h *AdminHandler) taskGraph(c *echo.Context, viewer pgtype.UUID) error {
 				StateName:     r.StateName,
 				StateType:     r.StateType,
 				StateColor:    textToStringPtr(r.StateColor),
+			})
+		}
+
+		// Unassigned tasks have no user row; they're shown as free-floating nodes.
+		if !r.UserID.Valid {
+			continue
+		}
+		userID := uuid.UUID(r.UserID.Bytes).String()
+		if !seenUsers[userID] {
+			seenUsers[userID] = true
+			resp.Users = append(resp.Users, GraphUser{
+				ID:        userID,
+				Username:  r.Username.String,
+				Email:     r.Email.String,
+				FirstName: r.FirstName.String,
+				LastName:  r.LastName.String,
+				AvatarURL: textToStringPtr(r.AvatarUrl),
 			})
 		}
 		resp.Edges = append(resp.Edges, GraphEdge{UserID: userID, TaskID: taskID})

@@ -427,8 +427,8 @@ FROM tasks t
 JOIN projects p ON t.project_id = p.id
 JOIN workspaces w ON p.workspace_id = w.id
 JOIN project_states ps ON t.state_id = ps.id
-JOIN task_assignees ta ON ta.task_id = t.id
-JOIN users u ON ta.user_id = u.id
+LEFT JOIN task_assignees ta ON ta.task_id = t.id
+LEFT JOIN users u ON ta.user_id = u.id
 WHERE t.deleted_at IS NULL
   AND p.deleted_at IS NULL
   AND w.deleted_at IS NULL
@@ -463,14 +463,15 @@ type ListTaskAssignmentsForGraphRow struct {
 	StateName     string      `json:"state_name"`
 	StateType     string      `json:"state_type"`
 	StateColor    pgtype.Text `json:"state_color"`
-	UserID        uuid.UUID   `json:"user_id"`
-	Username      string      `json:"username"`
-	Email         string      `json:"email"`
-	FirstName     string      `json:"first_name"`
-	LastName      string      `json:"last_name"`
+	UserID        pgtype.UUID `json:"user_id"`
+	Username      pgtype.Text `json:"username"`
+	Email         pgtype.Text `json:"email"`
+	FirstName     pgtype.Text `json:"first_name"`
+	LastName      pgtype.Text `json:"last_name"`
 	AvatarUrl     pgtype.Text `json:"avatar_url"`
 }
 
+// One row per (task, assignee); unassigned tasks come back once with NULL user columns.
 func (q *Queries) ListTaskAssignmentsForGraph(ctx context.Context, arg ListTaskAssignmentsForGraphParams) ([]ListTaskAssignmentsForGraphRow, error) {
 	rows, err := q.db.Query(ctx, listTaskAssignmentsForGraph,
 		arg.WorkspaceKey,
