@@ -2,6 +2,7 @@ package notifications
 
 import (
 	"bytes"
+	_ "embed"
 	"encoding/json"
 	"fmt"
 	"html"
@@ -43,6 +44,11 @@ const (
 	neutralColor = "#a1a1aa"
 )
 
+const logoCID = "logo@bureaucat"
+
+//go:embed email-logo.png
+var logoPNG []byte
+
 var (
 	tagRe      = regexp.MustCompile(`<[^>]*>`)
 	hexColorRe = regexp.MustCompile(`^#[0-9a-fA-F]{3}([0-9a-fA-F]{3})?$`)
@@ -51,8 +57,9 @@ var (
 // Email-client safe: tables, bgcolor and inline padding (no margin/display); rounded corners degrade to square.
 // The <style> block only tightens spacing on phones; clients that drop it get the desktop layout.
 var emailHTML = template.Must(template.New("email").Funcs(template.FuncMap{
-	"sans": func() template.CSS { return fontSans },
-	"mono": func() template.CSS { return fontMono },
+	"sans":    func() template.CSS { return fontSans },
+	"mono":    func() template.CSS { return fontMono },
+	"logoCID": func() string { return logoCID },
 }).Parse(`<!doctype html>
 <html lang="en">
 <head>
@@ -76,6 +83,7 @@ var emailHTML = template.Must(template.New("email").Funcs(template.FuncMap{
 
 <tr><td class="px" style="padding:16px 28px">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+{{if .EmbedLogo}}<td width="26" valign="middle" style="padding-right:8px;font-size:0;line-height:0"><img src="cid:{{logoCID}}" width="26" height="26" alt="" style="border:0;outline:none;text-decoration:none"></td>{{end}}
 <td valign="middle" style="font-family:{{sans}};font-size:17px;line-height:26px;color:#09090b"><b>Bureau<span style="color:#f59e0b">Cat</span></b></td>
 <td align="right" valign="middle" style="font-family:{{sans}};font-size:12px;line-height:26px;color:#71717a">{{.ProjectName}}</td>
 </tr></table>
@@ -165,6 +173,7 @@ type emailData struct {
 	LinkLabel    string
 	Note         string
 	SettingsLink string
+	EmbedLogo    bool
 }
 
 func activityLabel(activityType string) string {
@@ -233,8 +242,8 @@ func describeFieldChange(field string, value any) (verb, target, quote string) {
 	return "updated " + strings.ReplaceAll(field, "_", " "), "", ""
 }
 
-func notificationEmail(appURL string, row store.ClaimEmailNotificationsRow, events []emailEvent) (mailer.Message, error) {
-	base := strings.TrimRight(appURL, "/")
+func notificationEmail(cfg mailer.Settings, row store.ClaimEmailNotificationsRow, events []emailEvent) (mailer.Message, error) {
+	base := strings.TrimRight(cfg.AppURL, "/")
 	taskKey := fmt.Sprintf("%s-%d", row.ProjectKey, row.TaskNumber)
 	link := fmt.Sprintf("%s/projects/%s/tasks/%d", base, row.ProjectKey, row.TaskNumber)
 	if row.CommentID.Valid {
@@ -258,27 +267,27 @@ func notificationEmail(appURL string, row store.ClaimEmailNotificationsRow, even
 		Note:         "You are receiving this because you are involved in " + taskKey + ".",
 		SettingsLink: base + "/settings",
 	}
-	return buildEmail(row.RecipientEmail, fmt.Sprintf("[%s] %s", taskKey, row.TaskTitle), data)
+	return buildEmail(cfg, row.RecipientEmail, fmt.Sprintf("[%s] %s", taskKey, row.TaskTitle), data)
 }
 
 // TestEmail builds the SMTP connection test email in the same layout as notifications.
-func TestEmail(appURL, to, senderFirstName, senderLastName string) (mailer.Message, error) {
+func TestEmail(cfg mailer.Settings, to, senderFirstName, senderLastName string) (mailer.Message, error) {
 	data := emailData{
 		ProjectName: "Admin",
 		TaskKey:     "SMTP TEST",
 		TaskTitle:   "Email delivery is working",
 		Heading:     "DETAILS",
 		Events:      []emailEvent{newEvent(senderFirstName, senderLastName, "sent this test email from the admin email settings.")},
-		Link:        strings.TrimRight(appURL, "/"),
+		Link:        strings.TrimRight(cfg.AppURL, "/"),
 		LinkLabel:   "Open Bureaucat",
 		Note:        "Notification emails will arrive in this format.",
 	}
-	return buildEmail(to, "Bureaucat test email", data)
+	return buildEmail(cfg, to, "Bureaucat test email", data)
 }
 
 // SampleEmail builds the exact email sent for activityType ("batched" for several updates),
 // using placeholder task data and the real formatting path.
-func SampleEmail(appURL, to, activityType, actorFirstName, actorLastName string) (mailer.Message, error) {
+func SampleEmail(cfg mailer.Settings, to, activityType, actorFirstName, actorLastName string) (mailer.Message, error) {
 	types := []string{activityType}
 	if activityType == "batched" {
 		types = []string{"comment_created", "label_added", "state_changed"}
@@ -305,7 +314,7 @@ func SampleEmail(appURL, to, activityType, actorFirstName, actorLastName string)
 	if strings.HasPrefix(row.ActivityType, "comment_") {
 		row.CommentID = pgtype.UUID{Bytes: uuid.New(), Valid: true}
 	}
-	return notificationEmail(appURL, row, events)
+	return notificationEmail(cfg, row, events)
 }
 
 func sampleActivity(activityType, firstName, lastName string) store.ListEmailActivityRow {
@@ -332,12 +341,17 @@ func sampleActivity(activityType, firstName, lastName string) store.ListEmailAct
 	return a
 }
 
-func buildEmail(to, subject string, data emailData) (mailer.Message, error) {
+func buildEmail(cfg mailer.Settings, to, subject string, data emailData) (mailer.Message, error) {
+	data.EmbedLogo = cfg.EmbedLogo
 	var body bytes.Buffer
 	if err := emailHTML.Execute(&body, data); err != nil {
 		return mailer.Message{}, err
 	}
-	return mailer.Message{To: to, Subject: subject, Text: plainText(data), HTML: body.String()}, nil
+	msg := mailer.Message{To: to, Subject: subject, Text: plainText(data), HTML: body.String()}
+	if cfg.EmbedLogo {
+		msg.Inline = []mailer.InlineFile{{ContentID: logoCID, ContentType: "image/png", Filename: "logo.png", Data: logoPNG}}
+	}
+	return msg, nil
 }
 
 func plainText(data emailData) string {

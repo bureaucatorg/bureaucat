@@ -5,9 +5,11 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"mime"
 	"mime/multipart"
 	"mime/quotedprintable"
@@ -47,6 +49,7 @@ type Settings struct {
 	FromName    string `json:"from_name"`
 	TLSMode     string `json:"tls_mode"`
 	AppURL      string `json:"app_url"`
+	EmbedLogo   bool   `json:"embed_logo"`
 }
 
 // Message is a single email to one recipient.
@@ -55,6 +58,15 @@ type Message struct {
 	Subject string
 	Text    string
 	HTML    string
+	Inline  []InlineFile
+}
+
+// InlineFile is attached alongside the HTML part and referenced from it as cid:<ContentID>.
+type InlineFile struct {
+	ContentID   string
+	ContentType string
+	Filename    string
+	Data        []byte
 }
 
 // Load reads the SMTP settings. A missing row returns zero (disabled) settings.
@@ -193,22 +205,23 @@ func buildMessage(cfg Settings, msg Message) ([]byte, error) {
 func alternativeBody(msg Message) ([]byte, string, error) {
 	var buf bytes.Buffer
 	mw := multipart.NewWriter(&buf)
-	for _, part := range []struct{ contentType, content string }{
-		{"text/plain; charset=utf-8", msg.Text},
-		{"text/html; charset=utf-8", msg.HTML},
-	} {
-		pw, err := mw.CreatePart(textproto.MIMEHeader{
-			"Content-Type":              {part.contentType},
-			"Content-Transfer-Encoding": {"quoted-printable"},
-		})
+	if err := writeQuotedPrintable(mw, "text/plain; charset=utf-8", msg.Text); err != nil {
+		return nil, "", err
+	}
+	if len(msg.Inline) == 0 {
+		if err := writeQuotedPrintable(mw, "text/html; charset=utf-8", msg.HTML); err != nil {
+			return nil, "", err
+		}
+	} else {
+		related, contentType, err := relatedBody(msg)
 		if err != nil {
 			return nil, "", err
 		}
-		qp := quotedprintable.NewWriter(pw)
-		if _, err := qp.Write([]byte(part.content)); err != nil {
+		pw, err := mw.CreatePart(textproto.MIMEHeader{"Content-Type": {contentType}})
+		if err != nil {
 			return nil, "", err
 		}
-		if err := qp.Close(); err != nil {
+		if _, err := pw.Write(related); err != nil {
 			return nil, "", err
 		}
 	}
@@ -216,4 +229,58 @@ func alternativeBody(msg Message) ([]byte, string, error) {
 		return nil, "", err
 	}
 	return buf.Bytes(), "multipart/alternative; boundary=" + mw.Boundary(), nil
+}
+
+func relatedBody(msg Message) ([]byte, string, error) {
+	var buf bytes.Buffer
+	mw := multipart.NewWriter(&buf)
+	if err := writeQuotedPrintable(mw, "text/html; charset=utf-8", msg.HTML); err != nil {
+		return nil, "", err
+	}
+	for _, f := range msg.Inline {
+		pw, err := mw.CreatePart(textproto.MIMEHeader{
+			"Content-Type":              {mime.FormatMediaType(f.ContentType, map[string]string{"name": f.Filename})},
+			"Content-Transfer-Encoding": {"base64"},
+			"Content-ID":                {"<" + f.ContentID + ">"},
+			"Content-Disposition":       {mime.FormatMediaType("inline", map[string]string{"filename": f.Filename})},
+		})
+		if err != nil {
+			return nil, "", err
+		}
+		if err := writeBase64Lines(pw, f.Data); err != nil {
+			return nil, "", err
+		}
+	}
+	if err := mw.Close(); err != nil {
+		return nil, "", err
+	}
+	return buf.Bytes(), `multipart/related; type="text/html"; boundary=` + mw.Boundary(), nil
+}
+
+func writeQuotedPrintable(mw *multipart.Writer, contentType, content string) error {
+	pw, err := mw.CreatePart(textproto.MIMEHeader{
+		"Content-Type":              {contentType},
+		"Content-Transfer-Encoding": {"quoted-printable"},
+	})
+	if err != nil {
+		return err
+	}
+	qp := quotedprintable.NewWriter(pw)
+	if _, err := qp.Write([]byte(content)); err != nil {
+		return err
+	}
+	return qp.Close()
+}
+
+// RFC 2045 caps encoded lines at 76 characters.
+func writeBase64Lines(w io.Writer, data []byte) error {
+	encoded := base64.StdEncoding.EncodeToString(data)
+	for len(encoded) > 76 {
+		if _, err := io.WriteString(w, encoded[:76]+"\r\n"); err != nil {
+			return err
+		}
+		encoded = encoded[76:]
+	}
+	_, err := io.WriteString(w, encoded+"\r\n")
+	return err
 }

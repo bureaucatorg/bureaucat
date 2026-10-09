@@ -255,6 +255,7 @@ const smtpForm = ref<SMTPSettings>({
   from_name: "",
   tls_mode: "starttls",
   app_url: "",
+  embed_logo: false,
 });
 const savingSMTP = ref(false);
 const testingSMTP = ref(false);
@@ -924,6 +925,21 @@ const adminModels = [
                     <p class="text-xs text-muted-foreground">
                       Used to build task links in emails
                     </p>
+                  </div>
+
+                  <div class="flex items-center justify-between gap-4">
+                    <div>
+                      <Label for="smtp-embed-logo">Embed logo</Label>
+                      <p class="text-xs text-muted-foreground">
+                        Attach the logo as a CID inline image in the email header. Some clients may list it as an attachment.
+                      </p>
+                    </div>
+                    <Switch
+                      id="smtp-embed-logo"
+                      :checked="smtpForm.embed_logo"
+                      :disabled="savingSMTP"
+                      @update:checked="smtpForm.embed_logo = $event"
+                    />
                   </div>
                 </div>
 

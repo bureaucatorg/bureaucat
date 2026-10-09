@@ -674,9 +674,9 @@ func (h *SettingsHandler) TestSMTPSettings(c *echo.Context) error {
 
 	var msg mailer.Message
 	if req.Template == "" || req.Template == "connection" {
-		msg, err = notifications.TestEmail(cfg.AppURL, addr.Address, user.FirstName, user.LastName)
+		msg, err = notifications.TestEmail(cfg, addr.Address, user.FirstName, user.LastName)
 	} else {
-		msg, err = notifications.SampleEmail(cfg.AppURL, addr.Address, req.Template, user.FirstName, user.LastName)
+		msg, err = notifications.SampleEmail(cfg, addr.Address, req.Template, user.FirstName, user.LastName)
 	}
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid email template")

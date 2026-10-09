@@ -47,7 +47,7 @@ func (s *Service) sendEmailDigest(ctx context.Context) {
 			return
 		}
 		for _, row := range rows {
-			msg, err := notificationEmail(cfg.AppURL, row, s.emailEvents(ctx, row))
+			msg, err := notificationEmail(cfg, row, s.emailEvents(ctx, row))
 			if err == nil {
 				err = mailer.Send(ctx, cfg, msg)
 			}

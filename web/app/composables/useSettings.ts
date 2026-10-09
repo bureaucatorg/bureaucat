@@ -42,6 +42,7 @@ export interface SMTPSettings {
   from_name: string;
   tls_mode: "starttls" | "tls";
   app_url: string;
+  embed_logo: boolean;
 }
 
 export interface FeedbackSettings {
