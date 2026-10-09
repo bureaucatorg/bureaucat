@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -295,16 +296,30 @@ func escapeLike(s string) string {
 	return s
 }
 
-// searchContains matches the term against title and description in a single
-// predicate. The OR is a SQL-level implementation detail of this opcode, not
-// a user-visible boolean; the DSL has no OR node.
+// taskIDSearch matches a task ID typed as "KEY-123", "#123" or "123".
+var taskIDSearch = regexp.MustCompile(`^(?:([A-Za-z][A-Za-z0-9]*)-|#)?(\d{1,9})$`)
+
+// searchContains matches the term against title and description, and against
+// the task ID when the term looks like one. The OR is a SQL-level
+// implementation detail of this opcode, not a user-visible boolean; the DSL has
+// no OR node.
 func searchContains(a *argBuffer, _ uuid.UUID, _ time.Time, v json.RawMessage) (string, error) {
 	s, err := decodeString(v)
 	if err != nil {
 		return "", err
 	}
 	p := a.push(escapeLike(s))
-	return "(t.title ILIKE '%' || " + p + " || '%' ESCAPE '\\' OR t.description ILIKE '%' || " + p + " || '%' ESCAPE '\\')", nil
+	sql := "t.title ILIKE '%' || " + p + " || '%' ESCAPE '\\' OR t.description ILIKE '%' || " + p + " || '%' ESCAPE '\\'"
+
+	if m := taskIDSearch.FindStringSubmatch(strings.TrimSpace(s)); m != nil {
+		num, _ := strconv.Atoi(m[2])
+		idMatch := "t.task_number = " + a.push(int32(num))
+		if m[1] != "" {
+			idMatch = "(" + idMatch + " AND p.project_key = " + a.push(strings.ToUpper(m[1])) + ")"
+		}
+		sql += " OR " + idMatch
+	}
+	return "(" + sql + ")", nil
 }
 
 func textLike(col string, negate bool) predicateHandler {

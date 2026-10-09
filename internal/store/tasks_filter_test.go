@@ -79,6 +79,33 @@ func TestCompileSearchPredicate(t *testing.T) {
 	}
 }
 
+func TestCompileSearchTaskID(t *testing.T) {
+	cases := []struct {
+		term    string
+		wantNum bool
+		wantKey bool
+	}{
+		{"DEVOP-822", true, true},
+		{"devop-822", true, true},
+		{"#822", true, false},
+		{"822", true, false},
+		{"bug 822", false, false},
+		{"DEVOP-", false, false},
+	}
+	for _, tc := range cases {
+		tree := FilterTree{Children: []FilterNode{
+			{Predicate: &Predicate{Field: "search", Op: "contains", Value: mustRaw(t, tc.term)}},
+		}}
+		c := compileOrFail(t, tree, uuid.Nil)
+		if got := strings.Contains(c.WhereSQL, "t.task_number ="); got != tc.wantNum {
+			t.Errorf("%q: task_number match = %v, want %v (%q)", tc.term, got, tc.wantNum, c.WhereSQL)
+		}
+		if got := strings.Contains(c.WhereSQL, "p.project_key ="); got != tc.wantKey {
+			t.Errorf("%q: project_key match = %v, want %v (%q)", tc.term, got, tc.wantKey, c.WhereSQL)
+		}
+	}
+}
+
 func TestCompileAtMeBinding(t *testing.T) {
 	caller := uuid.New()
 	tree := FilterTree{Children: []FilterNode{
