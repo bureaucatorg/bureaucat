@@ -32,6 +32,7 @@ const projectsOpen = ref(false);
 const stateTypesOpen = ref(false);
 const usersOpen = ref(false);
 const userSearchOpen = ref(false);
+const taskSearchOpen = ref(false);
 const hovered = ref<HoveredGraphNode | null>(null);
 const hoveredEl = ref<HTMLElement | null>(null);
 let hoverTimer: ReturnType<typeof setTimeout> | undefined;
@@ -163,6 +164,9 @@ watch(workspaceOpen, () => (workspaceQuery.value = ""));
 watch(projectsOpen, () => (projectQuery.value = ""));
 watch(usersOpen, () => (userQuery.value = ""));
 
+const taskSearchQuery = ref("");
+watch(taskSearchOpen, () => (taskSearchQuery.value = ""));
+
 const workspaceIndex = computed(() =>
   workspaces.value.map((w) => ({ item: w, text: `${w.name} ${w.key}`.toLowerCase() })),
 );
@@ -187,6 +191,14 @@ const userMatches = computed(() => {
   const selected = new Set(selectedUsers.value);
   return capOptions(userIndex.value, userQuery.value, (u) => selected.has(u.username));
 });
+
+const taskSearchIndex = computed(() =>
+  filtered.value.tasks.map((t) => ({
+    item: t,
+    text: `${t.project_key}-${t.task_number} ${t.title}`.toLowerCase(),
+  })),
+);
+const taskSearchMatches = computed(() => capOptions(taskSearchIndex.value, taskSearchQuery.value, () => false));
 
 function toggleProject(key: string) {
   projectQuery.value = "";
@@ -354,9 +366,18 @@ function setHighlight(nodeId: string | null) {
 
 function focusUser(user: GraphUser) {
   userSearchOpen.value = false;
-  const node = findNode(`u:${user.id}`);
+  focusNode(`u:${user.id}`);
+}
+
+function focusTask(task: GraphTask) {
+  taskSearchOpen.value = false;
+  focusNode(`t:${task.id}`);
+}
+
+function focusNode(nodeId: string) {
+  const node = findNode(nodeId);
   if (!node) return;
-  setHighlight(`u:${user.id}`);
+  setHighlight(nodeId);
   setCenter(node.position.x + node.dimensions.width / 2, node.position.y + node.dimensions.height / 2, {
     zoom: 1.5,
     duration: 600,
@@ -563,6 +584,40 @@ function onNodeDoubleClick({ node }: NodeMouseEvent) {
                     <span class="ml-auto truncate text-xs text-muted-foreground">{{ u.email }}</span>
                   </CommandItem>
                 </CommandGroup>
+              </CommandList>
+            </Command>
+          </PopoverContent>
+        </Popover>
+
+        <Popover v-model:open="taskSearchOpen">
+          <PopoverTrigger as-child>
+            <Button variant="outline" size="sm" class="gap-2 bg-background/90 shadow-sm backdrop-blur" :disabled="!graph">
+              <Search class="size-3.5 opacity-60" />
+              Find task
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent align="start" class="w-80 p-0">
+            <Command>
+              <CommandInput
+                placeholder="Search by ID or title..."
+                @input="taskSearchQuery = ($event.target as HTMLInputElement).value"
+              />
+              <CommandList>
+                <CommandEmpty>No task found.</CommandEmpty>
+                <CommandGroup>
+                  <CommandItem
+                    v-for="t in taskSearchMatches.items"
+                    :key="t.id"
+                    :value="`${t.project_key}-${t.task_number} ${t.title}`"
+                    @select="focusTask(t)"
+                  >
+                    <span class="shrink-0 font-mono text-xs text-muted-foreground">{{ t.project_key }}-{{ t.task_number }}</span>
+                    <span class="truncate">{{ t.title }}</span>
+                  </CommandItem>
+                </CommandGroup>
+                <p v-if="taskSearchMatches.total > taskSearchMatches.items.length" class="px-3 py-2 text-xs text-muted-foreground">
+                  Showing {{ taskSearchMatches.items.length }} of {{ taskSearchMatches.total }}. Type to narrow down.
+                </p>
               </CommandList>
             </Command>
           </PopoverContent>
