@@ -100,7 +100,7 @@ function updateQuery(patch: { workspace?: string; projects?: string[]; stateType
   if (patch.projects) query.projects = patch.projects.length ? patch.projects.join(",") : undefined;
   // An empty value means "all"; a missing one triggers the default redirect.
   if (patch.stateTypes) query.state_types = patch.stateTypes.join(",");
-  if (patch.users) query.users = patch.users.length ? patch.users.join(",") : undefined;
+  if (patch.users) query.users = patch.users.join(",");
   router.replace({ query });
 }
 
