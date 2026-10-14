@@ -41,6 +41,7 @@ const (
 	fontSans     = `-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif`
 	fontMono     = `ui-monospace,SFMono-Regular,Menlo,Consolas,monospace`
 	excerptRunes = 280
+	quoteRunes   = 600
 	neutralColor = "#a1a1aa"
 )
 
@@ -123,7 +124,7 @@ var emailHTML = template.Must(template.New("email").Funcs(template.FuncMap{
 {{if .Quote}}<tr><td colspan="2" style="padding-top:8px">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#fafafa"><tr>
 <td width="3" bgcolor="#f59e0b" style="font-size:0;line-height:0">&nbsp;</td>
-<td style="padding:10px 12px;font-family:{{sans}};font-size:14px;line-height:21px;color:#3f3f46">{{.Quote}}</td>
+<td style="padding:10px 12px;font-family:{{sans}};font-size:14px;line-height:21px;color:#3f3f46">{{.QuoteHTML}}</td>
 </tr></table>
 </td></tr>{{end}}
 </table>
@@ -151,14 +152,15 @@ type emailPill struct {
 }
 
 type emailEvent struct {
-	Actor    string
-	Initials string
-	Verb     string
-	Target   string
-	Quote    string
-	Label    *emailPill
-	From     *emailPill
-	To       *emailPill
+	Actor     string
+	Initials  string
+	Verb      string
+	Target    string
+	Quote     string
+	QuoteHTML template.HTML
+	Label     *emailPill
+	From      *emailPill
+	To        *emailPill
 }
 
 type emailData struct {
@@ -196,7 +198,7 @@ func eventFromActivity(a store.ListEmailActivityRow) emailEvent {
 
 	switch a.ActivityType {
 	case "comment_created", "comment_updated":
-		e.Quote = excerpt(str(newV["content"]))
+		e.setQuote(str(newV["content"]))
 	case "assignee_added":
 		e.Verb, e.Target = "assigned", strings.TrimSpace(str(newV["first_name"])+" "+str(newV["last_name"]))
 	case "assignee_removed":
@@ -215,9 +217,17 @@ func eventFromActivity(a store.ListEmailActivityRow) emailEvent {
 			e.To = &emailPill{Name: to, Color: "#f59e0b"}
 		}
 	case "task_updated":
-		e.Verb, e.Target, e.Quote = describeFieldChange(a.FieldName.String, jsonValue(a.NewValue))
+		var quote string
+		e.Verb, e.Target, quote = describeFieldChange(a.FieldName.String, jsonValue(a.NewValue))
+		e.setQuote(quote)
 	}
 	return e
+}
+
+func (e *emailEvent) setQuote(content string) {
+	if e.Quote = excerpt(content); e.Quote != "" {
+		e.QuoteHTML = richExcerpt(content, quoteRunes)
+	}
 }
 
 func describeFieldChange(field string, value any) (verb, target, quote string) {
@@ -225,7 +235,7 @@ func describeFieldChange(field string, value any) (verb, target, quote string) {
 	case "title":
 		return "renamed the task to", str(value), ""
 	case "description":
-		return "updated the description", "", excerpt(str(value))
+		return "updated the description", "", str(value)
 	case "priority":
 		if n, ok := value.(float64); ok {
 			return "set priority to", priorityLabels[int(n)], ""
@@ -322,7 +332,7 @@ func sampleActivity(activityType, firstName, lastName string) store.ListEmailAct
 	label := `{"name":"Bug","color":"#ef4444"}`
 	switch activityType {
 	case "comment_created", "comment_updated":
-		a.NewValue = []byte(`{"content":"<p>Looks good to me. Can we get this approved before the Friday review?</p>"}`)
+		a.NewValue = []byte(`{"content":"<p>Looks <strong>good</strong> to me. Two things before the Friday review:</p><ul><li><p>bump the <code>timeout</code> to 30s</p></li><li><p>get sign-off from <a href=\"/profile/0\">@Sam Sample</a></p></li></ul>"}`)
 	case "assignee_added":
 		a.NewValue = []byte(assignee)
 	case "assignee_removed":
