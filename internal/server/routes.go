@@ -185,6 +185,7 @@ func (s *Server) registerRoutes() {
 			projectGroup.PATCH("", s.projectHandler.UpdateProject, auth.ProjectRoleMiddleware("admin"))
 			projectGroup.PATCH("/disabled", s.projectHandler.SetProjectDisabled, auth.ProjectRoleMiddleware("admin"))
 			projectGroup.DELETE("", s.projectHandler.DeleteProject, auth.ProjectRoleMiddleware("admin"))
+			projectGroup.GET("/stats", s.projectHandler.GetProjectStats)
 
 			// Project members
 			projectGroup.GET("/members", s.projectHandler.ListMembers)

@@ -312,7 +312,17 @@ type Querier interface {
 	MoveTask(ctx context.Context, arg MoveTaskParams) (MoveTaskRow, error)
 	PagesCreatedPerDay(ctx context.Context, arg PagesCreatedPerDayParams) ([]PagesCreatedPerDayRow, error)
 	ProjectKeyExists(ctx context.Context, projectKey string) (bool, error)
+	// One row per day in the range. "completed" counts top-level tasks moved into a completed state that day.
+	ProjectStatsSeries(ctx context.Context, arg ProjectStatsSeriesParams) ([]ProjectStatsSeriesRow, error)
+	// ==================== PROJECT STATS ====================
+	// Blocked/blocking only count links where neither task is completed or cancelled.
+	ProjectStatsTotals(ctx context.Context, projectID uuid.UUID) (ProjectStatsTotalsRow, error)
+	ProjectTasksByPriority(ctx context.Context, projectID uuid.UUID) ([]ProjectTasksByPriorityRow, error)
+	// Top-level tasks per project state, in the project's state order.
+	ProjectTasksByState(ctx context.Context, projectID uuid.UUID) ([]ProjectTasksByStateRow, error)
 	ProjectViewSlugExists(ctx context.Context, arg ProjectViewSlugExistsParams) (bool, error)
+	// Open tasks and subtasks per assignee.
+	ProjectWorkload(ctx context.Context, projectID uuid.UUID) ([]ProjectWorkloadRow, error)
 	ProjectsPerWorkspace(ctx context.Context) ([]ProjectsPerWorkspaceRow, error)
 	RemoveModuleMember(ctx context.Context, arg RemoveModuleMemberParams) error
 	RemoveModuleTask(ctx context.Context, arg RemoveModuleTaskParams) error

@@ -1,17 +1,9 @@
 <script setup lang="ts">
-import { BarChart3, Loader2, Users, LayoutGrid, ListTodo, GitBranch, FileText, Building2, Paperclip, HardDrive, Mail, Ban, Link2, Calendar as CalendarIcon, ChevronDown } from "lucide-vue-next";
+import { BarChart3, Loader2, Users, LayoutGrid, ListTodo, GitBranch, FileText, Building2, Paperclip, HardDrive, Mail, Ban, Link2 } from "lucide-vue-next";
 import { toast } from "vue-sonner";
-import { type DateValue, today, getLocalTimeZone } from "@internationalized/date";
-import { VisAxis, VisXYContainer, VisGroupedBar } from "@unovis/vue";
-import {
-  ChartContainer,
-  ChartCrosshair,
-  ChartTooltip,
-  ChartTooltipContent,
-  componentToString,
-  type ChartConfig,
-} from "~/components/ui/chart";
+import type { DateValue } from "@internationalized/date";
 import type { AdminStats } from "~/composables/useAdmin";
+import { formatBytes, statsRangeLabel, statsToday, titleCase, toIsoDay, type StatsBar } from "~/utils/stats";
 
 definePageMeta({
   middleware: ["admin"],
@@ -23,54 +15,15 @@ const { getStats } = useAdmin();
 
 const loading = ref(true);
 const stats = ref<AdminStats | null>(null);
-const rangeOpen = ref(false);
-
-const tz = getLocalTimeZone();
-const maxDate = today(tz);
 
 // Range selection (defaults to the trailing 30 days).
-const toDate = ref<DateValue>(maxDate.copy());
-const fromDate = ref<DateValue>(maxDate.subtract({ days: 29 }));
-
-const PRESETS = [
-  { label: "Last 7 days", days: 7 },
-  { label: "Last 14 days", days: 14 },
-  { label: "Last 30 days", days: 30 },
-  { label: "Last 90 days", days: 90 },
-];
-
-function applyPreset(n: number) {
-  toDate.value = maxDate.copy();
-  fromDate.value = maxDate.subtract({ days: n - 1 });
-}
-
-function toIso(d: DateValue): string {
-  const p = (n: number) => String(n).padStart(2, "0");
-  return `${d.year}-${p(d.month)}-${p(d.day)}`;
-}
-
-function fmtDate(d: DateValue): string {
-  return `${MONTHS[d.month - 1]} ${d.day}, ${d.year}`;
-}
-
-// Inclusive day span of the current selection.
-const spanDays = computed(() =>
-  Math.round((toDate.value.toDate(tz).getTime() - fromDate.value.toDate(tz).getTime()) / 86_400_000) + 1
-);
-
-// Which preset (if any) the current range matches, so we can highlight it.
-const activePresetDays = computed(() =>
-  toIso(toDate.value) === toIso(maxDate) ? (PRESETS.find((p) => p.days === spanDays.value)?.days ?? null) : null
-);
-
-const rangeLabel = computed(() => {
-  const preset = PRESETS.find((p) => p.days === activePresetDays.value);
-  return preset ? preset.label : `${fmtDate(fromDate.value)} – ${fmtDate(toDate.value)}`;
-});
+const toDate = ref<DateValue>(statsToday());
+const fromDate = ref<DateValue>(statsToday().subtract({ days: 29 }));
+const rangeLabel = computed(() => statsRangeLabel(fromDate.value, toDate.value));
 
 async function loadStats() {
   loading.value = true;
-  const result = await getStats(toIso(fromDate.value), toIso(toDate.value));
+  const result = await getStats(toIsoDay(fromDate.value), toIsoDay(toDate.value));
   loading.value = false;
 
   if (result.success && result.data) {
@@ -84,15 +37,6 @@ async function loadStats() {
 watch([fromDate, toDate], loadStats);
 
 onMounted(loadStats);
-
-// Human-readable byte size (1536 -> "1.5 KB").
-function formatBytes(bytes: number): string {
-  if (bytes <= 0) return "0 B";
-  const units = ["B", "KB", "MB", "GB", "TB"];
-  const i = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
-  const value = bytes / 1024 ** i;
-  return `${i === 0 ? value : value.toFixed(1)} ${units[i]}`;
-}
 
 const totalCards = computed(() => {
   const t = stats.value?.totals;
@@ -119,52 +63,6 @@ const totalCards = computed(() => {
 
 // --- Charts ---------------------------------------------------------------
 
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-
-// Parse "YYYY-MM-DD" without timezone drift and render a short label.
-function shortDay(day: string | undefined): string {
-  if (!day) return "";
-  const [, m, d] = day.split("-").map(Number);
-  return `${MONTHS[(m ?? 1) - 1]} ${d}`;
-}
-
-function titleCase(value: string): string {
-  return value.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-}
-
-// The chart tooltip receives the x-axis value, which for our charts is the bar
-// index. These map that index back to a human-readable heading: the day for
-// time series, the category name for the breakdown bars.
-function dayLabelFor(data: { day: string }[]) {
-  return (i: number | Date) => shortDay(data[Math.round(Number(i))]?.day);
-}
-function categoryLabelFor(bars: { label: string }[]) {
-  return (i: number | Date) => bars[Math.round(Number(i))]?.label ?? "";
-}
-
-// Compact axis numbers (1200 -> "1.2k") and integer-only y ticks so unovis
-// doesn't render duplicate fractional labels for small ranges.
-function compactNum(v: number): string {
-  if (Math.abs(v) >= 1000) {
-    const n = v / 1000;
-    return `${Number.isInteger(n) ? n : n.toFixed(1)}k`;
-  }
-  return v.toString();
-}
-
-function yTick(v: number): string {
-  return Number.isInteger(v) ? compactNum(v) : "";
-}
-
-interface SeriesPoint {
-  day: string;
-  count: number;
-}
-
-const seriesConfig: ChartConfig = {
-  count: { label: "Created" },
-};
-
 const trendCharts = computed(() => {
   const s = stats.value?.series;
   return [
@@ -180,35 +78,12 @@ const trendCharts = computed(() => {
 });
 
 // Views-created series, split by visibility (stacked private + shared).
-interface ViewSeriesPoint {
-  day: string;
-  private: number;
-  shared: number;
-}
+const viewsTrendSeries = [
+  { key: "private", label: "Private", color: "#FCD34D" }, // amber-300
+  { key: "shared", label: "Shared", color: "#93C5FD" }, // blue-300
+];
 
-const VIEW_PRIVATE_COLOR = "#FCD34D"; // amber-300
-const VIEW_SHARED_COLOR = "#93C5FD"; // blue-300
-
-const viewsConfig: ChartConfig = {
-  private: { label: "Private", color: VIEW_PRIVATE_COLOR },
-  shared: { label: "Shared", color: VIEW_SHARED_COLOR },
-};
-
-const viewsSeries = computed<ViewSeriesPoint[]>(() => stats.value?.series.views ?? []);
-
-const hasViews = computed(() =>
-  viewsSeries.value.some((d) => d.private > 0 || d.shared > 0)
-);
-
-interface BarPoint {
-  label: string;
-  count: number;
-  fill: string;
-}
-
-const barConfig: ChartConfig = {
-  count: { label: "Tasks" },
-};
+const viewsSeries = computed(() => stats.value?.series.views ?? []);
 
 // Light/pastel palette (Tailwind -300 shades) matching the app's soft chips.
 const STATE_LIGHT: Record<string, string> = {
@@ -227,7 +102,7 @@ const PRIORITY_LIGHT: Record<string, string> = {
   "Urgent": "#FCA5A5", // red-300
 };
 
-const stateBars = computed<BarPoint[]>(() =>
+const stateBars = computed<StatsBar[]>(() =>
   (stats.value?.tasks_by_state ?? []).map((s) => ({
     label: titleCase(s.label),
     count: s.count,
@@ -235,7 +110,7 @@ const stateBars = computed<BarPoint[]>(() =>
   }))
 );
 
-const priorityBars = computed<BarPoint[]>(() =>
+const priorityBars = computed<StatsBar[]>(() =>
   (stats.value?.tasks_by_priority ?? []).map((p) => ({
     label: p.label,
     count: p.count,
@@ -272,44 +147,7 @@ const maxProjectTasks = computed(() =>
             </p>
           </div>
 
-          <Popover v-model:open="rangeOpen">
-            <PopoverTrigger as-child>
-              <Button variant="outline" size="sm" class="gap-2">
-                <CalendarIcon class="size-4" />
-                <span>{{ rangeLabel }}</span>
-                <ChevronDown class="size-3.5 opacity-60" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent align="end" class="w-auto p-0">
-              <div class="flex flex-col sm:flex-row">
-                <div class="flex flex-row flex-wrap gap-1 border-b p-2 sm:flex-col sm:flex-nowrap sm:border-b-0 sm:border-r">
-                  <Button
-                    v-for="p in PRESETS"
-                    :key="p.days"
-                    variant="ghost"
-                    size="sm"
-                    class="justify-start"
-                    :class="activePresetDays === p.days && 'bg-accent text-accent-foreground'"
-                    @click="applyPreset(p.days)"
-                  >
-                    {{ p.label }}
-                  </Button>
-                </div>
-                <div class="p-2">
-                  <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    <div>
-                      <p class="mb-1 px-1 text-xs font-medium text-muted-foreground">From</p>
-                      <Calendar v-model="fromDate" :max-value="toDate" layout="month-and-year" />
-                    </div>
-                    <div>
-                      <p class="mb-1 px-1 text-xs font-medium text-muted-foreground">To</p>
-                      <Calendar v-model="toDate" :min-value="fromDate" :max-value="maxDate" layout="month-and-year" />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </PopoverContent>
-          </Popover>
+          <StatsRangePicker v-model:from="fromDate" v-model:to="toDate" />
         </div>
 
         <!-- Loading -->
@@ -341,94 +179,23 @@ const maxProjectTasks = computed(() =>
             </div>
 
             <div class="grid gap-3 lg:grid-cols-3">
-              <Card v-for="(chart, i) in trendCharts" :key="chart.key" class="gap-3 py-4" :style="{ order: i < 2 ? i + 1 : i + 2 }">
-                <CardHeader class="px-4 pb-1">
-                  <CardTitle class="text-base">{{ chart.title }}</CardTitle>
-                </CardHeader>
-                <CardContent class="px-4">
-                  <ChartContainer :config="seriesConfig" class="h-44 w-full">
-                    <VisXYContainer :data="chart.data" :margin="{ top: 8, right: 8, bottom: 4, left: 4 }">
-                      <VisGroupedBar
-                        :x="(_d: SeriesPoint, i: number) => i"
-                        :y="(d: SeriesPoint) => d.count"
-                        :color="chart.color"
-                        :rounded-corners="2"
-                        :bar-padding="0.15"
-                      />
-                      <VisAxis
-                        type="x"
-                        :x="(_d: SeriesPoint, i: number) => i"
-                        :tick-format="(i: number) => shortDay(chart.data[i]?.day)"
-                        :num-ticks="5"
-                        :grid-line="false"
-                        :domain-line="false"
-                        :tick-line="false"
-                      />
-                      <VisAxis
-                        type="y"
-                        :tick-format="yTick"
-                        :num-ticks="4"
-                        :grid-line="false"
-                        :domain-line="false"
-                        :tick-line="false"
-                      />
-                      <ChartTooltip />
-                      <ChartCrosshair :template="componentToString({ count: { label: 'Created', color: chart.color } }, ChartTooltipContent, { labelFormatter: dayLabelFor(chart.data) })" />
-                    </VisXYContainer>
-                  </ChartContainer>
-                </CardContent>
-              </Card>
+              <StatsTrendChart
+                v-for="(chart, i) in trendCharts"
+                :key="chart.key"
+                :title="chart.title"
+                :series="[{ key: 'count', label: 'Created', color: chart.color }]"
+                :data="chart.data"
+                :style="{ order: i < 2 ? i + 1 : i + 2 }"
+              />
 
               <!-- Views created, stacked by visibility (placed as the third trend) -->
-              <Card class="gap-3 py-4" :style="{ order: 3 }">
-                <CardHeader class="flex flex-row items-center justify-between space-y-0 px-4 pb-1">
-                  <CardTitle class="text-base">Views created</CardTitle>
-                  <div class="flex items-center gap-3 text-xs text-muted-foreground">
-                    <span class="flex items-center gap-1.5">
-                      <span class="size-2.5 rounded-full" :style="{ backgroundColor: VIEW_PRIVATE_COLOR }" />
-                      Private
-                    </span>
-                    <span class="flex items-center gap-1.5">
-                      <span class="size-2.5 rounded-full" :style="{ backgroundColor: VIEW_SHARED_COLOR }" />
-                      Shared
-                    </span>
-                  </div>
-                </CardHeader>
-                <CardContent class="px-4">
-                  <ChartContainer v-if="hasViews" :config="viewsConfig" class="h-44 w-full">
-                    <VisXYContainer :data="viewsSeries" :margin="{ top: 8, right: 8, bottom: 4, left: 4 }">
-                      <VisGroupedBar
-                        :x="(_d: ViewSeriesPoint, i: number) => i"
-                        :y="[(d: ViewSeriesPoint) => d.private, (d: ViewSeriesPoint) => d.shared]"
-                        :color="[VIEW_PRIVATE_COLOR, VIEW_SHARED_COLOR]"
-                        :rounded-corners="2"
-                        :bar-padding="0.15"
-                        :group-padding="0.15"
-                      />
-                      <VisAxis
-                        type="x"
-                        :x="(_d: ViewSeriesPoint, i: number) => i"
-                        :tick-format="(i: number) => shortDay(viewsSeries[i]?.day)"
-                        :num-ticks="5"
-                        :grid-line="false"
-                        :domain-line="false"
-                        :tick-line="false"
-                      />
-                      <VisAxis
-                        type="y"
-                        :tick-format="yTick"
-                        :num-ticks="4"
-                        :grid-line="false"
-                        :domain-line="false"
-                        :tick-line="false"
-                      />
-                      <ChartTooltip />
-                      <ChartCrosshair :template="componentToString(viewsConfig, ChartTooltipContent, { labelFormatter: dayLabelFor(viewsSeries) })" />
-                    </VisXYContainer>
-                  </ChartContainer>
-                  <p v-else class="py-12 text-center text-sm text-muted-foreground">No views yet</p>
-                </CardContent>
-              </Card>
+              <StatsTrendChart
+                title="Views created"
+                :series="viewsTrendSeries"
+                :data="viewsSeries"
+                empty-text="No views yet"
+                :style="{ order: 3 }"
+              />
             </div>
           </div>
 
@@ -442,81 +209,8 @@ const maxProjectTasks = computed(() =>
             </div>
 
             <div class="grid gap-3 lg:grid-cols-2">
-              <Card class="gap-3 py-4">
-                <CardHeader class="px-4 pb-1">
-                  <CardTitle class="text-base">By state</CardTitle>
-                </CardHeader>
-                <CardContent class="px-4">
-                  <ChartContainer v-if="stateBars.length" :config="barConfig" class="h-48 w-full">
-                    <VisXYContainer :data="stateBars" :margin="{ top: 8, right: 8, bottom: 4, left: 4 }">
-                      <VisGroupedBar
-                        :x="(_d: BarPoint, i: number) => i"
-                        :y="(d: BarPoint) => d.count"
-                        :color="(d: BarPoint) => d.fill"
-                        :rounded-corners="6"
-                        :bar-padding="0.35"
-                      />
-                      <VisAxis
-                        type="x"
-                        :x="(_d: BarPoint, i: number) => i"
-                        :tick-format="(i: number) => stateBars[i]?.label ?? ''"
-                        :grid-line="false"
-                        :domain-line="false"
-                        :tick-line="false"
-                      />
-                      <VisAxis
-                        type="y"
-                        :tick-format="yTick"
-                        :num-ticks="4"
-                        :grid-line="false"
-                        :domain-line="false"
-                        :tick-line="false"
-                      />
-                      <ChartTooltip />
-                      <ChartCrosshair :template="componentToString(barConfig, ChartTooltipContent, { labelFormatter: categoryLabelFor(stateBars) })" />
-                    </VisXYContainer>
-                  </ChartContainer>
-                  <p v-else class="py-12 text-center text-sm text-muted-foreground">No tasks yet</p>
-                </CardContent>
-              </Card>
-
-              <Card class="gap-3 py-4">
-                <CardHeader class="px-4 pb-1">
-                  <CardTitle class="text-base">By priority</CardTitle>
-                </CardHeader>
-                <CardContent class="px-4">
-                  <ChartContainer v-if="priorityBars.length" :config="barConfig" class="h-48 w-full">
-                    <VisXYContainer :data="priorityBars" :margin="{ top: 8, right: 8, bottom: 4, left: 4 }">
-                      <VisGroupedBar
-                        :x="(_d: BarPoint, i: number) => i"
-                        :y="(d: BarPoint) => d.count"
-                        :color="(d: BarPoint) => d.fill"
-                        :rounded-corners="6"
-                        :bar-padding="0.35"
-                      />
-                      <VisAxis
-                        type="x"
-                        :x="(_d: BarPoint, i: number) => i"
-                        :tick-format="(i: number) => priorityBars[i]?.label ?? ''"
-                        :grid-line="false"
-                        :domain-line="false"
-                        :tick-line="false"
-                      />
-                      <VisAxis
-                        type="y"
-                        :tick-format="yTick"
-                        :num-ticks="4"
-                        :grid-line="false"
-                        :domain-line="false"
-                        :tick-line="false"
-                      />
-                      <ChartTooltip />
-                      <ChartCrosshair :template="componentToString(barConfig, ChartTooltipContent, { labelFormatter: categoryLabelFor(priorityBars) })" />
-                    </VisXYContainer>
-                  </ChartContainer>
-                  <p v-else class="py-12 text-center text-sm text-muted-foreground">No tasks yet</p>
-                </CardContent>
-              </Card>
+              <StatsBarChart title="By state" :bars="stateBars" empty-text="No tasks yet" />
+              <StatsBarChart title="By priority" :bars="priorityBars" empty-text="No tasks yet" />
             </div>
           </div>
 

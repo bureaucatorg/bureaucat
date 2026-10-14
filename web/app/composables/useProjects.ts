@@ -18,6 +18,46 @@ import type {
   UpdateTemplateRequest,
 } from "~/types";
 
+export interface ProjectStatsDay {
+  day: string;
+  tasks: number;
+  subtasks: number;
+  completed: number;
+  activity: number;
+  comments: number;
+  attachments: number;
+  pages: number;
+  cycles: number;
+  modules: number;
+}
+
+export interface ProjectStats {
+  totals: {
+    tasks: number;
+    subtasks: number;
+    blocked_tasks: number;
+    blocking_tasks: number;
+    unassigned_open: number;
+    pages: number;
+    members: number;
+    cycles: number;
+    modules: number;
+    attachments: number;
+    attachments_bytes: number;
+  };
+  tasks_by_state: { name: string; state_type: string; color?: string; count: number }[];
+  tasks_by_priority: { label: string; count: number }[];
+  workload: {
+    user_id: string;
+    username: string;
+    first_name: string;
+    last_name: string;
+    avatar_url?: string;
+    open_tasks: number;
+  }[];
+  series: { from: string; to: string; days: ProjectStatsDay[] };
+}
+
 interface ProjectsState {
   projects: Project[];
   currentProject: Project | null;
@@ -281,6 +321,26 @@ export function useProjects() {
       }
 
       return { success: true };
+    } catch {
+      return { success: false, error: "Network error" };
+    }
+  }
+
+  async function getProjectStats(
+    projectKey: string,
+    from: string,
+    to: string
+  ): Promise<{ success: boolean; data?: ProjectStats; error?: string }> {
+    try {
+      const params = new URLSearchParams({ from, to });
+      const response = await fetch(`/api/v1/projects/${projectKey}/stats?${params}`, {
+        headers: getAuthHeader(),
+      });
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        return { success: false, error: error.message || "Failed to fetch project stats" };
+      }
+      return { success: true, data: await response.json() };
     } catch {
       return { success: false, error: "Network error" };
     }
@@ -760,6 +820,8 @@ export function useProjects() {
     moveProjectToWorkspace,
     setProjectDisabled,
     deleteProject,
+
+    getProjectStats,
 
     // Members
     listMembers,
