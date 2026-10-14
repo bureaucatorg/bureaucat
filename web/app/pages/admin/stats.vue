@@ -107,7 +107,7 @@ const totalCards = computed(() => {
     { label: "Pages", value: t.pages.toLocaleString(), icon: FileText, color: "text-amber-400" },
     { label: "Users", value: t.users.toLocaleString(), icon: Users, color: "text-rose-400" },
     {
-      label: "Email notifications on",
+      label: "Email notifications enabled",
       value: `${t.email_notification_users.toLocaleString()} / ${t.users.toLocaleString()}`,
       icon: Mail,
       color: "text-indigo-400",
