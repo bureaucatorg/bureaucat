@@ -505,7 +505,7 @@ function onNodeDoubleClick({ node }: NodeMouseEvent) {
     <Navbar />
 
     <main id="main-content" class="relative min-h-0 flex-1">
-      <div class="absolute inset-x-3 top-3 z-10 flex flex-wrap items-center gap-2">
+      <div class="absolute inset-x-3 top-3 z-10 flex flex-wrap items-start gap-2">
         <Popover v-model:open="workspaceOpen">
           <PopoverTrigger as-child>
             <Button variant="outline" size="sm" class="max-w-48 justify-between gap-2 bg-background/90 shadow-sm backdrop-blur">
@@ -747,10 +747,6 @@ function onNodeDoubleClick({ node }: NodeMouseEvent) {
         </Popover>
 
         <div v-if="graph" class="ml-auto flex flex-col items-end gap-2">
-          <span class="rounded-md bg-background/90 px-2 py-1 text-xs text-muted-foreground shadow-sm backdrop-blur">
-            {{ filtered.users.length }} users · {{ filtered.tasks.length }} tasks
-            <template v-if="filtered.unassignedCount">({{ filtered.unassignedCount }} unassigned)</template>
-          </span>
           <div class="space-y-1 rounded-md border bg-background/90 px-3 py-2 text-xs text-muted-foreground shadow-sm backdrop-blur">
             <div class="flex items-center gap-2">
               <svg width="28" height="8" aria-hidden="true">
@@ -779,6 +775,10 @@ function onNodeDoubleClick({ node }: NodeMouseEvent) {
               Blocker → blocked task
             </div>
           </div>
+          <span class="rounded-md bg-background/90 px-2 py-1 text-xs text-muted-foreground shadow-sm backdrop-blur">
+            {{ filtered.users.length }} users · {{ filtered.tasks.length }} tasks
+            <template v-if="filtered.unassignedCount">({{ filtered.unassignedCount }} unassigned)</template>
+          </span>
         </div>
       </div>
 
