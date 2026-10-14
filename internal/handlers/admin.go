@@ -624,6 +624,7 @@ type AdminStatsResponse struct {
 		Subtasks         int64 `json:"subtasks"`
 		Pages            int64 `json:"pages"`
 		Users            int64 `json:"users"`
+		EmailNotifyUsers int64 `json:"email_notification_users"`
 		Attachments      int64 `json:"attachments"`
 		AttachmentsBytes int64 `json:"attachments_bytes"`
 	} `json:"totals"`
@@ -718,6 +719,9 @@ func (h *AdminHandler) GetStats(c *echo.Context) error {
 	}
 	if resp.Totals.Users, err = h.store.CountUsers(ctx); err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to count users")
+	}
+	if resp.Totals.EmailNotifyUsers, err = h.store.CountEmailNotificationUsers(ctx); err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to count email notification users")
 	}
 	if resp.Totals.Attachments, err = h.store.CountAttachments(ctx); err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to count attachments")

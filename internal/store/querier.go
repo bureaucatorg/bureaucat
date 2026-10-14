@@ -57,6 +57,7 @@ type Querier interface {
 	CountAllWorkspacesFiltered(ctx context.Context, search pgtype.Text) (int64, error)
 	CountAttachments(ctx context.Context) (int64, error)
 	CountDeletedProjects(ctx context.Context) (int64, error)
+	CountEmailNotificationUsers(ctx context.Context) (int64, error)
 	CountNotifications(ctx context.Context, recipientID uuid.UUID) (int64, error)
 	CountPages(ctx context.Context) (int64, error)
 	CountProjectCycles(ctx context.Context, projectID uuid.UUID) (int64, error)

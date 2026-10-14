@@ -78,6 +78,7 @@ export interface AdminStats {
     subtasks: number;
     pages: number;
     users: number;
+    email_notification_users: number;
     attachments: number;
     attachments_bytes: number;
   };

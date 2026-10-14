@@ -169,6 +169,17 @@ func (q *Queries) CountAttachments(ctx context.Context) (int64, error) {
 	return count, err
 }
 
+const countEmailNotificationUsers = `-- name: CountEmailNotificationUsers :one
+SELECT COUNT(*) FROM users WHERE email_notifications
+`
+
+func (q *Queries) CountEmailNotificationUsers(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, countEmailNotificationUsers)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const countPages = `-- name: CountPages :one
 SELECT COUNT(*) FROM pages WHERE deleted_at IS NULL
 `

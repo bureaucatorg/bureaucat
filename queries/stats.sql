@@ -13,6 +13,9 @@ SELECT COUNT(*) FROM tasks WHERE deleted_at IS NULL AND parent_task_id IS NOT NU
 -- name: CountPages :one
 SELECT COUNT(*) FROM pages WHERE deleted_at IS NULL;
 
+-- name: CountEmailNotificationUsers :one
+SELECT COUNT(*) FROM users WHERE email_notifications;
+
 -- name: CountAttachments :one
 SELECT COUNT(*) FROM attachments;
 
