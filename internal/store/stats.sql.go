@@ -438,7 +438,11 @@ WHERE t.deleted_at IS NULL
   AND ($1::text IS NULL OR w.workspace_key = $1::text)
   AND (COALESCE(cardinality($2::text[]), 0) = 0 OR p.project_key = ANY($2::text[]))
   AND (COALESCE(cardinality($3::text[]), 0) = 0 OR ps.state_type::text = ANY($3::text[]))
-  AND (COALESCE(cardinality($4::text[]), 0) = 0 OR u.username = ANY($4::text[]))
+  AND (COALESCE(cardinality($4::text[]), 0) = 0
+       OR c.username = ANY($4::text[])
+       OR EXISTS (
+           SELECT 1 FROM task_assignees fa JOIN users fu ON fa.user_id = fu.id
+           WHERE fa.task_id = t.id AND fu.username = ANY($4::text[])))
   AND ($5::uuid IS NULL OR EXISTS (
       SELECT 1 FROM project_members vm WHERE vm.project_id = p.id AND vm.user_id = $5::uuid))
 ORDER BY p.project_key ASC, t.task_number ASC
@@ -481,6 +485,7 @@ type ListTaskAssignmentsForGraphRow struct {
 }
 
 // One row per (task, assignee); unassigned tasks come back once with NULL user columns.
+// The usernames filter keeps whole tasks the user created or is assigned to.
 func (q *Queries) ListTaskAssignmentsForGraph(ctx context.Context, arg ListTaskAssignmentsForGraphParams) ([]ListTaskAssignmentsForGraphRow, error) {
 	rows, err := q.db.Query(ctx, listTaskAssignmentsForGraph,
 		arg.WorkspaceKey,

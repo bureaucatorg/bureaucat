@@ -178,6 +178,7 @@ ORDER BY d ASC;
 
 -- name: ListTaskAssignmentsForGraph :many
 -- One row per (task, assignee); unassigned tasks come back once with NULL user columns.
+-- The usernames filter keeps whole tasks the user created or is assigned to.
 SELECT t.id AS task_id, t.task_number, t.title,
        (t.parent_task_id IS NOT NULL)::boolean AS is_subtask, t.parent_task_id,
        p.project_key, p.name AS project_name,
@@ -199,7 +200,11 @@ WHERE t.deleted_at IS NULL
   AND (sqlc.narg('workspace_key')::text IS NULL OR w.workspace_key = sqlc.narg('workspace_key')::text)
   AND (COALESCE(cardinality(sqlc.arg('project_keys')::text[]), 0) = 0 OR p.project_key = ANY(sqlc.arg('project_keys')::text[]))
   AND (COALESCE(cardinality(sqlc.arg('state_types')::text[]), 0) = 0 OR ps.state_type::text = ANY(sqlc.arg('state_types')::text[]))
-  AND (COALESCE(cardinality(sqlc.arg('usernames')::text[]), 0) = 0 OR u.username = ANY(sqlc.arg('usernames')::text[]))
+  AND (COALESCE(cardinality(sqlc.arg('usernames')::text[]), 0) = 0
+       OR c.username = ANY(sqlc.arg('usernames')::text[])
+       OR EXISTS (
+           SELECT 1 FROM task_assignees fa JOIN users fu ON fa.user_id = fu.id
+           WHERE fa.task_id = t.id AND fu.username = ANY(sqlc.arg('usernames')::text[])))
   AND (sqlc.narg('viewer_id')::uuid IS NULL OR EXISTS (
       SELECT 1 FROM project_members vm WHERE vm.project_id = p.id AND vm.user_id = sqlc.narg('viewer_id')::uuid))
 ORDER BY p.project_key ASC, t.task_number ASC;

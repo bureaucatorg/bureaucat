@@ -261,6 +261,7 @@ type Querier interface {
 	ListTaskActivity(ctx context.Context, taskID uuid.UUID) ([]ListTaskActivityRow, error)
 	ListTaskAssignees(ctx context.Context, taskID uuid.UUID) ([]ListTaskAssigneesRow, error)
 	// One row per (task, assignee); unassigned tasks come back once with NULL user columns.
+	// The usernames filter keeps whole tasks the user created or is assigned to.
 	ListTaskAssignmentsForGraph(ctx context.Context, arg ListTaskAssignmentsForGraphParams) ([]ListTaskAssignmentsForGraphRow, error)
 	// ==================== TASK BLOCKERS ====================
 	// Both sides of a task's blocker links: is_blocked_by is true when the row is a
