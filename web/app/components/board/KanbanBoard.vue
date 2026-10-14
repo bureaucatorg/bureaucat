@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Loader2 } from "lucide-vue-next";
+import { useElementBounding, useResizeObserver, useWindowSize } from "@vueuse/core";
 import type { Task, ProjectState, ProjectMember, ProjectLabel, ViewGroupBy } from "~/types";
 import { PRIORITY_LABELS, STATE_TYPE_COLORS } from "~/types";
 
@@ -316,10 +317,20 @@ async function handleDrop(task: Task, fromColumnId: string, toColumnId: string) 
     updating.value = false;
   }
 }
+
+// Size the board to the rest of the viewport so each lane scrolls instead of the page.
+const boardEl = ref<HTMLElement | null>(null);
+const { top, update } = useElementBounding(boardEl);
+const { height: viewportHeight } = useWindowSize();
+useResizeObserver(() => document.body, update);
+const BOTTOM_GAP = 32;
+const boardHeight = computed(() =>
+  Math.max(384, viewportHeight.value - (top.value + window.scrollY) - BOTTOM_GAP),
+);
 </script>
 
 <template>
-  <div class="relative">
+  <div ref="boardEl" class="relative" :style="{ height: `${boardHeight}px` }">
     <div
       v-if="updating"
       class="absolute inset-0 z-10 flex items-center justify-center bg-background/50"
@@ -327,7 +338,7 @@ async function handleDrop(task: Task, fromColumnId: string, toColumnId: string) 
       <Loader2 class="size-6 animate-spin" />
     </div>
 
-    <div class="flex gap-4 overflow-x-auto pb-4">
+    <div class="flex h-full gap-4 overflow-x-auto pb-4">
       <KanbanColumn
         v-for="column in columns"
         :key="column.id"

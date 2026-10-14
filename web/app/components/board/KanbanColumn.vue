@@ -63,7 +63,7 @@ function handleDragLeave() {
 
 <template>
   <div
-    class="flex min-w-56 flex-1 flex-col rounded-lg border bg-muted/30 transition-colors"
+    class="flex min-h-0 min-w-56 flex-1 flex-col rounded-lg border bg-muted/30 transition-colors"
     :class="{
       'border-primary border-2 bg-primary/5': isDragOver,
       'cursor-not-allowed': dropLocked,
@@ -77,7 +77,7 @@ function handleDragLeave() {
       <h3 class="truncate text-sm font-medium">{{ label }}</h3>
       <span class="ml-auto text-xs text-muted-foreground">{{ tasks.length }}</span>
     </div>
-    <div class="flex flex-1 flex-col gap-2 p-2">
+    <div class="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-2">
       <div
         v-if="tasks.length === 0"
         class="flex flex-1 items-center justify-center rounded-lg border border-dashed py-8 text-xs text-muted-foreground"
