@@ -146,7 +146,6 @@ type Querier interface {
 	GetModuleStateBreakdown(ctx context.Context, moduleID uuid.UUID) ([]GetModuleStateBreakdownRow, error)
 	GetNextPageNumber(ctx context.Context, projectID uuid.UUID) (int32, error)
 	GetNextTaskNumber(ctx context.Context, projectID uuid.UUID) (int32, error)
-	// ==================== NOTIFICATIONS ====================
 	// Most recent notification for a (recipient, task) pair still within the
 	// coalescing window. Used to merge new activity into an existing notification
 	// instead of creating a new one (max 1 notification per task per window).
@@ -292,6 +291,9 @@ type Querier interface {
 	ListUserWorkspacesFiltered(ctx context.Context, arg ListUserWorkspacesFilteredParams) ([]Workspace, error)
 	ListUsersPaginated(ctx context.Context, arg ListUsersPaginatedParams) ([]ListUsersPaginatedRow, error)
 	ListWorkspaceMembers(ctx context.Context, workspaceID uuid.UUID) ([]ListWorkspaceMembersRow, error)
+	// ==================== NOTIFICATIONS ====================
+	// Serializes find-or-create per (recipient, task) so concurrent activity can't create duplicate rows.
+	LockNotificationSlot(ctx context.Context, arg LockNotificationSlotParams) error
 	// Serializes blocker writes per project so concurrent adds can't form a cycle.
 	LockProjectBlockers(ctx context.Context, projectID uuid.UUID) error
 	MarkAllNotificationsRead(ctx context.Context, recipientID uuid.UUID) error

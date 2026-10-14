@@ -134,7 +134,7 @@ func New(devMode bool, dbURL string, authConfig AuthConfig, distFS fs.FS) (*Serv
 
 		// Initialize per-user in-app notifications service, then wire it into the
 		// activity service so every logged activity fans out to participants.
-		srv.notificationsService = notifications.NewService(srv.store)
+		srv.notificationsService = notifications.NewService(srv.store, srv.pool)
 		srv.notificationsHandler = handlers.NewNotificationHandler(srv.store)
 
 		workerCtx, stopWorkers := context.WithCancel(context.Background())

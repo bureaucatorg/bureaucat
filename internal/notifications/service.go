@@ -6,11 +6,14 @@ package notifications
 
 import (
 	"context"
+	"errors"
 	"log"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	"bereaucat/internal/store"
 )
@@ -22,12 +25,13 @@ const DefaultWindow = 15 * time.Minute
 // Service fans out task activity to per-user notification rows.
 type Service struct {
 	store  store.Querier
+	pool   *pgxpool.Pool
 	window time.Duration
 }
 
 // NewService creates a notifications service with the default 15-minute window.
-func NewService(s store.Querier) *Service {
-	return &Service{store: s, window: DefaultWindow}
+func NewService(s store.Querier, pool *pgxpool.Pool) *Service {
+	return &Service{store: s, pool: pool, window: DefaultWindow}
 }
 
 // EnqueueForActivity creates (or coalesces into) a notification for every
@@ -52,34 +56,49 @@ func (s *Service) EnqueueForActivity(ctx context.Context, taskID uuid.UUID, acti
 		if recipientID == actorID {
 			continue
 		}
-
-		open, err := s.store.GetOpenNotification(ctx, store.GetOpenNotificationParams{
-			RecipientID: recipientID,
-			TaskID:      taskID,
-			Cutoff:      cutoff,
-		})
-		if err == nil {
-			// An open notification exists within the window: merge into it.
-			if err := s.store.CoalesceNotification(ctx, store.CoalesceNotificationParams{
-				ID:           open.ID,
-				ActivityType: activityType,
-				ActorID:      actorID,
-				CommentID:    commentRef,
-			}); err != nil {
-				log.Printf("notifications: failed to coalesce notification %s: %v", open.ID, err)
-			}
-			continue
+		if err := s.upsertNotification(ctx, recipientID, taskID, activityType, actorID, commentRef, cutoff); err != nil {
+			log.Printf("notifications: failed to notify user %s on task %s: %v", recipientID, taskID, err)
 		}
+	}
+}
 
-		// No open notification (or lookup miss): create a fresh one.
-		if _, err := s.store.CreateNotification(ctx, store.CreateNotificationParams{
+// upsertNotification coalesces into the recipient's open notification for the task, or creates one.
+func (s *Service) upsertNotification(ctx context.Context, recipientID, taskID uuid.UUID, activityType string, actorID uuid.UUID, commentRef pgtype.UUID, cutoff pgtype.Timestamptz) error {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+	q := store.New(tx)
+
+	if err := q.LockNotificationSlot(ctx, store.LockNotificationSlotParams{RecipientID: recipientID, TaskID: taskID}); err != nil {
+		return err
+	}
+
+	open, err := q.GetOpenNotification(ctx, store.GetOpenNotificationParams{
+		RecipientID: recipientID,
+		TaskID:      taskID,
+		Cutoff:      cutoff,
+	})
+	switch {
+	case err == nil:
+		err = q.CoalesceNotification(ctx, store.CoalesceNotificationParams{
+			ID:           open.ID,
+			ActivityType: activityType,
+			ActorID:      actorID,
+			CommentID:    commentRef,
+		})
+	case errors.Is(err, pgx.ErrNoRows):
+		_, err = q.CreateNotification(ctx, store.CreateNotificationParams{
 			RecipientID:  recipientID,
 			TaskID:       taskID,
 			ActivityType: activityType,
 			ActorID:      actorID,
 			CommentID:    commentRef,
-		}); err != nil {
-			log.Printf("notifications: failed to create notification for user %s on task %s: %v", recipientID, taskID, err)
-		}
+		})
 	}
+	if err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
 }

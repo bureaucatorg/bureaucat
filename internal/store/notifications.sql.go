@@ -207,7 +207,6 @@ func (q *Queries) CreateNotification(ctx context.Context, arg CreateNotification
 }
 
 const getOpenNotification = `-- name: GetOpenNotification :one
-
 SELECT id, recipient_id, task_id, activity_type, actor_id, event_count, read_at, created_at, updated_at
 FROM notifications
 WHERE recipient_id = $1
@@ -235,7 +234,6 @@ type GetOpenNotificationRow struct {
 	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
 }
 
-// ==================== NOTIFICATIONS ====================
 // Most recent notification for a (recipient, task) pair still within the
 // coalescing window. Used to merge new activity into an existing notification
 // instead of creating a new one (max 1 notification per task per window).
@@ -404,6 +402,23 @@ func (q *Queries) ListNotifications(ctx context.Context, arg ListNotificationsPa
 		return nil, err
 	}
 	return items, nil
+}
+
+const lockNotificationSlot = `-- name: LockNotificationSlot :exec
+
+SELECT pg_advisory_xact_lock(hashtextextended('notifications:' || $1::uuid::text || ':' || $2::uuid::text, 0))
+`
+
+type LockNotificationSlotParams struct {
+	RecipientID uuid.UUID `json:"recipient_id"`
+	TaskID      uuid.UUID `json:"task_id"`
+}
+
+// ==================== NOTIFICATIONS ====================
+// Serializes find-or-create per (recipient, task) so concurrent activity can't create duplicate rows.
+func (q *Queries) LockNotificationSlot(ctx context.Context, arg LockNotificationSlotParams) error {
+	_, err := q.db.Exec(ctx, lockNotificationSlot, arg.RecipientID, arg.TaskID)
+	return err
 }
 
 const markAllNotificationsRead = `-- name: MarkAllNotificationsRead :exec

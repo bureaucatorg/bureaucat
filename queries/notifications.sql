@@ -1,5 +1,9 @@
 -- ==================== NOTIFICATIONS ====================
 
+-- name: LockNotificationSlot :exec
+-- Serializes find-or-create per (recipient, task) so concurrent activity can't create duplicate rows.
+SELECT pg_advisory_xact_lock(hashtextextended('notifications:' || sqlc.arg('recipient_id')::uuid::text || ':' || sqlc.arg('task_id')::uuid::text, 0));
+
 -- name: GetOpenNotification :one
 -- Most recent notification for a (recipient, task) pair still within the
 -- coalescing window. Used to merge new activity into an existing notification
