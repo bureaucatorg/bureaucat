@@ -138,7 +138,6 @@ var emailHTML = template.Must(template.New("email").Funcs(template.FuncMap{
 <tr><td height="1" bgcolor="#e4e4e7" style="font-size:0;line-height:0">&nbsp;</td></tr>
 <tr><td class="px" style="padding:16px 28px 20px;font-family:{{sans}};font-size:12px;line-height:18px;color:#71717a">
 {{.Note}}{{if .SettingsLink}} <a href="{{.SettingsLink}}" style="color:#71717a">Manage email notifications</a>{{end}}
-<br><span style="font-family:{{mono}};font-size:11px;line-height:24px;color:#a1a1aa">Bureaucracy that actually <span style="color:#d97706">moves</span>.</span>
 </td></tr>
 
 </table>
