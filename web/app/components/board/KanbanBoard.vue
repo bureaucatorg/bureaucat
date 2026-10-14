@@ -53,12 +53,14 @@ const columns = computed<BoardColumn[]>(() => {
         }));
 
     case "state":
-      return props.states.map((s) => ({
-        id: `state:${s.id}`,
-        label: s.name,
-        color: s.color || STATE_TYPE_COLORS[s.state_type] || "#6B7280",
-        tasks: props.tasks.filter((task) => task.state_id === s.id),
-      }));
+      return [...props.states]
+        .sort((a, b) => STATE_TYPE_ORDER.indexOf(a.state_type) - STATE_TYPE_ORDER.indexOf(b.state_type))
+        .map((s) => ({
+          id: `state:${s.id}`,
+          label: s.name,
+          color: s.color || STATE_TYPE_COLORS[s.state_type] || "#6B7280",
+          tasks: props.tasks.filter((task) => task.state_id === s.id),
+        }));
 
     case "priority": {
       const PRIORITY_ORDER = [4, 3, 2, 1, 0];
