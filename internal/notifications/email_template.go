@@ -97,7 +97,7 @@ var emailHTML = template.Must(template.New("email").Funcs(template.FuncMap{
 <tr><td class="px title" style="padding:4px 28px 0;font-family:{{sans}};font-size:22px;line-height:30px;color:#09090b"><b>{{.TaskTitle}}</b></td></tr>
 {{with .State}}<tr><td class="px" style="padding:10px 28px 0">
 <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
-<td bgcolor="#f4f4f5" style="padding:3px 10px;border-radius:9999px;font-family:{{sans}};font-size:12px;line-height:18px;color:#3f3f46"><span style="color:{{.Color}}">&#9679;</span>&nbsp;{{.Name}}</td>
+<td bgcolor="#f4f4f5" valign="middle" style="padding:2px 10px 4px;border-radius:9999px;font-family:{{sans}};font-size:12px;line-height:18px;color:#3f3f46"><span style="color:{{.Color}}">&#9679;</span>&nbsp;{{.Name}}</td>
 </tr></table>
 </td></tr>{{end}}
 
@@ -113,14 +113,14 @@ var emailHTML = template.Must(template.New("email").Funcs(template.FuncMap{
 </tr></table>
 </td>
 <td valign="middle" style="padding-left:10px;font-family:{{sans}};font-size:14px;line-height:20px;color:#52525b">
-<b style="color:#09090b">{{.Actor}}</b> {{.Verb}}{{if .Target}} <b style="color:#09090b">{{.Target}}</b>{{end}}{{with .Label}} <span style="padding:2px 8px;border-radius:9999px;background-color:#f4f4f5;font-size:12px;color:#3f3f46"><span style="color:{{.Color}}">&#9679;</span>&nbsp;{{.Name}}</span>{{end}}
+<b style="color:#09090b">{{.Actor}}</b> {{.Verb}}{{if .Target}} <b style="color:#09090b">{{.Target}}</b>{{end}}{{with .Label}} <span style="padding:1px 8px 3px;border-radius:9999px;background-color:#f4f4f5;font-size:12px;color:#3f3f46"><span style="color:{{.Color}}">&#9679;</span>&nbsp;{{.Name}}</span>{{end}}
 </td>
 </tr>
 {{if .To}}<tr><td colspan="2" style="padding-top:8px">
 <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
-<td bgcolor="#f4f4f5" style="padding:3px 10px;border-radius:9999px;font-family:{{sans}};font-size:12px;line-height:18px;color:#71717a"><span style="color:{{.From.Color}}">&#9679;</span>&nbsp;{{.From.Name}}</td>
-<td style="padding:0 8px;font-family:{{sans}};font-size:14px;line-height:18px;color:#a1a1aa">&rarr;</td>
-<td bgcolor="#09090b" style="padding:3px 10px;border-radius:9999px;font-family:{{sans}};font-size:12px;line-height:18px;color:#fafafa"><span style="color:{{.To.Color}}">&#9679;</span>&nbsp;{{.To.Name}}</td>
+<td bgcolor="#f4f4f5" valign="middle" style="padding:2px 10px 4px;border-radius:9999px;font-family:{{sans}};font-size:12px;line-height:18px;color:#71717a"><span style="color:{{.From.Color}}">&#9679;</span>&nbsp;{{.From.Name}}</td>
+<td valign="middle" style="padding:0 8px 6px;font-family:{{sans}};font-size:14px;line-height:12px;color:#a1a1aa">&rarr;</td>
+<td bgcolor="#f4f4f5" valign="middle" style="padding:2px 10px 4px;border-radius:9999px;font-family:{{sans}};font-size:12px;line-height:18px;color:#09090b"><span style="color:{{.To.Color}}">&#9679;</span>&nbsp;{{.To.Name}}</td>
 </tr></table>
 </td></tr>{{end}}
 {{if .Quote}}<tr><td colspan="2" style="padding-top:8px">
