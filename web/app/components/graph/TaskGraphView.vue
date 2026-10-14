@@ -84,7 +84,6 @@ function listParam(name: string): string[] {
 const selectedProjects = computed(() => listParam("projects"));
 const selectedStateTypes = computed(() => listParam("state_types"));
 const selectedUsers = computed(() => listParam("users"));
-const selectedLines = computed(() => listParam("lines"));
 
 const LINE_OPTIONS = [
   { id: "creator", label: "Creator — task", color: "var(--graph-creator)" },
@@ -94,12 +93,13 @@ const LINE_OPTIONS = [
 ] as const;
 type LineKind = (typeof LINE_OPTIONS)[number]["id"];
 
-const visibleLines = computed(
-  () => new Set<string>(selectedLines.value.length ? selectedLines.value : LINE_OPTIONS.map((l) => l.id)),
-);
+const ALL_LINES = LINE_OPTIONS.map((l) => l.id as string);
+const selectedLines = computed(() => (route.query.lines === undefined ? ALL_LINES : listParam("lines")));
+const visibleLines = computed(() => new Set<string>(selectedLines.value));
 const linesLabel = computed(() => {
   const count = selectedLines.value.length;
-  if (count === 0) return "All lines";
+  if (count === ALL_LINES.length) return "All lines";
+  if (count === 0) return "No lines";
   if (count === 1) return LINE_OPTIONS.find((l) => l.id === selectedLines.value[0])?.label ?? "1 line type";
   return `${count} line types`;
 });
@@ -127,7 +127,7 @@ function updateQuery(patch: {
   // An empty value means "all"; a missing one triggers the default redirect.
   if (patch.stateTypes) query.state_types = patch.stateTypes.join(",");
   if (patch.users) query.users = patch.users.join(",");
-  if (patch.lines) query.lines = patch.lines.length ? patch.lines.join(",") : undefined;
+  if (patch.lines) query.lines = patch.lines.length === ALL_LINES.length ? undefined : patch.lines.join(",");
   router.replace({ query });
 }
 
@@ -657,13 +657,15 @@ function onNodeDoubleClick({ node }: NodeMouseEvent) {
           </PopoverTrigger>
           <PopoverContent align="start" class="w-64 p-0">
             <Command>
+              <CommandInput placeholder="Search lines..." />
               <CommandList>
+                <CommandEmpty>No line type found.</CommandEmpty>
                 <CommandGroup>
                   <CommandItem
-                    v-if="selectedLines.length"
-                    value="clear-lines"
+                    v-if="selectedLines.length < ALL_LINES.length"
+                    value="show-all-lines"
                     class="text-muted-foreground"
-                    @select="updateQuery({ lines: [] })"
+                    @select="updateQuery({ lines: ALL_LINES })"
                   >
                     Show all lines
                   </CommandItem>
