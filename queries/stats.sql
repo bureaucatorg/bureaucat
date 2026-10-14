@@ -183,11 +183,14 @@ SELECT t.id AS task_id, t.task_number, t.title,
        p.project_key, p.name AS project_name,
        w.id AS workspace_id, w.workspace_key, w.name AS workspace_name,
        ps.name AS state_name, ps.state_type, ps.color AS state_color,
-       u.id AS user_id, u.username, u.email, u.first_name, u.last_name, u.avatar_url
+       u.id AS user_id, u.username, u.email, u.first_name, u.last_name, u.avatar_url,
+       c.id AS creator_id, c.username AS creator_username, c.email AS creator_email,
+       c.first_name AS creator_first_name, c.last_name AS creator_last_name, c.avatar_url AS creator_avatar_url
 FROM tasks t
 JOIN projects p ON t.project_id = p.id
 JOIN workspaces w ON p.workspace_id = w.id
 JOIN project_states ps ON t.state_id = ps.id
+JOIN users c ON t.created_by = c.id
 LEFT JOIN task_assignees ta ON ta.task_id = t.id
 LEFT JOIN users u ON ta.user_id = u.id
 WHERE t.deleted_at IS NULL

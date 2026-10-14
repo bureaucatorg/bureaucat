@@ -886,6 +886,7 @@ type GraphTask struct {
 	StateName     string     `json:"state_name"`
 	StateType     string     `json:"state_type"`
 	StateColor    *string    `json:"state_color,omitempty"`
+	CreatorID     string     `json:"creator_id"`
 }
 
 // GraphEdge links a user to a task they are assigned to.
@@ -1095,6 +1096,18 @@ func (h *AdminHandler) taskGraph(c *echo.Context, viewer pgtype.UUID) error {
 		if !seenTasks[taskID] {
 			seenTasks[taskID] = true
 			taskIDs = append(taskIDs, r.TaskID)
+			creatorID := r.CreatorID.String()
+			if !seenUsers[creatorID] {
+				seenUsers[creatorID] = true
+				resp.Users = append(resp.Users, GraphUser{
+					ID:        creatorID,
+					Username:  r.CreatorUsername,
+					Email:     r.CreatorEmail,
+					FirstName: r.CreatorFirstName,
+					LastName:  r.CreatorLastName,
+					AvatarURL: textToStringPtr(r.CreatorAvatarUrl),
+				})
+			}
 			resp.Tasks = append(resp.Tasks, GraphTask{
 				ID:            taskID,
 				ProjectKey:    r.ProjectKey,
@@ -1109,6 +1122,7 @@ func (h *AdminHandler) taskGraph(c *echo.Context, viewer pgtype.UUID) error {
 				StateName:     r.StateName,
 				StateType:     r.StateType,
 				StateColor:    textToStringPtr(r.StateColor),
+				CreatorID:     creatorID,
 			})
 		}
 

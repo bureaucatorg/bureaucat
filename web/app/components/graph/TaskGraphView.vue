@@ -223,11 +223,14 @@ const usersLabel = computed(() => {
 const filtered = computed(() => {
   const tasks = graph.value?.tasks ?? [];
   const edges = graph.value?.edges ?? [];
+  const creatorEdges = tasks.map((t) => ({ user_id: t.creator_id, task_id: t.id }));
   const taskCounts = new Map<string, number>();
   for (const e of edges) taskCounts.set(e.user_id, (taskCounts.get(e.user_id) ?? 0) + 1);
+  const createdCounts = new Map<string, number>();
+  for (const e of creatorEdges) createdCounts.set(e.user_id, (createdCounts.get(e.user_id) ?? 0) + 1);
   const users = (graph.value?.users ?? [])
-    .filter((u) => taskCounts.has(u.id))
-    .map((u) => ({ ...u, task_count: taskCounts.get(u.id)! }));
+    .filter((u) => taskCounts.has(u.id) || createdCounts.has(u.id))
+    .map((u) => ({ ...u, task_count: taskCounts.get(u.id) ?? 0, created_count: createdCounts.get(u.id) ?? 0 }));
   const taskIds = new Set(tasks.map((t) => t.id));
   const subtaskEdges = tasks
     .filter((t) => t.parent_id && taskIds.has(t.parent_id))
@@ -237,14 +240,14 @@ const filtered = computed(() => {
   );
   const assignedIds = new Set(edges.map((e) => e.task_id));
   const unassignedCount = tasks.filter((t) => !assignedIds.has(t.id)).length;
-  return { users, tasks, edges, subtaskEdges, blockerEdges, unassignedCount };
+  return { users, tasks, edges, creatorEdges, subtaskEdges, blockerEdges, unassignedCount };
 });
 
 const flow = computed(() => {
-  const { users, tasks, edges, subtaskEdges, blockerEdges } = filtered.value;
+  const { users, tasks, edges, creatorEdges, subtaskEdges, blockerEdges } = filtered.value;
 
   const tasksByUser = new Map<string, string[]>();
-  for (const e of edges) {
+  for (const e of [...edges, ...creatorEdges]) {
     const list = tasksByUser.get(e.user_id) ?? [];
     list.push(e.task_id);
     tasksByUser.set(e.user_id, list);
@@ -267,6 +270,7 @@ const flow = computed(() => {
 
   const positions = forceLayout(order, [
     ...edges.map((e): [string, string] => [`u:${e.user_id}`, `t:${e.task_id}`]),
+    ...creatorEdges.map((e): [string, string] => [`u:${e.user_id}`, `t:${e.task_id}`]),
     ...subtaskEdges.map((e): [string, string] => [`t:${e.parent_id}`, `t:${e.child_id}`]),
     ...blockerEdges.map((e): [string, string] => [`t:${e.blocker_id}`, `t:${e.blocked_id}`]),
   ]);
@@ -275,13 +279,26 @@ const flow = computed(() => {
     ...users.map((u) => ({ id: `u:${u.id}`, type: "user", position: positions.get(`u:${u.id}`)!, data: u })),
     ...tasks.map((t) => ({ id: `t:${t.id}`, type: "task", position: positions.get(`t:${t.id}`)!, data: t })),
   ];
+  // Arrows sit at 70% so a creator→task and task→assignee pair on the same user don't overlap.
   const flowEdges: Edge[] = edges.map((e) => ({
     id: `${e.user_id}:${e.task_id}`,
-    source: `u:${e.user_id}`,
-    target: `t:${e.task_id}`,
-    type: "straight",
+    source: `t:${e.task_id}`,
+    target: `u:${e.user_id}`,
+    type: "directed",
+    data: { color: "var(--muted-foreground)", position: 0.7 },
     style: { stroke: "var(--muted-foreground)", strokeOpacity: 0.4 },
   }));
+  for (const e of creatorEdges) {
+    flowEdges.push({
+      id: `c:${e.user_id}:${e.task_id}`,
+      source: `u:${e.user_id}`,
+      target: `t:${e.task_id}`,
+      type: "directed",
+      class: "creator",
+      data: { color: "var(--graph-creator)", position: 0.7 },
+      style: { stroke: "var(--graph-creator)", strokeOpacity: 0.6 },
+    });
+  }
   for (const e of subtaskEdges) {
     flowEdges.push({
       id: `s:${e.parent_id}:${e.child_id}`,
@@ -315,6 +332,7 @@ const sortedUsers = computed(() =>
 );
 
 function edgeClass(id: string) {
+  if (id.startsWith("c:")) return "creator";
   if (id.startsWith("s:")) return "subtask";
   if (id.startsWith("b:")) return "blocker";
   return undefined;
@@ -341,6 +359,11 @@ function setHighlight(nodeId: string | null) {
     if ((isUser ? e.user_id : e.task_id) !== id) continue;
     highlightedIds.nodes.push(isUser ? `t:${e.task_id}` : `u:${e.user_id}`);
     highlightedIds.edges.push(`${e.user_id}:${e.task_id}`);
+  }
+  for (const e of filtered.value.creatorEdges) {
+    if ((isUser ? e.user_id : e.task_id) !== id) continue;
+    highlightedIds.nodes.push(isUser ? `t:${e.task_id}` : `u:${e.user_id}`);
+    highlightedIds.edges.push(`c:${e.user_id}:${e.task_id}`);
   }
   if (!isUser) {
     for (const e of filtered.value.subtaskEdges) {
@@ -631,9 +654,17 @@ function onNodeDoubleClick({ node }: NodeMouseEvent) {
           <div class="space-y-1 rounded-md border bg-background/90 px-3 py-2 text-xs text-muted-foreground shadow-sm backdrop-blur">
             <div class="flex items-center gap-2">
               <svg width="28" height="8" aria-hidden="true">
-                <line x1="0" y1="4" x2="28" y2="4" style="stroke: var(--muted-foreground)" stroke-width="2" />
+                <line x1="0" y1="4" x2="28" y2="4" style="stroke: var(--graph-creator)" stroke-width="2" />
+                <path d="M10 0 L18 4 L10 8 Z" style="fill: var(--graph-creator)" />
               </svg>
-              User → assigned task
+              Creator → task
+            </div>
+            <div class="flex items-center gap-2">
+              <svg width="28" height="8" aria-hidden="true">
+                <line x1="0" y1="4" x2="28" y2="4" style="stroke: var(--muted-foreground)" stroke-width="2" />
+                <path d="M10 0 L18 4 L10 8 Z" style="fill: var(--muted-foreground)" />
+              </svg>
+              Task → assignee
             </div>
             <div class="flex items-center gap-2">
               <svg width="28" height="8" aria-hidden="true">
@@ -703,6 +734,7 @@ function onNodeDoubleClick({ node }: NodeMouseEvent) {
 <style>
 :root {
   --graph-subtask: #eab308;
+  --graph-creator: #3b82f6;
 }
 
 .vue-flow__controls-button {
@@ -737,6 +769,12 @@ function onNodeDoubleClick({ node }: NodeMouseEvent) {
   stroke: var(--foreground) !important;
   stroke-opacity: 0.35 !important;
   stroke-width: 1.25;
+}
+
+.vue-flow__edge.creator.highlighted path.vue-flow__edge-path {
+  stroke: var(--graph-creator) !important;
+  stroke-opacity: 1 !important;
+  stroke-width: 2;
 }
 
 .vue-flow__edge.subtask.highlighted path.vue-flow__edge-path {

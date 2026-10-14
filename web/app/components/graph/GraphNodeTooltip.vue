@@ -40,7 +40,7 @@ defineProps<{
         </p>
         <p class="flex items-center gap-2">
           <ListTodo class="size-3.5 shrink-0" />
-          {{ node.data.task_count }} {{ node.data.task_count === 1 ? "task" : "tasks" }} in view
+          {{ node.data.task_count }} assigned · {{ node.data.created_count }} created in view
         </p>
       </div>
       <p class="border-t px-3 py-2 text-[11px] text-muted-foreground">

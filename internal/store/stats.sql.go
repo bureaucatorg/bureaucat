@@ -422,11 +422,14 @@ SELECT t.id AS task_id, t.task_number, t.title,
        p.project_key, p.name AS project_name,
        w.id AS workspace_id, w.workspace_key, w.name AS workspace_name,
        ps.name AS state_name, ps.state_type, ps.color AS state_color,
-       u.id AS user_id, u.username, u.email, u.first_name, u.last_name, u.avatar_url
+       u.id AS user_id, u.username, u.email, u.first_name, u.last_name, u.avatar_url,
+       c.id AS creator_id, c.username AS creator_username, c.email AS creator_email,
+       c.first_name AS creator_first_name, c.last_name AS creator_last_name, c.avatar_url AS creator_avatar_url
 FROM tasks t
 JOIN projects p ON t.project_id = p.id
 JOIN workspaces w ON p.workspace_id = w.id
 JOIN project_states ps ON t.state_id = ps.id
+JOIN users c ON t.created_by = c.id
 LEFT JOIN task_assignees ta ON ta.task_id = t.id
 LEFT JOIN users u ON ta.user_id = u.id
 WHERE t.deleted_at IS NULL
@@ -450,25 +453,31 @@ type ListTaskAssignmentsForGraphParams struct {
 }
 
 type ListTaskAssignmentsForGraphRow struct {
-	TaskID        uuid.UUID   `json:"task_id"`
-	TaskNumber    int32       `json:"task_number"`
-	Title         string      `json:"title"`
-	IsSubtask     bool        `json:"is_subtask"`
-	ParentTaskID  pgtype.UUID `json:"parent_task_id"`
-	ProjectKey    string      `json:"project_key"`
-	ProjectName   string      `json:"project_name"`
-	WorkspaceID   uuid.UUID   `json:"workspace_id"`
-	WorkspaceKey  string      `json:"workspace_key"`
-	WorkspaceName string      `json:"workspace_name"`
-	StateName     string      `json:"state_name"`
-	StateType     string      `json:"state_type"`
-	StateColor    pgtype.Text `json:"state_color"`
-	UserID        pgtype.UUID `json:"user_id"`
-	Username      pgtype.Text `json:"username"`
-	Email         pgtype.Text `json:"email"`
-	FirstName     pgtype.Text `json:"first_name"`
-	LastName      pgtype.Text `json:"last_name"`
-	AvatarUrl     pgtype.Text `json:"avatar_url"`
+	TaskID           uuid.UUID   `json:"task_id"`
+	TaskNumber       int32       `json:"task_number"`
+	Title            string      `json:"title"`
+	IsSubtask        bool        `json:"is_subtask"`
+	ParentTaskID     pgtype.UUID `json:"parent_task_id"`
+	ProjectKey       string      `json:"project_key"`
+	ProjectName      string      `json:"project_name"`
+	WorkspaceID      uuid.UUID   `json:"workspace_id"`
+	WorkspaceKey     string      `json:"workspace_key"`
+	WorkspaceName    string      `json:"workspace_name"`
+	StateName        string      `json:"state_name"`
+	StateType        string      `json:"state_type"`
+	StateColor       pgtype.Text `json:"state_color"`
+	UserID           pgtype.UUID `json:"user_id"`
+	Username         pgtype.Text `json:"username"`
+	Email            pgtype.Text `json:"email"`
+	FirstName        pgtype.Text `json:"first_name"`
+	LastName         pgtype.Text `json:"last_name"`
+	AvatarUrl        pgtype.Text `json:"avatar_url"`
+	CreatorID        uuid.UUID   `json:"creator_id"`
+	CreatorUsername  string      `json:"creator_username"`
+	CreatorEmail     string      `json:"creator_email"`
+	CreatorFirstName string      `json:"creator_first_name"`
+	CreatorLastName  string      `json:"creator_last_name"`
+	CreatorAvatarUrl pgtype.Text `json:"creator_avatar_url"`
 }
 
 // One row per (task, assignee); unassigned tasks come back once with NULL user columns.
@@ -507,6 +516,12 @@ func (q *Queries) ListTaskAssignmentsForGraph(ctx context.Context, arg ListTaskA
 			&i.FirstName,
 			&i.LastName,
 			&i.AvatarUrl,
+			&i.CreatorID,
+			&i.CreatorUsername,
+			&i.CreatorEmail,
+			&i.CreatorFirstName,
+			&i.CreatorLastName,
+			&i.CreatorAvatarUrl,
 		); err != nil {
 			return nil, err
 		}

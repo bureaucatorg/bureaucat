@@ -21,6 +21,7 @@ export interface GraphTask {
   state_name: string;
   state_type: string;
   state_color?: string;
+  creator_id: string;
 }
 
 export interface GraphEdge {
@@ -47,7 +48,7 @@ export interface TaskGraphFilterOptions {
 }
 
 export type HoveredGraphNode =
-  | { type: "user"; data: GraphUser & { task_count: number } }
+  | { type: "user"; data: GraphUser & { task_count: number; created_count: number } }
   | { type: "task"; data: GraphTask };
 
 export interface TaskGraphFilters {
