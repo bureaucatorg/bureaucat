@@ -50,6 +50,8 @@ type Querier interface {
 	// update the latest actor/type/comment, and re-surface as unread.
 	CoalesceNotification(ctx context.Context, arg CoalesceNotificationParams) error
 	CommentsCreatedPerDay(ctx context.Context, arg CommentsCreatedPerDayParams) ([]CommentsCreatedPerDayRow, error)
+	// Only links where neither task is deleted, completed or cancelled.
+	CountActiveBlockerLinks(ctx context.Context) (CountActiveBlockerLinksRow, error)
 	CountActiveRefreshTokens(ctx context.Context) (int64, error)
 	CountAllProjects(ctx context.Context) (int64, error)
 	CountAllProjectsFiltered(ctx context.Context, arg CountAllProjectsFilteredParams) (int64, error)

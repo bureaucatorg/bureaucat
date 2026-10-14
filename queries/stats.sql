@@ -16,6 +16,16 @@ SELECT COUNT(*) FROM pages WHERE deleted_at IS NULL;
 -- name: CountEmailNotificationUsers :one
 SELECT COUNT(*) FROM users WHERE email_notifications;
 
+-- name: CountActiveBlockerLinks :one
+-- Only links where neither task is deleted, completed or cancelled.
+SELECT COUNT(DISTINCT tb.task_id)::bigint AS blocked_tasks,
+       COUNT(DISTINCT tb.blocker_task_id)::bigint AS blocking_tasks
+FROM task_blockers tb
+JOIN tasks bt ON bt.id = tb.task_id AND bt.deleted_at IS NULL
+JOIN project_states bs ON bs.id = bt.state_id AND bs.state_type NOT IN ('completed', 'cancelled')
+JOIN tasks kt ON kt.id = tb.blocker_task_id AND kt.deleted_at IS NULL
+JOIN project_states ks ON ks.id = kt.state_id AND ks.state_type NOT IN ('completed', 'cancelled');
+
 -- name: CountAttachments :one
 SELECT COUNT(*) FROM attachments;
 

@@ -79,6 +79,8 @@ export interface AdminStats {
     pages: number;
     users: number;
     email_notification_users: number;
+    blocked_tasks: number;
+    blocking_tasks: number;
     attachments: number;
     attachments_bytes: number;
   };

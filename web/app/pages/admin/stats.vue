@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { BarChart3, Loader2, Users, LayoutGrid, ListTodo, GitBranch, FileText, Building2, Paperclip, HardDrive, Mail, Calendar as CalendarIcon, ChevronDown } from "lucide-vue-next";
+import { BarChart3, Loader2, Users, LayoutGrid, ListTodo, GitBranch, FileText, Building2, Paperclip, HardDrive, Mail, Ban, Link2, Calendar as CalendarIcon, ChevronDown } from "lucide-vue-next";
 import { toast } from "vue-sonner";
 import { type DateValue, today, getLocalTimeZone } from "@internationalized/date";
 import { VisAxis, VisXYContainer, VisGroupedBar } from "@unovis/vue";
@@ -102,13 +102,15 @@ const totalCards = computed(() => {
     { label: "Projects", value: t.projects.toLocaleString(), icon: LayoutGrid, color: "text-blue-400" },
     { label: "Tasks", value: t.tasks.toLocaleString(), icon: ListTodo, color: "text-emerald-400" },
     { label: "Subtasks", value: t.subtasks.toLocaleString(), icon: GitBranch, color: "text-teal-400" },
+    { label: "Blocked tasks", value: t.blocked_tasks.toLocaleString(), icon: Ban, color: "text-red-400" },
+    { label: "Blocking tasks", value: t.blocking_tasks.toLocaleString(), icon: Link2, color: "text-orange-400" },
     { label: "Pages", value: t.pages.toLocaleString(), icon: FileText, color: "text-amber-400" },
     { label: "Users", value: t.users.toLocaleString(), icon: Users, color: "text-rose-400" },
     {
       label: "Email notifications on",
       value: `${t.email_notification_users.toLocaleString()} / ${t.users.toLocaleString()}`,
       icon: Mail,
-      color: "text-orange-400",
+      color: "text-indigo-400",
     },
     { label: "Attachments", value: t.attachments.toLocaleString(), icon: Paperclip, color: "text-cyan-400" },
     { label: "Attachments size", value: formatBytes(t.attachments_bytes), icon: HardDrive, color: "text-sky-400" },
