@@ -32,6 +32,8 @@ var activityLabels = map[string]string{
 	"comment_created":  "added a comment",
 	"comment_updated":  "edited a comment",
 	"comment_deleted":  "deleted a comment",
+	"blocker_added":    "linked a blocker",
+	"blocker_removed":  "unlinked a blocker",
 }
 
 // Mirrors PRIORITY_LABELS in web/app/types/task.ts.
@@ -300,7 +302,7 @@ func SampleEmail(cfg mailer.Settings, to, activityType, actorFirstName, actorLas
 	types := []string{activityType}
 	if activityType == "batched" {
 		types = []string{"comment_created", "label_added", "state_changed"}
-	} else if _, ok := activityLabels[activityType]; !ok {
+	} else if _, ok := activityLabels[activityType]; !ok && activityType != "description_updated" {
 		return mailer.Message{}, fmt.Errorf("unknown activity type %q", activityType)
 	}
 
@@ -346,6 +348,10 @@ func sampleActivity(activityType, firstName, lastName string) store.ListEmailAct
 	case "task_updated":
 		a.FieldName = pgtype.Text{String: "priority", Valid: true}
 		a.NewValue = []byte(`3`)
+	case "description_updated":
+		a.ActivityType = "task_updated"
+		a.FieldName = pgtype.Text{String: "description", Valid: true}
+		a.NewValue = []byte(`"<p>Requesting access to port <strong>6379</strong> on the staging cache from the UAT cluster.</p><p></p><p>Reason: testing the new transfer flow internally.</p><ul><li><p>source: <code>10.0.0.10</code></p></li><li><p>target: <code>10.0.0.20</code></p></li></ul>"`)
 	}
 	return a
 }

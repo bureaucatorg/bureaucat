@@ -298,6 +298,7 @@ const testEmailTemplates = [
       value,
       label: `Notification: ${label}`,
     })),
+  { value: "description_updated", label: "Notification: updated the description" },
   { value: "batched", label: "Notification: several updates batched" },
 ];
 
