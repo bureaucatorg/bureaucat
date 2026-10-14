@@ -489,7 +489,7 @@ onMounted(async () => {
   <div class="flex min-h-screen flex-col">
     <Navbar />
 
-    <main id="main-content" class="flex-1">
+    <main id="main-content" class="flex-1 overflow-x-clip">
       <div class="mx-auto max-w-6xl px-6 py-8">
         <div v-if="loading" class="flex items-center justify-center py-20">
           <Loader2 class="size-8 animate-spin text-muted-foreground" />
@@ -758,7 +758,7 @@ onMounted(async () => {
             </TabsContent>
 
             <!-- Board Tab -->
-            <TabsContent value="board" class="-mx-32 mt-6 px-2">
+            <TabsContent value="board" class="mx-[calc(50%-50vw)] mt-6 px-4">
               <KanbanBoard
                 :tasks="tasks"
                 :states="states"
