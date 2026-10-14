@@ -30,6 +30,7 @@ const appliedKey = ref<string | null>(null);
 const workspaceOpen = ref(false);
 const projectsOpen = ref(false);
 const stateTypesOpen = ref(false);
+const linesOpen = ref(false);
 const usersOpen = ref(false);
 const userSearchOpen = ref(false);
 const taskSearchOpen = ref(false);
@@ -83,6 +84,25 @@ function listParam(name: string): string[] {
 const selectedProjects = computed(() => listParam("projects"));
 const selectedStateTypes = computed(() => listParam("state_types"));
 const selectedUsers = computed(() => listParam("users"));
+const selectedLines = computed(() => listParam("lines"));
+
+const LINE_OPTIONS = [
+  { id: "creator", label: "Creator — task", color: "var(--graph-creator)" },
+  { id: "assignee", label: "Assignee — task", color: "var(--muted-foreground)" },
+  { id: "subtask", label: "Parent → subtask", color: "var(--graph-subtask)" },
+  { id: "blocker", label: "Blocker → blocked task", color: "var(--destructive)" },
+] as const;
+type LineKind = (typeof LINE_OPTIONS)[number]["id"];
+
+const visibleLines = computed(
+  () => new Set<string>(selectedLines.value.length ? selectedLines.value : LINE_OPTIONS.map((l) => l.id)),
+);
+const linesLabel = computed(() => {
+  const count = selectedLines.value.length;
+  if (count === 0) return "All lines";
+  if (count === 1) return LINE_OPTIONS.find((l) => l.id === selectedLines.value[0])?.label ?? "1 line type";
+  return `${count} line types`;
+});
 
 const filtersKey = computed(() =>
   JSON.stringify([
@@ -94,13 +114,20 @@ const filtersKey = computed(() =>
 );
 const canRun = computed(() => !loading.value && (!graph.value || filtersKey.value !== appliedKey.value));
 
-function updateQuery(patch: { workspace?: string; projects?: string[]; stateTypes?: string[]; users?: string[] }) {
+function updateQuery(patch: {
+  workspace?: string;
+  projects?: string[];
+  stateTypes?: string[];
+  users?: string[];
+  lines?: string[];
+}) {
   const query: LocationQueryRaw = { ...route.query };
   if (patch.workspace !== undefined) query.workspace = patch.workspace || undefined;
   if (patch.projects) query.projects = patch.projects.length ? patch.projects.join(",") : undefined;
   // An empty value means "all"; a missing one triggers the default redirect.
   if (patch.stateTypes) query.state_types = patch.stateTypes.join(",");
   if (patch.users) query.users = patch.users.join(",");
+  if (patch.lines) query.lines = patch.lines.length ? patch.lines.join(",") : undefined;
   router.replace({ query });
 }
 
@@ -279,13 +306,11 @@ const flow = computed(() => {
     ...users.map((u) => ({ id: `u:${u.id}`, type: "user", position: positions.get(`u:${u.id}`)!, data: u })),
     ...tasks.map((t) => ({ id: `t:${t.id}`, type: "task", position: positions.get(`t:${t.id}`)!, data: t })),
   ];
-  // Arrows sit at 70% so a creator→task and task→assignee pair on the same user don't overlap.
   const flowEdges: Edge[] = edges.map((e) => ({
     id: `${e.user_id}:${e.task_id}`,
-    source: `t:${e.task_id}`,
-    target: `u:${e.user_id}`,
-    type: "directed",
-    data: { color: "var(--muted-foreground)", position: 0.7 },
+    source: `u:${e.user_id}`,
+    target: `t:${e.task_id}`,
+    type: "straight",
     style: { stroke: "var(--muted-foreground)", strokeOpacity: 0.4 },
   }));
   for (const e of creatorEdges) {
@@ -293,9 +318,8 @@ const flow = computed(() => {
       id: `c:${e.user_id}:${e.task_id}`,
       source: `u:${e.user_id}`,
       target: `t:${e.task_id}`,
-      type: "directed",
+      type: "straight",
       class: "creator",
-      data: { color: "var(--graph-creator)", position: 0.7 },
       style: { stroke: "var(--graph-creator)", strokeOpacity: 0.6 },
     });
   }
@@ -325,8 +349,48 @@ const flow = computed(() => {
   return { nodes, edges: flowEdges };
 });
 
+// Users whose every line is hidden are hidden too; positions stay put so toggling doesn't relayout.
+const visibleUserIds = computed(() => {
+  const ids = new Set<string>();
+  if (visibleLines.value.has("assignee")) for (const e of filtered.value.edges) ids.add(e.user_id);
+  if (visibleLines.value.has("creator")) for (const e of filtered.value.creatorEdges) ids.add(e.user_id);
+  return ids;
+});
+
+function lineKind(edgeId: string): LineKind {
+  if (edgeId.startsWith("c:")) return "creator";
+  if (edgeId.startsWith("s:")) return "subtask";
+  if (edgeId.startsWith("b:")) return "blocker";
+  return "assignee";
+}
+
+function applyLineVisibility() {
+  for (const e of flow.value.edges) {
+    const edge = findEdge(e.id);
+    if (edge) edge.hidden = !visibleLines.value.has(lineKind(e.id));
+  }
+  for (const u of filtered.value.users) {
+    const node = findNode(`u:${u.id}`);
+    if (node) node.hidden = !visibleUserIds.value.has(u.id);
+  }
+}
+
+watch(() => selectedLines.value.join(","), () => {
+  if (highlightedNode.value?.startsWith("u:") && !visibleUserIds.value.has(highlightedNode.value.slice(2))) {
+    setHighlight(null);
+  } else if (highlightedNode.value) {
+    setHighlight(highlightedNode.value);
+  }
+  applyLineVisibility();
+});
+
+function onNodesInitialized() {
+  applyLineVisibility();
+  fitView();
+}
+
 const sortedUsers = computed(() =>
-  [...filtered.value.users].sort((a, b) =>
+  [...filtered.value.users].filter((u) => visibleUserIds.value.has(u.id)).sort((a, b) =>
     `${a.first_name} ${a.last_name}`.localeCompare(`${b.first_name} ${b.last_name}`),
   ),
 );
@@ -355,23 +419,24 @@ function setHighlight(nodeId: string | null) {
   const isUser = nodeId.startsWith("u:");
   const id = nodeId.slice(2);
   highlightedIds.nodes.push(nodeId);
-  for (const e of filtered.value.edges) {
+  const lines = visibleLines.value;
+  for (const e of lines.has("assignee") ? filtered.value.edges : []) {
     if ((isUser ? e.user_id : e.task_id) !== id) continue;
     highlightedIds.nodes.push(isUser ? `t:${e.task_id}` : `u:${e.user_id}`);
     highlightedIds.edges.push(`${e.user_id}:${e.task_id}`);
   }
-  for (const e of filtered.value.creatorEdges) {
+  for (const e of lines.has("creator") ? filtered.value.creatorEdges : []) {
     if ((isUser ? e.user_id : e.task_id) !== id) continue;
     highlightedIds.nodes.push(isUser ? `t:${e.task_id}` : `u:${e.user_id}`);
     highlightedIds.edges.push(`c:${e.user_id}:${e.task_id}`);
   }
   if (!isUser) {
-    for (const e of filtered.value.subtaskEdges) {
+    for (const e of lines.has("subtask") ? filtered.value.subtaskEdges : []) {
       if (e.parent_id !== id && e.child_id !== id) continue;
       highlightedIds.nodes.push(`t:${e.parent_id === id ? e.child_id : e.parent_id}`);
       highlightedIds.edges.push(`s:${e.parent_id}:${e.child_id}`);
     }
-    for (const e of filtered.value.blockerEdges) {
+    for (const e of lines.has("blocker") ? filtered.value.blockerEdges : []) {
       if (e.blocker_id !== id && e.blocked_id !== id) continue;
       highlightedIds.nodes.push(`t:${e.blocker_id === id ? e.blocked_id : e.blocker_id}`);
       highlightedIds.edges.push(`b:${e.blocker_id}:${e.blocked_id}`);
@@ -583,6 +648,41 @@ function onNodeDoubleClick({ node }: NodeMouseEvent) {
           </PopoverContent>
         </Popover>
 
+        <Popover v-model:open="linesOpen">
+          <PopoverTrigger as-child>
+            <Button variant="outline" size="sm" class="max-w-48 justify-between gap-2 bg-background/90 shadow-sm backdrop-blur">
+              <span class="truncate">{{ linesLabel }}</span>
+              <ChevronsUpDown class="size-3.5 shrink-0 opacity-50" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent align="start" class="w-64 p-0">
+            <Command>
+              <CommandList>
+                <CommandGroup>
+                  <CommandItem
+                    v-if="selectedLines.length"
+                    value="clear-lines"
+                    class="text-muted-foreground"
+                    @select="updateQuery({ lines: [] })"
+                  >
+                    Show all lines
+                  </CommandItem>
+                  <CommandItem
+                    v-for="l in LINE_OPTIONS"
+                    :key="l.id"
+                    :value="l.label"
+                    @select="updateQuery({ lines: toggle(selectedLines, l.id) })"
+                  >
+                    <Check :class="['size-4', selectedLines.includes(l.id) ? 'opacity-100' : 'opacity-0']" />
+                    <span class="h-0.5 w-4 shrink-0 rounded" :style="{ backgroundColor: l.color }" />
+                    <span class="truncate">{{ l.label }}</span>
+                  </CommandItem>
+                </CommandGroup>
+              </CommandList>
+            </Command>
+          </PopoverContent>
+        </Popover>
+
         <Button size="sm" class="gap-1.5 shadow-sm" :disabled="!canRun" @click="runGraph">
           <Loader2 v-if="loading" class="size-3.5 animate-spin" />
           <Play v-else class="size-3.5" />
@@ -655,16 +755,14 @@ function onNodeDoubleClick({ node }: NodeMouseEvent) {
             <div class="flex items-center gap-2">
               <svg width="28" height="8" aria-hidden="true">
                 <line x1="0" y1="4" x2="28" y2="4" style="stroke: var(--graph-creator)" stroke-width="2" />
-                <path d="M10 0 L18 4 L10 8 Z" style="fill: var(--graph-creator)" />
               </svg>
-              Creator → task
+              Creator — task
             </div>
             <div class="flex items-center gap-2">
               <svg width="28" height="8" aria-hidden="true">
                 <line x1="0" y1="4" x2="28" y2="4" style="stroke: var(--muted-foreground)" stroke-width="2" />
-                <path d="M10 0 L18 4 L10 8 Z" style="fill: var(--muted-foreground)" />
               </svg>
-              Task → assignee
+              Assignee — task
             </div>
             <div class="flex items-center gap-2">
               <svg width="28" height="8" aria-hidden="true">
@@ -712,7 +810,7 @@ function onNodeDoubleClick({ node }: NodeMouseEvent) {
           @node-mouse-leave="hideTooltip"
           @node-drag-start="hideTooltip"
           @move-start="hideTooltip"
-          @nodes-initialized="fitView()"
+          @nodes-initialized="onNodesInitialized"
         >
           <template #node-user="{ data }">
             <GraphUserNode :data="data" />
