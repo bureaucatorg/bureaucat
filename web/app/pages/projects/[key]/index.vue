@@ -763,7 +763,7 @@ onMounted(async () => {
             </TabsContent>
 
             <!-- Board Tab -->
-            <TabsContent value="board" class="mx-[calc(50%-50vw)] mt-6 px-4">
+            <TabsContent value="board" class="mx-[calc(50%-50vw)] mt-6 -mb-6 px-4">
               <KanbanBoard
                 :tasks="tasks"
                 :states="states"

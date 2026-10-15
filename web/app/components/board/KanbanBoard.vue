@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Loader2 } from "lucide-vue-next";
-import { useElementBounding, useResizeObserver, useWindowSize } from "@vueuse/core";
+import { useResizeObserver, useWindowSize } from "@vueuse/core";
 import type { Task, ProjectState, ProjectMember, ProjectLabel, ViewGroupBy } from "~/types";
 import { PRIORITY_LABELS, STATE_TYPE_COLORS } from "~/types";
 
@@ -320,14 +320,26 @@ async function handleDrop(task: Task, fromColumnId: string, toColumnId: string) 
   }
 }
 
-// Size the board to the rest of the viewport so each lane scrolls instead of the page.
+// Fill the viewport below the sticky navbar, minus whatever page content sits under the board,
+// so at full scroll the board's top sits TOP_GAP below the navbar.
 const boardEl = ref<HTMLElement | null>(null);
-const { top, update } = useElementBounding(boardEl);
 const { height: viewportHeight } = useWindowSize();
-useResizeObserver(() => document.body, update);
-const BOTTOM_GAP = 32;
+const TOP_GAP = 20;
+const navbarHeight = ref(49);
+const spaceBelow = ref(0);
+
+function measure() {
+  const el = boardEl.value;
+  if (!el) return;
+  navbarHeight.value = document.querySelector("header.sticky")?.getBoundingClientRect().height ?? 49;
+  spaceBelow.value = document.documentElement.scrollHeight - (el.getBoundingClientRect().bottom + window.scrollY);
+}
+
+useResizeObserver(() => document.body, measure);
+onMounted(measure);
+
 const boardHeight = computed(() =>
-  Math.max(384, viewportHeight.value - (top.value + window.scrollY) - BOTTOM_GAP),
+  Math.max(384, viewportHeight.value - navbarHeight.value - TOP_GAP - spaceBelow.value),
 );
 </script>
 
