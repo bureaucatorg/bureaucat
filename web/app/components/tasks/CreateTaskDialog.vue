@@ -203,7 +203,7 @@ async function loadProjectMeta(key: string) {
 // auto-focus can be redirected to the Template field.
 const focusTemplateOnOpen = ref(false);
 
-// Controls the Template dropdown so it can be auto-opened after a project is
+// Controls the Template popover so it can be auto-opened after a project is
 // chosen.
 const templateOpen = ref(false);
 
@@ -418,15 +418,17 @@ const priorities = [
   { value: 4, label: "Urgent" },
 ];
 
-// shadcn/reka-ui Select works with string values only, and reserves the empty
-// string for "no selection" — so these adapters bridge to the form's types.
-const NO_TEMPLATE = "__none__";
-const templateValue = computed({
-  get: () => selectedTemplateId.value || NO_TEMPLATE,
-  set: (v: string) => {
-    selectedTemplateId.value = v === NO_TEMPLATE ? "" : v;
-  },
-});
+const selectedTemplate = computed(
+  () => effTemplates.value.find((t) => t.id === selectedTemplateId.value) ?? null
+);
+
+function selectTemplate(id: string) {
+  selectedTemplateId.value = id;
+  templateOpen.value = false;
+}
+
+// shadcn/reka-ui Select works with string values only, so this adapter bridges
+// to the form's numeric priority.
 const priorityValue = computed({
   get: () => String(form.value.priority),
   set: (v: string) => {
@@ -653,20 +655,45 @@ function removeLabel(labelId: string) {
              chosen in selector mode. -->
         <div class="space-y-2">
           <Label for="template">Template</Label>
-            <Select v-model="templateValue" v-model:open="templateOpen" :disabled="loading">
-              <SelectTrigger
-                id="template"
-                class="w-full focus:border-ring focus:ring-ring/50 focus:ring-[3px]"
-              >
-                <SelectValue placeholder="No template" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem :value="NO_TEMPLATE">No template</SelectItem>
-                <SelectItem v-for="tmpl in effTemplates" :key="tmpl.id" :value="tmpl.id">
-                  {{ tmpl.name }}
-                </SelectItem>
-              </SelectContent>
-            </Select>
+            <Popover v-model:open="templateOpen">
+              <PopoverTrigger as-child>
+                <Button
+                  id="template"
+                  type="button"
+                  variant="outline"
+                  role="combobox"
+                  :disabled="loading"
+                  class="w-full justify-between font-normal"
+                >
+                  <span v-if="selectedTemplate" class="truncate">{{ selectedTemplate.name }}</span>
+                  <span v-else class="text-muted-foreground">No template</span>
+                  <ChevronsUpDown class="size-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="start" class="w-[var(--reka-popover-trigger-width)] p-0">
+                <Command>
+                  <CommandInput placeholder="Search templates..." />
+                  <CommandList>
+                    <CommandEmpty>No template found.</CommandEmpty>
+                    <CommandGroup>
+                      <CommandItem value="no-template" @select="selectTemplate('')">
+                        <Check :class="['size-4', selectedTemplateId ? 'opacity-0' : 'opacity-100']" />
+                        No template
+                      </CommandItem>
+                      <CommandItem
+                        v-for="tmpl in effTemplates"
+                        :key="tmpl.id"
+                        :value="`${tmpl.name} ${tmpl.id}`"
+                        @select="selectTemplate(tmpl.id)"
+                      >
+                        <Check :class="['size-4', selectedTemplateId === tmpl.id ? 'opacity-100' : 'opacity-0']" />
+                        <span class="truncate">{{ tmpl.name }}</span>
+                      </CommandItem>
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
           </div>
 
           <div class="space-y-2">
