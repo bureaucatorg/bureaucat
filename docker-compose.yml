@@ -18,6 +18,7 @@ services:
       dockerfile: Dockerfile.dev
     volumes:
       - ./:/app
+      - /etc/localtime:/etc/localtime:ro
     working_dir: /app
     ports:
       - 127.0.0.1:1341:1341
