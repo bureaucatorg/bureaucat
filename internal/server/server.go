@@ -18,6 +18,7 @@ import (
 	"bereaucat/internal/assistant"
 	"bereaucat/internal/auth"
 	"bereaucat/internal/handlers"
+	"bereaucat/internal/mattermostbot"
 	"bereaucat/internal/notifications"
 	"bereaucat/internal/notifier"
 	"bereaucat/internal/store"
@@ -169,7 +170,9 @@ func New(devMode bool, dbURL string, authConfig AuthConfig, distFS fs.FS) (*Serv
 		srv.releasesHandler = handlers.NewReleasesHandler()
 
 		// Assistant tools call back into this router as the requesting user.
-		srv.assistantHandler = handlers.NewAssistantHandler(srv.store, assistant.NewService(srv.store, e, srv.authManager))
+		assistantService := assistant.NewService(srv.store, e, srv.authManager)
+		srv.assistantHandler = handlers.NewAssistantHandler(srv.store, assistantService)
+		go mattermostbot.New(srv.store, assistantService).Run(workerCtx)
 	}
 
 	// Register routes

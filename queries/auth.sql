@@ -105,6 +105,11 @@ SELECT id, username, email, password_hash, first_name, last_name, user_type,
 FROM users
 WHERE email = $1;
 
+-- name: ListUsersByEmailInsensitive :many
+SELECT id, username FROM users
+WHERE LOWER(email) = LOWER($1)
+LIMIT 2;
+
 -- name: GetUserByProviderID :one
 SELECT id, username, email, password_hash, first_name, last_name, user_type,
        auth_provider, provider_user_id, created_at, updated_at

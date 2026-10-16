@@ -8,6 +8,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/credentials v1.20.9
 	github.com/aws/aws-sdk-go-v2/service/bedrockruntime v1.63.4
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.98.0
+	github.com/coder/websocket v1.8.15
 	github.com/coreos/go-oidc/v3 v3.17.0
 	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/golang-migrate/migrate/v4 v4.19.1

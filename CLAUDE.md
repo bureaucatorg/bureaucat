@@ -84,11 +84,14 @@ GET    /api/v1/assistant/status                              # Enabled + pinned 
 GET    /api/v1/assistant/conversations                       # List own conversations
 POST   /api/v1/assistant/conversations                       # Create conversation
 GET    /api/v1/assistant/conversations/:id                   # Messages + actions
+GET    /api/v1/assistant/conversations/:id/tool-calls/:callId/output # Full tool output
+PATCH  /api/v1/assistant/conversations/:id                   # Rename conversation
 DELETE /api/v1/assistant/conversations/:id                   # Delete conversation
 POST   /api/v1/assistant/conversations/:id/messages          # Send message (SSE)
 POST   /api/v1/assistant/conversations/:id/actions/:actionId # Approve/reject write (SSE)
 ```
 The agent core lives in `internal/assistant` (channel-agnostic). Tools in `tools.go` map 1:1 to API routes and run in-process through the Echo router as the requesting user; write tools need user approval.
+`internal/mattermostbot` is the Mattermost adapter: the notification bot listens over WebSocket, maps the sender's email to a Bureaucat user, keys conversations by thread root + user, and takes `yes`/`no` replies for approvals. Outside DMs it only answers posts that @mention it, and passes the previous 10 top-level channel posts (or thread posts) as `Meta.Chat`; conversations with chat context require approval for every write.
 
 ### Admin Routes (requires Bearer token + admin role)
 ```

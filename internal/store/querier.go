@@ -85,6 +85,7 @@ type Querier interface {
 	CreateActivityLog(ctx context.Context, arg CreateActivityLogParams) (ActivityLog, error)
 	CreateAssistantAction(ctx context.Context, arg CreateAssistantActionParams) (AssistantAction, error)
 	CreateAssistantConversation(ctx context.Context, arg CreateAssistantConversationParams) (AssistantConversation, error)
+	CreateAssistantMattermostThread(ctx context.Context, arg CreateAssistantMattermostThreadParams) error
 	CreateAssistantMessage(ctx context.Context, arg CreateAssistantMessageParams) (AssistantMessage, error)
 	CreateAttachment(ctx context.Context, arg CreateAttachmentParams) (Attachment, error)
 	// ==================== COMMENTS ====================
@@ -137,6 +138,8 @@ type Querier interface {
 	FollowTask(ctx context.Context, arg FollowTaskParams) error
 	GetAssistantAction(ctx context.Context, arg GetAssistantActionParams) (AssistantAction, error)
 	GetAssistantConversation(ctx context.Context, arg GetAssistantConversationParams) (AssistantConversation, error)
+	GetAssistantMattermostThread(ctx context.Context, arg GetAssistantMattermostThreadParams) (uuid.UUID, error)
+	GetAssistantToolOutput(ctx context.Context, arg GetAssistantToolOutputParams) (string, error)
 	GetBlockerTaskRef(ctx context.Context, id uuid.UUID) (GetBlockerTaskRefRow, error)
 	GetCommentByID(ctx context.Context, id uuid.UUID) (GetCommentByIDRow, error)
 	GetCycleByID(ctx context.Context, id uuid.UUID) (GetCycleByIDRow, error)
@@ -299,6 +302,7 @@ type Querier interface {
 	ListUserProjectsFiltered(ctx context.Context, arg ListUserProjectsFilteredParams) ([]ListUserProjectsFilteredRow, error)
 	ListUserWorkspaces(ctx context.Context, arg ListUserWorkspacesParams) ([]Workspace, error)
 	ListUserWorkspacesFiltered(ctx context.Context, arg ListUserWorkspacesFilteredParams) ([]Workspace, error)
+	ListUsersByEmailInsensitive(ctx context.Context, lower string) ([]ListUsersByEmailInsensitiveRow, error)
 	ListUsersPaginated(ctx context.Context, arg ListUsersPaginatedParams) ([]ListUsersPaginatedRow, error)
 	ListWorkspaceMembers(ctx context.Context, workspaceID uuid.UUID) ([]ListWorkspaceMembersRow, error)
 	// ==================== NOTIFICATIONS ====================
@@ -343,6 +347,7 @@ type Querier interface {
 	RemoveTaskFromCycle(ctx context.Context, arg RemoveTaskFromCycleParams) error
 	RemoveTaskLabel(ctx context.Context, arg RemoveTaskLabelParams) error
 	RemoveWorkspaceMember(ctx context.Context, arg RemoveWorkspaceMemberParams) error
+	RenameAssistantConversation(ctx context.Context, arg RenameAssistantConversationParams) (int64, error)
 	// Pass a JSON array of {id, new_position} objects.
 	ReorderProjectViews(ctx context.Context, arg ReorderProjectViewsParams) error
 	ResolveAssistantAction(ctx context.Context, arg ResolveAssistantActionParams) (AssistantAction, error)

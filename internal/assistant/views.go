@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"regexp"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -19,14 +21,24 @@ type ConversationView struct {
 }
 
 type MessageView struct {
-	ID          uuid.UUID    `json:"id"`
-	Role        string       `json:"role"`
-	Content     string       `json:"content"`
-	ToolCalls   []ToolCall   `json:"tool_calls"`
-	Attachments []Attachment `json:"attachments"`
-	Meta        Meta         `json:"meta"`
-	CreatedAt   time.Time    `json:"created_at"`
+	ID          uuid.UUID      `json:"id"`
+	Role        string         `json:"role"`
+	Content     string         `json:"content"`
+	ToolCalls   []ToolCallView `json:"tool_calls"`
+	Attachments []Attachment   `json:"attachments"`
+	Meta        Meta           `json:"meta"`
+	CreatedAt   time.Time      `json:"created_at"`
 }
+
+// ToolCallView is a tool call plus whether it returned output; the output itself is
+// fetched separately with ToolOutput so conversations stay small.
+type ToolCallView struct {
+	ToolCall
+	HasOutput bool `json:"has_output"`
+	IsError   bool `json:"is_error"`
+}
+
+var toolErrorRe = regexp.MustCompile(`^HTTP [45]\d\d:`)
 
 type ActionView struct {
 	ID         uuid.UUID       `json:"id"`
@@ -75,6 +87,26 @@ func (s *Service) DeleteConversation(ctx context.Context, userID, convID uuid.UU
 	return nil
 }
 
+const maxTitleRunes = 100
+
+func (s *Service) RenameConversation(ctx context.Context, userID, convID uuid.UUID, title string) (string, error) {
+	title = strings.TrimSpace(strings.ReplaceAll(title, "\n", " "))
+	if title == "" {
+		return "", ErrEmptyTitle
+	}
+	if r := []rune(title); len(r) > maxTitleRunes {
+		title = string(r[:maxTitleRunes])
+	}
+	n, err := s.store.RenameAssistantConversation(ctx, store.RenameAssistantConversationParams{ID: convID, UserID: userID, Title: title})
+	if err != nil {
+		return "", err
+	}
+	if n == 0 {
+		return "", ErrNotFound
+	}
+	return title, nil
+}
+
 // GetConversation returns user/assistant messages (tool output is omitted) and all actions.
 func (s *Service) GetConversation(ctx context.Context, userID, convID uuid.UUID) (ConversationDetail, error) {
 	conv, err := s.store.GetAssistantConversation(ctx, store.GetAssistantConversationParams{ID: convID, UserID: userID})
@@ -98,12 +130,23 @@ func (s *Service) GetConversation(ctx context.Context, userID, convID uuid.UUID)
 		Messages:         []MessageView{},
 		Actions:          make([]ActionView, 0, len(actions)),
 	}
+	outputs := map[string]string{}
+	for _, r := range rows {
+		if r.Role == RoleTool {
+			outputs[r.ToolCallID] = r.Content
+		}
+	}
 	for _, r := range rows {
 		if r.Role == RoleTool {
 			continue
 		}
-		calls := []ToolCall{}
-		_ = json.Unmarshal(r.ToolCalls, &calls)
+		var raw []ToolCall
+		_ = json.Unmarshal(r.ToolCalls, &raw)
+		calls := make([]ToolCallView, 0, len(raw))
+		for _, tc := range raw {
+			out, ok := outputs[tc.ID]
+			calls = append(calls, ToolCallView{ToolCall: tc, HasOutput: ok, IsError: toolErrorRe.MatchString(out)})
+		}
 		detail.Messages = append(detail.Messages, MessageView{
 			ID:          r.ID,
 			Role:        r.Role,
@@ -118,6 +161,22 @@ func (s *Service) GetConversation(ctx context.Context, userID, convID uuid.UUID)
 		detail.Actions = append(detail.Actions, *actionView(a))
 	}
 	return detail, nil
+}
+
+// ToolOutput returns the full stored output of one tool call in the user's conversation.
+func (s *Service) ToolOutput(ctx context.Context, userID, convID uuid.UUID, callID string) (string, error) {
+	_, err := s.store.GetAssistantConversation(ctx, store.GetAssistantConversationParams{ID: convID, UserID: userID})
+	if err == nil {
+		var out string
+		out, err = s.store.GetAssistantToolOutput(ctx, store.GetAssistantToolOutputParams{ConversationID: convID, ToolCallID: callID})
+		if err == nil {
+			return out, nil
+		}
+	}
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", ErrNotFound
+	}
+	return "", err
 }
 
 func conversationView(c store.AssistantConversation) ConversationView {

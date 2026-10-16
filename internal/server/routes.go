@@ -129,6 +129,8 @@ func (s *Server) registerRoutes() {
 			assistantGroup.GET("/conversations", s.assistantHandler.ListConversations)
 			assistantGroup.POST("/conversations", s.assistantHandler.CreateConversation)
 			assistantGroup.GET("/conversations/:id", s.assistantHandler.GetConversation)
+			assistantGroup.GET("/conversations/:id/tool-calls/:callId/output", s.assistantHandler.GetToolOutput)
+			assistantGroup.PATCH("/conversations/:id", s.assistantHandler.RenameConversation)
 			assistantGroup.DELETE("/conversations/:id", s.assistantHandler.DeleteConversation)
 			assistantGroup.POST("/conversations/:id/messages", s.assistantHandler.SendMessage)
 			assistantGroup.POST("/conversations/:id/actions/:actionId", s.assistantHandler.ResolveAction)

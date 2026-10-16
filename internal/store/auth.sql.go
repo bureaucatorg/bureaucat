@@ -483,6 +483,37 @@ func (q *Queries) ListActiveRefreshTokens(ctx context.Context, arg ListActiveRef
 	return items, nil
 }
 
+const listUsersByEmailInsensitive = `-- name: ListUsersByEmailInsensitive :many
+SELECT id, username FROM users
+WHERE LOWER(email) = LOWER($1)
+LIMIT 2
+`
+
+type ListUsersByEmailInsensitiveRow struct {
+	ID       uuid.UUID `json:"id"`
+	Username string    `json:"username"`
+}
+
+func (q *Queries) ListUsersByEmailInsensitive(ctx context.Context, lower string) ([]ListUsersByEmailInsensitiveRow, error) {
+	rows, err := q.db.Query(ctx, listUsersByEmailInsensitive, lower)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListUsersByEmailInsensitiveRow{}
+	for rows.Next() {
+		var i ListUsersByEmailInsensitiveRow
+		if err := rows.Scan(&i.ID, &i.Username); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listUsersPaginated = `-- name: ListUsersPaginated :many
 SELECT id, username, email, first_name, last_name, user_type, created_at, updated_at
 FROM users

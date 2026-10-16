@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { Bot, Check, ChevronsUpDown, Loader2, SendHorizontal, MessageSquarePlus, Trash2, X, CircleAlert, Paperclip, FileText, MapPin } from "lucide-vue-next";
+import { Bot, Check, ChevronsUpDown, ChevronRight, Loader2, SendHorizontal, MessageSquarePlus, MessagesSquare, Trash2, Pencil, X, CircleAlert, Paperclip, FileText, MapPin } from "lucide-vue-next";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "~/components/ui/collapsible";
 import { toast } from "vue-sonner";
 import type { AssistantAction, AssistantAttachment } from "~/composables/useAssistant";
 import { pageContextFromRoute, describePageContext } from "~/composables/useAssistant";
@@ -21,6 +22,8 @@ const {
   loadConversation,
   newConversation,
   deleteConversation,
+  renameConversation,
+  fetchToolOutput,
   send,
   resolve,
 } = useAssistant();
@@ -35,6 +38,9 @@ const fileInput = ref<HTMLInputElement | null>(null);
 const MAX_ATTACHMENTS = 10;
 const pickerOpen = ref(false);
 const confirmDelete = ref(false);
+const editingTitle = ref(false);
+const titleDraft = ref("");
+const titleInput = ref<{ $el: HTMLInputElement } | null>(null);
 const scroller = ref<HTMLElement | null>(null);
 
 const actionsByCall = computed(() => new Map(actions.value.map((a) => [a.tool_call_id, a])));
@@ -47,6 +53,26 @@ const suggestions = [
 
 function toolLabel(name: string) {
   return name.replace(/_/g, " ");
+}
+
+const toolOutputs = ref<Record<string, { loading: boolean; text?: string; failed?: boolean }>>({});
+
+async function loadToolOutput(callId: string, open: boolean) {
+  const cached = toolOutputs.value[callId];
+  if (!open || !current.value || (cached && !cached.failed)) return;
+  toolOutputs.value[callId] = { loading: true };
+  const text = await fetchToolOutput(current.value.id, callId);
+  toolOutputs.value[callId] = text === null ? { loading: false, failed: true } : { loading: false, text };
+}
+
+watch(() => current.value?.id, () => (toolOutputs.value = {}));
+
+function formatOutput(output: string) {
+  try {
+    return JSON.stringify(JSON.parse(output), null, 2);
+  } catch {
+    return output;
+  }
 }
 
 function formatArg(value: unknown) {
@@ -118,6 +144,21 @@ function startNew() {
   newConversation();
 }
 
+function startRename() {
+  if (!current.value) return;
+  titleDraft.value = current.value.title;
+  editingTitle.value = true;
+  nextTick(() => titleInput.value?.$el.select());
+}
+
+async function saveTitle() {
+  if (!editingTitle.value || !current.value) return;
+  editingTitle.value = false;
+  const title = titleDraft.value.trim();
+  if (!title || title === current.value.title) return;
+  if (!(await renameConversation(current.value.id, title))) toast.error("Could not rename chat");
+}
+
 async function removeCurrent() {
   if (!current.value) return;
   if (!confirmDelete.value) {
@@ -182,7 +223,18 @@ watch(
     aria-label="Assistant"
   >
     <header class="flex h-12 shrink-0 items-center gap-1 border-b px-2">
-      <Popover v-model:open="pickerOpen">
+      <Input
+        v-if="editingTitle"
+        ref="titleInput"
+        v-model="titleDraft"
+        maxlength="100"
+        aria-label="Chat title"
+        class="h-8 min-w-0 flex-1"
+        @keydown.enter.prevent="saveTitle"
+        @keydown.esc.prevent="editingTitle = false"
+        @blur="saveTitle"
+      />
+      <Popover v-else v-model:open="pickerOpen">
         <PopoverTrigger as-child>
           <Button variant="ghost" role="combobox" class="min-w-0 flex-1 justify-between px-2 font-normal">
             <span class="truncate">{{ current?.title || "New chat" }}</span>
@@ -209,6 +261,16 @@ watch(
           </Command>
         </PopoverContent>
       </Popover>
+      <Button
+        v-if="current && !editingTitle"
+        variant="ghost"
+        size="icon"
+        title="Rename chat"
+        :disabled="busy"
+        @click="startRename"
+      >
+        <Pencil class="size-4" />
+      </Button>
       <Button
         v-if="current"
         variant="ghost"
@@ -251,6 +313,28 @@ watch(
       <div v-else class="flex flex-col gap-3">
         <template v-for="m in messages" :key="m.id">
           <div v-if="m.role === 'user'" class="ml-8 flex flex-col items-end gap-1 self-end">
+            <Collapsible v-if="m.meta?.chat?.messages?.length" class="group w-full">
+              <CollapsibleTrigger
+                class="ml-auto flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground"
+                title="Recent Mattermost messages shared with the assistant"
+              >
+                <MessagesSquare class="size-3" />
+                {{ m.meta.chat.messages.length }} {{ m.meta.chat.where }} message{{ m.meta.chat.messages.length === 1 ? "" : "s" }} as context
+                <ChevronRight class="size-3 transition-transform group-data-[state=open]:rotate-90" />
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <div class="mt-1 mb-1 flex flex-col gap-2 rounded-md border px-2.5 py-2 text-xs">
+                  <div v-for="(c, i) in m.meta.chat.messages" :key="i" class="min-w-0">
+                    <div class="flex flex-wrap items-baseline gap-x-1">
+                      <span class="font-medium">{{ c.author }}</span>
+                      <span v-if="c.is_assistant" class="text-muted-foreground">(assistant)</span>
+                      <span v-else-if="c.bureaucat_user" class="text-muted-foreground">({{ c.bureaucat_user }})</span>
+                    </div>
+                    <p class="whitespace-pre-wrap break-words text-muted-foreground">{{ c.text }}</p>
+                  </div>
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
             <div v-if="m.content" class="whitespace-pre-wrap break-words rounded-lg bg-muted px-3 py-2 text-sm">
               {{ m.content }}
             </div>
@@ -304,10 +388,33 @@ watch(
                   </Button>
                 </div>
               </div>
-              <p v-else class="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <Check class="size-3" />
-                {{ toolLabel(tc.name) }}
-              </p>
+              <Collapsible v-else class="group" @update:open="loadToolOutput(tc.id, $event)">
+                <CollapsibleTrigger class="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground">
+                  <CircleAlert v-if="tc.is_error" class="size-3 text-destructive" />
+                  <Check v-else class="size-3" />
+                  {{ toolLabel(tc.name) }}
+                  <ChevronRight class="size-3 transition-transform group-data-[state=open]:rotate-90" />
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <div class="mt-1 space-y-2 rounded-md border px-2.5 py-2 text-xs">
+                    <dl v-if="Object.keys(tc.args ?? {}).length" class="space-y-1">
+                      <div v-for="(v, k) in tc.args" :key="k" class="flex gap-2">
+                        <dt class="shrink-0 text-muted-foreground">{{ toolLabel(String(k)) }}</dt>
+                        <dd class="min-w-0 whitespace-pre-wrap break-words">{{ formatArg(v) }}</dd>
+                      </div>
+                    </dl>
+                    <p v-if="!tc.has_output" class="text-muted-foreground">No output recorded.</p>
+                    <p v-else-if="toolOutputs[tc.id]?.loading" class="flex items-center gap-1.5 text-muted-foreground">
+                      <Loader2 class="size-3 animate-spin" /> Loading output…
+                    </p>
+                    <p v-else-if="toolOutputs[tc.id]?.failed" class="text-destructive">Could not load output.</p>
+                    <pre
+                      v-else-if="toolOutputs[tc.id]?.text !== undefined"
+                      class="max-h-64 overflow-auto whitespace-pre-wrap break-words rounded bg-muted p-2 font-mono text-[11px]"
+                    >{{ formatOutput(toolOutputs[tc.id]!.text!) }}</pre>
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
             </template>
           </template>
         </template>

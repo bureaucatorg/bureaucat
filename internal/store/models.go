@@ -317,6 +317,13 @@ type AssistantConversation struct {
 	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
 }
 
+type AssistantMattermostThread struct {
+	RootPostID     string             `json:"root_post_id"`
+	UserID         uuid.UUID          `json:"user_id"`
+	ConversationID uuid.UUID          `json:"conversation_id"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+}
+
 type AssistantMessage struct {
 	ID             uuid.UUID          `json:"id"`
 	Seq            pgtype.Int8        `json:"seq"`

@@ -2,6 +2,8 @@ export interface AssistantToolCall {
   id: string;
   name: string;
   args: Record<string, unknown>;
+  has_output?: boolean;
+  is_error?: boolean;
 }
 
 export interface AssistantAttachment {
@@ -22,8 +24,21 @@ export interface AssistantPageContext {
   tab?: string;
 }
 
+export interface AssistantChatMessage {
+  author: string;
+  bureaucat_user?: string;
+  is_assistant?: boolean;
+  text: string;
+}
+
+export interface AssistantChatContext {
+  where: "channel" | "thread";
+  messages: AssistantChatMessage[];
+}
+
 export interface AssistantMeta {
   page?: AssistantPageContext;
+  chat?: AssistantChatContext;
 }
 
 export interface AssistantMessage {
@@ -225,6 +240,22 @@ export function useAssistant() {
     return true;
   }
 
+  async function fetchToolOutput(convId: string, callId: string): Promise<string | null> {
+    const res = await api(`/conversations/${convId}/tool-calls/${encodeURIComponent(callId)}/output`);
+    if (!res.ok) return null;
+    return (await res.json()).output;
+  }
+
+  async function renameConversation(id: string, title: string) {
+    const res = await api(`/conversations/${id}`, { method: "PATCH", body: JSON.stringify({ title }) });
+    if (!res.ok) return false;
+    const saved: string = (await res.json()).title;
+    const c = conversations.value.find((c) => c.id === id);
+    if (c) c.title = saved;
+    if (current.value?.id === id) current.value.title = saved;
+    return true;
+  }
+
   async function send(text: string, attachments: AssistantAttachment[] = [], meta: AssistantMeta = {}) {
     if (busy.value) return;
     error.value = "";
@@ -348,6 +379,8 @@ export function useAssistant() {
     newConversation,
     reset,
     deleteConversation,
+    renameConversation,
+    fetchToolOutput,
     send,
     resolve,
   };

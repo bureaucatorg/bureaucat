@@ -143,6 +143,74 @@ func (h *AssistantHandler) DeleteConversation(c *echo.Context) error {
 	return c.NoContent(http.StatusNoContent)
 }
 
+// AssistantRenameRequest sets a conversation's title.
+type AssistantRenameRequest struct {
+	Title string `json:"title"`
+}
+
+// RenameConversation changes the title of one of the user's conversations.
+//
+//	@Summary		Rename assistant conversation
+//	@Tags			Assistant
+//	@Accept			json
+//	@Produce		json
+//	@Param			id		path		string					true	"Conversation ID"
+//	@Param			body	body		AssistantRenameRequest	true	"New title"
+//	@Success		200		{object}	AssistantRenameRequest
+//	@Failure		400		{object}	ErrorResponse
+//	@Failure		404		{object}	ErrorResponse
+//	@Security		BearerAuth
+//	@Router			/assistant/conversations/{id} [patch]
+func (h *AssistantHandler) RenameConversation(c *echo.Context) error {
+	userID, convID, err := conversationParams(c)
+	if err != nil {
+		return err
+	}
+	var req AssistantRenameRequest
+	if err := c.Bind(&req); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid request body")
+	}
+	title, err := h.service.RenameConversation(c.Request().Context(), userID, convID, req.Title)
+	if errors.Is(err, assistant.ErrEmptyTitle) {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+	if err != nil {
+		return assistantHTTPError(err)
+	}
+	return c.JSON(http.StatusOK, AssistantRenameRequest{Title: title})
+}
+
+// AssistantToolOutputResponse is the full output of one tool call.
+type AssistantToolOutputResponse struct {
+	Output string `json:"output"`
+}
+
+// GetToolOutput returns the full output of a tool call in one of the user's conversations.
+//
+//	@Summary		Get assistant tool call output
+//	@Tags			Assistant
+//	@Produce		json
+//	@Param			id		path		string	true	"Conversation ID"
+//	@Param			callId	path		string	true	"Tool call ID"
+//	@Success		200		{object}	AssistantToolOutputResponse
+//	@Failure		404		{object}	ErrorResponse
+//	@Security		BearerAuth
+//	@Router			/assistant/conversations/{id}/tool-calls/{callId}/output [get]
+func (h *AssistantHandler) GetToolOutput(c *echo.Context) error {
+	userID, convID, err := conversationParams(c)
+	if err != nil {
+		return err
+	}
+	out, err := h.service.ToolOutput(c.Request().Context(), userID, convID, c.Param("callId"))
+	if errors.Is(err, assistant.ErrNotFound) {
+		return echo.NewHTTPError(http.StatusNotFound, "tool output not found")
+	}
+	if err != nil {
+		return assistantHTTPError(err)
+	}
+	return c.JSON(http.StatusOK, AssistantToolOutputResponse{Output: out})
+}
+
 // SendMessage posts a user message and streams agent events as server-sent events.
 //
 //	@Summary		Send assistant message
@@ -169,7 +237,7 @@ func (h *AssistantHandler) SendMessage(c *echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "message must be 1-20000 characters or include a file")
 	}
 	return h.stream(c, func(ctx context.Context, emit assistant.Emitter) error {
-		return h.service.Send(ctx, userID, convID, text, req.UploadIDs, req.Meta, emit)
+		return h.service.Send(ctx, userID, convID, text, req.UploadIDs, assistant.Meta{Page: req.Meta.Page}, emit)
 	})
 }
 
@@ -229,7 +297,7 @@ func (h *AssistantHandler) stream(c *echo.Context, run func(context.Context, ass
 	defer cancel()
 
 	if err := run(ctx, emit); err != nil {
-		emit.Emit(assistant.Event{Type: "error", Text: assistantErrorText(err)})
+		emit.Emit(assistant.Event{Type: "error", Text: assistant.ErrorText(err)})
 	}
 	emit.Emit(assistant.Event{Type: "done"})
 	return nil
@@ -252,19 +320,6 @@ func assistantHTTPError(err error) error {
 		return echo.NewHTTPError(http.StatusNotFound, "conversation not found")
 	}
 	return echo.NewHTTPError(http.StatusInternalServerError, "assistant request failed")
-}
-
-func assistantErrorText(err error) string {
-	switch {
-	case errors.Is(err, assistant.ErrDisabled), errors.Is(err, assistant.ErrNotFound),
-		errors.Is(err, assistant.ErrBusy), errors.Is(err, assistant.ErrNotPending),
-		errors.Is(err, assistant.ErrBadUpload):
-		return err.Error()
-	case errors.Is(err, context.DeadlineExceeded):
-		return "the assistant took too long to respond"
-	default:
-		return "assistant error: " + err.Error()
-	}
 }
 
 // --- Admin settings ---

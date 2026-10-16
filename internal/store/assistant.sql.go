@@ -70,6 +70,23 @@ func (q *Queries) CreateAssistantConversation(ctx context.Context, arg CreateAss
 	return i, err
 }
 
+const createAssistantMattermostThread = `-- name: CreateAssistantMattermostThread :exec
+INSERT INTO assistant_mattermost_threads (root_post_id, user_id, conversation_id)
+VALUES ($1, $2, $3)
+ON CONFLICT (root_post_id, user_id) DO UPDATE SET conversation_id = EXCLUDED.conversation_id
+`
+
+type CreateAssistantMattermostThreadParams struct {
+	RootPostID     string    `json:"root_post_id"`
+	UserID         uuid.UUID `json:"user_id"`
+	ConversationID uuid.UUID `json:"conversation_id"`
+}
+
+func (q *Queries) CreateAssistantMattermostThread(ctx context.Context, arg CreateAssistantMattermostThreadParams) error {
+	_, err := q.db.Exec(ctx, createAssistantMattermostThread, arg.RootPostID, arg.UserID, arg.ConversationID)
+	return err
+}
+
 const createAssistantMessage = `-- name: CreateAssistantMessage :one
 INSERT INTO assistant_messages (conversation_id, role, content, tool_calls, tool_call_id, tool_name, attachments, meta)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
@@ -181,6 +198,42 @@ func (q *Queries) GetAssistantConversation(ctx context.Context, arg GetAssistant
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const getAssistantMattermostThread = `-- name: GetAssistantMattermostThread :one
+SELECT conversation_id FROM assistant_mattermost_threads
+WHERE root_post_id = $1 AND user_id = $2
+`
+
+type GetAssistantMattermostThreadParams struct {
+	RootPostID string    `json:"root_post_id"`
+	UserID     uuid.UUID `json:"user_id"`
+}
+
+func (q *Queries) GetAssistantMattermostThread(ctx context.Context, arg GetAssistantMattermostThreadParams) (uuid.UUID, error) {
+	row := q.db.QueryRow(ctx, getAssistantMattermostThread, arg.RootPostID, arg.UserID)
+	var conversation_id uuid.UUID
+	err := row.Scan(&conversation_id)
+	return conversation_id, err
+}
+
+const getAssistantToolOutput = `-- name: GetAssistantToolOutput :one
+SELECT content FROM assistant_messages
+WHERE conversation_id = $1 AND role = 'tool' AND tool_call_id = $2
+ORDER BY seq DESC
+LIMIT 1
+`
+
+type GetAssistantToolOutputParams struct {
+	ConversationID uuid.UUID `json:"conversation_id"`
+	ToolCallID     string    `json:"tool_call_id"`
+}
+
+func (q *Queries) GetAssistantToolOutput(ctx context.Context, arg GetAssistantToolOutputParams) (string, error) {
+	row := q.db.QueryRow(ctx, getAssistantToolOutput, arg.ConversationID, arg.ToolCallID)
+	var content string
+	err := row.Scan(&content)
+	return content, err
 }
 
 const listAssistantActions = `-- name: ListAssistantActions :many
@@ -324,6 +377,26 @@ func (q *Queries) ListPendingAssistantActions(ctx context.Context, conversationI
 		return nil, err
 	}
 	return items, nil
+}
+
+const renameAssistantConversation = `-- name: RenameAssistantConversation :execrows
+UPDATE assistant_conversations
+SET title = $3
+WHERE id = $1 AND user_id = $2
+`
+
+type RenameAssistantConversationParams struct {
+	ID     uuid.UUID `json:"id"`
+	UserID uuid.UUID `json:"user_id"`
+	Title  string    `json:"title"`
+}
+
+func (q *Queries) RenameAssistantConversation(ctx context.Context, arg RenameAssistantConversationParams) (int64, error) {
+	result, err := q.db.Exec(ctx, renameAssistantConversation, arg.ID, arg.UserID, arg.Title)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const resolveAssistantAction = `-- name: ResolveAssistantAction :one

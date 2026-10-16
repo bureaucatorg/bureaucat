@@ -38,6 +38,8 @@ export interface MattermostSettings {
   enabled: boolean;
   server_url: string;
   bot_token: string;
+  assistant_enabled: boolean;
+  app_url: string;
 }
 
 export interface SMTPSettings {

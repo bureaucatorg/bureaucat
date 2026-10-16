@@ -196,6 +196,8 @@ const mattermostForm = ref<MattermostSettings>({
   enabled: false,
   server_url: "",
   bot_token: "",
+  assistant_enabled: false,
+  app_url: "",
 });
 const savingMattermost = ref(false);
 const testingMattermost = ref(false);
@@ -204,11 +206,10 @@ const mattermostLoaded = ref(false);
 async function loadMattermostSettings() {
   const result = await fetchMattermostSettings();
   if (result.success && result.data) {
-    mattermostForm.value = {
-      enabled: result.data.enabled || false,
-      server_url: result.data.server_url || "",
-      bot_token: result.data.bot_token || "",
-    };
+    mattermostForm.value = { ...mattermostForm.value, ...result.data };
+  }
+  if (!mattermostForm.value.app_url) {
+    mattermostForm.value.app_url = window.location.origin;
   }
   mattermostLoaded.value = true;
 }
@@ -220,11 +221,7 @@ async function handleSaveMattermost() {
 
   if (result.success) {
     if (result.data) {
-      mattermostForm.value = {
-        enabled: result.data.enabled || false,
-        server_url: result.data.server_url || "",
-        bot_token: result.data.bot_token || "",
-      };
+      mattermostForm.value = { ...mattermostForm.value, ...result.data };
     }
     toast.success("Mattermost settings saved");
   } else {
@@ -842,6 +839,31 @@ const adminModels = [
                     <p class="text-xs text-muted-foreground">
                       Create a bot account in Mattermost and use its access token
                     </p>
+                  </div>
+                  <div class="space-y-2">
+                    <Label for="mm-app-url">App URL</Label>
+                    <Input
+                      id="mm-app-url"
+                      v-model="mattermostForm.app_url"
+                      placeholder="https://bureaucat.example.com"
+                      :disabled="savingMattermost"
+                    />
+                    <p class="text-xs text-muted-foreground">
+                      Used to build task links in Mattermost messages
+                    </p>
+                  </div>
+                  <div class="flex items-center justify-between gap-4">
+                    <div>
+                      <Label for="mm-assistant">Assistant in Mattermost</Label>
+                      <p class="text-xs text-muted-foreground">
+                        Users can DM or @mention the bot to use the assistant. Requires the assistant to be enabled below.
+                      </p>
+                    </div>
+                    <Switch
+                      id="mm-assistant"
+                      :checked="mattermostForm.assistant_enabled"
+                      @update:checked="mattermostForm.assistant_enabled = $event"
+                    />
                   </div>
                 </div>
 

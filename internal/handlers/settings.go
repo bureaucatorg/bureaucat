@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/mail"
+	"net/url"
 	"strings"
 
 	"github.com/google/uuid"
@@ -388,16 +389,20 @@ func (h *SettingsHandler) LoadSSOSettings(c *echo.Context) (*SSOSettings, error)
 
 // MattermostSettings represents the Mattermost integration configuration.
 type MattermostSettings struct {
-	Enabled   bool   `json:"enabled"`
-	ServerURL string `json:"server_url"`
-	BotToken  string `json:"bot_token"`
+	Enabled          bool   `json:"enabled"`
+	ServerURL        string `json:"server_url"`
+	BotToken         string `json:"bot_token"`
+	AssistantEnabled bool   `json:"assistant_enabled"`
+	AppURL           string `json:"app_url"`
 }
 
 // MattermostResponse is the API response for Mattermost settings (token masked).
 type MattermostResponse struct {
-	Enabled   bool   `json:"enabled"`
-	ServerURL string `json:"server_url"`
-	BotToken  string `json:"bot_token"`
+	Enabled          bool   `json:"enabled"`
+	ServerURL        string `json:"server_url"`
+	BotToken         string `json:"bot_token"`
+	AssistantEnabled bool   `json:"assistant_enabled"`
+	AppURL           string `json:"app_url"`
 }
 
 // GetMattermostSettings returns the Mattermost integration config with token masked (admin only).
@@ -423,9 +428,11 @@ func (h *SettingsHandler) GetMattermostSettings(c *echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, MattermostResponse{
-		Enabled:   mm.Enabled,
-		ServerURL: mm.ServerURL,
-		BotToken:  maskSecret(mm.BotToken),
+		Enabled:          mm.Enabled,
+		ServerURL:        mm.ServerURL,
+		BotToken:         maskSecret(mm.BotToken),
+		AssistantEnabled: mm.AssistantEnabled,
+		AppURL:           mm.AppURL,
 	})
 }
 
@@ -467,6 +474,13 @@ func (h *SettingsHandler) UpdateMattermostSettings(c *echo.Context) error {
 			return echo.NewHTTPError(http.StatusBadRequest, "Mattermost requires server_url and bot_token")
 		}
 	}
+	req.AppURL = strings.TrimSpace(req.AppURL)
+	if req.AssistantEnabled || req.AppURL != "" {
+		u, err := url.Parse(req.AppURL)
+		if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
+			return echo.NewHTTPError(http.StatusBadRequest, "app_url must be an absolute http(s) URL")
+		}
+	}
 
 	value, err := json.Marshal(req)
 	if err != nil {
@@ -482,9 +496,11 @@ func (h *SettingsHandler) UpdateMattermostSettings(c *echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, MattermostResponse{
-		Enabled:   req.Enabled,
-		ServerURL: req.ServerURL,
-		BotToken:  maskSecret(req.BotToken),
+		Enabled:          req.Enabled,
+		ServerURL:        req.ServerURL,
+		BotToken:         maskSecret(req.BotToken),
+		AssistantEnabled: req.AssistantEnabled,
+		AppURL:           req.AppURL,
 	})
 }
 
