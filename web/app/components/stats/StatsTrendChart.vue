@@ -51,7 +51,7 @@ const isEmpty = computed(
             :color="colors"
             :rounded-corners="2"
             :bar-padding="0.15"
-            :group-padding="series.length > 1 ? 0.15 : undefined"
+            :group-padding="series.length > 1 ? 0.15 : 0.05"
           />
           <VisAxis
             type="x"
