@@ -34,6 +34,8 @@ type Querier interface {
 	AddTasksToCycle(ctx context.Context, arg AddTasksToCycleParams) error
 	// ==================== WORKSPACE MEMBERS ====================
 	AddWorkspaceMember(ctx context.Context, arg AddWorkspaceMemberParams) (WorkspaceMember, error)
+	// Same "has a user message" rule as CountAssistantConversations; Mattermost ones have a thread mapping.
+	AssistantConversationsPerDay(ctx context.Context, arg AssistantConversationsPerDayParams) ([]AssistantConversationsPerDayRow, error)
 	AttachmentsCreatedPerDay(ctx context.Context, arg AttachmentsCreatedPerDayParams) ([]AttachmentsCreatedPerDayRow, error)
 	AttachmentsTotalSize(ctx context.Context) (int64, error)
 	// True if blocked_id already (transitively) blocks blocker_id, so adding
@@ -57,6 +59,8 @@ type Querier interface {
 	CountAllProjectsFiltered(ctx context.Context, arg CountAllProjectsFilteredParams) (int64, error)
 	CountAllWorkspaces(ctx context.Context) (int64, error)
 	CountAllWorkspacesFiltered(ctx context.Context, search pgtype.Text) (int64, error)
+	// Only conversations with at least one user message.
+	CountAssistantConversations(ctx context.Context) (CountAssistantConversationsRow, error)
 	CountAttachments(ctx context.Context) (int64, error)
 	CountDeletedProjects(ctx context.Context) (int64, error)
 	CountEmailNotificationUsers(ctx context.Context) (int64, error)

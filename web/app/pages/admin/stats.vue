@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { BarChart3, Loader2, Users, LayoutGrid, ListTodo, GitBranch, FileText, Building2, Paperclip, HardDrive, Mail, Ban, Link2 } from "lucide-vue-next";
+import { BarChart3, Loader2, Users, LayoutGrid, ListTodo, GitBranch, FileText, Building2, Paperclip, HardDrive, Mail, Ban, Link2, Bot, UserCheck, MessageSquare } from "lucide-vue-next";
 import { toast } from "vue-sonner";
 import type { DateValue } from "@internationalized/date";
 import type { AdminStats } from "~/composables/useAdmin";
@@ -58,6 +58,19 @@ const totalCards = computed(() => {
     },
     { label: "Attachments", value: t.attachments.toLocaleString(), icon: Paperclip, color: "text-cyan-400" },
     { label: "Attachments size", value: formatBytes(t.attachments_bytes), icon: HardDrive, color: "text-sky-400" },
+    { label: "AI conversations", value: t.ai_conversations.toLocaleString(), icon: Bot, color: "text-fuchsia-400" },
+    {
+      label: "AI via Mattermost",
+      value: `${t.ai_mattermost_conversations.toLocaleString()} / ${t.ai_conversations.toLocaleString()}`,
+      icon: MessageSquare,
+      color: "text-purple-400",
+    },
+    {
+      label: "AI users",
+      value: `${t.ai_users.toLocaleString()} / ${t.users.toLocaleString()}`,
+      icon: UserCheck,
+      color: "text-lime-400",
+    },
   ];
 });
 
@@ -84,6 +97,13 @@ const viewsTrendSeries = [
 ];
 
 const viewsSeries = computed(() => stats.value?.series.views ?? []);
+
+const aiTrendSeries = [
+  { key: "web", label: "Web", color: "#F0ABFC" }, // fuchsia-300
+  { key: "mattermost", label: "Mattermost", color: "#C4B5FD" }, // violet-300
+];
+
+const aiSeries = computed(() => stats.value?.series.ai_conversations ?? []);
 
 // Light/pastel palette (Tailwind -300 shades) matching the app's soft chips.
 const STATE_LIGHT: Record<string, string> = {
@@ -195,6 +215,14 @@ const maxProjectTasks = computed(() =>
                 :data="viewsSeries"
                 empty-text="No views yet"
                 :style="{ order: 3 }"
+              />
+
+              <StatsTrendChart
+                title="AI conversations"
+                :series="aiTrendSeries"
+                :data="aiSeries"
+                empty-text="No AI conversations yet"
+                :style="{ order: trendCharts.length + 2 }"
               />
             </div>
           </div>

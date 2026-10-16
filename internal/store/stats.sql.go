@@ -58,6 +58,58 @@ func (q *Queries) ActivityCreatedPerDay(ctx context.Context, arg ActivityCreated
 	return items, nil
 }
 
+const assistantConversationsPerDay = `-- name: AssistantConversationsPerDay :many
+SELECT
+    d::date AS day,
+    (COUNT(c.id) FILTER (WHERE c.id IS NOT NULL AND NOT c.is_mattermost))::int AS web_count,
+    (COUNT(c.id) FILTER (WHERE c.is_mattermost))::int AS mattermost_count
+FROM generate_series(
+    $1::date,
+    $2::date,
+    INTERVAL '1 day'
+) d
+LEFT JOIN (
+    SELECT ac.id, ac.created_at,
+           EXISTS (SELECT 1 FROM assistant_mattermost_threads mt WHERE mt.conversation_id = ac.id) AS is_mattermost
+    FROM assistant_conversations ac
+    WHERE EXISTS (SELECT 1 FROM assistant_messages m WHERE m.conversation_id = ac.id AND m.role = 'user')
+) c ON c.created_at::date = d::date
+GROUP BY d
+ORDER BY d ASC
+`
+
+type AssistantConversationsPerDayParams struct {
+	FromDate pgtype.Date `json:"from_date"`
+	ToDate   pgtype.Date `json:"to_date"`
+}
+
+type AssistantConversationsPerDayRow struct {
+	Day             pgtype.Date `json:"day"`
+	WebCount        int32       `json:"web_count"`
+	MattermostCount int32       `json:"mattermost_count"`
+}
+
+// Same "has a user message" rule as CountAssistantConversations; Mattermost ones have a thread mapping.
+func (q *Queries) AssistantConversationsPerDay(ctx context.Context, arg AssistantConversationsPerDayParams) ([]AssistantConversationsPerDayRow, error) {
+	rows, err := q.db.Query(ctx, assistantConversationsPerDay, arg.FromDate, arg.ToDate)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []AssistantConversationsPerDayRow{}
+	for rows.Next() {
+		var i AssistantConversationsPerDayRow
+		if err := rows.Scan(&i.Day, &i.WebCount, &i.MattermostCount); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const attachmentsCreatedPerDay = `-- name: AttachmentsCreatedPerDay :many
 SELECT d::date AS day, COUNT(a.id)::int AS count
 FROM generate_series(
@@ -178,6 +230,30 @@ func (q *Queries) CountActiveBlockerLinks(ctx context.Context) (CountActiveBlock
 	row := q.db.QueryRow(ctx, countActiveBlockerLinks)
 	var i CountActiveBlockerLinksRow
 	err := row.Scan(&i.BlockedTasks, &i.BlockingTasks)
+	return i, err
+}
+
+const countAssistantConversations = `-- name: CountAssistantConversations :one
+SELECT COUNT(*)::bigint AS conversations,
+       COUNT(DISTINCT c.user_id)::bigint AS users,
+       (COUNT(*) FILTER (WHERE EXISTS (
+           SELECT 1 FROM assistant_mattermost_threads mt WHERE mt.conversation_id = c.id
+       )))::bigint AS mattermost_conversations
+FROM assistant_conversations c
+WHERE EXISTS (SELECT 1 FROM assistant_messages m WHERE m.conversation_id = c.id AND m.role = 'user')
+`
+
+type CountAssistantConversationsRow struct {
+	Conversations           int64 `json:"conversations"`
+	Users                   int64 `json:"users"`
+	MattermostConversations int64 `json:"mattermost_conversations"`
+}
+
+// Only conversations with at least one user message.
+func (q *Queries) CountAssistantConversations(ctx context.Context) (CountAssistantConversationsRow, error) {
+	row := q.db.QueryRow(ctx, countAssistantConversations)
+	var i CountAssistantConversationsRow
+	err := row.Scan(&i.Conversations, &i.Users, &i.MattermostConversations)
 	return i, err
 }
 

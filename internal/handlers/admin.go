@@ -615,6 +615,13 @@ type ViewDayCount struct {
 	Shared  int    `json:"shared"`
 }
 
+// AIDayCount is a single day bucket of AI conversations split by channel.
+type AIDayCount struct {
+	Day        string `json:"day"`
+	Web        int    `json:"web"`
+	Mattermost int    `json:"mattermost"`
+}
+
 const statsDateLayout = "2006-01-02"
 
 // statsRange reads the from/to query params, defaulting to the trailing 30 days and capping the span at 366 days.
@@ -659,6 +666,9 @@ type AdminStatsResponse struct {
 		BlockingTasks    int64 `json:"blocking_tasks"`
 		Attachments      int64 `json:"attachments"`
 		AttachmentsBytes int64 `json:"attachments_bytes"`
+		AIConversations  int64 `json:"ai_conversations"`
+		AIUsers          int64 `json:"ai_users"`
+		AIMattermost     int64 `json:"ai_mattermost_conversations"`
 	} `json:"totals"`
 	TasksByState         []StatCount     `json:"tasks_by_state"`
 	TasksByPriority      []StatCount     `json:"tasks_by_priority"`
@@ -677,6 +687,7 @@ type AdminStatsResponse struct {
 		Attachments []DayCount     `json:"attachments"`
 		Cycles      []DayCount     `json:"cycles"`
 		Modules     []DayCount     `json:"modules"`
+		AI          []AIDayCount   `json:"ai_conversations"`
 	} `json:"series"`
 }
 
@@ -740,6 +751,11 @@ func (h *AdminHandler) GetStats(c *echo.Context) error {
 	if resp.Totals.AttachmentsBytes, err = h.store.AttachmentsTotalSize(ctx); err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to sum attachment sizes")
 	}
+	ai, err := h.store.CountAssistantConversations(ctx)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to count AI conversations")
+	}
+	resp.Totals.AIConversations, resp.Totals.AIUsers, resp.Totals.AIMattermost = ai.Conversations, ai.Users, ai.MattermostConversations
 
 	states, err := h.store.TasksByStateType(ctx)
 	if err != nil {
@@ -871,6 +887,19 @@ func (h *AdminHandler) GetStats(c *echo.Context) error {
 	resp.Series.Modules = make([]DayCount, len(modulesSeries))
 	for i, d := range modulesSeries {
 		resp.Series.Modules[i] = DayCount{Day: d.Day.Time.Format(statsDateLayout), Count: int(d.Count)}
+	}
+
+	aiSeries, err := h.store.AssistantConversationsPerDay(ctx, store.AssistantConversationsPerDayParams{FromDate: from, ToDate: to})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to load AI conversations series")
+	}
+	resp.Series.AI = make([]AIDayCount, len(aiSeries))
+	for i, d := range aiSeries {
+		resp.Series.AI[i] = AIDayCount{
+			Day:        d.Day.Time.Format(statsDateLayout),
+			Web:        int(d.WebCount),
+			Mattermost: int(d.MattermostCount),
+		}
 	}
 
 	return c.JSON(http.StatusOK, resp)

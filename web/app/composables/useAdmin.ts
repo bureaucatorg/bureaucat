@@ -70,6 +70,12 @@ interface ViewDayCount {
   shared: number;
 }
 
+interface AIDayCount {
+  day: string;
+  web: number;
+  mattermost: number;
+}
+
 export interface AdminStats {
   totals: {
     workspaces: number;
@@ -83,6 +89,9 @@ export interface AdminStats {
     blocking_tasks: number;
     attachments: number;
     attachments_bytes: number;
+    ai_conversations: number;
+    ai_users: number;
+    ai_mattermost_conversations: number;
   };
   tasks_by_state: StatCount[];
   tasks_by_priority: StatCount[];
@@ -101,6 +110,7 @@ export interface AdminStats {
     attachments: DayCount[];
     cycles: DayCount[];
     modules: DayCount[];
+    ai_conversations: AIDayCount[];
   };
 }
 

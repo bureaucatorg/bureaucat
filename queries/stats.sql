@@ -26,6 +26,16 @@ JOIN project_states bs ON bs.id = bt.state_id AND bs.state_type NOT IN ('complet
 JOIN tasks kt ON kt.id = tb.blocker_task_id AND kt.deleted_at IS NULL
 JOIN project_states ks ON ks.id = kt.state_id AND ks.state_type NOT IN ('completed', 'cancelled');
 
+-- name: CountAssistantConversations :one
+-- Only conversations with at least one user message.
+SELECT COUNT(*)::bigint AS conversations,
+       COUNT(DISTINCT c.user_id)::bigint AS users,
+       (COUNT(*) FILTER (WHERE EXISTS (
+           SELECT 1 FROM assistant_mattermost_threads mt WHERE mt.conversation_id = c.id
+       )))::bigint AS mattermost_conversations
+FROM assistant_conversations c
+WHERE EXISTS (SELECT 1 FROM assistant_messages m WHERE m.conversation_id = c.id AND m.role = 'user');
+
 -- name: CountAttachments :one
 SELECT COUNT(*) FROM attachments;
 
@@ -160,6 +170,26 @@ FROM generate_series(
 LEFT JOIN project_views v
     ON v.created_at::date = d::date
     AND v.deleted_at IS NULL
+GROUP BY d
+ORDER BY d ASC;
+
+-- name: AssistantConversationsPerDay :many
+-- Same "has a user message" rule as CountAssistantConversations; Mattermost ones have a thread mapping.
+SELECT
+    d::date AS day,
+    (COUNT(c.id) FILTER (WHERE c.id IS NOT NULL AND NOT c.is_mattermost))::int AS web_count,
+    (COUNT(c.id) FILTER (WHERE c.is_mattermost))::int AS mattermost_count
+FROM generate_series(
+    sqlc.arg('from_date')::date,
+    sqlc.arg('to_date')::date,
+    INTERVAL '1 day'
+) d
+LEFT JOIN (
+    SELECT ac.id, ac.created_at,
+           EXISTS (SELECT 1 FROM assistant_mattermost_threads mt WHERE mt.conversation_id = ac.id) AS is_mattermost
+    FROM assistant_conversations ac
+    WHERE EXISTS (SELECT 1 FROM assistant_messages m WHERE m.conversation_id = ac.id AND m.role = 'user')
+) c ON c.created_at::date = d::date
 GROUP BY d
 ORDER BY d ASC;
 
