@@ -80,6 +80,7 @@ export interface AdminStats {
   totals: {
     workspaces: number;
     projects: number;
+    workflow_projects: number;
     tasks: number;
     subtasks: number;
     pages: number;

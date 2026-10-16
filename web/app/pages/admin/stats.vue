@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { BarChart3, Loader2, Users, LayoutGrid, ListTodo, GitBranch, FileText, Building2, Paperclip, HardDrive, Mail, Ban, Link2, Bot, UserCheck, MessageSquare } from "lucide-vue-next";
+import { BarChart3, Loader2, Users, LayoutGrid, ListTodo, GitBranch, FileText, Building2, Paperclip, HardDrive, Mail, Ban, Link2, Bot, UserCheck, MessageSquare, Workflow as WorkflowIcon } from "lucide-vue-next";
 import { toast } from "vue-sonner";
 import type { DateValue } from "@internationalized/date";
 import type { AdminStats } from "~/composables/useAdmin";
@@ -70,6 +70,12 @@ const totalCards = computed(() => {
       value: `${t.ai_users.toLocaleString()} / ${t.users.toLocaleString()}`,
       icon: UserCheck,
       color: "text-lime-400",
+    },
+    {
+      label: "Workflow enforced",
+      value: `${t.workflow_projects.toLocaleString()} / ${t.projects.toLocaleString()}`,
+      icon: WorkflowIcon,
+      color: "text-blue-300",
     },
   ];
 });

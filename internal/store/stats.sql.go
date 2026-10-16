@@ -323,6 +323,20 @@ func (q *Queries) CountTopLevelTasks(ctx context.Context) (int64, error) {
 	return count, err
 }
 
+const countWorkflowEnforcedProjects = `-- name: CountWorkflowEnforcedProjects :one
+SELECT COUNT(*)
+FROM project_workflows w
+JOIN projects p ON p.id = w.project_id AND p.deleted_at IS NULL
+WHERE w.enabled
+`
+
+func (q *Queries) CountWorkflowEnforcedProjects(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, countWorkflowEnforcedProjects)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const countWorkspaces = `-- name: CountWorkspaces :one
 SELECT COUNT(*) FROM workspaces WHERE deleted_at IS NULL
 `

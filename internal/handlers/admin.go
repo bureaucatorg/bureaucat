@@ -657,6 +657,7 @@ type AdminStatsResponse struct {
 	Totals struct {
 		Workspaces       int64 `json:"workspaces"`
 		Projects         int64 `json:"projects"`
+		WorkflowProjects int64 `json:"workflow_projects"`
 		Tasks            int64 `json:"tasks"`
 		Subtasks         int64 `json:"subtasks"`
 		Pages            int64 `json:"pages"`
@@ -733,6 +734,9 @@ func (h *AdminHandler) GetStats(c *echo.Context) error {
 	}
 	if resp.Totals.Pages, err = h.store.CountPages(ctx); err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to count pages")
+	}
+	if resp.Totals.WorkflowProjects, err = h.store.CountWorkflowEnforcedProjects(ctx); err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to count workflow projects")
 	}
 	if resp.Totals.Users, err = h.store.CountUsers(ctx); err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to count users")

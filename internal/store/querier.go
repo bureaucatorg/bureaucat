@@ -86,6 +86,7 @@ type Querier interface {
 	CountUserWorkspaces(ctx context.Context, userID uuid.UUID) (int64, error)
 	CountUserWorkspacesFiltered(ctx context.Context, arg CountUserWorkspacesFilteredParams) (int64, error)
 	CountUsers(ctx context.Context) (int64, error)
+	CountWorkflowEnforcedProjects(ctx context.Context) (int64, error)
 	CountWorkspaces(ctx context.Context) (int64, error)
 	// ==================== ACTIVITY LOG ====================
 	CreateActivityLog(ctx context.Context, arg CreateActivityLogParams) (ActivityLog, error)

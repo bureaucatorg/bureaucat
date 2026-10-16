@@ -4,6 +4,12 @@ SELECT COUNT(*) FROM workspaces WHERE deleted_at IS NULL;
 -- name: CountProjects :one
 SELECT COUNT(*) FROM projects WHERE deleted_at IS NULL;
 
+-- name: CountWorkflowEnforcedProjects :one
+SELECT COUNT(*)
+FROM project_workflows w
+JOIN projects p ON p.id = w.project_id AND p.deleted_at IS NULL
+WHERE w.enabled;
+
 -- name: CountTopLevelTasks :one
 SELECT COUNT(*) FROM tasks WHERE deleted_at IS NULL AND parent_task_id IS NULL;
 
