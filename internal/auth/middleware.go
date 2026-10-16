@@ -74,6 +74,12 @@ func Middleware(manager *Manager, queries store.Querier) echo.MiddlewareFunc {
 			c.Request().Header.Set(HeaderUsername, claims.Username)
 			c.Request().Header.Set(HeaderUserType, claims.UserType)
 
+			via := ViaWeb
+			if claims.Via == ViaAssistant {
+				via = ViaAssistant
+			}
+			c.SetRequest(c.Request().WithContext(WithVia(c.Request().Context(), via)))
+
 			return next(c)
 		}
 	}
@@ -132,6 +138,7 @@ func authenticateWithPAT(c *echo.Context, queries store.Querier, token string, n
 		scope = PATScopeReadWrite
 	}
 	c.Request().Header.Set(HeaderPATScope, scope)
+	c.SetRequest(c.Request().WithContext(WithVia(c.Request().Context(), ViaPAT)))
 
 	// Update last_used_at in the background
 	go func() {

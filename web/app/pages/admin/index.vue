@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { Users, Key, Shield, ArrowRight, Loader2, Upload, CheckCircle2, Copy, Check, MessageSquare, MessageCircle, Mail, UserPlus, BarChart3, Trash2, Network } from "lucide-vue-next";
+import { Users, Key, Shield, ArrowRight, Loader2, Upload, CheckCircle2, Copy, Check, MessageSquare, MessageCircle, Mail, UserPlus, BarChart3, Trash2, Network, Bot } from "lucide-vue-next";
 import { toast } from "vue-sonner";
-import type { SSOSettings, MattermostSettings, SMTPSettings } from "~/composables/useSettings";
+import type { SSOSettings, MattermostSettings, SMTPSettings, AssistantSettings } from "~/composables/useSettings";
 import { ACTIVITY_TYPE_LABELS } from "~/types";
 
 definePageMeta({
@@ -10,7 +10,7 @@ definePageMeta({
 
 useSeoMeta({ title: "Admin" });
 
-const { branding, updateBranding, signupSettings, updateSignupSettings, fetchSignupSettings, fetchSSOSettings, updateSSOSettings, fetchMattermostSettings, updateMattermostSettings, testMattermostConnection, fetchSMTPSettings, updateSMTPSettings, testSMTPSettings } = useSettings();
+const { branding, updateBranding, signupSettings, updateSignupSettings, fetchSignupSettings, fetchSSOSettings, updateSSOSettings, fetchMattermostSettings, updateMattermostSettings, testMattermostConnection, fetchSMTPSettings, updateSMTPSettings, testSMTPSettings, fetchAssistantSettings, updateAssistantSettings, testAssistantSettings } = useSettings();
 const { getAuthHeader, user } = useAuth();
 
 const brandingForm = ref({
@@ -320,11 +320,63 @@ async function handleTestSMTP() {
   }
 }
 
+// Assistant Settings
+const assistantForm = ref<AssistantSettings>({
+  enabled: false,
+  provider: "anthropic",
+  model: "",
+  api_key: "",
+  aws_region: "",
+});
+const savingAssistant = ref(false);
+const testingAssistant = ref(false);
+const assistantModelPlaceholders: Record<AssistantSettings["provider"], string> = {
+  openai: "gpt-5",
+  anthropic: "claude-opus-5-5",
+  openrouter: "vendor/model, e.g. openai/gpt-5",
+  bedrock: "Bedrock model or inference profile ID",
+};
+
+async function loadAssistantSettings() {
+  const result = await fetchAssistantSettings();
+  if (result.success && result.data) {
+    assistantForm.value = { ...assistantForm.value, ...result.data };
+  }
+}
+
+async function handleSaveAssistant() {
+  savingAssistant.value = true;
+  const result = await updateAssistantSettings(assistantForm.value);
+  savingAssistant.value = false;
+
+  if (result.success) {
+    if (result.data) {
+      assistantForm.value = { ...assistantForm.value, ...result.data };
+    }
+    toast.success("Assistant settings saved");
+  } else {
+    toast.error(result.error || "Failed to save assistant settings");
+  }
+}
+
+async function handleTestAssistant() {
+  testingAssistant.value = true;
+  const result = await testAssistantSettings();
+  testingAssistant.value = false;
+
+  if (result.success) {
+    toast.success(result.message || "Assistant is working");
+  } else {
+    toast.error(result.error || "Assistant test failed");
+  }
+}
+
 onMounted(() => {
   fetchSignupSettings();
   loadSSOSettings();
   loadMattermostSettings();
   loadSMTPSettings();
+  loadAssistantSettings();
 });
 
 const adminModels = [
@@ -955,6 +1007,94 @@ const adminModels = [
                   </Button>
                   <Button @click="handleSaveSMTP" :disabled="savingSMTP">
                     <Loader2 v-if="savingSMTP" class="mr-2 size-4 animate-spin" />
+                    Save Changes
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card class="mt-4">
+            <CardContent class="pt-6">
+              <div class="space-y-6">
+                <div class="flex items-center justify-between gap-4">
+                  <div class="flex items-center gap-3">
+                    <Bot class="size-5 shrink-0 text-muted-foreground" />
+                    <div>
+                      <p class="font-medium">Assistant</p>
+                      <p class="text-sm text-muted-foreground">
+                        An LLM chat assistant that acts with each user's own permissions. Changes need the user's approval.
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    :checked="assistantForm.enabled"
+                    @update:checked="assistantForm.enabled = $event"
+                  />
+                </div>
+
+                <div v-if="assistantForm.enabled" class="space-y-4">
+                  <div class="grid gap-4 sm:grid-cols-[12rem_1fr]">
+                    <div class="space-y-2">
+                      <Label for="assistant-provider">Provider</Label>
+                      <Select v-model="assistantForm.provider" :disabled="savingAssistant">
+                        <SelectTrigger id="assistant-provider" class="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="anthropic">Anthropic</SelectItem>
+                          <SelectItem value="openai">OpenAI</SelectItem>
+                          <SelectItem value="openrouter">OpenRouter</SelectItem>
+                          <SelectItem value="bedrock">AWS Bedrock</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div class="space-y-2">
+                      <Label for="assistant-model">Model</Label>
+                      <Input
+                        id="assistant-model"
+                        v-model="assistantForm.model"
+                        :placeholder="assistantModelPlaceholders[assistantForm.provider]"
+                        :disabled="savingAssistant"
+                      />
+                    </div>
+                  </div>
+
+                  <div v-if="assistantForm.provider === 'bedrock'" class="space-y-2">
+                    <Label for="assistant-region">AWS region</Label>
+                    <Input
+                      id="assistant-region"
+                      v-model="assistantForm.aws_region"
+                      placeholder="us-east-1"
+                      :disabled="savingAssistant"
+                    />
+                    <p class="text-xs text-muted-foreground">
+                      Credentials come from the server's AWS environment (IAM role or environment variables)
+                    </p>
+                  </div>
+                  <div v-else class="space-y-2">
+                    <Label for="assistant-key">API key</Label>
+                    <Input
+                      id="assistant-key"
+                      v-model="assistantForm.api_key"
+                      type="password"
+                      autocomplete="new-password"
+                      :disabled="savingAssistant"
+                    />
+                  </div>
+                </div>
+
+                <div class="flex flex-wrap items-center justify-end gap-2 pt-2">
+                  <Button
+                    v-if="assistantForm.enabled"
+                    variant="outline"
+                    @click="handleTestAssistant"
+                    :disabled="testingAssistant || savingAssistant"
+                  >
+                    <Loader2 v-if="testingAssistant" class="mr-2 size-4 animate-spin" />
+                    Test Saved Settings
+                  </Button>
+                  <Button @click="handleSaveAssistant" :disabled="savingAssistant">
+                    <Loader2 v-if="savingAssistant" class="mr-2 size-4 animate-spin" />
                     Save Changes
                   </Button>
                 </div>

@@ -150,6 +150,17 @@ const feedItems = computed<FeedItem[]>(() => {
   return items;
 });
 
+// Comments come from the comments table, so their channel is read from the matching comment_created activity.
+const commentVia = computed(() => {
+  const map = new Map<string, ActivityLogEntry["via"]>();
+  for (const activity of props.activities) {
+    if (activity.activity_type !== "comment_created") continue;
+    const id = parseActivityValue(activity.new_value)?.comment_id;
+    if (typeof id === "string") map.set(id, activity.via);
+  }
+  return map;
+});
+
 function getCommentHistory(commentId: string): CommentVersion[] {
   return commentEditHistory.value.get(commentId) || [];
 }
@@ -390,6 +401,7 @@ function getStateChangeDetail(activity: ActivityLogEntry): { from: string; to: s
               <span class="font-medium">
                 {{ item.data.first_name }} {{ item.data.last_name }}
               </span>
+              <ViaBadge :via="item.data.via" class="ml-1" />
               <span class="text-muted-foreground">
                 {{ " " }}{{ getActivityLabel(item.data) }}
                 <template v-if="getStateChangeDetail(item.data)">
@@ -427,6 +439,7 @@ function getStateChangeDetail(activity: ActivityLogEntry): { from: string; to: s
               :task-num="taskNum"
               :can-edit="canEditComment(item.data)"
               :edit-history="getCommentHistory(item.data.id)"
+              :via="commentVia.get(item.data.id)"
               :members="members"
               compact
               @deleted="emit('refreshComments')"

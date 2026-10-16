@@ -83,6 +83,9 @@ type Querier interface {
 	CountWorkspaces(ctx context.Context) (int64, error)
 	// ==================== ACTIVITY LOG ====================
 	CreateActivityLog(ctx context.Context, arg CreateActivityLogParams) (ActivityLog, error)
+	CreateAssistantAction(ctx context.Context, arg CreateAssistantActionParams) (AssistantAction, error)
+	CreateAssistantConversation(ctx context.Context, arg CreateAssistantConversationParams) (AssistantConversation, error)
+	CreateAssistantMessage(ctx context.Context, arg CreateAssistantMessageParams) (AssistantMessage, error)
 	CreateAttachment(ctx context.Context, arg CreateAttachmentParams) (Attachment, error)
 	// ==================== COMMENTS ====================
 	CreateComment(ctx context.Context, arg CreateCommentParams) (Comment, error)
@@ -115,6 +118,7 @@ type Querier interface {
 	// ==================== WORKSPACES ====================
 	CreateWorkspace(ctx context.Context, arg CreateWorkspaceParams) (Workspace, error)
 	CyclesCreatedPerDay(ctx context.Context, arg CyclesCreatedPerDayParams) ([]CyclesCreatedPerDayRow, error)
+	DeleteAssistantConversation(ctx context.Context, arg DeleteAssistantConversationParams) (int64, error)
 	DeleteAttachment(ctx context.Context, arg DeleteAttachmentParams) (int64, error)
 	DeleteAttachmentsByEntity(ctx context.Context, arg DeleteAttachmentsByEntityParams) error
 	DeleteExpiredRefreshTokens(ctx context.Context) (int64, error)
@@ -131,6 +135,8 @@ type Querier interface {
 	DetachSubtask(ctx context.Context, arg DetachSubtaskParams) (int64, error)
 	// ==================== TASK FOLLOWERS ====================
 	FollowTask(ctx context.Context, arg FollowTaskParams) error
+	GetAssistantAction(ctx context.Context, arg GetAssistantActionParams) (AssistantAction, error)
+	GetAssistantConversation(ctx context.Context, arg GetAssistantConversationParams) (AssistantConversation, error)
 	GetBlockerTaskRef(ctx context.Context, id uuid.UUID) (GetBlockerTaskRefRow, error)
 	GetCommentByID(ctx context.Context, id uuid.UUID) (GetCommentByIDRow, error)
 	GetCycleByID(ctx context.Context, id uuid.UUID) (GetCycleByIDRow, error)
@@ -203,6 +209,9 @@ type Querier interface {
 	// Filtered list and count are now built dynamically by internal/store/tasks_filter.go
 	// from a FilterTree. The projection here is documented for reference by that runner.
 	ListAssigneesForTasks(ctx context.Context, taskIds []uuid.UUID) ([]ListAssigneesForTasksRow, error)
+	ListAssistantActions(ctx context.Context, conversationID uuid.UUID) ([]AssistantAction, error)
+	ListAssistantConversations(ctx context.Context, userID uuid.UUID) ([]AssistantConversation, error)
+	ListAssistantMessages(ctx context.Context, conversationID uuid.UUID) ([]AssistantMessage, error)
 	ListAttachmentsByEntity(ctx context.Context, arg ListAttachmentsByEntityParams) ([]ListAttachmentsByEntityRow, error)
 	// Project tasks that can be linked to the given task in either direction:
 	// excludes the task itself and tasks already linked to it.
@@ -228,6 +237,7 @@ type Querier interface {
 	ListModuleTasks(ctx context.Context, arg ListModuleTasksParams) ([]ListModuleTasksRow, error)
 	// A recipient's notifications, newest first, with task/project/actor display fields.
 	ListNotifications(ctx context.Context, arg ListNotificationsParams) ([]ListNotificationsRow, error)
+	ListPendingAssistantActions(ctx context.Context, conversationID uuid.UUID) ([]AssistantAction, error)
 	ListPersonalAccessTokensByUser(ctx context.Context, userID uuid.UUID) ([]ListPersonalAccessTokensByUserRow, error)
 	ListProjectCycles(ctx context.Context, arg ListProjectCyclesParams) ([]ListProjectCyclesRow, error)
 	ListProjectCyclesAll(ctx context.Context, projectID uuid.UUID) ([]ListProjectCyclesAllRow, error)
@@ -335,6 +345,7 @@ type Querier interface {
 	RemoveWorkspaceMember(ctx context.Context, arg RemoveWorkspaceMemberParams) error
 	// Pass a JSON array of {id, new_position} objects.
 	ReorderProjectViews(ctx context.Context, arg ReorderProjectViewsParams) error
+	ResolveAssistantAction(ctx context.Context, arg ResolveAssistantActionParams) (AssistantAction, error)
 	RestoreProject(ctx context.Context, id uuid.UUID) error
 	RevokeAllUserRefreshTokens(ctx context.Context, userID uuid.UUID) error
 	RevokeRefreshToken(ctx context.Context, id uuid.UUID) error
@@ -378,6 +389,7 @@ type Querier interface {
 	TasksByStateType(ctx context.Context) ([]TasksByStateTypeRow, error)
 	TasksCreatedPerDay(ctx context.Context, arg TasksCreatedPerDayParams) ([]TasksCreatedPerDayRow, error)
 	TopProjectsByTaskCount(ctx context.Context) ([]TopProjectsByTaskCountRow, error)
+	TouchAssistantConversation(ctx context.Context, arg TouchAssistantConversationParams) error
 	// When a member leaves a project, keep their shared views alive by reassigning ownership.
 	TransferOwnedSharedViews(ctx context.Context, arg TransferOwnedSharedViewsParams) error
 	UnfollowTask(ctx context.Context, arg UnfollowTaskParams) error

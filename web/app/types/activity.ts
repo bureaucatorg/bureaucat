@@ -11,6 +11,7 @@ export interface ActivityLogEntry {
   old_value?: unknown;
   new_value?: unknown;
   created_at: string;
+  via?: "web" | "assistant" | "pat";
 }
 
 export type ActivityType =

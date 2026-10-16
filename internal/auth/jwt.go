@@ -27,6 +27,7 @@ type UserClaims struct {
 	UserID   uuid.UUID `json:"user_id"`
 	Username string    `json:"username"`
 	UserType string    `json:"user_type"`
+	Via      string    `json:"via,omitempty"`
 	jwt.RegisteredClaims
 }
 
@@ -42,12 +43,23 @@ func NewManager(config Config) *Manager {
 
 // GenerateAccessToken creates a JWT access token for the user.
 func (m *Manager) GenerateAccessToken(userID uuid.UUID, username, userType string) (string, time.Time, error) {
+	return m.generateAccessToken(userID, username, userType, "")
+}
+
+// GenerateAssistantToken creates an access token for in-process assistant tool calls,
+// marked so activity it causes is attributed to the assistant.
+func (m *Manager) GenerateAssistantToken(userID uuid.UUID, username, userType string) (string, time.Time, error) {
+	return m.generateAccessToken(userID, username, userType, ViaAssistant)
+}
+
+func (m *Manager) generateAccessToken(userID uuid.UUID, username, userType, via string) (string, time.Time, error) {
 	expiresAt := time.Now().Add(time.Duration(m.config.AccessTokenExpiryMins) * time.Minute)
 
 	claims := UserClaims{
 		UserID:   userID,
 		Username: username,
 		UserType: userType,
+		Via:      via,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(expiresAt),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),

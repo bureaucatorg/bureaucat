@@ -284,15 +284,51 @@ func (ns NullViewVisibility) Value() (driver.Value, error) {
 }
 
 type ActivityLog struct {
-	ID           uuid.UUID          `json:"id"`
-	TaskID       uuid.UUID          `json:"task_id"`
-	ActivityType string             `json:"activity_type"`
-	ActorID      uuid.UUID          `json:"actor_id"`
-	FieldName    pgtype.Text        `json:"field_name"`
-	OldValue     []byte             `json:"old_value"`
-	NewValue     []byte             `json:"new_value"`
-	CreatedAt    pgtype.Timestamptz `json:"created_at"`
-	Checksum     string             `json:"checksum"`
+	ID              uuid.UUID          `json:"id"`
+	TaskID          uuid.UUID          `json:"task_id"`
+	ActivityType    string             `json:"activity_type"`
+	ActorID         uuid.UUID          `json:"actor_id"`
+	FieldName       pgtype.Text        `json:"field_name"`
+	OldValue        []byte             `json:"old_value"`
+	NewValue        []byte             `json:"new_value"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+	Checksum        string             `json:"checksum"`
+	Via             string             `json:"via"`
+	ChecksumVersion int16              `json:"checksum_version"`
+}
+
+type AssistantAction struct {
+	ID             uuid.UUID          `json:"id"`
+	ConversationID uuid.UUID          `json:"conversation_id"`
+	ToolCallID     string             `json:"tool_call_id"`
+	ToolName       string             `json:"tool_name"`
+	Args           []byte             `json:"args"`
+	Status         string             `json:"status"`
+	Result         string             `json:"result"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	ResolvedAt     pgtype.Timestamptz `json:"resolved_at"`
+}
+
+type AssistantConversation struct {
+	ID        uuid.UUID          `json:"id"`
+	UserID    uuid.UUID          `json:"user_id"`
+	Title     string             `json:"title"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+}
+
+type AssistantMessage struct {
+	ID             uuid.UUID          `json:"id"`
+	Seq            pgtype.Int8        `json:"seq"`
+	ConversationID uuid.UUID          `json:"conversation_id"`
+	Role           string             `json:"role"`
+	Content        string             `json:"content"`
+	ToolCalls      []byte             `json:"tool_calls"`
+	ToolCallID     string             `json:"tool_call_id"`
+	ToolName       string             `json:"tool_name"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	Attachments    []byte             `json:"attachments"`
+	Meta           []byte             `json:"meta"`
 }
 
 type Attachment struct {

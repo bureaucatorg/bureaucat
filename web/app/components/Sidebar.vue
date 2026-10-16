@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { LayoutDashboard, FolderKanban, Eye, Repeat, Layers, Network, Timer, MessageCircle, Newspaper, BookOpen, Shield, Settings } from "lucide-vue-next";
+import { LayoutDashboard, FolderKanban, Eye, Repeat, Layers, Network, Bot, Timer, MessageCircle, Newspaper, BookOpen, Shield, Settings } from "lucide-vue-next";
 
 const { user } = useAuth();
 const route = useRoute();
 const { feedbackPublic, fetchFeedbackPublicSettings } = useSettings();
+const { enabled: assistantEnabled, open: assistantOpen, fetchStatus: fetchAssistantStatus, setOpen: setAssistantOpen } = useAssistant();
 
 const profilePath = computed(() => (user.value ? `/profile/${user.value.id}` : "/"));
 
@@ -43,6 +44,7 @@ function openReleases() {
 onMounted(() => {
   fetchFeedbackPublicSettings();
   checkUnseenRelease();
+  fetchAssistantStatus();
 });
 </script>
 
@@ -127,6 +129,18 @@ onMounted(() => {
       >
         <Network class="size-4.5" />
       </NuxtLink>
+
+      <button
+        v-if="assistantEnabled || user?.user_type === 'admin'"
+        type="button"
+        title="Assistant"
+        :aria-pressed="assistantOpen"
+        class="flex size-9 items-center justify-center rounded-md text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+        :class="assistantOpen && 'bg-amber-500/15 text-amber-700 dark:text-amber-400'"
+        @click="setAssistantOpen(!assistantOpen)"
+      >
+        <Bot class="size-4.5" />
+      </button>
     </nav>
 
     <!-- Pomodoro + feedback + settings at bottom -->

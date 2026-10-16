@@ -29,6 +29,7 @@ const props = withDefaults(
     compact?: boolean;
     editHistory?: CommentVersion[];
     members?: ProjectMember[];
+    via?: "web" | "assistant" | "pat";
   }>(),
   {
     compact: false,
@@ -198,6 +199,7 @@ onMounted(() => {
         <NuxtLink :to="`/profile/${comment.created_by}`" class="text-sm font-medium hover:underline">
           {{ comment.first_name }} {{ comment.last_name }}
         </NuxtLink>
+        <ViaBadge :via="via" class="-ml-1" />
         <button
           type="button"
           class="text-xs text-muted-foreground hover:text-foreground hover:underline underline-offset-2 focus-visible:ring-2 focus-visible:ring-ring rounded-sm outline-none"

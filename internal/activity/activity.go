@@ -11,11 +11,15 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"bereaucat/internal/auth"
 	"bereaucat/internal/store"
 )
 
 // SeedChecksum is the initial checksum used for the first activity entry
 const SeedChecksum = "0000000000000000000000000000000000000000000000000000000000000000"
+
+// ChecksumVersion is the formula used for new entries. v1 entries predate the via column.
+const ChecksumVersion = 2
 
 // ActivityType represents the type of activity logged
 type ActivityType string
@@ -98,8 +102,12 @@ func (s *Service) LogActivity(ctx context.Context, params LogActivityParams) err
 	// Generate timestamp - truncate to microseconds to match PostgreSQL precision
 	now := time.Now().UTC().Truncate(time.Microsecond)
 
+	via := auth.ViaFromContext(ctx)
+
 	// Calculate checksum
 	checksum := calculateChecksum(
+		ChecksumVersion,
+		via,
 		previousChecksum,
 		params.TaskID,
 		string(params.ActivityType),
@@ -118,8 +126,10 @@ func (s *Service) LogActivity(ctx context.Context, params LogActivityParams) err
 		FieldName:    nullableText(params.FieldName),
 		OldValue:     oldValueJSON,
 		NewValue:     newValueJSON,
-		Checksum:     checksum,
-		CreatedAt:    pgtype.Timestamptz{Time: now, Valid: true},
+		Checksum:        checksum,
+		CreatedAt:       pgtype.Timestamptz{Time: now, Valid: true},
+		Via:             via,
+		ChecksumVersion: ChecksumVersion,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create activity log: %w", err)
@@ -178,6 +188,8 @@ func (s *Service) VerifyChain(ctx context.Context, taskID uuid.UUID) (bool, erro
 		newValue := normalizeJSON(activity.NewValue)
 
 		expectedChecksum := calculateChecksum(
+			int(activity.ChecksumVersion),
+			activity.Via,
 			previousChecksum,
 			activity.TaskID,
 			activity.ActivityType,
@@ -185,7 +197,8 @@ func (s *Service) VerifyChain(ctx context.Context, taskID uuid.UUID) (bool, erro
 			textToStringPtr(activity.FieldName),
 			oldValue,
 			newValue,
-			activity.CreatedAt.Time,
+			// pgx returns timestamps in the server's local zone; checksums were written in UTC.
+			activity.CreatedAt.Time.UTC(),
 		)
 
 		if activity.Checksum != expectedChecksum {
@@ -198,8 +211,11 @@ func (s *Service) VerifyChain(ctx context.Context, taskID uuid.UUID) (bool, erro
 	return true, nil
 }
 
-// calculateChecksum generates a SHA-256 checksum for an activity entry
+// calculateChecksum generates a SHA-256 checksum for an activity entry.
+// Version 1 is the original formula; version 2 prefixes "v2" and appends via.
 func calculateChecksum(
+	version int,
+	via string,
 	previousChecksum string,
 	taskID uuid.UUID,
 	activityType string,
@@ -225,6 +241,9 @@ func calculateChecksum(
 		string(newValue),
 		timestamp.Format(time.RFC3339Nano),
 	)
+	if version >= 2 {
+		data = "v2|" + data + "|" + via
+	}
 
 	hash := sha256.Sum256([]byte(data))
 	return hex.EncodeToString(hash[:])

@@ -34,3 +34,26 @@ export function renderRichText(value: string | null | undefined): string {
 export function renderMarkdown(value: string | null | undefined): string {
   return sanitizeHtml(marked(value ?? "") as string);
 }
+
+const ASSISTANT_FORBID_TAGS = ["img", "picture", "source", "video", "audio", "track", "iframe", "object", "embed", "svg", "math", "style", "link", "meta", "form", "input", "button"];
+
+// Assistant replies can echo text planted by other users, so nothing may load remote
+// resources or link off-site: media is dropped and only same-app links stay clickable.
+export function renderAssistantMarkdown(value: string | null | undefined): string {
+  const html = DOMPurify.sanitize(marked(value ?? "") as string, {
+    FORBID_TAGS: ASSISTANT_FORBID_TAGS,
+    FORBID_ATTR: ["style", "srcset", "background", "poster", "action", "formaction"],
+  });
+  const template = document.createElement("template");
+  template.innerHTML = html;
+  for (const a of template.content.querySelectorAll("a")) {
+    const href = a.getAttribute("href") ?? "";
+    if (/^\/(?![/\\])/.test(href)) {
+      a.removeAttribute("target");
+      a.removeAttribute("rel");
+    } else {
+      a.replaceWith(document.createTextNode(a.textContent ?? ""));
+    }
+  }
+  return template.innerHTML;
+}

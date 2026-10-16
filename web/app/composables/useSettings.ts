@@ -1,3 +1,11 @@
+export interface AssistantSettings {
+  enabled: boolean;
+  provider: "openai" | "anthropic" | "openrouter" | "bedrock";
+  model: string;
+  api_key: string;
+  aws_region: string;
+}
+
 export interface BrandingSettings {
   enabled: boolean;
   app_name: string;
@@ -428,6 +436,61 @@ export function useSettings() {
     }
   }
 
+  // --- Assistant Settings ---
+
+  async function fetchAssistantSettings(): Promise<{ success: boolean; data?: AssistantSettings; error?: string }> {
+    try {
+      const response = await fetch("/api/v1/admin/settings/assistant", {
+        headers: { ...getAuthHeader() },
+        credentials: "include",
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        return { success: false, error: data.message || "Failed to fetch assistant settings" };
+      }
+      return { success: true, data };
+    } catch {
+      return { success: false, error: "Network error" };
+    }
+  }
+
+  async function updateAssistantSettings(
+    settings: AssistantSettings
+  ): Promise<{ success: boolean; data?: AssistantSettings; error?: string }> {
+    try {
+      const response = await fetch("/api/v1/admin/settings/assistant", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", ...getAuthHeader() },
+        credentials: "include",
+        body: JSON.stringify(settings),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        return { success: false, error: data.message || "Failed to update assistant settings" };
+      }
+      return { success: true, data };
+    } catch {
+      return { success: false, error: "Network error" };
+    }
+  }
+
+  async function testAssistantSettings(): Promise<{ success: boolean; message?: string; error?: string }> {
+    try {
+      const response = await fetch("/api/v1/admin/settings/assistant/test", {
+        method: "POST",
+        headers: { ...getAuthHeader() },
+        credentials: "include",
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        return { success: false, error: data.message || "Assistant test failed" };
+      }
+      return { success: true, message: data.message };
+    } catch {
+      return { success: false, error: "Network error" };
+    }
+  }
+
   return {
     branding,
     appName,
@@ -449,6 +512,9 @@ export function useSettings() {
     fetchSMTPSettings,
     updateSMTPSettings,
     testSMTPSettings,
+    fetchAssistantSettings,
+    updateAssistantSettings,
+    testAssistantSettings,
     feedbackPublic,
     feedbackPublicLoaded,
     fetchFeedbackPublicSettings,

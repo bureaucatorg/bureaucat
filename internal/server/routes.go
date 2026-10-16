@@ -121,6 +121,18 @@ func (s *Server) registerRoutes() {
 			patGroup.PATCH("/me/tokens/:tokenId", s.patHandler.UpdateTokenScope)
 			patGroup.DELETE("/me/tokens/:tokenId", s.patHandler.DeleteToken)
 		}
+
+		// LLM assistant (web adapter); PATs are rejected
+		if s.assistantHandler != nil {
+			assistantGroup := protected.Group("/assistant", auth.RejectPAT())
+			assistantGroup.GET("/status", s.assistantHandler.GetStatus)
+			assistantGroup.GET("/conversations", s.assistantHandler.ListConversations)
+			assistantGroup.POST("/conversations", s.assistantHandler.CreateConversation)
+			assistantGroup.GET("/conversations/:id", s.assistantHandler.GetConversation)
+			assistantGroup.DELETE("/conversations/:id", s.assistantHandler.DeleteConversation)
+			assistantGroup.POST("/conversations/:id/messages", s.assistantHandler.SendMessage)
+			assistantGroup.POST("/conversations/:id/actions/:actionId", s.assistantHandler.ResolveAction)
+		}
 		// Workspace-level active cycles dashboard (across all projects)
 		if s.cycleHandler != nil {
 			protected.GET("/cycles/active", s.cycleHandler.ListActiveCycles)
@@ -357,6 +369,12 @@ func (s *Server) registerRoutes() {
 			admin.GET("/settings/smtp", s.settingsHandler.GetSMTPSettings)
 			admin.PUT("/settings/smtp", s.settingsHandler.UpdateSMTPSettings)
 			admin.POST("/settings/smtp/test", s.settingsHandler.TestSMTPSettings)
+		}
+
+		if s.assistantHandler != nil {
+			admin.GET("/settings/assistant", s.assistantHandler.GetAssistantSettings)
+			admin.PUT("/settings/assistant", s.assistantHandler.UpdateAssistantSettings)
+			admin.POST("/settings/assistant/test", s.assistantHandler.TestAssistantSettings)
 		}
 
 		// Admin data import

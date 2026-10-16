@@ -337,20 +337,22 @@ func (q *Queries) CountUserProjectsFiltered(ctx context.Context, arg CountUserPr
 
 const createActivityLog = `-- name: CreateActivityLog :one
 
-INSERT INTO activity_log (task_id, activity_type, actor_id, field_name, old_value, new_value, checksum, created_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-RETURNING id, task_id, activity_type, actor_id, field_name, old_value, new_value, created_at, checksum
+INSERT INTO activity_log (task_id, activity_type, actor_id, field_name, old_value, new_value, checksum, created_at, via, checksum_version)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+RETURNING id, task_id, activity_type, actor_id, field_name, old_value, new_value, created_at, checksum, via, checksum_version
 `
 
 type CreateActivityLogParams struct {
-	TaskID       uuid.UUID          `json:"task_id"`
-	ActivityType string             `json:"activity_type"`
-	ActorID      uuid.UUID          `json:"actor_id"`
-	FieldName    pgtype.Text        `json:"field_name"`
-	OldValue     []byte             `json:"old_value"`
-	NewValue     []byte             `json:"new_value"`
-	Checksum     string             `json:"checksum"`
-	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	TaskID          uuid.UUID          `json:"task_id"`
+	ActivityType    string             `json:"activity_type"`
+	ActorID         uuid.UUID          `json:"actor_id"`
+	FieldName       pgtype.Text        `json:"field_name"`
+	OldValue        []byte             `json:"old_value"`
+	NewValue        []byte             `json:"new_value"`
+	Checksum        string             `json:"checksum"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+	Via             string             `json:"via"`
+	ChecksumVersion int16              `json:"checksum_version"`
 }
 
 // ==================== ACTIVITY LOG ====================
@@ -364,6 +366,8 @@ func (q *Queries) CreateActivityLog(ctx context.Context, arg CreateActivityLogPa
 		arg.NewValue,
 		arg.Checksum,
 		arg.CreatedAt,
+		arg.Via,
+		arg.ChecksumVersion,
 	)
 	var i ActivityLog
 	err := row.Scan(
@@ -376,6 +380,8 @@ func (q *Queries) CreateActivityLog(ctx context.Context, arg CreateActivityLogPa
 		&i.NewValue,
 		&i.CreatedAt,
 		&i.Checksum,
+		&i.Via,
+		&i.ChecksumVersion,
 	)
 	return i, err
 }
@@ -2151,7 +2157,7 @@ func (q *Queries) ListSubtasks(ctx context.Context, parentID uuid.UUID) ([]ListS
 }
 
 const listTaskActivity = `-- name: ListTaskActivity :many
-SELECT al.id, al.task_id, al.activity_type, al.actor_id, al.field_name, al.old_value, al.new_value, al.created_at, al.checksum,
+SELECT al.id, al.task_id, al.activity_type, al.actor_id, al.field_name, al.old_value, al.new_value, al.created_at, al.checksum, al.via,
        u.username, u.first_name, u.last_name, u.avatar_url
 FROM activity_log al
 JOIN users u ON al.actor_id = u.id
@@ -2169,6 +2175,7 @@ type ListTaskActivityRow struct {
 	NewValue     []byte             `json:"new_value"`
 	CreatedAt    pgtype.Timestamptz `json:"created_at"`
 	Checksum     string             `json:"checksum"`
+	Via          string             `json:"via"`
 	Username     string             `json:"username"`
 	FirstName    string             `json:"first_name"`
 	LastName     string             `json:"last_name"`
@@ -2194,6 +2201,7 @@ func (q *Queries) ListTaskActivity(ctx context.Context, taskID uuid.UUID) ([]Lis
 			&i.NewValue,
 			&i.CreatedAt,
 			&i.Checksum,
+			&i.Via,
 			&i.Username,
 			&i.FirstName,
 			&i.LastName,
@@ -2635,12 +2643,12 @@ func (q *Queries) ListTasksByAssignee(ctx context.Context, arg ListTasksByAssign
 
 const listUserActivity = `-- name: ListUserActivity :many
 
-SELECT id, task_id, activity_type, actor_id, field_name, old_value, new_value, created_at,
+SELECT id, task_id, activity_type, actor_id, field_name, old_value, new_value, created_at, via,
        username, first_name, last_name,
        task_number, project_key, task_title
 FROM (
   -- Activities from activity_log
-  SELECT al.id, al.task_id, al.activity_type, al.actor_id, al.field_name, al.old_value, al.new_value, al.created_at,
+  SELECT al.id, al.task_id, al.activity_type, al.actor_id, al.field_name, al.old_value, al.new_value, al.created_at, al.via,
          u.username, u.first_name, u.last_name,
          t.task_number, p.project_key, t.title as task_title
   FROM activity_log al
@@ -2653,7 +2661,7 @@ FROM (
 
   -- Synthetic "task_created" entries for imported tasks with no activity_log
   SELECT t.id as id, t.id as task_id, 'task_created'::activity_type as activity_type, t.created_by as actor_id,
-         NULL::varchar(100) as field_name, NULL::jsonb as old_value, NULL::jsonb as new_value, t.created_at,
+         NULL::varchar(100) as field_name, NULL::jsonb as old_value, NULL::jsonb as new_value, t.created_at, 'web'::text as via,
          u.username, u.first_name, u.last_name,
          t.task_number, p.project_key, t.title as task_title
   FROM tasks t
@@ -2685,6 +2693,7 @@ type ListUserActivityRow struct {
 	OldValue     []byte             `json:"old_value"`
 	NewValue     []byte             `json:"new_value"`
 	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	Via          string             `json:"via"`
 	Username     string             `json:"username"`
 	FirstName    string             `json:"first_name"`
 	LastName     string             `json:"last_name"`
@@ -2712,6 +2721,7 @@ func (q *Queries) ListUserActivity(ctx context.Context, arg ListUserActivityPara
 			&i.OldValue,
 			&i.NewValue,
 			&i.CreatedAt,
+			&i.Via,
 			&i.Username,
 			&i.FirstName,
 			&i.LastName,
@@ -3785,7 +3795,7 @@ func (q *Queries) UpdateTaskTemplate(ctx context.Context, arg UpdateTaskTemplate
 }
 
 const verifyActivityChain = `-- name: VerifyActivityChain :many
-SELECT id, task_id, activity_type, actor_id, field_name, old_value, new_value, created_at, checksum
+SELECT id, task_id, activity_type, actor_id, field_name, old_value, new_value, created_at, checksum, via, checksum_version
 FROM activity_log
 WHERE task_id = $1
 ORDER BY created_at ASC
@@ -3810,6 +3820,8 @@ func (q *Queries) VerifyActivityChain(ctx context.Context, taskID uuid.UUID) ([]
 			&i.NewValue,
 			&i.CreatedAt,
 			&i.Checksum,
+			&i.Via,
+			&i.ChecksumVersion,
 		); err != nil {
 			return nil, err
 		}

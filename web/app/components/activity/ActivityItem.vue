@@ -101,6 +101,7 @@ const fieldLabel = computed(() => {
         <span class="font-medium">
           {{ activity.first_name }} {{ activity.last_name }}
         </span>
+        <ViaBadge :via="activity.via" class="ml-1" />
         <span class="text-muted-foreground">
           {{ " " }}{{ label }}
           <template v-if="fieldLabel">

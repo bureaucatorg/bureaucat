@@ -15,6 +15,7 @@ import (
 
 	_ "bereaucat/docs"
 	"bereaucat/internal/activity"
+	"bereaucat/internal/assistant"
 	"bereaucat/internal/auth"
 	"bereaucat/internal/handlers"
 	"bereaucat/internal/notifications"
@@ -58,6 +59,7 @@ type Server struct {
 	feedbackHandler *handlers.FeedbackHandler
 	searchHandler   *handlers.SearchHandler
 	releasesHandler *handlers.ReleasesHandler
+	assistantHandler *handlers.AssistantHandler
 	activityService      *activity.Service
 	notificationService  *notifier.Service
 	notificationsService *notifications.Service
@@ -165,6 +167,9 @@ func New(devMode bool, dbURL string, authConfig AuthConfig, distFS fs.FS) (*Serv
 		srv.feedbackHandler = handlers.NewFeedbackHandler(srv.pool, srv.store)
 		srv.searchHandler = handlers.NewSearchHandler(srv.store)
 		srv.releasesHandler = handlers.NewReleasesHandler()
+
+		// Assistant tools call back into this router as the requesting user.
+		srv.assistantHandler = handlers.NewAssistantHandler(srv.store, assistant.NewService(srv.store, e, srv.authManager))
 	}
 
 	// Register routes

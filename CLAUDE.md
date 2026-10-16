@@ -78,6 +78,18 @@ GET  /api/v1/ht/              # Detailed health check
 GET  /api/v1/me               # Get current user
 ```
 
+### Assistant Routes (requires Bearer token, PATs rejected)
+```
+GET    /api/v1/assistant/status                              # Enabled + pinned model
+GET    /api/v1/assistant/conversations                       # List own conversations
+POST   /api/v1/assistant/conversations                       # Create conversation
+GET    /api/v1/assistant/conversations/:id                   # Messages + actions
+DELETE /api/v1/assistant/conversations/:id                   # Delete conversation
+POST   /api/v1/assistant/conversations/:id/messages          # Send message (SSE)
+POST   /api/v1/assistant/conversations/:id/actions/:actionId # Approve/reject write (SSE)
+```
+The agent core lives in `internal/assistant` (channel-agnostic). Tools in `tools.go` map 1:1 to API routes and run in-process through the Echo router as the requesting user; write tools need user approval.
+
 ### Admin Routes (requires Bearer token + admin role)
 ```
 GET    /api/v1/admin/users           # List users (paginated)
@@ -86,6 +98,9 @@ DELETE /api/v1/admin/users/:id       # Delete user
 GET    /api/v1/admin/tokens          # List active refresh tokens
 DELETE /api/v1/admin/tokens/:id      # Revoke token
 DELETE /api/v1/admin/tokens/expired  # Clean expired tokens
+GET    /api/v1/admin/settings/assistant      # LLM provider/model/key (masked)
+PUT    /api/v1/admin/settings/assistant      # Update assistant settings
+POST   /api/v1/admin/settings/assistant/test # Ping the configured model
 ```
 
 ## Authentication
