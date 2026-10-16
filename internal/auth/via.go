@@ -7,6 +7,7 @@ const (
 	ViaWeb       = "web"
 	ViaAssistant = "assistant"
 	ViaPAT       = "pat"
+	ViaWorkflow  = "workflow"
 )
 
 type viaKey struct{}

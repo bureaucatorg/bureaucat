@@ -16,6 +16,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"bereaucat/internal/mailer"
+	"bereaucat/internal/auth"
 	"bereaucat/internal/store"
 )
 
@@ -186,6 +187,14 @@ func activityLabel(activityType string) string {
 	return strings.ReplaceAll(activityType, "_", " ")
 }
 
+// systemActor names changes made by workflow rules "Workflow Engine" rather than the triggering user.
+func systemActor(via, firstName, lastName string) (string, string) {
+	if via == auth.ViaWorkflow {
+		return "Workflow", "Engine"
+	}
+	return firstName, lastName
+}
+
 func newEvent(firstName, lastName, verb string) emailEvent {
 	return emailEvent{
 		Actor:    strings.TrimSpace(firstName + " " + lastName),
@@ -195,7 +204,8 @@ func newEvent(firstName, lastName, verb string) emailEvent {
 }
 
 func eventFromActivity(a store.ListEmailActivityRow) emailEvent {
-	e := newEvent(a.FirstName, a.LastName, activityLabel(a.ActivityType))
+	first, last := systemActor(a.Via, a.FirstName, a.LastName)
+	e := newEvent(first, last, activityLabel(a.ActivityType))
 	oldV, newV := jsonMap(a.OldValue), jsonMap(a.NewValue)
 
 	switch a.ActivityType {

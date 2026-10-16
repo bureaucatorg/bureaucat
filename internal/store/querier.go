@@ -32,6 +32,8 @@ type Querier interface {
 	AddTaskLabel(ctx context.Context, arg AddTaskLabelParams) error
 	// ==================== CYCLE TASKS ====================
 	AddTasksToCycle(ctx context.Context, arg AddTasksToCycleParams) error
+	AddWorkflowStateAction(ctx context.Context, arg AddWorkflowStateActionParams) error
+	AddWorkflowTransitionMover(ctx context.Context, arg AddWorkflowTransitionMoverParams) error
 	// ==================== WORKSPACE MEMBERS ====================
 	AddWorkspaceMember(ctx context.Context, arg AddWorkspaceMemberParams) (WorkspaceMember, error)
 	// Same "has a user message" rule as CountAssistantConversations; Mattermost ones have a thread mapping.
@@ -120,6 +122,8 @@ type Querier interface {
 	CreateTaskTemplate(ctx context.Context, arg CreateTaskTemplateParams) (TaskTemplate, error)
 	CreateUpload(ctx context.Context, arg CreateUploadParams) (Upload, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (CreateUserRow, error)
+	CreateWorkflowState(ctx context.Context, arg CreateWorkflowStateParams) error
+	CreateWorkflowTransition(ctx context.Context, arg CreateWorkflowTransitionParams) (uuid.UUID, error)
 	// ==================== WORKSPACES ====================
 	CreateWorkspace(ctx context.Context, arg CreateWorkspaceParams) (Workspace, error)
 	CyclesCreatedPerDay(ctx context.Context, arg CyclesCreatedPerDayParams) ([]CyclesCreatedPerDayRow, error)
@@ -136,6 +140,8 @@ type Querier interface {
 	DeleteTaskTemplate(ctx context.Context, id uuid.UUID) error
 	DeleteUpload(ctx context.Context, id uuid.UUID) error
 	DeleteUserByID(ctx context.Context, id uuid.UUID) error
+	DeleteWorkflowStates(ctx context.Context, projectID uuid.UUID) error
+	DeleteWorkflowTransitions(ctx context.Context, projectID uuid.UUID) error
 	// Turns a subtask back into a top-level task, only if it belongs to parent_id.
 	DetachSubtask(ctx context.Context, arg DetachSubtaskParams) (int64, error)
 	// ==================== TASK FOLLOWERS ====================
@@ -176,6 +182,8 @@ type Querier interface {
 	GetProjectStateByProjectAndName(ctx context.Context, arg GetProjectStateByProjectAndNameParams) (ProjectState, error)
 	GetProjectViewByID(ctx context.Context, id uuid.UUID) (GetProjectViewByIDRow, error)
 	GetProjectViewBySlug(ctx context.Context, arg GetProjectViewBySlugParams) (GetProjectViewBySlugRow, error)
+	// ==================== WORKFLOW ENGINE ====================
+	GetProjectWorkflow(ctx context.Context, projectID uuid.UUID) (ProjectWorkflow, error)
 	GetRefreshTokenByHash(ctx context.Context, tokenHash string) (RefreshToken, error)
 	GetRefreshTokenByID(ctx context.Context, id uuid.UUID) (RefreshToken, error)
 	GetSetting(ctx context.Context, key string) (Setting, error)
@@ -195,6 +203,8 @@ type Querier interface {
 	GetUserByID(ctx context.Context, id uuid.UUID) (GetUserByIDRow, error)
 	GetUserByProviderID(ctx context.Context, arg GetUserByProviderIDParams) (GetUserByProviderIDRow, error)
 	GetUserEmailNotifications(ctx context.Context, id uuid.UUID) (bool, error)
+	GetWorkflowState(ctx context.Context, stateID uuid.UUID) (WorkflowState, error)
+	GetWorkflowTransition(ctx context.Context, arg GetWorkflowTransitionParams) (WorkflowTransition, error)
 	GetWorkspaceByID(ctx context.Context, id uuid.UUID) (Workspace, error)
 	GetWorkspaceByKey(ctx context.Context, workspaceKey string) (Workspace, error)
 	GetWorkspaceMember(ctx context.Context, arg GetWorkspaceMemberParams) (GetWorkspaceMemberRow, error)
@@ -266,6 +276,7 @@ type Querier interface {
 	// Returns every shared view in the project plus private views owned by the caller.
 	ListProjectViews(ctx context.Context, arg ListProjectViewsParams) ([]ListProjectViewsRow, error)
 	ListSettings(ctx context.Context) ([]Setting, error)
+	ListStateActions(ctx context.Context, stateID uuid.UUID) ([]ListStateActionsRow, error)
 	// Picker source for "attach an existing task as a subtask". Returns project
 	// tasks eligible to become a child of the given parent. Excludes: the parent
 	// itself, tasks already parented to this same parent, and tasks that already
@@ -297,6 +308,7 @@ type Querier interface {
 	ListTaskParticipants(ctx context.Context, taskID uuid.UUID) ([]uuid.UUID, error)
 	ListTaskTemplates(ctx context.Context, projectID uuid.UUID) ([]TaskTemplate, error)
 	ListTasksByAssignee(ctx context.Context, arg ListTasksByAssigneeParams) ([]ListTasksByAssigneeRow, error)
+	ListTransitionMoverIDs(ctx context.Context, transitionID uuid.UUID) ([]uuid.UUID, error)
 	ListUnassignedProjectTasks(ctx context.Context, arg ListUnassignedProjectTasksParams) ([]ListUnassignedProjectTasksRow, error)
 	ListUploadsByUser(ctx context.Context, arg ListUploadsByUserParams) ([]Upload, error)
 	// ==================== USER ACTIVITY ====================
@@ -308,6 +320,10 @@ type Querier interface {
 	ListUserWorkspacesFiltered(ctx context.Context, arg ListUserWorkspacesFilteredParams) ([]Workspace, error)
 	ListUsersByEmailInsensitive(ctx context.Context, lower string) ([]ListUsersByEmailInsensitiveRow, error)
 	ListUsersPaginated(ctx context.Context, arg ListUsersPaginatedParams) ([]ListUsersPaginatedRow, error)
+	ListWorkflowStateActions(ctx context.Context, projectID uuid.UUID) ([]WorkflowStateAction, error)
+	ListWorkflowStates(ctx context.Context, projectID uuid.UUID) ([]WorkflowState, error)
+	ListWorkflowTransitionMovers(ctx context.Context, projectID uuid.UUID) ([]WorkflowTransitionMover, error)
+	ListWorkflowTransitions(ctx context.Context, projectID uuid.UUID) ([]WorkflowTransition, error)
 	ListWorkspaceMembers(ctx context.Context, workspaceID uuid.UUID) ([]ListWorkspaceMembersRow, error)
 	// ==================== NOTIFICATIONS ====================
 	// Serializes find-or-create per (recipient, task) so concurrent activity can't create duplicate rows.
@@ -378,6 +394,7 @@ type Querier interface {
 	// default. Atomic in a single statement (no transaction needed).
 	SetDefaultProjectState(ctx context.Context, arg SetDefaultProjectStateParams) error
 	SetProjectDisabled(ctx context.Context, arg SetProjectDisabledParams) (Project, error)
+	SetProjectWorkflowEnabled(ctx context.Context, arg SetProjectWorkflowEnabledParams) (int64, error)
 	// Sets (or clears) a task's parent. Used to attach/re-parent an existing task
 	// as a subtask.
 	SetTaskParent(ctx context.Context, arg SetTaskParentParams) error
@@ -423,6 +440,7 @@ type Querier interface {
 	UpdateUserPassword(ctx context.Context, arg UpdateUserPasswordParams) error
 	UpdateUserType(ctx context.Context, arg UpdateUserTypeParams) error
 	UpdateWorkspace(ctx context.Context, arg UpdateWorkspaceParams) (Workspace, error)
+	UpsertProjectWorkflow(ctx context.Context, projectID uuid.UUID) error
 	UpsertSetting(ctx context.Context, arg UpsertSettingParams) (Setting, error)
 	UserExistsByEmailOrUsername(ctx context.Context, arg UserExistsByEmailOrUsernameParams) (bool, error)
 	VerifyActivityChain(ctx context.Context, taskID uuid.UUID) ([]ActivityLog, error)

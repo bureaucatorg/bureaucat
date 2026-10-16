@@ -305,6 +305,11 @@ func (s *Server) registerRoutes() {
 				projectGroup.POST("/tasks/:taskNum/blockers", s.taskHandler.AddTaskBlockers, auth.ProjectRoleMiddleware("member"))
 				projectGroup.DELETE("/tasks/:taskNum/blockers/:taskId", s.taskHandler.RemoveTaskBlocker, auth.ProjectRoleMiddleware("member"))
 
+				// Workflow engine (opt-in per project)
+				projectGroup.GET("/workflow", s.taskHandler.GetWorkflow)
+				projectGroup.PUT("/workflow", s.taskHandler.SaveWorkflow, auth.ProjectRoleMiddleware("admin"))
+				projectGroup.PUT("/workflow/enabled", s.taskHandler.SetWorkflowEnabled, auth.ProjectRoleMiddleware("admin"))
+
 				// Task assignees
 				projectGroup.POST("/tasks/:taskNum/assignees", s.taskHandler.AddAssignee, auth.ProjectRoleMiddleware("member"))
 				projectGroup.DELETE("/tasks/:taskNum/assignees/:userId", s.taskHandler.RemoveAssignee, auth.ProjectRoleMiddleware("member"))

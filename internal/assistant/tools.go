@@ -262,7 +262,7 @@ var catalog = []Tool{
 			body("parent_task_number", "integer", "Parent task number (must be top-level) to create a subtask")}},
 	{Name: "update_task", Title: "Update task", Description: "Update task fields. Assignees, labels, parent, cycle and modules have their own tools.", Method: http.MethodPatch, Path: ppt,
 		Params: []Param{pProject, pTask, body("title", "string", "Title"), body("description", "string", "Markdown (replaces existing)"),
-			body("state_id", "string", "State UUID"), pPriority,
+			body("state_id", "string", "State UUID; the project workflow may reject the transition"), pPriority,
 			body("start_date", "string|null", "RFC3339 to set, null to clear"), body("due_date", "string|null", "RFC3339 to set, null to clear")}},
 	{Name: "delete_task", Title: "Delete task", Description: "Delete a task and its subtasks (creator or project admin).", Method: http.MethodDelete, Path: ppt, Confirm: true, Params: []Param{pProject, pTask}},
 	{Name: "delete_tasks", Title: "Delete tasks", Description: "Bulk delete tasks by number (project admin).", Method: http.MethodPost, Path: pp + "/tasks/delete", Confirm: true,

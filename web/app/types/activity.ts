@@ -11,7 +11,14 @@ export interface ActivityLogEntry {
   old_value?: unknown;
   new_value?: unknown;
   created_at: string;
-  via?: "web" | "assistant" | "pat";
+  via?: ActivityVia;
+}
+
+export type ActivityVia = "web" | "assistant" | "pat" | "workflow";
+
+// Workflow-rule changes show as "Workflow Engine"; the triggering user is kept for the tooltip.
+export function activityActorName(a: Pick<ActivityLogEntry, "first_name" | "last_name" | "via">): string {
+  return a.via === "workflow" ? "Workflow Engine" : `${a.first_name} ${a.last_name}`;
 }
 
 export type ActivityType =

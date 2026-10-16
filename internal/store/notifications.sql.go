@@ -27,7 +27,7 @@ WHERE n.emailed_at IS NULL
   AND t.deleted_at IS NULL
   AND p.id = t.project_id
   AND s.id = t.state_id
-RETURNING n.id, n.task_id, n.recipient_id, n.activity_type, n.comment_id, n.event_count, n.created_at, n.updated_at,
+RETURNING n.id, n.task_id, n.recipient_id, n.activity_type, n.comment_id, n.event_count, n.created_at, n.updated_at, n.via,
           r.email AS recipient_email,
           a.first_name AS actor_first_name, a.last_name AS actor_last_name,
           t.task_number, t.title AS task_title,
@@ -44,6 +44,7 @@ type ClaimEmailNotificationsRow struct {
 	EventCount     int32              `json:"event_count"`
 	CreatedAt      pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
+	Via            string             `json:"via"`
 	RecipientEmail string             `json:"recipient_email"`
 	ActorFirstName string             `json:"actor_first_name"`
 	ActorLastName  string             `json:"actor_last_name"`
@@ -76,6 +77,7 @@ func (q *Queries) ClaimEmailNotifications(ctx context.Context, cutoff pgtype.Tim
 			&i.EventCount,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Via,
 			&i.RecipientEmail,
 			&i.ActorFirstName,
 			&i.ActorLastName,
@@ -102,15 +104,17 @@ SET event_count   = event_count + 1,
     activity_type = $1,
     actor_id      = $2,
     comment_id    = $3,
+    via           = $4,
     read_at       = NULL,
     updated_at    = NOW()
-WHERE id = $4
+WHERE id = $5
 `
 
 type CoalesceNotificationParams struct {
 	ActivityType string      `json:"activity_type"`
 	ActorID      uuid.UUID   `json:"actor_id"`
 	CommentID    pgtype.UUID `json:"comment_id"`
+	Via          string      `json:"via"`
 	ID           uuid.UUID   `json:"id"`
 }
 
@@ -121,6 +125,7 @@ func (q *Queries) CoalesceNotification(ctx context.Context, arg CoalesceNotifica
 		arg.ActivityType,
 		arg.ActorID,
 		arg.CommentID,
+		arg.Via,
 		arg.ID,
 	)
 	return err
@@ -158,8 +163,8 @@ func (q *Queries) CountUnreadNotifications(ctx context.Context, recipientID uuid
 }
 
 const createNotification = `-- name: CreateNotification :one
-INSERT INTO notifications (recipient_id, task_id, activity_type, actor_id, comment_id)
-VALUES ($1, $2, $3, $4, $5)
+INSERT INTO notifications (recipient_id, task_id, activity_type, actor_id, comment_id, via)
+VALUES ($1, $2, $3, $4, $5, $6)
 RETURNING id, recipient_id, task_id, activity_type, actor_id, event_count, read_at, created_at, updated_at
 `
 
@@ -169,6 +174,7 @@ type CreateNotificationParams struct {
 	ActivityType string      `json:"activity_type"`
 	ActorID      uuid.UUID   `json:"actor_id"`
 	CommentID    pgtype.UUID `json:"comment_id"`
+	Via          string      `json:"via"`
 }
 
 type CreateNotificationRow struct {
@@ -190,6 +196,7 @@ func (q *Queries) CreateNotification(ctx context.Context, arg CreateNotification
 		arg.ActivityType,
 		arg.ActorID,
 		arg.CommentID,
+		arg.Via,
 	)
 	var i CreateNotificationRow
 	err := row.Scan(
@@ -266,7 +273,7 @@ func (q *Queries) GetUserEmailNotifications(ctx context.Context, id uuid.UUID) (
 }
 
 const listEmailActivity = `-- name: ListEmailActivity :many
-SELECT al.activity_type, al.field_name, al.old_value, al.new_value, u.first_name, u.last_name
+SELECT al.activity_type, al.field_name, al.old_value, al.new_value, al.via, u.first_name, u.last_name
 FROM activity_log al
 JOIN users u ON u.id = al.actor_id
 WHERE al.task_id = $1
@@ -289,6 +296,7 @@ type ListEmailActivityRow struct {
 	FieldName    pgtype.Text `json:"field_name"`
 	OldValue     []byte      `json:"old_value"`
 	NewValue     []byte      `json:"new_value"`
+	Via          string      `json:"via"`
 	FirstName    string      `json:"first_name"`
 	LastName     string      `json:"last_name"`
 }
@@ -314,6 +322,7 @@ func (q *Queries) ListEmailActivity(ctx context.Context, arg ListEmailActivityPa
 			&i.FieldName,
 			&i.OldValue,
 			&i.NewValue,
+			&i.Via,
 			&i.FirstName,
 			&i.LastName,
 		); err != nil {
@@ -328,7 +337,7 @@ func (q *Queries) ListEmailActivity(ctx context.Context, arg ListEmailActivityPa
 }
 
 const listNotifications = `-- name: ListNotifications :many
-SELECT n.id, n.task_id, n.activity_type, n.actor_id, n.comment_id, n.event_count, n.read_at, n.created_at, n.updated_at,
+SELECT n.id, n.task_id, n.activity_type, n.actor_id, n.comment_id, n.event_count, n.read_at, n.created_at, n.updated_at, n.via,
        u.username, u.first_name, u.last_name, u.avatar_url,
        t.task_number, t.title AS task_title, p.project_key
 FROM notifications n
@@ -357,6 +366,7 @@ type ListNotificationsRow struct {
 	ReadAt       pgtype.Timestamptz `json:"read_at"`
 	CreatedAt    pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
+	Via          string             `json:"via"`
 	Username     string             `json:"username"`
 	FirstName    string             `json:"first_name"`
 	LastName     string             `json:"last_name"`
@@ -386,6 +396,7 @@ func (q *Queries) ListNotifications(ctx context.Context, arg ListNotificationsPa
 			&i.ReadAt,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Via,
 			&i.Username,
 			&i.FirstName,
 			&i.LastName,

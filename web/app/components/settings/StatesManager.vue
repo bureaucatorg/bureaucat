@@ -11,7 +11,12 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   refresh: [];
+  openWorkflow: [];
 }>();
+
+const { workflows, getWorkflow } = useWorkflow();
+onMounted(() => getWorkflow(props.projectKey));
+const workflowEnabled = computed(() => !!workflows[props.projectKey]?.enabled);
 
 const { createState, updateState, setDefaultState, deleteState } = useProjects();
 
@@ -126,7 +131,14 @@ async function handleDelete(state: ProjectState) {
       <div>
         <h3 class="font-semibold">Workflow States</h3>
         <p class="text-sm text-muted-foreground">
-          Configure the states tasks can be in
+          Configure the states tasks can be in.
+          <button type="button" class="underline underline-offset-2 hover:text-foreground" @click="emit('openWorkflow')">
+            {{ workflowEnabled ? "Workflow rules are on" : "Set up workflow rules" }}
+          </button>
+        </p>
+        <p v-if="workflowEnabled" class="mt-1 text-xs text-muted-foreground">
+          New states start with no transitions, so only admins can move tasks into them until you connect them in the
+          Workflow tab.
         </p>
       </div>
       <Button

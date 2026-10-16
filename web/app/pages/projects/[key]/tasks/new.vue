@@ -73,7 +73,27 @@ const descriptionDraft = useDraft(
   })
 );
 
-const defaultState = computed(() => states.value.find((s) => s.is_default));
+const { workflows, getWorkflow } = useWorkflow();
+watch(
+  projectKey,
+  (key) => {
+    if (key) getWorkflow(key);
+  },
+  { immediate: true }
+);
+// With the workflow engine on, new tasks may only start in entry states.
+const startStates = computed(() => {
+  const entry = entryStateIds(workflows[projectKey.value]);
+  return entry ? states.value.filter((s) => entry.has(s.id)) : states.value;
+});
+const defaultState = computed(
+  () => startStates.value.find((s) => s.is_default) ?? (startStates.value === states.value ? undefined : startStates.value[0])
+);
+watch(startStates, (list) => {
+  if (form.value.state_id && !list.some((s) => s.id === form.value.state_id)) {
+    form.value.state_id = defaultState.value?.id || "";
+  }
+});
 
 const isMember = computed(
   () => currentProject.value?.role === "admin" || currentProject.value?.role === "member"
@@ -341,7 +361,7 @@ onMounted(() => {
                     <SelectValue placeholder="Select a state" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem v-for="state in states" :key="state.id" :value="state.id">
+                    <SelectItem v-for="state in startStates" :key="state.id" :value="state.id">
                       {{ state.name }}
                     </SelectItem>
                   </SelectContent>

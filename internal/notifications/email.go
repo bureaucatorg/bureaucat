@@ -78,7 +78,8 @@ func (s *Service) emailEvents(ctx context.Context, row store.ClaimEmailNotificat
 		events = append(events, eventFromActivity(a))
 	}
 	if len(events) == 0 {
-		events = append(events, newEvent(row.ActorFirstName, row.ActorLastName, activityLabel(row.ActivityType)))
+		first, last := systemActor(row.Via, row.ActorFirstName, row.ActorLastName)
+		events = append(events, newEvent(first, last, activityLabel(row.ActivityType)))
 	}
 	return events
 }

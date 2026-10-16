@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { Circle, CircleDot, CheckCircle2, XCircle, Clock, ChevronDown } from "lucide-vue-next";
-import type { ProjectState } from "~/types";
+import { Circle, CircleDot, CheckCircle2, XCircle, Clock, ChevronDown, Lock } from "lucide-vue-next";
+import type { ProjectState, WorkflowTaskRef } from "~/types";
 
 const props = withDefaults(
   defineProps<{
@@ -9,6 +9,8 @@ const props = withDefaults(
     disabled?: boolean;
     compact?: boolean;
     dense?: boolean;
+    // When set, states the project workflow doesn't allow for this task are disabled.
+    task?: WorkflowTaskRef;
   }>(),
   { compact: false, dense: false }
 );
@@ -18,6 +20,19 @@ const emit = defineEmits<{
 }>();
 
 const currentState = computed(() => props.states.find((s) => s.id === props.modelValue));
+
+const { workflows, getWorkflow } = useWorkflow();
+const { user } = useAuth();
+watch(
+  () => props.task?.project_key,
+  (key) => {
+    if (key) getWorkflow(key);
+  },
+  { immediate: true }
+);
+const allowed = computed(() =>
+  props.task ? allowedTargetStateIds(workflows[props.task.project_key], props.task, user.value?.id) : null
+);
 
 function getStateIcon(stateType: string) {
   switch (stateType) {
@@ -85,6 +100,7 @@ const groupedStates = computed(() => {
           <DropdownMenuItem
             v-for="state in states"
             :key="state.id"
+            :disabled="!!allowed && !allowed.has(state.id)"
             @click="emit('update:modelValue', state.id)"
           >
             <component
@@ -93,6 +109,11 @@ const groupedStates = computed(() => {
               :style="{ color: state.color }"
             />
             {{ state.name }}
+            <Lock
+              v-if="allowed && !allowed.has(state.id)"
+              class="ml-auto size-3.5 text-muted-foreground"
+              aria-label="Not allowed by the project workflow"
+            />
           </DropdownMenuItem>
           <DropdownMenuSeparator />
         </template>

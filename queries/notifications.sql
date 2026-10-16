@@ -17,8 +17,8 @@ ORDER BY created_at DESC
 LIMIT 1;
 
 -- name: CreateNotification :one
-INSERT INTO notifications (recipient_id, task_id, activity_type, actor_id, comment_id)
-VALUES (sqlc.arg('recipient_id'), sqlc.arg('task_id'), sqlc.arg('activity_type'), sqlc.arg('actor_id'), sqlc.narg('comment_id'))
+INSERT INTO notifications (recipient_id, task_id, activity_type, actor_id, comment_id, via)
+VALUES (sqlc.arg('recipient_id'), sqlc.arg('task_id'), sqlc.arg('activity_type'), sqlc.arg('actor_id'), sqlc.narg('comment_id'), sqlc.arg('via'))
 RETURNING id, recipient_id, task_id, activity_type, actor_id, event_count, read_at, created_at, updated_at;
 
 -- name: CoalesceNotification :exec
@@ -29,13 +29,14 @@ SET event_count   = event_count + 1,
     activity_type = sqlc.arg('activity_type'),
     actor_id      = sqlc.arg('actor_id'),
     comment_id    = sqlc.narg('comment_id'),
+    via           = sqlc.arg('via'),
     read_at       = NULL,
     updated_at    = NOW()
 WHERE id = sqlc.arg('id');
 
 -- name: ListNotifications :many
 -- A recipient's notifications, newest first, with task/project/actor display fields.
-SELECT n.id, n.task_id, n.activity_type, n.actor_id, n.comment_id, n.event_count, n.read_at, n.created_at, n.updated_at,
+SELECT n.id, n.task_id, n.activity_type, n.actor_id, n.comment_id, n.event_count, n.read_at, n.created_at, n.updated_at, n.via,
        u.username, u.first_name, u.last_name, u.avatar_url,
        t.task_number, t.title AS task_title, p.project_key
 FROM notifications n
@@ -93,7 +94,7 @@ WHERE n.emailed_at IS NULL
   AND t.deleted_at IS NULL
   AND p.id = t.project_id
   AND s.id = t.state_id
-RETURNING n.id, n.task_id, n.recipient_id, n.activity_type, n.comment_id, n.event_count, n.created_at, n.updated_at,
+RETURNING n.id, n.task_id, n.recipient_id, n.activity_type, n.comment_id, n.event_count, n.created_at, n.updated_at, n.via,
           r.email AS recipient_email,
           a.first_name AS actor_first_name, a.last_name AS actor_last_name,
           t.task_number, t.title AS task_title,
@@ -103,7 +104,7 @@ RETURNING n.id, n.task_id, n.recipient_id, n.activity_type, n.comment_id, n.even
 -- name: ListEmailActivity :many
 -- The activity batched into one notification: other users' changes to the task
 -- within the notification's lifetime, oldest first.
-SELECT al.activity_type, al.field_name, al.old_value, al.new_value, u.first_name, u.last_name
+SELECT al.activity_type, al.field_name, al.old_value, al.new_value, al.via, u.first_name, u.last_name
 FROM activity_log al
 JOIN users u ON u.id = al.actor_id
 WHERE al.task_id = sqlc.arg('task_id')

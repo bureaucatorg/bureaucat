@@ -2,7 +2,7 @@
 import { MoreHorizontal, Pencil, Trash2, Loader2, Check, X, ChevronDown, ChevronUp, History, Link as LinkIcon } from "lucide-vue-next";
 import { marked } from "marked";
 import { toast } from "vue-sonner";
-import type { Comment, ProjectMember } from "~/types";
+import type { ActivityVia, Comment, ProjectMember } from "~/types";
 import type { Attachment } from "~/composables/useAttachments";
 import { renderMarkdown } from "~/utils/markdown";
 
@@ -29,7 +29,7 @@ const props = withDefaults(
     compact?: boolean;
     editHistory?: CommentVersion[];
     members?: ProjectMember[];
-    via?: "web" | "assistant" | "pat";
+    via?: ActivityVia;
   }>(),
   {
     compact: false,

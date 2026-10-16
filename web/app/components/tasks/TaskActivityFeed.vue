@@ -20,7 +20,7 @@ import {
 } from "lucide-vue-next";
 import { toast } from "vue-sonner";
 import type { ActivityLogEntry, ActivityType, Comment, ProjectMember } from "~/types";
-import { activityLabel } from "~/types";
+import { activityActorName, activityLabel } from "~/types";
 
 const props = defineProps<{
   activities: ActivityLogEntry[];
@@ -399,9 +399,13 @@ function getStateChangeDetail(activity: ActivityLogEntry): { from: string; to: s
           <div class="min-w-0 flex-1 pt-0.5">
             <p class="text-sm">
               <span class="font-medium">
-                {{ item.data.first_name }} {{ item.data.last_name }}
+                {{ activityActorName(item.data) }}
               </span>
-              <ViaBadge :via="item.data.via" class="ml-1" />
+              <ViaBadge
+                :via="item.data.via"
+                :triggered-by="`${item.data.first_name} ${item.data.last_name}`"
+                class="ml-1"
+              />
               <span class="text-muted-foreground">
                 {{ " " }}{{ getActivityLabel(item.data) }}
                 <template v-if="getStateChangeDetail(item.data)">

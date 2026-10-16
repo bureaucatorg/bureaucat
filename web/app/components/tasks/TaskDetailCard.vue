@@ -590,6 +590,7 @@ onMounted(() => {
             <TaskStateSelector
               :states="states"
               :model-value="task.state_id"
+              :task="task"
               :disabled="!isMember || updating || states.length === 0"
               compact
               dense

@@ -11,6 +11,8 @@ const props = withDefaults(
     isMember: boolean;
     /** Disable drop target (e.g. due_bucket grouping, where moves are ambiguous). */
     dropLocked?: boolean;
+    /** Dimmed while dragging a card the project workflow can't move here. */
+    dimmed?: boolean;
     states?: ProjectState[];
     members?: ProjectMember[];
     labels?: ProjectLabel[];
@@ -67,6 +69,7 @@ function handleDragLeave() {
     :class="{
       'border-primary border-2 bg-primary/5': isDragOver,
       'cursor-not-allowed': dropLocked,
+      'opacity-40': dimmed,
     }"
     @drop="handleDrop"
     @dragover="handleDragOver"

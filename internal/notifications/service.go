@@ -15,6 +15,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"bereaucat/internal/auth"
 	"bereaucat/internal/store"
 )
 
@@ -87,6 +88,7 @@ func (s *Service) upsertNotification(ctx context.Context, recipientID, taskID uu
 			ActivityType: activityType,
 			ActorID:      actorID,
 			CommentID:    commentRef,
+			Via:          auth.ViaFromContext(ctx),
 		})
 	case errors.Is(err, pgx.ErrNoRows):
 		_, err = q.CreateNotification(ctx, store.CreateNotificationParams{
@@ -95,6 +97,7 @@ func (s *Service) upsertNotification(ctx context.Context, recipientID, taskID uu
 			ActivityType: activityType,
 			ActorID:      actorID,
 			CommentID:    commentRef,
+			Via:          auth.ViaFromContext(ctx),
 		})
 	}
 	if err != nil {

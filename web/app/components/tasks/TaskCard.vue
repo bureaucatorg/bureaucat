@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Circle, CircleDot, CheckCircle2, XCircle, Clock, MessageSquare, Building2 } from "lucide-vue-next";
+import { toast } from "vue-sonner";
 import type { Task, ProjectState } from "~/types";
 import { PRIORITY_LABELS } from "~/types";
 
@@ -49,6 +50,7 @@ async function changeState(stateId: string) {
   const res = await updateTask(resolvedKey.value, props.task.task_number, { state_id: stateId });
   updatingState.value = false;
   if (res.success) emit("updated");
+  else toast.error(res.error || "Failed to update state");
 }
 
 const stateIcon = computed(() => {
@@ -137,6 +139,7 @@ const involvedPeople = computed(() => {
           v-if="canEditState"
           :states="states"
           :model-value="task.state_id"
+          :task="task"
           :disabled="updatingState"
           compact
           dense

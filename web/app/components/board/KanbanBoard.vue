@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Loader2 } from "lucide-vue-next";
+import { toast } from "vue-sonner";
 import { useResizeObserver, useWindowSize } from "@vueuse/core";
 import type { Task, ProjectState, ProjectMember, ProjectLabel, ViewGroupBy } from "~/types";
 import { PRIORITY_LABELS, STATE_TYPE_COLORS } from "~/types";
@@ -30,6 +31,39 @@ const emit = defineEmits<{
 
 const { updateTask, addAssignee, removeAssignee, addLabel, removeLabel } = useTasks();
 const updating = ref(false);
+
+const draggingTask = ref<Task | null>(null);
+provide("kanban-dragging-task", draggingTask);
+const { workflows, getWorkflow } = useWorkflow();
+const { user } = useAuth();
+watch(
+  () => props.projectKey,
+  (key) => {
+    if (key) getWorkflow(key);
+  },
+  { immediate: true }
+);
+
+// The state a drop into columnId would set, honouring the project workflow.
+function dropTargetStateId(task: Task, columnId: string): string | undefined {
+  const [kind, value] = columnId.split(":");
+  const allowed = allowedTargetStateIds(workflows[props.projectKey], task, user.value?.id);
+  if (kind === "state") return !allowed || allowed.has(value) ? value : undefined;
+  if (kind === "state_type") {
+    return props.states.find((s) => s.state_type === value && (!allowed || allowed.has(s.id)))?.id;
+  }
+  return undefined;
+}
+
+const workflowBlocked = computed(() => {
+  const task = draggingTask.value;
+  const blocked = new Set<string>();
+  if (!task || (props.groupBy !== "state" && props.groupBy !== "state_type")) return blocked;
+  for (const col of columns.value) {
+    if (!dropTargetStateId(task, col.id)) blocked.add(col.id);
+  }
+  return blocked;
+});
 
 const STATE_TYPE_ORDER = ["backlog", "unstarted", "started", "completed", "cancelled"] as const;
 const STATE_TYPE_LABELS: Record<string, string> = {
@@ -258,15 +292,15 @@ async function handleDrop(task: Task, fromColumnId: string, toColumnId: string) 
   try {
     const [, toValue] = toColumnId.split(":");
     switch (props.groupBy) {
-      case "state_type": {
-        const targetState = props.states.find((s) => s.state_type === toValue);
-        if (targetState) {
-          await updateTask(props.projectKey, task.task_number, { state_id: targetState.id });
-        }
-        break;
-      }
+      case "state_type":
       case "state": {
-        await updateTask(props.projectKey, task.task_number, { state_id: toValue });
+        const targetId = dropTargetStateId(task, toColumnId);
+        if (!targetId) {
+          toast.error("The project workflow doesn't allow this move");
+          return;
+        }
+        const res = await updateTask(props.projectKey, task.task_number, { state_id: targetId });
+        if (!res.success) toast.error(res.error || "Failed to update state");
         break;
       }
       case "priority": {
@@ -362,7 +396,8 @@ const boardHeight = computed(() =>
         :tasks="column.tasks"
         :project-key="projectKey"
         :is-member="isMember"
-        :drop-locked="column.dropLocked"
+        :drop-locked="column.dropLocked || workflowBlocked.has(column.id)"
+        :dimmed="workflowBlocked.has(column.id)"
         :states="states"
         :members="members"
         :labels="labels"

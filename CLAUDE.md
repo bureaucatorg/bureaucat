@@ -93,6 +93,14 @@ POST   /api/v1/assistant/conversations/:id/actions/:actionId # Approve/reject wr
 The agent core lives in `internal/assistant` (channel-agnostic). Tools in `tools.go` map 1:1 to API routes and run in-process through the Echo router as the requesting user; write tools need user approval.
 `internal/mattermostbot` is the Mattermost adapter: the notification bot listens over WebSocket, maps the sender's email to a Bureaucat user, keys conversations by thread root + user, and takes `yes`/`no` replies for approvals. Outside DMs it only answers posts that @mention it, and passes the previous 10 top-level channel posts (or thread posts) as `Meta.Chat`; conversations with chat context require approval for every write.
 
+### Workflow Routes (project-scoped)
+```
+GET    /api/v1/projects/:key/workflow          # Graph config + enabled + bypass (any project role)
+PUT    /api/v1/projects/:key/workflow          # Replace graph atomically (project admin)
+PUT    /api/v1/projects/:key/workflow/enabled  # Toggle enforcement, config kept (project admin)
+```
+Opt-in per project. Enforced in `internal/workflow` from `CreateTask` (entry states), `UpdateTask` (edges are an allowlist, optional movers: users/assignees/creator) and on-enter assignee actions (also on cross-project move-in). Project/global admins bypass checks.
+
 ### Admin Routes (requires Bearer token + admin role)
 ```
 GET    /api/v1/admin/users           # List users (paginated)

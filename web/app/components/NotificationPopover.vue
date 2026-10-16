@@ -19,7 +19,7 @@ import {
   Link2Off,
 } from "lucide-vue-next";
 import type { ActivityType, NotificationEntry } from "~/types";
-import { ACTIVITY_TYPE_LABELS } from "~/types";
+import { ACTIVITY_TYPE_LABELS, activityActorName } from "~/types";
 
 const { user } = useAuth();
 const { unreadCount, listNotifications, refreshUnreadCount, markRead, markAllRead } =
@@ -212,7 +212,7 @@ onUnmounted(() => {
             </div>
             <div class="min-w-0 flex-1">
               <p class="text-xs" :class="!activity.is_read && 'font-medium'">
-                <span class="font-medium text-foreground">{{ activity.first_name }} {{ activity.last_name }}</span>
+                <span class="font-medium text-foreground">{{ activityActorName(activity) }}</span>
                 <span :class="activity.is_read ? 'text-muted-foreground' : 'text-foreground'">
                   {{ ' ' }}{{ ACTIVITY_TYPE_LABELS[activity.activity_type] || activity.activity_type }}
                   <template v-if="activity.field_name">

@@ -892,6 +892,7 @@ onMounted(() => {
                   <TaskStateSelector
                     :states="states"
                     :model-value="currentTask.state_id"
+                    :task="currentTask"
                     :disabled="!isMember || updating"
                     compact
                     @update:model-value="handleStateChange"

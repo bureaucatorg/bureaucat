@@ -140,7 +140,7 @@ func (s *Service) LogActivity(ctx context.Context, params LogActivityParams) err
 	// Blocker links are recorded in the feed only; they don't notify.
 	if s.notifier != nil && params.ActivityType != BlockerAdded && params.ActivityType != BlockerRemoved {
 		commentID := commentIDFromParams(params)
-		go s.notifier.EnqueueForActivity(context.Background(), params.TaskID, string(params.ActivityType), params.ActorID, commentID)
+		go s.notifier.EnqueueForActivity(auth.WithVia(context.Background(), via), params.TaskID, string(params.ActivityType), params.ActorID, commentID)
 	}
 
 	return nil

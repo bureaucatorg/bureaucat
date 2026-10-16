@@ -131,7 +131,27 @@ const form = ref({
   labels: [] as string[],
 });
 
-const defaultState = computed(() => effStates.value.find((s) => s.is_default));
+const { workflows, getWorkflow } = useWorkflow();
+watch(
+  effectiveProjectKey,
+  (key) => {
+    if (key) getWorkflow(key);
+  },
+  { immediate: true }
+);
+// With the workflow engine on, new tasks may only start in entry states.
+const startStates = computed(() => {
+  const entry = entryStateIds(workflows[effectiveProjectKey.value]);
+  return entry ? effStates.value.filter((s) => entry.has(s.id)) : effStates.value;
+});
+const defaultState = computed(
+  () => startStates.value.find((s) => s.is_default) ?? (startStates.value === effStates.value ? undefined : startStates.value[0])
+);
+watch(startStates, (list) => {
+  if (form.value.state_id && !list.some((s) => s.id === form.value.state_id)) {
+    form.value.state_id = defaultState.value?.id || "";
+  }
+});
 
 // Shares its key with the /tasks/new page so one unfinished task draft follows
 // the user between the two. Empty until a project is chosen (persistence off),
@@ -731,7 +751,7 @@ function removeLabel(labelId: string) {
                   <SelectValue placeholder="Select a state" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem v-for="state in effStates" :key="state.id" :value="state.id">
+                  <SelectItem v-for="state in startStates" :key="state.id" :value="state.id">
                     {{ state.name }}
                   </SelectItem>
                 </SelectContent>

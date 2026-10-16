@@ -41,6 +41,7 @@ type NotificationResponse struct {
 	TaskNumber   int32     `json:"task_number"`
 	ProjectKey   string    `json:"project_key"`
 	TaskTitle    string    `json:"task_title"`
+	Via          string    `json:"via"`
 }
 
 // ListNotifications returns the current user's notifications, paginated.
@@ -114,6 +115,7 @@ func (h *NotificationHandler) ListNotifications(c *echo.Context) error {
 			TaskNumber:   n.TaskNumber,
 			ProjectKey:   n.ProjectKey,
 			TaskTitle:    n.TaskTitle,
+			Via:          n.Via,
 		}
 	}
 

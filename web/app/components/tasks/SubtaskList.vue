@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Loader2, Maximize2, X } from "lucide-vue-next";
+import { toast } from "vue-sonner";
 import type { Subtask, ProjectState, ProjectMember, ProjectLabel } from "~/types";
 
 const props = withDefaults(
@@ -47,6 +48,7 @@ async function changeState(subtask: Subtask, stateId: string) {
   const res = await updateTask(props.projectKey, subtask.task_number, { state_id: stateId });
   updatingId.value = null;
   if (res.success) emit("updated");
+  else toast.error(res.error || "Failed to update state");
 }
 
 // Collect all people involved: creator + assignees (deduplicated), matching the
@@ -123,6 +125,7 @@ function involvedPeople(subtask: Subtask) {
                 v-if="canEditState"
                 :states="states"
                 :model-value="subtask.state_id"
+                :task="subtask"
                 :disabled="updatingId === subtask.id"
                 compact
                 dense

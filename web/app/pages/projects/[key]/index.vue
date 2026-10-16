@@ -20,6 +20,7 @@ import {
   Lock,
   Trash2,
   BarChart3,
+  Workflow as WorkflowIcon,
 } from "lucide-vue-next";
 import { toast } from "vue-sonner";
 import type { FilterTree, ProjectView, MoveTasksResponse } from "~/types";
@@ -34,7 +35,7 @@ const router = useRouter();
 const projectKey = computed(() => route.params.key as string);
 
 // Valid tab values
-const validTabs = ["tasks", "board", "pages", "cycles", "modules", "views", "members", "stats", "settings"] as const;
+const validTabs = ["tasks", "board", "pages", "cycles", "modules", "views", "members", "stats", "workflow", "settings"] as const;
 type TabValue = (typeof validTabs)[number];
 
 const activeTab = computed({
@@ -530,7 +531,7 @@ onMounted(async () => {
             </span>
           </div>
 
-          <Tabs v-model="activeTab" class="mt-6">
+          <Tabs v-model="activeTab" activation-mode="manual" class="mt-6">
             <div class="flex items-center justify-between gap-3">
               <TabsList class="min-w-0 max-w-full justify-start overflow-x-auto">
                 <TabsTrigger value="tasks" class="gap-2">
@@ -570,6 +571,10 @@ onMounted(async () => {
                 <TabsTrigger value="stats" class="gap-2">
                   <BarChart3 class="size-4" />
                   Stats
+                </TabsTrigger>
+                <TabsTrigger v-if="isAdmin" value="workflow" class="gap-2">
+                  <WorkflowIcon class="size-4" />
+                  Workflow
                 </TabsTrigger>
                 <TabsTrigger v-if="isAdmin" value="settings" class="gap-2">
                   <Settings class="size-4" />
@@ -855,6 +860,11 @@ onMounted(async () => {
               <ProjectStatsTab :project-key="projectKey" />
             </TabsContent>
 
+            <!-- Workflow Tab -->
+            <TabsContent v-if="isAdmin" value="workflow" class="mt-6">
+              <WorkflowEditor :project-key="projectKey" :states="states" :members="members" />
+            </TabsContent>
+
             <!-- Settings Tab -->
             <TabsContent v-if="isAdmin" value="settings" class="mt-6 space-y-8">
               <ProjectSettings
@@ -870,6 +880,7 @@ onMounted(async () => {
                 :project-key="projectKey"
                 :is-admin="isAdmin"
                 @refresh="listStates(projectKey)"
+                @open-workflow="activeTab = 'workflow'"
               />
 
               <Separator />
