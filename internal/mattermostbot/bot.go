@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"regexp"
 	"slices"
@@ -26,6 +27,7 @@ const (
 	runTimeout = 10 * time.Minute
 
 	contextMessages = 10
+	maxPerPage      = 200
 )
 
 // config mirrors the "mattermost" setting saved by the admin settings handler.
@@ -259,24 +261,28 @@ func (b *Bot) handle(parent context.Context, c *client, cfg config, me mmUser, p
 }
 
 // run answers pending approvals with a yes/no reply; anything else is a new message,
-// sent with recent channel or thread messages when outside a DM.
+// sent with unseen channel or thread messages when outside a DM.
 func (b *Bot) run(ctx context.Context, c *client, me mmUser, p post, direct bool, userID, convID uuid.UUID, text string, em *emitter) error {
 	pending, err := b.store.ListPendingAssistantActions(ctx, convID)
 	if err != nil {
 		return err
 	}
+	var local []assistant.LocalTool
+	if !direct {
+		local = append(local, b.historyTool(c, me, p, convID))
+	}
 	approve, isDecision := decision(text)
 	if len(pending) == 0 || !isDecision {
 		var meta assistant.Meta
 		if !direct {
-			if meta.Chat, err = b.chatContext(ctx, c, me, p); err != nil {
+			if meta.Chat, err = b.chatContext(ctx, c, me, p, convID, contextMessages, true); err != nil {
 				log.Printf("mattermost assistant: load chat context: %v", err)
 			}
 		}
-		return b.agent.Send(ctx, userID, convID, text, nil, meta, em)
+		return b.agent.Send(ctx, userID, convID, text, nil, meta, em, local...)
 	}
 	for _, a := range pending {
-		err := b.agent.Resolve(ctx, userID, convID, a.ID, approve, em)
+		err := b.agent.Resolve(ctx, userID, convID, a.ID, approve, em, local...)
 		if err != nil && !errors.Is(err, assistant.ErrNotPending) {
 			return err
 		}
@@ -315,14 +321,47 @@ func (b *Bot) mmUser(ctx context.Context, c *client, id string) (mmUser, error) 
 	return u, nil
 }
 
-// chatContext returns the last few top-level channel posts, or thread posts, before p.
-func (b *Bot) chatContext(ctx context.Context, c *client, me mmUser, p post) (*assistant.ChatContext, error) {
+// historyTool lets the agent read further back in the thread, or the channel for a top-level post.
+func (b *Bot) historyTool(c *client, me mmUser, p post, convID uuid.UUID) assistant.LocalTool {
+	desc := fmt.Sprintf("Read earlier Mattermost messages from the thread this conversation is in (or the channel, for a top-level message) that are not shown yet, "+
+		"most recent first. Use it only when the messages shown are not enough to answer. At most %d chat messages can be shown in a conversation.", assistant.MaxChatMessages)
+	count := assistant.Param{Name: "count", Type: "integer", Required: true, Description: fmt.Sprintf("How many messages to read, 1-%d", assistant.MaxChatMessages)}
+	return assistant.LocalTool{
+		Name:        "read_chat_history",
+		Description: desc,
+		Params:      []assistant.Param{count},
+		Run: func(ctx context.Context, args map[string]any) (string, assistant.Meta) {
+			n, _ := args["count"].(float64)
+			chat, err := b.chatContext(ctx, c, me, p, convID, max(1, int(n)), false)
+			if err != nil {
+				log.Printf("mattermost assistant: read chat history: %v", err)
+				return "Could not read chat messages.", assistant.Meta{}
+			}
+			if chat == nil {
+				return "No more chat messages: everything available is already shown, or the conversation reached its limit.", assistant.Meta{}
+			}
+			return chat.Describe(), assistant.Meta{Chat: chat}
+		},
+	}
+}
+
+// chatContext returns up to n posts this conversation has not seen from p's thread, or from the
+// channel for a top-level post, capped so a conversation never holds more than MaxChatMessages.
+func (b *Bot) chatContext(ctx context.Context, c *client, me mmUser, p post, convID uuid.UUID, n int, newOnly bool) (*assistant.ChatContext, error) {
+	shown, total, err := b.agent.ShownChat(ctx, convID)
+	if err != nil {
+		return nil, err
+	}
+	n = min(n, assistant.MaxChatMessages-total)
+	if n <= 0 {
+		return nil, nil
+	}
+
 	where := "thread"
 	var posts []post
-	var err error
 	if p.RootID == "" {
 		where = "channel"
-		posts, err = c.channelPostsBefore(ctx, p.ChannelID, p.ID, 2*contextMessages)
+		posts, err = c.channelPostsBefore(ctx, p.ChannelID, p.ID, min(2*(total+n), maxPerPage))
 	} else {
 		posts, err = c.thread(ctx, p.RootID)
 	}
@@ -330,18 +369,9 @@ func (b *Bot) chatContext(ctx context.Context, c *client, me mmUser, p post) (*a
 		return nil, err
 	}
 
-	var keep []post
-	for _, q := range posts {
-		if q.ID == p.ID || q.Type != "" || q.CreateAt >= p.CreateAt || strings.TrimSpace(q.Message) == "" {
-			continue
-		}
-		if where == "channel" && q.RootID != "" {
-			continue
-		}
-		keep = append(keep, q)
-	}
-	if len(keep) > contextMessages {
-		keep = keep[len(keep)-contextMessages:]
+	keep := unseen(posts, p, me.ID, mentionRe(me.Username), shown, newOnly)
+	if len(keep) > n {
+		keep = keep[len(keep)-n:]
 	}
 	if len(keep) == 0 {
 		return nil, nil
@@ -355,10 +385,37 @@ func (b *Bot) chatContext(ctx context.Context, c *client, me mmUser, p post) (*a
 			m = b.author(ctx, c, me, q.UserID)
 			authors[q.UserID] = m
 		}
+		m.PostID = q.ID
 		m.Text = q.Message
 		out.Messages = append(out.Messages, m)
 	}
 	return out, nil
+}
+
+// unseen keeps posts before p not yet shown, skipping the user's earlier turns and the bot's replies
+// in a thread; newOnly also drops posts up to the user's previous turn.
+func unseen(posts []post, p post, botID string, mention *regexp.Regexp, shown map[string]bool, newOnly bool) []post {
+	thread := p.RootID != ""
+	isTurn := func(q post) bool { return thread && q.UserID == p.UserID && mention.MatchString(q.Message) }
+	firstTurn, lastTurn := p.CreateAt, int64(0)
+	for _, q := range posts {
+		if isTurn(q) && q.CreateAt < p.CreateAt {
+			firstTurn, lastTurn = min(firstTurn, q.CreateAt), max(lastTurn, q.CreateAt)
+		}
+	}
+
+	var keep []post
+	for _, q := range posts {
+		switch {
+		case q.ID == p.ID, q.Type != "", q.CreateAt >= p.CreateAt, strings.TrimSpace(q.Message) == "", shown[q.ID]:
+		case !thread && q.RootID != "":
+		case isTurn(q), q.UserID == botID && q.CreateAt > firstTurn:
+		case newOnly && q.CreateAt <= lastTurn:
+		default:
+			keep = append(keep, q)
+		}
+	}
+	return keep
 }
 
 func (b *Bot) author(ctx context.Context, c *client, me mmUser, id string) assistant.ChatMessage {

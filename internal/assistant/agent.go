@@ -86,12 +86,13 @@ func NewService(s store.Querier, router http.Handler, am *auth.Manager) *Service
 }
 
 // Send appends a user message and runs the agent until it answers or needs approval.
-func (s *Service) Send(ctx context.Context, userID, convID uuid.UUID, text string, uploadIDs []uuid.UUID, meta Meta, emit Emitter) error {
+func (s *Service) Send(ctx context.Context, userID, convID uuid.UUID, text string, uploadIDs []uuid.UUID, meta Meta, emit Emitter, local ...LocalTool) error {
 	run, err := s.begin(ctx, userID, convID)
 	if err != nil {
 		return err
 	}
 	defer s.end(convID)
+	run.local = local
 
 	attachments, err := s.ownedUploads(ctx, userID, uploadIDs)
 	if err != nil {
@@ -125,12 +126,13 @@ func (s *Service) Send(ctx context.Context, userID, convID uuid.UUID, text strin
 }
 
 // Resolve approves or rejects a pending write and resumes the loop once none remain.
-func (s *Service) Resolve(ctx context.Context, userID, convID, actionID uuid.UUID, approve bool, emit Emitter) error {
+func (s *Service) Resolve(ctx context.Context, userID, convID, actionID uuid.UUID, approve bool, emit Emitter, local ...LocalTool) error {
 	run, err := s.begin(ctx, userID, convID)
 	if err != nil {
 		return err
 	}
 	defer s.end(convID)
+	run.local = local
 
 	action, err := s.store.GetAssistantAction(ctx, store.GetAssistantActionParams{ID: actionID, ConversationID: convID})
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -176,6 +178,7 @@ type runState struct {
 	conv     store.AssistantConversation
 	settings Settings
 	provider Provider
+	local    []LocalTool
 }
 
 func (s *Service) begin(ctx context.Context, userID, convID uuid.UUID) (*runState, error) {
@@ -239,7 +242,7 @@ func (s *Service) loop(ctx context.Context, run *runState, emit Emitter) error {
 			Model:    run.settings.Model,
 			System:   systemPrompt(run.user),
 			Messages: buildHistory(rows),
-			Tools:    toolSpecs(),
+			Tools:    toolSpecs(run.local),
 		})
 		if err != nil {
 			return fmt.Errorf("model request failed: %w", err)
@@ -260,6 +263,15 @@ func (s *Service) loop(ctx context.Context, run *runState, emit Emitter) error {
 		waiting := false
 		approveWrites := hasChatContext(rows)
 		for _, tc := range resp.ToolCalls {
+			if lt := findLocal(run.local, tc.Name); lt != nil {
+				emit.Emit(Event{Type: "step", Tool: tc.Name, Status: "running"})
+				out, meta := lt.Run(ctx, argsObject(tc.Args))
+				emit.Emit(Event{Type: "step", Tool: tc.Name, Status: "done"})
+				if _, err := s.insertMessage(ctx, convID, RoleTool, out, nil, tc.ID, tc.Name, nil, meta.sanitize()); err != nil {
+					return err
+				}
+				continue
+			}
 			tool := toolByName(tc.Name)
 			if tool == nil {
 				if _, err := s.addMessage(ctx, convID, RoleTool, "unknown tool "+tc.Name, nil, tc.ID, tc.Name); err != nil {
@@ -359,11 +371,35 @@ func uploadArgAllowed(tool *Tool, rawArgs json.RawMessage, rows []store.Assistan
 // hasChatContext reports whether other people's chat messages were shown in this conversation.
 func hasChatContext(rows []store.AssistantMessage) bool {
 	for _, r := range rows {
-		if r.Role == RoleUser && messageMeta(r).Chat != nil {
+		if messageMeta(r).Chat != nil {
 			return true
 		}
 	}
 	return false
+}
+
+// ShownChat returns the post ids of chat messages already shown in a conversation and how
+// many chat messages it holds, so adapters can skip repeats and stay under MaxChatMessages.
+func (s *Service) ShownChat(ctx context.Context, convID uuid.UUID) (map[string]bool, int, error) {
+	rows, err := s.store.ListAssistantMessages(ctx, convID)
+	if err != nil {
+		return nil, 0, err
+	}
+	ids := map[string]bool{}
+	total := 0
+	for _, r := range rows {
+		chat := messageMeta(r).Chat
+		if chat == nil {
+			continue
+		}
+		total += len(chat.Messages)
+		for _, m := range chat.Messages {
+			if m.PostID != "" {
+				ids[m.PostID] = true
+			}
+		}
+	}
+	return ids, total, nil
 }
 
 // messageMeta re-sanitizes stored meta so only known shapes ever reach the model.
@@ -505,7 +541,7 @@ func userText(r store.AssistantMessage) string {
 		fmt.Fprintf(&b, "\n\n[The user is currently viewing %s.]", meta.Page.describe())
 	}
 	if meta.Chat != nil {
-		b.WriteString("\n\n" + meta.Chat.describe())
+		b.WriteString("\n\n" + meta.Chat.Describe())
 	}
 	atts := messageAttachments(r)
 	if len(atts) == 0 {

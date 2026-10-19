@@ -1,6 +1,7 @@
 package assistant
 
 import (
+	"context"
 	"net/http"
 	"strings"
 )
@@ -327,14 +328,35 @@ var toolIndex = func() map[string]*Tool {
 
 func toolByName(name string) *Tool { return toolIndex[name] }
 
-func toolSpecs() []ToolSpec {
-	specs := make([]ToolSpec, 0, len(catalog))
+// LocalTool is a read-only tool a channel adapter adds to its runs, e.g. reading more chat
+// history. The Meta it returns is stored with the result, like a user message's.
+type LocalTool struct {
+	Name        string
+	Description string
+	Params      []Param
+	Run         func(ctx context.Context, args map[string]any) (string, Meta)
+}
+
+func findLocal(tools []LocalTool, name string) *LocalTool {
+	for i := range tools {
+		if tools[i].Name == name {
+			return &tools[i]
+		}
+	}
+	return nil
+}
+
+func toolSpecs(local []LocalTool) []ToolSpec {
+	specs := make([]ToolSpec, 0, len(catalog)+len(local))
 	for _, t := range catalog {
 		desc := t.Description
 		if t.Confirm {
 			desc += " Requires user approval."
 		}
 		specs = append(specs, ToolSpec{Name: t.Name, Description: desc, Schema: schemaFor(t.Params)})
+	}
+	for _, t := range local {
+		specs = append(specs, ToolSpec{Name: t.Name, Description: t.Description, Schema: schemaFor(t.Params)})
 	}
 	return specs
 }
