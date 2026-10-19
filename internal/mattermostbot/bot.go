@@ -183,7 +183,8 @@ func (b *Bot) dispatch(ctx context.Context, c *client, cfg config, me mmUser, da
 	}
 	var mentions []string
 	_ = json.Unmarshal([]byte(ev.Data.Mentions), &mentions)
-	if ev.Data.ChannelType != "D" && !slices.Contains(mentions, me.ID) {
+	// @channel/@all/@here also list the bot in mentions, so require its username in the text too.
+	if ev.Data.ChannelType != "D" && (!slices.Contains(mentions, me.ID) || !mentionRe(me.Username).MatchString(p.Message)) {
 		return
 	}
 	go b.handle(ctx, c, cfg, me, p, ev.Data.ChannelType == "D")
