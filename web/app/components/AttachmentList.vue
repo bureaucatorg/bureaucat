@@ -19,8 +19,7 @@ const emit = defineEmits<{
 }>();
 
 const lightboxOpen = ref(false);
-const lightboxSrc = ref("");
-const lightboxAlt = ref("");
+const lightboxIndex = ref(0);
 
 function isImage(mimeType: string): boolean {
   return mimeType.startsWith("image/");
@@ -33,9 +32,12 @@ const fileAttachments = computed(() =>
   props.attachments.filter((a) => !isImage(a.mime_type))
 );
 
-function openLightbox(attachment: Attachment) {
-  lightboxSrc.value = attachment.url;
-  lightboxAlt.value = attachment.filename;
+const lightboxImages = computed(() =>
+  imageAttachments.value.map((a) => ({ src: a.url, alt: a.filename }))
+);
+
+function openLightbox(index: number) {
+  lightboxIndex.value = index;
   lightboxOpen.value = true;
 }
 
@@ -56,7 +58,7 @@ function formatSize(bytes: number): string {
   <!-- Image / SVG previews -->
   <div v-if="imageAttachments.length > 0" class="flex flex-wrap gap-2 pt-2">
     <div
-      v-for="attachment in imageAttachments"
+      v-for="(attachment, index) in imageAttachments"
       :key="attachment.id"
       class="group relative overflow-hidden rounded-md border bg-muted/30"
     >
@@ -64,7 +66,7 @@ function formatSize(bytes: number): string {
         type="button"
         class="block"
         :aria-label="`View ${attachment.filename}`"
-        @click="openLightbox(attachment)"
+        @click="openLightbox(index)"
       >
         <img
           :src="attachment.url"
@@ -143,5 +145,5 @@ function formatSize(bytes: number): string {
   </div>
   </template>
 
-  <ImageLightbox v-model:open="lightboxOpen" :src="lightboxSrc" :alt="lightboxAlt" />
+  <ImageLightbox v-model:open="lightboxOpen" v-model:index="lightboxIndex" :images="lightboxImages" />
 </template>
