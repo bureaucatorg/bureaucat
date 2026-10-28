@@ -195,7 +195,9 @@ export type FilterField =
   | "due_date"
   | "created_at"
   | "updated_at"
-  | "comment_count";
+  | "comment_count"
+  | "attachments"
+  | "comment_attachments";
 
 export type FilterOp =
   | "contains"

@@ -225,6 +225,12 @@ var predicateHandlers = map[predicateKey]predicateHandler{
 	{"comment_count", "gte"}: commentCount(">="),
 	{"comment_count", "lt"}:  commentCount("<"),
 	{"comment_count", "lte"}: commentCount("<="),
+
+	// ---- attachments (on the task itself, or on its live comments) ----
+	{"attachments", "is_set"}:           taskAttachmentsPresence(true),
+	{"attachments", "is_empty"}:         taskAttachmentsPresence(false),
+	{"comment_attachments", "is_set"}:   commentAttachmentsPresence(true),
+	{"comment_attachments", "is_empty"}: commentAttachmentsPresence(false),
 }
 
 // -------- value decoders --------
@@ -678,6 +684,28 @@ func commentCount(op string) predicateHandler {
 		}
 		p := a.push(int64(n))
 		return "(SELECT COUNT(*) FROM comments c WHERE c.task_id = t.id AND c.deleted_at IS NULL) " + op + " " + p, nil
+	}
+}
+
+// -------- attachments handlers --------
+
+func taskAttachmentsPresence(set bool) predicateHandler {
+	return func(*argBuffer, uuid.UUID, time.Time, json.RawMessage) (string, error) {
+		prefix := "NOT "
+		if set {
+			prefix = ""
+		}
+		return prefix + "EXISTS (SELECT 1 FROM attachments att WHERE att.entity_type = 'task' AND att.entity_id = t.id)", nil
+	}
+}
+
+func commentAttachmentsPresence(set bool) predicateHandler {
+	return func(*argBuffer, uuid.UUID, time.Time, json.RawMessage) (string, error) {
+		prefix := "NOT "
+		if set {
+			prefix = ""
+		}
+		return prefix + "EXISTS (SELECT 1 FROM attachments att JOIN comments c ON att.entity_type = 'comment' AND att.entity_id = c.id WHERE c.task_id = t.id AND c.deleted_at IS NULL)", nil
 	}
 }
 

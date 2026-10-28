@@ -47,7 +47,8 @@ const filterHelp = `Optional FilterTree object; all children are ANDed: {"childr
 Fields/ops: search contains(str, also matches KEY-12); title contains|not_contains|is|is_not(str), is_empty|is_set; description contains|not_contains, is_empty|is_set;
 state in|not_in(state uuids); state_type in|not_in(backlog|unstarted|started|completed|cancelled); priority in|not_in(int[]), gte|lte(int);
 created_by in|not_in(uuids or "@me"), is_me|is_not_me; assignees has_any|has_none|has_all(uuids or "@me"), is_empty|is_set; labels has_any|has_none|has_all(label uuids), is_empty|is_set;
-start_date|due_date before|after(anchor), between({"from":a,"to":a}), is_empty|is_set; due_date overdue; created_at|updated_at before|after|between; comment_count eq|ne|gt|gte|lt|lte(int).
+start_date|due_date before|after(anchor), between({"from":a,"to":a}), is_empty|is_set; due_date overdue; created_at|updated_at before|after|between; comment_count eq|ne|gt|gte|lt|lte(int);
+attachments|comment_attachments is_set|is_empty (files on the task itself / on its comments).
 Anchors: YYYY-MM-DD or today, yesterday, tomorrow, this_week, last_week, next_week, this_month, last_month, next_month, last_7_days, last_30_days, last_90_days.`
 
 var (
