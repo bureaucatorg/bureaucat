@@ -17,10 +17,11 @@ import {
   ArrowUpDown,
   Link2,
   Link2Off,
+  Workflow,
 } from "lucide-vue-next";
 import { toast } from "vue-sonner";
 import type { ActivityLogEntry, ActivityType, Comment, ProjectMember } from "~/types";
-import { activityActorName, activityLabel } from "~/types";
+import { ACTIVITY_TYPE_LABELS, activityActorName, activityLabel } from "~/types";
 
 const props = defineProps<{
   activities: ActivityLogEntry[];
@@ -69,9 +70,105 @@ const iconMap: Record<ActivityType, typeof Plus> = {
   blocker_removed: Link2Off,
 };
 
-type FeedItem =
-  | { type: "activity"; data: ActivityLogEntry; timestamp: Date }
-  | { type: "comment"; data: Comment; timestamp: Date };
+interface ActivityFeedItem {
+  type: "activity";
+  data: ActivityLogEntry;
+  merged: ActivityLogEntry[];
+  workflow: ActivityLogEntry[];
+  timestamp: Date;
+}
+
+type FeedItem = ActivityFeedItem | { type: "comment"; data: Comment; timestamp: Date };
+
+const MERGE_WINDOW_MS = 60_000;
+const MERGEABLE = new Set<ActivityType>(["assignee_added", "assignee_removed", "label_added", "label_removed"]);
+const SEGMENT_LABELS: Partial<Record<ActivityType, [string, string]>> = {
+  assignee_added: ["added assignee", "added assignees"],
+  assignee_removed: ["removed assignee", "removed assignees"],
+  label_added: ["added label", "added labels"],
+  label_removed: ["removed label", "removed labels"],
+};
+
+function lastAt(item: ActivityFeedItem): number {
+  const all = [...item.merged, ...item.workflow];
+  return new Date(all[all.length - 1]!.created_at).getTime();
+}
+
+// Workflow assignee changes fold into the state change/creation that triggered them;
+// back-to-back assignee/label changes by the same actor merge into one row.
+function groupActivities(activities: ActivityLogEntry[]): ActivityFeedItem[] {
+  const sorted = [...activities].sort(
+    (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+  );
+  const out: ActivityFeedItem[] = [];
+  const triggerByActor = new Map<string, ActivityFeedItem>();
+  let prev: ActivityFeedItem | undefined;
+
+  for (const activity of sorted) {
+    const type = activity.activity_type;
+    if (type === "comment_created" || type === "comment_updated" || type === "comment_deleted") continue;
+    const at = new Date(activity.created_at).getTime();
+
+    if (activity.via === "workflow" && (type === "assignee_added" || type === "assignee_removed")) {
+      const trigger = triggerByActor.get(activity.actor_id);
+      if (trigger && at - lastAt(trigger) <= MERGE_WINDOW_MS) {
+        trigger.workflow.push(activity);
+        continue;
+      }
+    }
+
+    if (
+      prev &&
+      MERGEABLE.has(type) &&
+      MERGEABLE.has(prev.data.activity_type) &&
+      prev.data.actor_id === activity.actor_id &&
+      prev.data.via === activity.via &&
+      at - lastAt(prev) <= MERGE_WINDOW_MS
+    ) {
+      prev.merged.push(activity);
+      continue;
+    }
+
+    const item: ActivityFeedItem = {
+      type: "activity",
+      data: activity,
+      merged: [activity],
+      workflow: [],
+      timestamp: new Date(at),
+    };
+    out.push(item);
+    prev = item;
+    if (activity.via !== "workflow" && (type === "state_changed" || type === "task_created")) {
+      triggerByActor.set(activity.actor_id, item);
+    }
+  }
+  return out;
+}
+
+function mergedSegments(entries: ActivityLogEntry[]): { type: ActivityType; label: string; names: string }[] {
+  const segments: { type: ActivityType; label: string; names: string }[] = [];
+  for (const type of new Set(entries.map((e) => e.activity_type))) {
+    const names = entries
+      .filter((e) => e.activity_type === type)
+      .map((e) => getActivityDetail(e))
+      .filter(Boolean) as string[];
+    const [singular, plural] = SEGMENT_LABELS[type] ?? [ACTIVITY_TYPE_LABELS[type], ACTIVITY_TYPE_LABELS[type]];
+    segments.push({ type, label: names.length > 1 ? plural : singular, names: names.join(", ") });
+  }
+  return segments;
+}
+
+function workflowChanges(entries: ActivityLogEntry[]): string {
+  return [...new Set(entries.map((e) => e.activity_type))]
+    .map((type) => {
+      const names = entries
+        .filter((e) => e.activity_type === type)
+        .map((e) => getActivityDetail(e) ?? "someone")
+        .join(", ");
+      return `${type === "assignee_added" ? "assigned" : "unassigned"} ${names}`;
+    })
+    .join(" · ");
+}
 
 // Extract comment edit history from activity logs
 interface CommentVersion {
@@ -112,24 +209,8 @@ const commentEditHistory = computed<Map<string, CommentVersion[]>>(() => {
 
 // Merge and sort activities and comments by timestamp
 const feedItems = computed<FeedItem[]>(() => {
-  const items: FeedItem[] = [];
-
-  // Add activities (except comment-related ones as we show actual comments)
-  for (const activity of props.activities) {
-    // Skip comment activities - we show the actual comments instead
-    if (
-      activity.activity_type === "comment_created" ||
-      activity.activity_type === "comment_updated" ||
-      activity.activity_type === "comment_deleted"
-    ) {
-      continue;
-    }
-    items.push({
-      type: "activity",
-      data: activity,
-      timestamp: new Date(activity.created_at),
-    });
-  }
+  // Comment activities are skipped in grouping; the actual comments are shown instead.
+  const items: FeedItem[] = groupActivities(props.activities);
 
   // Add comments
   for (const comment of props.comments) {
@@ -406,7 +487,13 @@ function getStateChangeDetail(activity: ActivityLogEntry): { from: string; to: s
                 :triggered-by="`${item.data.first_name} ${item.data.last_name}`"
                 class="ml-1"
               />
-              <span class="text-muted-foreground">
+              <span v-if="item.merged.length > 1" class="text-muted-foreground">
+                <template v-for="(seg, i) in mergedSegments(item.merged)" :key="seg.type">
+                  {{ i > 0 ? " · " : " " }}{{ seg.label }}
+                  <span class="font-medium">{{ seg.names }}</span>
+                </template>
+              </span>
+              <span v-else class="text-muted-foreground">
                 {{ " " }}{{ getActivityLabel(item.data) }}
                 <template v-if="getStateChangeDetail(item.data)">
                   from <span class="font-medium">{{ getStateChangeDetail(item.data)!.from }}</span>
@@ -421,6 +508,14 @@ function getStateChangeDetail(activity: ActivityLogEntry): { from: string; to: s
                   }}</span>
                 </template>
               </span>
+            </p>
+            <p
+              v-if="item.workflow.length"
+              class="mt-1 flex items-start gap-1.5 text-xs text-muted-foreground"
+              title="Assignee changes made by workflow rules"
+            >
+              <Workflow class="mt-0.5 size-3 shrink-0" />
+              <span>Workflow: {{ workflowChanges(item.workflow) }}</span>
             </p>
             <p class="mt-0.5 text-xs text-muted-foreground">
               {{ formatDate(item.data.created_at) }}
