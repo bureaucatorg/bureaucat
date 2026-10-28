@@ -1,25 +1,6 @@
 <script setup lang="ts">
-import {
-  Bell,
-  Loader2,
-  Plus,
-  Edit2,
-  Trash2,
-  UserPlus,
-  UserMinus,
-  Tag,
-  Tags,
-  ArrowRight,
-  MessageSquarePlus,
-  MessageSquareDiff,
-  MessageSquareX,
-  Circle,
-  CheckCheck,
-  Link2,
-  Link2Off,
-} from "lucide-vue-next";
-import type { ActivityType, NotificationEntry } from "~/types";
-import { ACTIVITY_TYPE_LABELS, activityActorName } from "~/types";
+import { Bell, Loader2, CheckCheck } from "lucide-vue-next";
+import type { NotificationEntry } from "~/types";
 
 const { user } = useAuth();
 const { unreadCount, listNotifications, refreshUnreadCount, markRead, markAllRead } =
@@ -33,42 +14,6 @@ const page = ref(1);
 const hasMore = ref(true);
 const perPage = 20;
 const maxItems = 100;
-
-const iconMap: Record<ActivityType, typeof Plus> = {
-  task_created: Plus,
-  task_updated: Edit2,
-  task_deleted: Trash2,
-  assignee_added: UserPlus,
-  assignee_removed: UserMinus,
-  label_added: Tag,
-  label_removed: Tags,
-  state_changed: ArrowRight,
-  comment_created: MessageSquarePlus,
-  comment_updated: MessageSquareDiff,
-  comment_deleted: MessageSquareX,
-  blocker_added: Link2,
-  blocker_removed: Link2Off,
-};
-
-function formatRelativeDate(dateStr: string): string {
-  const date = new Date(dateStr);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffMins = Math.floor(diffMs / 60000);
-  const diffHours = Math.floor(diffMs / 3600000);
-  const diffDays = Math.floor(diffMs / 86400000);
-
-  if (diffMins < 1) return "just now";
-  if (diffMins < 60) return `${diffMins}m ago`;
-  if (diffHours < 24) return `${diffHours}h ago`;
-  if (diffDays < 7) return `${diffDays}d ago`;
-
-  return date.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: date.getFullYear() !== now.getFullYear() ? "numeric" : undefined,
-  });
-}
 
 async function loadActivity(pageNum: number) {
   if (!user.value) return;
@@ -106,12 +51,6 @@ function onScroll(e: Event) {
   if (nearBottom) {
     loadActivity(page.value + 1);
   }
-}
-
-function notificationLink(activity: NotificationEntry): string {
-  const base = `/projects/${activity.project_key}/tasks/${activity.task_number}`;
-  // Deep-link to the specific comment so the task page scrolls to and highlights it.
-  return activity.comment_id ? `${base}#comment-${activity.comment_id}` : base;
 }
 
 function onActivityClick(activity: NotificationEntry) {
@@ -196,60 +135,31 @@ onUnmounted(() => {
       <!-- Activity list -->
       <ScrollArea v-else class="h-[380px]" @scrollCapture="onScroll">
         <div class="divide-y">
-          <NuxtLink
+          <NotificationItem
             v-for="activity in activities"
             :key="activity.id"
-            :to="notificationLink(activity)"
-            class="flex gap-3 px-4 py-3 transition-colors hover:bg-muted/50"
-            :class="!activity.is_read && 'bg-muted/30'"
-            @click="onActivityClick(activity)"
-          >
-            <div class="flex size-6 shrink-0 items-center justify-center rounded-full border bg-background">
-              <component
-                :is="iconMap[activity.activity_type] || Circle"
-                class="size-3 text-muted-foreground"
-              />
-            </div>
-            <div class="min-w-0 flex-1">
-              <p class="text-xs" :class="!activity.is_read && 'font-medium'">
-                <span class="font-medium text-foreground">{{ activityActorName(activity) }}</span>
-                <span :class="activity.is_read ? 'text-muted-foreground' : 'text-foreground'">
-                  {{ ' ' }}{{ ACTIVITY_TYPE_LABELS[activity.activity_type] || activity.activity_type }}
-                  <template v-if="activity.field_name">
-                    <span class="font-medium text-foreground">{{ activity.field_name }}</span>
-                  </template>
-                </span>
-                <span
-                  v-if="activity.event_count > 1"
-                  class="text-muted-foreground"
-                >
-                  {{ ' ' }}· {{ activity.event_count }} updates
-                </span>
-              </p>
-              <div class="mt-0.5 flex items-center gap-1.5">
-                <span class="text-xs font-medium text-amber-600 dark:text-amber-500">
-                  {{ activity.project_key }}-{{ activity.task_number }}
-                </span>
-                <span class="truncate text-xs text-muted-foreground">
-                  {{ activity.task_title }}
-                </span>
-              </div>
-              <p class="mt-0.5 text-[11px] text-muted-foreground/60">
-                {{ formatRelativeDate(activity.updated_at || activity.created_at) }}
-              </p>
-            </div>
-            <span
-              v-if="!activity.is_read"
-              class="mt-1 size-2 shrink-0 rounded-full bg-amber-500"
-              aria-hidden="true"
-            />
-          </NuxtLink>
+            :activity="activity"
+            @click="onActivityClick"
+          />
         </div>
         <!-- Loading more indicator -->
         <div v-if="loadingMore" class="flex items-center justify-center py-3">
           <Loader2 class="size-4 animate-spin text-muted-foreground" />
         </div>
       </ScrollArea>
+
+      <div class="border-t p-1">
+        <Button
+          variant="ghost"
+          size="sm"
+          class="w-full text-xs text-muted-foreground hover:text-foreground"
+          as-child
+        >
+          <NuxtLink to="/notifications" @click="open = false">
+            Show all notifications
+          </NuxtLink>
+        </Button>
+      </div>
     </PopoverContent>
   </Popover>
 </template>
