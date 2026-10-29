@@ -124,6 +124,7 @@ var emailHTML = template.Must(template.New("email").Funcs(template.FuncMap{
 <td bgcolor="#f4f4f5" valign="middle" style="padding:2px 10px 4px;border-radius:9999px;font-family:{{sans}};font-size:12px;line-height:18px;color:#09090b"><span style="color:{{.To.Color}}">&#9679;</span>&nbsp;{{.To.Name}}</td>
 </tr></table>
 </td></tr>{{end}}
+{{if .Workflow}}<tr><td colspan="2" style="padding:6px 0 0 36px;font-family:{{sans}};font-size:12px;line-height:18px;color:#71717a">&#8627;&nbsp;Workflow Engine {{.Workflow}}</td></tr>{{end}}
 {{if .Quote}}<tr><td colspan="2" style="padding-top:8px">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#fafafa"><tr>
 <td width="3" bgcolor="#f59e0b" style="font-size:0;line-height:0">&nbsp;</td>
@@ -164,6 +165,9 @@ type emailEvent struct {
 	Label     *emailPill
 	From      *emailPill
 	To        *emailPill
+	Workflow  string
+	via       string
+	isTrigger bool
 }
 
 type emailData struct {
@@ -203,9 +207,62 @@ func newEvent(firstName, lastName, verb string) emailEvent {
 	}
 }
 
+// groupEvents nests workflow assignee changes under the state change/creation by the user who
+// triggered them, and merges back-to-back assignee changes with the same actor and verb.
+func groupEvents(activity []store.ListEmailActivityRow) []emailEvent {
+	events := make([]emailEvent, 0, len(activity))
+	triggers := map[string]int{}
+	var workflow map[int][][2]string
+
+	for _, a := range activity {
+		e := eventFromActivity(a)
+		isAssignee := a.ActivityType == "assignee_added" || a.ActivityType == "assignee_removed"
+		trigger := strings.TrimSpace(a.FirstName + " " + a.LastName)
+
+		if i, ok := triggers[trigger]; ok && a.Via == auth.ViaWorkflow && isAssignee && e.Target != "" {
+			if workflow == nil {
+				workflow = map[int][][2]string{}
+			}
+			workflow[i] = appendGrouped(workflow[i], e.Verb, e.Target)
+			continue
+		}
+		if n := len(events); n > 0 && isAssignee && e.Target != "" {
+			if prev := &events[n-1]; prev.Actor == e.Actor && prev.via == e.via && prev.Verb == e.Verb && prev.Target != "" && prev.Workflow == "" && !prev.isTrigger {
+				prev.Target += ", " + e.Target
+				continue
+			}
+		}
+		if a.Via != auth.ViaWorkflow && (a.ActivityType == "state_changed" || a.ActivityType == "task_created") {
+			e.isTrigger = true
+			triggers[trigger] = len(events)
+		}
+		events = append(events, e)
+	}
+
+	for i, groups := range workflow {
+		parts := make([]string, len(groups))
+		for j, g := range groups {
+			parts[j] = g[0] + " " + g[1]
+		}
+		events[i].Workflow = strings.Join(parts, " · ")
+	}
+	return events
+}
+
+func appendGrouped(groups [][2]string, verb, name string) [][2]string {
+	for i := range groups {
+		if groups[i][0] == verb {
+			groups[i][1] += ", " + name
+			return groups
+		}
+	}
+	return append(groups, [2]string{verb, name})
+}
+
 func eventFromActivity(a store.ListEmailActivityRow) emailEvent {
 	first, last := systemActor(a.Via, a.FirstName, a.LastName)
 	e := newEvent(first, last, activityLabel(a.ActivityType))
+	e.via = a.Via
 	oldV, newV := jsonMap(a.OldValue), jsonMap(a.NewValue)
 
 	switch a.ActivityType {
@@ -306,24 +363,45 @@ func TestEmail(cfg mailer.Settings, to, senderFirstName, senderLastName string) 
 	return buildEmail(cfg, to, "Bureaucat test email", data)
 }
 
-// SampleEmail builds the exact email sent for activityType ("batched" for several updates),
-// using placeholder task data and the real formatting path.
+// SampleEmail builds the exact email sent for activityType ("batched" for several updates,
+// "workflow" for a state change with workflow assignee changes), using placeholder task data.
 func SampleEmail(cfg mailer.Settings, to, activityType, actorFirstName, actorLastName string) (mailer.Message, error) {
 	types := []string{activityType}
-	if activityType == "batched" {
+	switch activityType {
+	case "batched":
 		types = []string{"comment_created", "label_added", "state_changed"}
-	} else if _, ok := activityLabels[activityType]; !ok && activityType != "description_updated" {
-		return mailer.Message{}, fmt.Errorf("unknown activity type %q", activityType)
+	case "workflow":
+		types = []string{"state_changed"}
+	default:
+		if _, ok := activityLabels[activityType]; !ok && activityType != "description_updated" {
+			return mailer.Message{}, fmt.Errorf("unknown activity type %q", activityType)
+		}
 	}
 
-	events := make([]emailEvent, 0, len(types))
+	activity := make([]store.ListEmailActivityRow, 0, len(types)+3)
 	for _, t := range types {
-		events = append(events, eventFromActivity(sampleActivity(t, actorFirstName, actorLastName)))
+		activity = append(activity, sampleActivity(t, actorFirstName, actorLastName))
 	}
+	if activityType == "workflow" {
+		for _, c := range []struct{ activityType, assignee string }{
+			{"assignee_removed", `{"first_name":"Sam","last_name":"Sample"}`},
+			{"assignee_added", `{"first_name":"Alex","last_name":"Example"}`},
+			{"assignee_added", `{"first_name":"Jordan","last_name":"Doe"}`},
+		} {
+			a := store.ListEmailActivityRow{ActivityType: c.activityType, Via: auth.ViaWorkflow, FirstName: actorFirstName, LastName: actorLastName}
+			if c.activityType == "assignee_added" {
+				a.NewValue = []byte(c.assignee)
+			} else {
+				a.OldValue = []byte(c.assignee)
+			}
+			activity = append(activity, a)
+		}
+	}
+	events := groupEvents(activity)
 
 	row := store.ClaimEmailNotificationsRow{
 		ActivityType:   types[len(types)-1],
-		EventCount:     int32(len(types)),
+		EventCount:     int32(len(activity)),
 		RecipientEmail: to,
 		TaskNumber:     1,
 		TaskTitle:      "Sample task",
@@ -398,6 +476,9 @@ func plainText(data emailData) string {
 			fmt.Fprintf(&b, ": %s → %s", e.From.Name, e.To.Name)
 		}
 		b.WriteString("\n")
+		if e.Workflow != "" {
+			fmt.Fprintf(&b, "  ↳ Workflow Engine %s\n", e.Workflow)
+		}
 		if e.Quote != "" {
 			fmt.Fprintf(&b, "  > %s\n", e.Quote)
 		}

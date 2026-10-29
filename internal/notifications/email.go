@@ -73,10 +73,7 @@ func (s *Service) emailEvents(ctx context.Context, row store.ClaimEmailNotificat
 		log.Printf("notifications: failed to load activity for notification %s: %v", row.ID, err)
 	}
 
-	events := make([]emailEvent, 0, len(activity))
-	for _, a := range activity {
-		events = append(events, eventFromActivity(a))
-	}
+	events := groupEvents(activity)
 	if len(events) == 0 {
 		first, last := systemActor(row.Via, row.ActorFirstName, row.ActorLastName)
 		events = append(events, newEvent(first, last, activityLabel(row.ActivityType)))

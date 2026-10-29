@@ -65,7 +65,6 @@ services:
 
   mailpit:
     image: axllent/mailpit:v1.31.3
-    container_name: mailpit
     restart: unless-stopped
     volumes:
       - /tmp/mailpit/data:/data
