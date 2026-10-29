@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Users, Plus, Trash2, Loader2, ChevronLeft, ChevronRight, Shield, ShieldOff, KeyRound, Search, X, Merge, Check } from "lucide-vue-next";
-import type { MergeUserResult } from "~/composables/useAdmin";
+import type { AdminUserDetail, MergeUserResult } from "~/composables/useAdmin";
 
 definePageMeta({
   middleware: ["admin"],
@@ -18,6 +18,24 @@ interface User {
   last_name: string;
   user_type: string;
   created_at: string;
+}
+
+// User detail dialog
+const showDetailDialog = ref(false);
+const detailUserId = ref<string | null>(null);
+
+function openDetail(user: User) {
+  detailUserId.value = user.id;
+  showDetailDialog.value = true;
+}
+
+function onUserUpdated(updated: AdminUserDetail) {
+  const row = users.value.find((u) => u.id === updated.id);
+  if (row) {
+    row.first_name = updated.first_name;
+    row.last_name = updated.last_name;
+    row.user_type = updated.user_type;
+  }
 }
 
 // State
@@ -331,7 +349,15 @@ onMounted(() => {
                     No users found
                   </TableCell>
                 </TableRow>
-                <TableRow v-for="user in users" :key="user.id">
+                <TableRow
+                  v-for="user in users"
+                  :key="user.id"
+                  tabindex="0"
+                  class="cursor-pointer"
+                  :aria-label="`View details for ${user.username}`"
+                  @click="openDetail(user)"
+                  @keydown.enter.self="openDetail(user)"
+                >
                   <TableCell class="font-medium">{{ user.username }}</TableCell>
                   <TableCell>{{ user.email }}</TableCell>
                   <TableCell>{{ user.first_name }} {{ user.last_name }}</TableCell>
@@ -341,7 +367,7 @@ onMounted(() => {
                     </Badge>
                   </TableCell>
                   <TableCell>{{ formatDate(user.created_at) }}</TableCell>
-                  <TableCell>
+                  <TableCell @click.stop>
                     <div class="flex items-center gap-1">
                       <Button
                         variant="ghost"
@@ -401,6 +427,12 @@ onMounted(() => {
             </div>
           </CardFooter>
         </Card>
+
+        <UserDetailDialog
+          v-model:open="showDetailDialog"
+          :user-id="detailUserId"
+          @updated="onUserUpdated"
+        />
 
         <!-- Create User Dialog -->
         <Dialog v-model:open="showCreateDialog">

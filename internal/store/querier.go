@@ -36,6 +36,7 @@ type Querier interface {
 	AddWorkflowTransitionMover(ctx context.Context, arg AddWorkflowTransitionMoverParams) error
 	// ==================== WORKSPACE MEMBERS ====================
 	AddWorkspaceMember(ctx context.Context, arg AddWorkspaceMemberParams) (WorkspaceMember, error)
+	AdminUpdateUser(ctx context.Context, arg AdminUpdateUserParams) error
 	// Same "has a user message" rule as CountAssistantConversations; Mattermost ones have a thread mapping.
 	AssistantConversationsPerDay(ctx context.Context, arg AssistantConversationsPerDayParams) ([]AssistantConversationsPerDayRow, error)
 	AttachmentsCreatedPerDay(ctx context.Context, arg AttachmentsCreatedPerDayParams) ([]AttachmentsCreatedPerDayRow, error)
@@ -147,6 +148,7 @@ type Querier interface {
 	DetachSubtask(ctx context.Context, arg DetachSubtaskParams) (int64, error)
 	// ==================== TASK FOLLOWERS ====================
 	FollowTask(ctx context.Context, arg FollowTaskParams) error
+	GetAdminUserDetail(ctx context.Context, id uuid.UUID) (GetAdminUserDetailRow, error)
 	GetAssistantAction(ctx context.Context, arg GetAssistantActionParams) (AssistantAction, error)
 	GetAssistantConversation(ctx context.Context, arg GetAssistantConversationParams) (AssistantConversation, error)
 	GetAssistantMattermostThread(ctx context.Context, arg GetAssistantMattermostThreadParams) (uuid.UUID, error)

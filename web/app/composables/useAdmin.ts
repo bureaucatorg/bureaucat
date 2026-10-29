@@ -16,6 +16,32 @@ interface PaginatedUsersResponse {
   total_pages: number;
 }
 
+export interface AdminUserDetail {
+  id: string;
+  username: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  user_type: string;
+  avatar_url?: string;
+  auth_provider?: string;
+  has_password: boolean;
+  email_notifications: boolean;
+  active_sessions: number;
+  active_tokens: number;
+  workspaces: { workspace_key: string; name: string }[];
+  projects: { project_key: string; name: string; role: string; workspace_name?: string }[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AdminUserUpdate {
+  first_name: string;
+  last_name: string;
+  user_type: string;
+  email_notifications: boolean;
+}
+
 export interface MergeUserResult {
   workspaces: number;
   projects: number;
@@ -323,6 +349,55 @@ export function useAdmin() {
     }
   }
 
+  async function getUserDetail(userId: string): Promise<{
+    success: boolean;
+    data?: AdminUserDetail;
+    error?: string;
+  }> {
+    try {
+      const response = await fetch(`/api/v1/admin/users/${userId}`, {
+        headers: getAuthHeader(),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        return { success: false, error: error.message || "Failed to fetch user" };
+      }
+
+      const data = await response.json();
+      return { success: true, data };
+    } catch {
+      return { success: false, error: "Network error" };
+    }
+  }
+
+  async function updateUser(userId: string, update: AdminUserUpdate): Promise<{
+    success: boolean;
+    data?: AdminUserDetail;
+    error?: string;
+  }> {
+    try {
+      const response = await fetch(`/api/v1/admin/users/${userId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          ...getAuthHeader(),
+        },
+        body: JSON.stringify(update),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        return { success: false, error: error.message || "Failed to update user" };
+      }
+
+      const data = await response.json();
+      return { success: true, data };
+    } catch {
+      return { success: false, error: "Network error" };
+    }
+  }
+
   async function resetUserPassword(userId: string, password: string): Promise<{
     success: boolean;
     error?: string;
@@ -451,6 +526,8 @@ export function useAdmin() {
     createUser,
     deleteUser,
     updateUserRole,
+    getUserDetail,
+    updateUser,
     resetUserPassword,
     mergeUser,
     listTokens,

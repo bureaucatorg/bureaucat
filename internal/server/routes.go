@@ -352,6 +352,8 @@ func (s *Server) registerRoutes() {
 		admin.GET("/users", s.adminHandler.ListUsers)
 		admin.POST("/users", s.adminHandler.CreateUser)
 		admin.DELETE("/users/:id", s.adminHandler.DeleteUser)
+		admin.GET("/users/:id", s.adminHandler.GetUserDetail)
+		admin.PATCH("/users/:id", s.adminHandler.UpdateUser)
 		admin.PUT("/users/:id/role", s.adminHandler.UpdateUserRole)
 		admin.PUT("/users/:id/password", s.adminHandler.ResetUserPassword)
 		admin.POST("/users/:id/merge", s.adminHandler.MergeUser)

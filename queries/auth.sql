@@ -140,3 +140,19 @@ WHERE id = $1;
 UPDATE users
 SET password_hash = $2, updated_at = NOW()
 WHERE id = $1;
+
+-- name: GetAdminUserDetail :one
+SELECT u.id, u.username, u.email, u.first_name, u.last_name, u.user_type, u.avatar_url, u.auth_provider,
+       (u.password_hash IS NOT NULL AND u.password_hash <> '')::boolean AS has_password,
+       u.email_notifications, u.created_at, u.updated_at,
+       (SELECT COUNT(*) FROM refresh_tokens rt
+        WHERE rt.user_id = u.id AND rt.revoked_at IS NULL AND rt.expires_at > NOW())::bigint AS active_sessions,
+       (SELECT COUNT(*) FROM personal_access_tokens pat
+        WHERE pat.user_id = u.id AND (pat.expires_at IS NULL OR pat.expires_at > NOW()))::bigint AS active_tokens
+FROM users u
+WHERE u.id = $1;
+
+-- name: AdminUpdateUser :exec
+UPDATE users
+SET first_name = $2, last_name = $3, user_type = $4, email_notifications = $5, updated_at = NOW()
+WHERE id = $1;

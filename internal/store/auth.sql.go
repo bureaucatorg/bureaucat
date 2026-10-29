@@ -12,6 +12,31 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const adminUpdateUser = `-- name: AdminUpdateUser :exec
+UPDATE users
+SET first_name = $2, last_name = $3, user_type = $4, email_notifications = $5, updated_at = NOW()
+WHERE id = $1
+`
+
+type AdminUpdateUserParams struct {
+	ID                 uuid.UUID `json:"id"`
+	FirstName          string    `json:"first_name"`
+	LastName           string    `json:"last_name"`
+	UserType           string    `json:"user_type"`
+	EmailNotifications bool      `json:"email_notifications"`
+}
+
+func (q *Queries) AdminUpdateUser(ctx context.Context, arg AdminUpdateUserParams) error {
+	_, err := q.db.Exec(ctx, adminUpdateUser,
+		arg.ID,
+		arg.FirstName,
+		arg.LastName,
+		arg.UserType,
+		arg.EmailNotifications,
+	)
+	return err
+}
+
 const countActiveRefreshTokens = `-- name: CountActiveRefreshTokens :one
 SELECT COUNT(*)
 FROM refresh_tokens
@@ -206,6 +231,57 @@ DELETE FROM users WHERE id = $1
 func (q *Queries) DeleteUserByID(ctx context.Context, id uuid.UUID) error {
 	_, err := q.db.Exec(ctx, deleteUserByID, id)
 	return err
+}
+
+const getAdminUserDetail = `-- name: GetAdminUserDetail :one
+SELECT u.id, u.username, u.email, u.first_name, u.last_name, u.user_type, u.avatar_url, u.auth_provider,
+       (u.password_hash IS NOT NULL AND u.password_hash <> '')::boolean AS has_password,
+       u.email_notifications, u.created_at, u.updated_at,
+       (SELECT COUNT(*) FROM refresh_tokens rt
+        WHERE rt.user_id = u.id AND rt.revoked_at IS NULL AND rt.expires_at > NOW())::bigint AS active_sessions,
+       (SELECT COUNT(*) FROM personal_access_tokens pat
+        WHERE pat.user_id = u.id AND (pat.expires_at IS NULL OR pat.expires_at > NOW()))::bigint AS active_tokens
+FROM users u
+WHERE u.id = $1
+`
+
+type GetAdminUserDetailRow struct {
+	ID                 uuid.UUID          `json:"id"`
+	Username           string             `json:"username"`
+	Email              string             `json:"email"`
+	FirstName          string             `json:"first_name"`
+	LastName           string             `json:"last_name"`
+	UserType           string             `json:"user_type"`
+	AvatarUrl          pgtype.Text        `json:"avatar_url"`
+	AuthProvider       pgtype.Text        `json:"auth_provider"`
+	HasPassword        bool               `json:"has_password"`
+	EmailNotifications bool               `json:"email_notifications"`
+	CreatedAt          pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt          pgtype.Timestamptz `json:"updated_at"`
+	ActiveSessions     int64              `json:"active_sessions"`
+	ActiveTokens       int64              `json:"active_tokens"`
+}
+
+func (q *Queries) GetAdminUserDetail(ctx context.Context, id uuid.UUID) (GetAdminUserDetailRow, error) {
+	row := q.db.QueryRow(ctx, getAdminUserDetail, id)
+	var i GetAdminUserDetailRow
+	err := row.Scan(
+		&i.ID,
+		&i.Username,
+		&i.Email,
+		&i.FirstName,
+		&i.LastName,
+		&i.UserType,
+		&i.AvatarUrl,
+		&i.AuthProvider,
+		&i.HasPassword,
+		&i.EmailNotifications,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.ActiveSessions,
+		&i.ActiveTokens,
+	)
+	return i, err
 }
 
 const getRefreshTokenByHash = `-- name: GetRefreshTokenByHash :one

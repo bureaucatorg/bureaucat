@@ -421,6 +421,194 @@ func (h *AdminHandler) RevokeToken(c *echo.Context) error {
 	return c.JSON(http.StatusOK, map[string]string{"message": "token revoked"})
 }
 
+// AdminUserProject is a project the user belongs to, with their role in it.
+type AdminUserProject struct {
+	ProjectKey    string `json:"project_key"`
+	Name          string `json:"name"`
+	Role          string `json:"role"`
+	WorkspaceName string `json:"workspace_name,omitempty"`
+}
+
+// AdminUserWorkspace is a workspace the user belongs to.
+type AdminUserWorkspace struct {
+	WorkspaceKey string `json:"workspace_key"`
+	Name         string `json:"name"`
+}
+
+// AdminUserDetailResponse is the full view of a user shown to admins.
+type AdminUserDetailResponse struct {
+	ID                 uuid.UUID            `json:"id"`
+	Username           string               `json:"username"`
+	Email              string               `json:"email"`
+	FirstName          string               `json:"first_name"`
+	LastName           string               `json:"last_name"`
+	UserType           string               `json:"user_type"`
+	AvatarURL          *string              `json:"avatar_url,omitempty"`
+	AuthProvider       *string              `json:"auth_provider,omitempty"`
+	HasPassword        bool                 `json:"has_password"`
+	EmailNotifications bool                 `json:"email_notifications"`
+	ActiveSessions     int64                `json:"active_sessions"`
+	ActiveTokens       int64                `json:"active_tokens"`
+	Workspaces         []AdminUserWorkspace `json:"workspaces"`
+	Projects           []AdminUserProject   `json:"projects"`
+	CreatedAt          time.Time            `json:"created_at"`
+	UpdatedAt          time.Time            `json:"updated_at"`
+}
+
+// UpdateUserRequest is the admin-editable subset of a user.
+type UpdateUserRequest struct {
+	FirstName          string `json:"first_name"`
+	LastName           string `json:"last_name"`
+	UserType           string `json:"user_type"`
+	EmailNotifications bool   `json:"email_notifications"`
+}
+
+const adminUserMembershipLimit = 500
+
+// GetUserDetail returns a user's profile, sessions and memberships.
+//
+//	@Summary		Get user details
+//	@Description	Get a user's profile, SSO/password status, active sessions/tokens, workspaces and projects.
+//	@Tags			Admin - Users
+//	@Produce		json
+//	@Param			id	path		string	true	"User ID"
+//	@Success		200	{object}	AdminUserDetailResponse
+//	@Failure		400	{object}	ErrorResponse
+//	@Failure		404	{object}	ErrorResponse
+//	@Failure		500	{object}	ErrorResponse
+//	@Security		BearerAuth
+//	@Router			/admin/users/{id} [get]
+func (h *AdminHandler) GetUserDetail(c *echo.Context) error {
+	userID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid user ID")
+	}
+	return h.respondUserDetail(c, userID)
+}
+
+// UpdateUser updates a user's name, role and email notification preference.
+//
+//	@Summary		Update user
+//	@Description	Update a user's first/last name, role and email notifications. Username and email are not editable. Cannot demote yourself.
+//	@Tags			Admin - Users
+//	@Accept			json
+//	@Produce		json
+//	@Param			id		path		string				true	"User ID"
+//	@Param			body	body		UpdateUserRequest	true	"Editable fields"
+//	@Success		200		{object}	AdminUserDetailResponse
+//	@Failure		400		{object}	ErrorResponse
+//	@Failure		404		{object}	ErrorResponse
+//	@Failure		500		{object}	ErrorResponse
+//	@Security		BearerAuth
+//	@Router			/admin/users/{id} [patch]
+func (h *AdminHandler) UpdateUser(c *echo.Context) error {
+	userID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid user ID")
+	}
+
+	var req UpdateUserRequest
+	if err := c.Bind(&req); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid request body")
+	}
+	req.FirstName = strings.TrimSpace(req.FirstName)
+	req.LastName = strings.TrimSpace(req.LastName)
+	if req.FirstName == "" || req.LastName == "" {
+		return echo.NewHTTPError(http.StatusBadRequest, "first and last name are required")
+	}
+	if len([]rune(req.FirstName)) > 100 || len([]rune(req.LastName)) > 100 {
+		return echo.NewHTTPError(http.StatusBadRequest, "names must be at most 100 characters")
+	}
+	if req.UserType != "admin" && req.UserType != "user" {
+		return echo.NewHTTPError(http.StatusBadRequest, "user_type must be 'admin' or 'user'")
+	}
+
+	currentUserID, _ := uuid.Parse(c.Request().Header.Get(auth.HeaderUserID))
+	if userID == currentUserID && req.UserType != "admin" {
+		return echo.NewHTTPError(http.StatusBadRequest, "cannot demote yourself")
+	}
+
+	ctx := c.Request().Context()
+	if _, err := h.store.GetUserByID(ctx, userID); err != nil {
+		return echo.NewHTTPError(http.StatusNotFound, "user not found")
+	}
+
+	if err := h.store.AdminUpdateUser(ctx, store.AdminUpdateUserParams{
+		ID:                 userID,
+		FirstName:          req.FirstName,
+		LastName:           req.LastName,
+		UserType:           req.UserType,
+		EmailNotifications: req.EmailNotifications,
+	}); err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to update user")
+	}
+
+	return h.respondUserDetail(c, userID)
+}
+
+func (h *AdminHandler) respondUserDetail(c *echo.Context, userID uuid.UUID) error {
+	ctx := c.Request().Context()
+
+	u, err := h.store.GetAdminUserDetail(ctx, userID)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusNotFound, "user not found")
+	}
+
+	workspaces, err := h.store.ListUserWorkspaces(ctx, store.ListUserWorkspacesParams{
+		UserID: userID,
+		Limit:  adminUserMembershipLimit,
+	})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to list workspaces")
+	}
+	projects, err := h.store.ListUserProjects(ctx, store.ListUserProjectsParams{
+		UserID: userID,
+		Limit:  adminUserMembershipLimit,
+	})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to list projects")
+	}
+
+	resp := AdminUserDetailResponse{
+		ID:                 u.ID,
+		Username:           u.Username,
+		Email:              u.Email,
+		FirstName:          u.FirstName,
+		LastName:           u.LastName,
+		UserType:           u.UserType,
+		HasPassword:        u.HasPassword,
+		EmailNotifications: u.EmailNotifications,
+		ActiveSessions:     u.ActiveSessions,
+		ActiveTokens:       u.ActiveTokens,
+		Workspaces:         make([]AdminUserWorkspace, len(workspaces)),
+		Projects:           make([]AdminUserProject, len(projects)),
+		CreatedAt:          u.CreatedAt.Time,
+		UpdatedAt:          u.UpdatedAt.Time,
+	}
+	if u.AvatarUrl.Valid {
+		resp.AvatarURL = &u.AvatarUrl.String
+	}
+	if u.AuthProvider.Valid && u.AuthProvider.String != "" {
+		resp.AuthProvider = &u.AuthProvider.String
+	}
+
+	workspaceNames := make(map[uuid.UUID]string, len(workspaces))
+	for i, w := range workspaces {
+		resp.Workspaces[i] = AdminUserWorkspace{WorkspaceKey: w.WorkspaceKey, Name: w.Name}
+		workspaceNames[w.ID] = w.Name
+	}
+	for i, p := range projects {
+		resp.Projects[i] = AdminUserProject{
+			ProjectKey:    p.ProjectKey,
+			Name:          p.Name,
+			Role:          p.Role,
+			WorkspaceName: workspaceNames[p.WorkspaceID],
+		}
+	}
+
+	return c.JSON(http.StatusOK, resp)
+}
+
 // UpdateUserRoleRequest represents the request to update a user's role.
 type UpdateUserRoleRequest struct {
 	UserType string `json:"user_type"`
