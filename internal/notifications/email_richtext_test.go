@@ -23,6 +23,12 @@ func TestRichExcerpt(t *testing.T) {
 			want: []string{"<ul ", "<li ", `<b style="color:#b45309">@Sam Sample</b>`},
 		},
 		{
+			name:    "checklists",
+			in:      `<ul data-type="taskList"><li data-checked="true" data-type="taskItem"><label><input type="checkbox" checked="checked"><span></span></label><div><p>done</p></div></li><li data-checked="false" data-type="taskItem"><label><input type="checkbox"><span></span></label><div><p>todo</p></div></li></ul>`,
+			want:    []string{"list-style:none", "&#9745; <span>", "&#9744; <span>", "done", "todo"},
+			notWant: []string{"<input"},
+		},
+		{
 			name:    "drops unsafe markup",
 			in:      `<p onclick="x()"><script>alert(1)</script><a href="javascript:alert(1)">click</a><img src=x onerror=alert(1)></p>`,
 			want:    []string{"alert(1)click [image]"},

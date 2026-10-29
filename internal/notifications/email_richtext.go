@@ -99,11 +99,20 @@ func (w *richWriter) startTag(name, attrs string) {
 		w.openBlock(name, mono+"font-size:12px;line-height:18px;background-color:#f4f4f5;padding:8px 10px;border-radius:6px;white-space:pre-wrap;")
 		w.inPre++
 	case "ul", "ol":
-		w.open(name, `<`+name+` style="`+w.blockStyle()+`margin:0;padding-left:22px">`, "</"+name+">")
+		pad := "padding-left:22px"
+		if strings.Contains(attrs, `data-type="taskList"`) {
+			pad = "padding-left:4px;list-style:none"
+		}
+		w.open(name, `<`+name+` style="`+w.blockStyle()+`margin:0;`+pad+`">`, "</"+name+">")
 		w.blocks++
 		w.inList++
 	case "li":
 		w.open(name, `<li style="padding-top:2px">`, "</li>")
+		if strings.Contains(attrs, `data-checked="true"`) {
+			w.b.WriteString("&#9745; ")
+		} else if strings.Contains(attrs, `data-type="taskItem"`) {
+			w.b.WriteString("&#9744; ")
+		}
 	case "strong", "b":
 		w.open(name, `<b style="color:#09090b">`, "</b>")
 	case "em", "i":

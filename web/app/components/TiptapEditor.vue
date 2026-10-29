@@ -7,6 +7,7 @@ import { TableRow } from "@tiptap/extension-table-row";
 import { TableHeader } from "@tiptap/extension-table-header";
 import { TableCell } from "@tiptap/extension-table-cell";
 import { Image } from "@tiptap/extension-image";
+import { TaskList, TaskItem } from "@tiptap/extension-list";
 import type { Editor } from "@tiptap/vue-3";
 
 // Files a parent uploader returns so we can embed them in the document.
@@ -27,6 +28,7 @@ import {
   Heading3,
   List,
   ListOrdered,
+  ListTodo,
   Quote,
   CodeSquare,
   Minus,
@@ -230,6 +232,8 @@ const extensions = [
       class: "text-primary underline underline-offset-2",
     },
   }),
+  TaskList,
+  TaskItem.configure({ nested: true }),
 ];
 
 if (props.tables) {
@@ -507,6 +511,16 @@ function handleFileInput(e: Event) {
         @click="editor!.chain().focus().toggleOrderedList().run()"
       >
         <ListOrdered class="size-3.5" />
+      </button>
+      <button
+        type="button"
+        tabindex="-1"
+        aria-label="Checklist"
+        class="inline-flex size-7 items-center justify-center rounded-md hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 outline-none"
+        :class="{ 'bg-muted text-foreground': isActive('taskList') }"
+        @click="editor!.chain().focus().toggleTaskList().run()"
+      >
+        <ListTodo class="size-3.5" />
       </button>
       <button
         type="button"
