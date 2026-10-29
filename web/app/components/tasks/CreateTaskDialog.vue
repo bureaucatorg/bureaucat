@@ -127,6 +127,8 @@ const form = ref({
   description: "",
   state_id: "",
   priority: 0,
+  start_date: undefined as string | undefined,
+  due_date: undefined as string | undefined,
   assignees: [] as string[],
   labels: [] as string[],
 });
@@ -191,6 +193,8 @@ function resetForm() {
     description: "",
     state_id: defaultState.value?.id || "",
     priority: 0,
+    start_date: undefined,
+    due_date: undefined,
     assignees: [],
     labels: [],
   };
@@ -322,6 +326,11 @@ async function handleSubmit() {
     error.value = "Please select a project";
     return;
   }
+  const { start_date, due_date } = form.value;
+  if (start_date && due_date && new Date(start_date) > new Date(due_date)) {
+    error.value = "Start date cannot be after due date";
+    return;
+  }
 
   loading.value = true;
   error.value = null;
@@ -331,6 +340,8 @@ async function handleSubmit() {
     description: form.value.description || undefined,
     state_id: form.value.state_id || undefined,
     priority: form.value.priority,
+    start_date,
+    due_date,
     assignees: form.value.assignees.length > 0 ? form.value.assignees : undefined,
     labels: form.value.labels.length > 0 ? form.value.labels : undefined,
     parent_task_number: props.parentTaskNumber,
@@ -770,6 +781,28 @@ function removeLabel(labelId: string) {
                   </SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div class="space-y-2">
+              <Label for="start_date">Start date</Label>
+              <DateTimePicker
+                id="start_date"
+                v-model="form.start_date"
+                :max="form.due_date"
+                :disabled="loading"
+              />
+            </div>
+            <div class="space-y-2">
+              <Label for="due_date">Due date</Label>
+              <DateTimePicker
+                id="due_date"
+                v-model="form.due_date"
+                :min="form.start_date"
+                default-time="17:00"
+                :disabled="loading"
+              />
             </div>
           </div>
 
