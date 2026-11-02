@@ -11,12 +11,7 @@ const { signin } = useAuth();
 const { fetchSSOProviders, ssoProviders } = useSettings();
 const route = useRoute();
 
-const redirectTo = computed(() => {
-  const r = route.query.redirect as string | undefined;
-  // Only allow relative paths to prevent open redirect
-  if (r && r.startsWith("/")) return r;
-  return "/dashboard";
-});
+const redirectTo = computed(() => safeRedirect(route.query.redirect));
 
 const identifier = ref("");
 const password = ref("");

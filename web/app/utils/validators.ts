@@ -61,3 +61,8 @@ export function validateEmail(email: string): boolean {
   const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
   return emailRegex.test(email);
 }
+
+// Only same-origin relative paths; "//host" and "/\\host" are protocol-relative.
+export function safeRedirect(r: unknown, fallback = "/dashboard"): string {
+  return typeof r === "string" && /^\/(?![/\\])/.test(r) ? r : fallback;
+}

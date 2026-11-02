@@ -93,6 +93,11 @@ func (h *OAuthHandler) StartSSO(c *echo.Context) error {
 
 	// Set state cookie (SameSite=Lax required for cross-site redirect from IdP)
 	h.setStateCookie(c, state, provider)
+	if redirect := c.QueryParam("redirect"); isSafeRedirect(redirect) {
+		c.SetCookie(h.ssoCookie("oauth_redirect", url.QueryEscape(redirect), 600))
+	} else {
+		c.SetCookie(h.ssoCookie("oauth_redirect", "", -1))
+	}
 
 	// Redirect to provider's authorization URL
 	authURL := oauth2Config.AuthCodeURL(state)
@@ -131,6 +136,13 @@ func (h *OAuthHandler) CallbackSSO(c *echo.Context) error {
 	providerCookie, err := c.Cookie("oauth_provider")
 	if err != nil || providerCookie.Value != provider {
 		return h.redirectError(c, "provider mismatch")
+	}
+
+	redirect := ""
+	if redirectCookie, err := c.Cookie("oauth_redirect"); err == nil {
+		if r, err := url.QueryUnescape(redirectCookie.Value); err == nil && isSafeRedirect(r) {
+			redirect = r
+		}
 	}
 
 	// Clear state cookies
@@ -197,7 +209,11 @@ func (h *OAuthHandler) CallbackSSO(c *echo.Context) error {
 		return h.redirectError(c, "failed to create session")
 	}
 
-	return c.Redirect(http.StatusTemporaryRedirect, "/auth/callback?status=success")
+	target := "/auth/callback?status=success"
+	if redirect != "" {
+		target += "&redirect=" + url.QueryEscape(redirect)
+	}
+	return c.Redirect(http.StatusTemporaryRedirect, target)
 }
 
 // loadSSOConfig loads the SSO settings from the database.
@@ -539,6 +555,24 @@ func (h *OAuthHandler) clearStateCookies(c *echo.Context) {
 		SameSite: http.SameSiteLaxMode,
 	}
 	c.SetCookie(providerCookie)
+	c.SetCookie(h.ssoCookie("oauth_redirect", "", -1))
+}
+
+func (h *OAuthHandler) ssoCookie(name, value string, maxAge int) *http.Cookie {
+	return &http.Cookie{
+		Name:     name,
+		Value:    value,
+		Path:     "/api/v1/auth/sso/",
+		MaxAge:   maxAge,
+		HttpOnly: true,
+		Secure:   !h.devMode,
+		SameSite: http.SameSiteLaxMode,
+	}
+}
+
+// isSafeRedirect allows only same-origin relative paths ("//host" and "/\host" are protocol-relative).
+func isSafeRedirect(r string) bool {
+	return strings.HasPrefix(r, "/") && !strings.HasPrefix(r, "//") && !strings.HasPrefix(r, "/\\")
 }
 
 // redirectError redirects to the frontend callback page with an error message.

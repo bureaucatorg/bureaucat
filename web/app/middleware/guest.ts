@@ -16,7 +16,6 @@ export default defineNuxtRouteMiddleware(async (to) => {
   }
 
   if (isAuthenticated.value) {
-    const redirect = to.query.redirect as string | undefined;
-    return navigateTo(redirect && redirect.startsWith("/") ? redirect : "/dashboard");
+    return navigateTo(safeRedirect(to.query.redirect));
   }
 });

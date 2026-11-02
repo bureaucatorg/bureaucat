@@ -29,7 +29,7 @@ onMounted(async () => {
   loading.value = false;
 
   if (success) {
-    await navigateTo("/dashboard");
+    await navigateTo(safeRedirect(route.query.redirect));
   } else {
     error.value = "Failed to complete authentication. Please try again.";
   }
