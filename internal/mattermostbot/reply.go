@@ -10,7 +10,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
+
 	"bereaucat/internal/assistant"
+	"bereaucat/internal/store"
 )
 
 const maxPostRunes = 16000
@@ -71,6 +74,7 @@ func (r *replier) typing(botID string) func() {
 // emitter posts assistant replies as they arrive and batches approval requests into one post.
 type emitter struct {
 	r       *replier
+	users   store.Querier
 	pending []*assistant.ActionView
 }
 
@@ -94,7 +98,7 @@ func (e *emitter) flush() {
 	var b strings.Builder
 	b.WriteString("**Approval needed**\n")
 	for _, a := range e.pending {
-		fmt.Fprintf(&b, "\n**%s**\n%s", a.Title, argsList(a.Args))
+		fmt.Fprintf(&b, "\n**%s**\n%s", a.Title, argsList(a.Args, e.username))
 	}
 	if len(e.pending) > 1 {
 		fmt.Fprintf(&b, "\nReply `%[1]syes` to approve all of these or `%[1]sno` to reject them, in this thread.", e.r.answerPrefix)
@@ -116,7 +120,22 @@ func actionLine(a *assistant.ActionView) string {
 	}
 }
 
-func argsList(raw json.RawMessage) string {
+var userArgs = map[string]bool{"user_id": true, "assignees": true, "lead_id": true, "member_ids": true}
+
+// username turns a user UUID into @username, leaving anything it cannot resolve as is.
+func (e *emitter) username(id string) string {
+	uid, err := uuid.Parse(id)
+	if err != nil || e.users == nil {
+		return id
+	}
+	u, err := e.users.GetUserByID(e.r.ctx, uid)
+	if err != nil {
+		return id
+	}
+	return "@" + u.Username
+}
+
+func argsList(raw json.RawMessage, username func(string) string) string {
 	var args map[string]any
 	if json.Unmarshal(raw, &args) != nil || len(args) == 0 {
 		return ""
@@ -128,10 +147,27 @@ func argsList(raw json.RawMessage) string {
 	sort.Strings(keys)
 	var b strings.Builder
 	for _, k := range keys {
+		if userArgs[k] {
+			args[k] = resolveUsers(args[k], username)
+		}
 		v, _ := json.Marshal(args[k])
 		fmt.Fprintf(&b, "- %s: %s\n", k, code(strings.Trim(string(v), `"`), 200))
 	}
 	return b.String()
+}
+
+func resolveUsers(v any, username func(string) string) any {
+	switch t := v.(type) {
+	case string:
+		return username(t)
+	case []any:
+		for i, x := range t {
+			if s, ok := x.(string); ok {
+				t[i] = username(s)
+			}
+		}
+	}
+	return v
 }
 
 // code renders untrusted text as inline code so Mattermost shows no links, mentions or formatting.

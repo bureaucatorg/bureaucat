@@ -1,6 +1,9 @@
 package mattermostbot
 
-import "testing"
+import (
+	"encoding/json"
+	"testing"
+)
 
 func TestSanitize(t *testing.T) {
 	const app = "https://bc.example.com/"
@@ -42,5 +45,21 @@ func TestDecision(t *testing.T) {
 		if approve != want[0] || ok != want[1] {
 			t.Errorf("decision(%q) = %v, %v; want %v, %v", in, approve, ok, want[0], want[1])
 		}
+	}
+}
+
+func TestArgsListResolvesUsers(t *testing.T) {
+	names := map[string]string{"u1": "@alice", "u2": "@bob"}
+	username := func(id string) string {
+		if n, ok := names[id]; ok {
+			return n
+		}
+		return id
+	}
+	raw := json.RawMessage(`{"assignees":["u1","u2"],"user_id":"u1","title":"u1"}`)
+	got := argsList(raw, username)
+	want := "- assignees: `[\"@alice\",\"@bob\"]`\n- title: `u1`\n- user_id: `@alice`\n"
+	if got != want {
+		t.Fatalf("got %q, want %q", got, want)
 	}
 }

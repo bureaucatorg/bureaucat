@@ -247,7 +247,7 @@ func (b *Bot) handle(parent context.Context, c *client, cfg config, me mmUser, p
 
 	r.react(me.ID, p.ID, reactionWorking)
 	stopTyping := r.typing(me.ID)
-	em := &emitter{r: r}
+	em := &emitter{r: r, users: b.store}
 	err = b.run(ctx, c, me, p, direct, userID, convID, text, em)
 	stopTyping()
 	em.flush()
