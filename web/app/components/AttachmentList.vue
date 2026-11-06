@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { FileText, X, Loader2, Download } from "lucide-vue-next";
 import type { Attachment } from "~/composables/useAttachments";
+import { previewKind } from "~/utils/filePreview";
 
 const props = withDefaults(
   defineProps<{
@@ -20,6 +21,7 @@ const emit = defineEmits<{
 
 const lightboxOpen = ref(false);
 const lightboxIndex = ref(0);
+const previewing = ref<Attachment | null>(null);
 
 function isImage(mimeType: string): boolean {
   return mimeType.startsWith("image/");
@@ -112,7 +114,19 @@ function formatSize(bytes: number): string {
       :key="attachment.id"
       class="group flex items-center gap-1.5 rounded-full border bg-muted/30 py-1 pl-2 pr-1.5 text-xs transition-colors hover:bg-muted/60"
     >
+      <button
+        v-if="previewKind(attachment)"
+        type="button"
+        class="flex items-center gap-1.5"
+        :aria-label="`Preview ${attachment.filename}`"
+        @click="previewing = attachment"
+      >
+        <FileText class="size-3.5 shrink-0 text-muted-foreground" />
+        <span class="max-w-[150px] truncate">{{ attachment.filename }}</span>
+        <span class="text-muted-foreground/60">{{ formatSize(attachment.size_bytes) }}</span>
+      </button>
       <a
+        v-else
         :href="attachment.url"
         :download="attachment.filename"
         class="flex items-center gap-1.5"
@@ -146,4 +160,5 @@ function formatSize(bytes: number): string {
   </template>
 
   <ImageLightbox v-model:open="lightboxOpen" v-model:index="lightboxIndex" :images="lightboxImages" />
+  <FilePreviewDialog :attachment="previewing" @close="previewing = null" />
 </template>
