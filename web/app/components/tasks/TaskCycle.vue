@@ -101,7 +101,7 @@ function formatRange(cycle: CycleSibling): string {
   <div class="flex items-center justify-between gap-2">
     <p class="shrink-0 text-xs text-muted-foreground">Cycle</p>
 
-    <div class="flex min-w-0 items-center gap-1">
+    <div class="flex min-w-0 items-center gap-1" :class="canEdit ? '' : dense ? 'pr-[30px]' : 'pr-8'">
       <!-- Separate from the picker trigger so the title stays aligned with the
            other sidebar values. -->
       <NuxtLink
