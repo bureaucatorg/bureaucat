@@ -1,0 +1,2 @@
+web/app/components/ui/** linguist-vendored
+internal/store/*.go linguist-generated=false
