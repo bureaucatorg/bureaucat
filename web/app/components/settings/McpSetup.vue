@@ -24,7 +24,7 @@ const clients = computed<Client[]>(() => [
       {
         label: "Terminal",
         hint: "Add --scope user to use it in every project.",
-        code: `claude mcp add --transport http bureaucat ${url.value} \\\n  --header "Authorization: Bearer $BUREAUCAT_TOKEN"`,
+        code: `export BUREAUCAT_TOKEN='<YOUR_TOKEN>'\nclaude mcp add --transport http bureaucat ${url.value} \\\n  --header "Authorization: Bearer $BUREAUCAT_TOKEN"`,
       },
     ],
   },
@@ -34,8 +34,8 @@ const clients = computed<Client[]>(() => [
     snippets: [
       {
         label: "Terminal",
-        hint: "Codex reads the token from BUREAUCAT_TOKEN when it starts.",
-        code: `codex mcp add bureaucat --url ${url.value} --bearer-token-env-var BUREAUCAT_TOKEN`,
+        hint: "Pass the variable name, not the token. Put the export in your shell profile so Codex sees it at startup.",
+        code: `export BUREAUCAT_TOKEN='<YOUR_TOKEN>'\ncodex mcp add bureaucat --url ${url.value} --bearer-token-env-var BUREAUCAT_TOKEN`,
       },
       {
         label: "Or ~/.codex/config.toml",
@@ -65,8 +65,8 @@ const clients = computed<Client[]>(() => [
     snippets: [
       {
         label: "Terminal",
-        hint: "Run pi mcp list to check the connection.",
-        code: `pi mcp add bureaucat --url ${url.value} --bearer-token-env-var BUREAUCAT_TOKEN`,
+        hint: "Pass the variable name, not the token. Put the export in your shell profile so pi sees it at startup, then run pi mcp list to check.",
+        code: `export BUREAUCAT_TOKEN='<YOUR_TOKEN>'\npi mcp add bureaucat --url ${url.value} --bearer-token-env-var BUREAUCAT_TOKEN`,
       },
       {
         label: "Or ~/.pi/agent/mcp.json",
