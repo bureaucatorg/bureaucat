@@ -68,12 +68,7 @@ func main() {
 			cli.PopulateDBCommand(),
 			cli.LoginCommand(),
 			cli.LogoutCommand(),
-			cli.WhoamiCommand(),
-			cli.ProjectsCommand(),
-			cli.TasksCommand(),
-			cli.TaskCommand(),
-			cli.MyTasksCommand(),
-			cli.CommentCommand(),
+			cli.APICommand(),
 		},
 	}
 

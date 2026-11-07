@@ -61,7 +61,7 @@ func LoginCommand() *cli.Command {
 func loginWithPAT(baseURL, token string, human bool) error {
 	client := NewClient(baseURL, token)
 	var user cliUserResponse
-	if err := client.Get("/me", nil, &user); err != nil {
+	if err := client.Get("/me", &user); err != nil {
 		if err == ErrUnauthorized {
 			return fmt.Errorf("invalid token")
 		}

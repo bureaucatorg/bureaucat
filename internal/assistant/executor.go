@@ -35,17 +35,17 @@ func (s *Service) RunTool(ctx context.Context, user store.GetUserByIDRow, name s
 	return s.exec.run(ctx, user, tool, args, via)
 }
 
-func (e *executor) run(ctx context.Context, user store.GetUserByIDRow, tool *Tool, rawArgs json.RawMessage, via string) (string, bool) {
-	args := argsObject(rawArgs)
-
-	path := tool.Path
+// BuildRequest resolves args into the tool's /api/v1 target (path + query) and JSON body.
+// The body is nil for GET. Shared by the in-process executor and the HTTP CLI.
+func (t Tool) BuildRequest(args map[string]any) (string, []byte, error) {
+	path := t.Path
 	qs := url.Values{}
 	payload := map[string]any{}
-	for _, p := range tool.Params {
+	for _, p := range t.Params {
 		v, ok := args[p.Name]
 		if !ok || (v == nil && p.In != InBody) {
 			if p.Required {
-				return fmt.Sprintf("missing required argument %q", p.Name), true
+				return "", nil, fmt.Errorf("missing required argument %q", p.Name)
 			}
 			continue
 		}
@@ -54,7 +54,7 @@ func (e *executor) run(ctx context.Context, user store.GetUserByIDRow, tool *Too
 			// Tokens are minted for the real user, so never let an argument escape the catalogued route.
 			seg := scalar(v)
 			if seg == "" || seg == "." || seg == ".." {
-				return fmt.Sprintf("invalid value for %q", p.Name), true
+				return "", nil, fmt.Errorf("invalid value for %q", p.Name)
 			}
 			path = strings.ReplaceAll(path, "{"+p.Name+"}", url.PathEscape(seg))
 		case p.In == InQuery && p.Type == "object":
@@ -72,14 +72,24 @@ func (e *executor) run(ctx context.Context, user store.GetUserByIDRow, tool *Too
 	if len(qs) > 0 {
 		target += "?" + qs.Encode()
 	}
+	if t.Method == http.MethodGet {
+		return target, nil, nil
+	}
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return "", nil, err
+	}
+	return target, body, nil
+}
 
+func (e *executor) run(ctx context.Context, user store.GetUserByIDRow, tool *Tool, rawArgs json.RawMessage, via string) (string, bool) {
+	target, body, err := tool.BuildRequest(argsObject(rawArgs))
+	if err != nil {
+		return err.Error(), true
+	}
 	var reqBody io.Reader
-	if tool.Method != http.MethodGet {
-		raw, err := json.Marshal(payload)
-		if err != nil {
-			return err.Error(), true
-		}
-		reqBody = bytes.NewReader(raw)
+	if body != nil {
+		reqBody = bytes.NewReader(body)
 	}
 
 	req, err := http.NewRequestWithContext(ctx, tool.Method, target, reqBody)

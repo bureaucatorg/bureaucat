@@ -38,10 +38,18 @@ type Param struct {
 func (p Param) oneOf(values ...string) Param { p.Enum = values; return p }
 func (p Param) req() Param                   { p.Required = true; return p }
 
-func pathStr(name, desc string) Param { return Param{Name: name, Type: "string", In: InPath, Required: true, Description: desc} }
-func pathInt(name, desc string) Param { return Param{Name: name, Type: "integer", In: InPath, Required: true, Description: desc} }
-func query(name, typ, desc string) Param { return Param{Name: name, Type: typ, In: InQuery, Description: desc} }
-func body(name, typ, desc string) Param  { return Param{Name: name, Type: typ, In: InBody, Description: desc} }
+func pathStr(name, desc string) Param {
+	return Param{Name: name, Type: "string", In: InPath, Required: true, Description: desc}
+}
+func pathInt(name, desc string) Param {
+	return Param{Name: name, Type: "integer", In: InPath, Required: true, Description: desc}
+}
+func query(name, typ, desc string) Param {
+	return Param{Name: name, Type: typ, In: InQuery, Description: desc}
+}
+func body(name, typ, desc string) Param {
+	return Param{Name: name, Type: typ, In: InBody, Description: desc}
+}
 
 const filterHelp = `Optional FilterTree object; all children are ANDed: {"children":[{"predicate":{"field":F,"op":OP,"value":V}}]}.
 Fields/ops: search contains(str, also matches KEY-12); title contains|not_contains|is|is_not(str), is_empty|is_set; description contains|not_contains, is_empty|is_set;

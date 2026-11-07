@@ -36,34 +36,34 @@ type AuthConfig struct {
 
 // Server wraps the Echo server with application configuration
 type Server struct {
-	echo            *echo.Echo
-	devMode         bool
-	db              *sql.DB
-	pool            *pgxpool.Pool
-	store           store.Querier
-	authManager     *auth.Manager
-	authHandler     *handlers.AuthHandler
-	adminHandler    *handlers.AdminHandler
-	uploadHandler    *handlers.UploadHandler
-	workspaceHandler *handlers.WorkspaceHandler
-	projectHandler   *handlers.ProjectHandler
-	pageHandler      *handlers.PageHandler
-	taskHandler     *handlers.TaskHandler
-	viewHandler     *handlers.ViewHandler
-	commentHandler    *handlers.CommentHandler
-	attachmentHandler *handlers.AttachmentHandler
-	cycleHandler      *handlers.CycleHandler
-	moduleHandler     *handlers.ModuleHandler
-	settingsHandler *handlers.SettingsHandler
-	ogHandler       *handlers.OGHandler
-	importHandler   *handlers.ImportHandler
-	oauthHandler    *handlers.OAuthHandler
-	patHandler      *handlers.PATHandler
-	feedbackHandler *handlers.FeedbackHandler
-	searchHandler   *handlers.SearchHandler
-	releasesHandler *handlers.ReleasesHandler
-	assistantHandler *handlers.AssistantHandler
-	mcpHandler       http.Handler
+	echo                 *echo.Echo
+	devMode              bool
+	db                   *sql.DB
+	pool                 *pgxpool.Pool
+	store                store.Querier
+	authManager          *auth.Manager
+	authHandler          *handlers.AuthHandler
+	adminHandler         *handlers.AdminHandler
+	uploadHandler        *handlers.UploadHandler
+	workspaceHandler     *handlers.WorkspaceHandler
+	projectHandler       *handlers.ProjectHandler
+	pageHandler          *handlers.PageHandler
+	taskHandler          *handlers.TaskHandler
+	viewHandler          *handlers.ViewHandler
+	commentHandler       *handlers.CommentHandler
+	attachmentHandler    *handlers.AttachmentHandler
+	cycleHandler         *handlers.CycleHandler
+	moduleHandler        *handlers.ModuleHandler
+	settingsHandler      *handlers.SettingsHandler
+	ogHandler            *handlers.OGHandler
+	importHandler        *handlers.ImportHandler
+	oauthHandler         *handlers.OAuthHandler
+	patHandler           *handlers.PATHandler
+	feedbackHandler      *handlers.FeedbackHandler
+	searchHandler        *handlers.SearchHandler
+	releasesHandler      *handlers.ReleasesHandler
+	assistantHandler     *handlers.AssistantHandler
+	mcpHandler           http.Handler
 	activityService      *activity.Service
 	notificationService  *notifier.Service
 	notificationsService *notifications.Service

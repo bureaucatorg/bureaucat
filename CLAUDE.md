@@ -98,6 +98,7 @@ The agent core lives in `internal/assistant` (channel-agnostic). Tools in `tools
 ANY /mcp    # MCP server, stateless Streamable HTTP (exception to the /api/v1 prefix rule)
 ```
 `internal/mcpserver` builds its tools from `assistant.Catalog()`, so new catalog tools appear automatically. Tools taking `upload_id` are excluded, read_only PATs only see GET tools, GETs are annotated `readOnlyHint` and `Confirm` tools `destructiveHint`. Calls run via `Service.RunTool` and are logged with via `mcp`.
+The `bureaucat api <tool>` CLI (`internal/cli/api.go`) is also generated from the catalog and sends `Tool.BuildRequest` over HTTP with the saved PAT. `internal/server/catalog_drift_test.go` fails when an `/api/v1` route has no catalog tool and isn't listed in `nonCatalogRoutes`.
 
 ### Workflow Routes (project-scoped)
 ```
