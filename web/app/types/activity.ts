@@ -14,7 +14,7 @@ export interface ActivityLogEntry {
   via?: ActivityVia;
 }
 
-export type ActivityVia = "web" | "assistant" | "pat" | "workflow";
+export type ActivityVia = "web" | "assistant" | "pat" | "workflow" | "mcp";
 
 // Workflow-rule changes show as "Workflow Engine"; the triggering user is kept for the tooltip.
 export function activityActorName(a: Pick<ActivityLogEntry, "first_name" | "last_name" | "via">): string {

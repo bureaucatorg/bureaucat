@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"io/fs"
+	"net/http"
 	"os"
 	"strconv"
 
@@ -19,6 +20,7 @@ import (
 	"bereaucat/internal/auth"
 	"bereaucat/internal/handlers"
 	"bereaucat/internal/mattermostbot"
+	"bereaucat/internal/mcpserver"
 	"bereaucat/internal/notifications"
 	"bereaucat/internal/notifier"
 	"bereaucat/internal/store"
@@ -61,6 +63,7 @@ type Server struct {
 	searchHandler   *handlers.SearchHandler
 	releasesHandler *handlers.ReleasesHandler
 	assistantHandler *handlers.AssistantHandler
+	mcpHandler       http.Handler
 	activityService      *activity.Service
 	notificationService  *notifier.Service
 	notificationsService *notifications.Service
@@ -173,6 +176,7 @@ func New(devMode bool, dbURL string, authConfig AuthConfig, distFS fs.FS) (*Serv
 		assistantService := assistant.NewService(srv.store, e, srv.authManager)
 		srv.assistantHandler = handlers.NewAssistantHandler(srv.store, assistantService)
 		go mattermostbot.New(srv.store, assistantService).Run(workerCtx)
+		srv.mcpHandler = mcpserver.Handler(srv.store, assistantService)
 	}
 
 	// Register routes

@@ -329,6 +329,21 @@ var toolIndex = func() map[string]*Tool {
 
 func toolByName(name string) *Tool { return toolIndex[name] }
 
+// Catalog returns a copy of the API-backed tools, for adapters such as the MCP server.
+func Catalog() []Tool { return append([]Tool(nil), catalog...) }
+
+func (t Tool) InputSchema() map[string]any { return schemaFor(t.Params) }
+
+// UsesUpload reports whether the tool takes a chat upload_id, which only chat channels can supply.
+func (t Tool) UsesUpload() bool {
+	for _, p := range t.Params {
+		if p.Name == "upload_id" {
+			return true
+		}
+	}
+	return false
+}
+
 // LocalTool is a read-only tool a channel adapter adds to its runs, e.g. reading more chat
 // history. The Meta it returns is stored with the result, like a user message's.
 type LocalTool struct {

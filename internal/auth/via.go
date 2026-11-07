@@ -8,6 +8,7 @@ const (
 	ViaAssistant = "assistant"
 	ViaPAT       = "pat"
 	ViaWorkflow  = "workflow"
+	ViaMCP       = "mcp"
 )
 
 type viaKey struct{}

@@ -150,7 +150,7 @@ func (s *Service) Resolve(ctx context.Context, userID, convID, actionID uuid.UUI
 		status, result = "failed", "unknown tool "+action.ToolName
 		if tool := toolByName(action.ToolName); tool != nil {
 			emit.Emit(Event{Type: "step", Tool: action.ToolName, Status: "running"})
-			out, isErr := s.exec.run(ctx, run.user, tool, action.Args)
+			out, isErr := s.exec.run(ctx, run.user, tool, action.Args, auth.ViaAssistant)
 			status, result = "approved", out
 			stepStatus := "done"
 			if isErr {
@@ -303,7 +303,7 @@ func (s *Service) loop(ctx context.Context, run *runState, emit Emitter) error {
 			}
 
 			emit.Emit(Event{Type: "step", Tool: tc.Name, Status: "running"})
-			out, isErr := s.exec.run(ctx, run.user, tool, tc.Args)
+			out, isErr := s.exec.run(ctx, run.user, tool, tc.Args, auth.ViaAssistant)
 			status := "done"
 			if isErr {
 				status = "error"
@@ -345,13 +345,7 @@ func (s *Service) ownedUploads(ctx context.Context, userID uuid.UUID, ids []uuid
 // uploadArgAllowed stops attach tools from using files other than those the user attached
 // in this conversation, so planted instructions cannot copy someone else's file elsewhere.
 func uploadArgAllowed(tool *Tool, rawArgs json.RawMessage, rows []store.AssistantMessage) bool {
-	hasUploadParam := false
-	for _, p := range tool.Params {
-		if p.Name == "upload_id" {
-			hasUploadParam = true
-		}
-	}
-	if !hasUploadParam {
+	if !tool.UsesUpload() {
 		return true
 	}
 	id, _ := argsObject(rawArgs)["upload_id"].(string)

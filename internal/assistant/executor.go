@@ -26,7 +26,16 @@ type executor struct {
 	auth   *auth.Manager
 }
 
-func (e *executor) run(ctx context.Context, user store.GetUserByIDRow, tool *Tool, rawArgs json.RawMessage) (string, bool) {
+// RunTool runs one catalog tool directly, without the agent loop or an LLM.
+func (s *Service) RunTool(ctx context.Context, user store.GetUserByIDRow, name string, args json.RawMessage, via string) (string, bool) {
+	tool := toolByName(name)
+	if tool == nil {
+		return fmt.Sprintf("unknown tool %q", name), true
+	}
+	return s.exec.run(ctx, user, tool, args, via)
+}
+
+func (e *executor) run(ctx context.Context, user store.GetUserByIDRow, tool *Tool, rawArgs json.RawMessage, via string) (string, bool) {
 	args := argsObject(rawArgs)
 
 	path := tool.Path
@@ -77,7 +86,7 @@ func (e *executor) run(ctx context.Context, user store.GetUserByIDRow, tool *Too
 	if err != nil {
 		return err.Error(), true
 	}
-	token, _, err := e.auth.GenerateAssistantToken(user.ID, user.Username, user.UserType)
+	token, _, err := e.auth.GenerateToolToken(user.ID, user.Username, user.UserType, via)
 	if err != nil {
 		return "failed to authenticate tool call", true
 	}

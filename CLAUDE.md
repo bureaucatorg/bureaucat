@@ -93,6 +93,12 @@ POST   /api/v1/assistant/conversations/:id/actions/:actionId # Approve/reject wr
 The agent core lives in `internal/assistant` (channel-agnostic). Tools in `tools.go` map 1:1 to API routes and run in-process through the Echo router as the requesting user; write tools need user approval.
 `internal/mattermostbot` is the Mattermost adapter: the notification bot listens over WebSocket, maps the sender's email to a Bureaucat user, keys conversations by thread root + user, and takes `yes`/`no` replies for approvals. Outside DMs it only answers posts that @mention it, and passes up to 10 unseen top-level channel posts (or, in a thread, posts since the user's previous turn) as `Meta.Chat`, deduped by post ID. The `read_chat_history` local tool lets the agent read further back; a conversation holds at most 100 chat messages. Conversations with chat context require approval for every write.
 
+### MCP Route (PAT only)
+```
+ANY /mcp    # MCP server, stateless Streamable HTTP (exception to the /api/v1 prefix rule)
+```
+`internal/mcpserver` builds its tools from `assistant.Catalog()`, so new catalog tools appear automatically. Tools taking `upload_id` are excluded, read_only PATs only see GET tools, GETs are annotated `readOnlyHint` and `Confirm` tools `destructiveHint`. Calls run via `Service.RunTool` and are logged with via `mcp`.
+
 ### Workflow Routes (project-scoped)
 ```
 GET    /api/v1/projects/:key/workflow          # Graph config + enabled + bypass (any project role)

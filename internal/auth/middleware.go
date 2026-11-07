@@ -75,8 +75,8 @@ func Middleware(manager *Manager, queries store.Querier) echo.MiddlewareFunc {
 			c.Request().Header.Set(HeaderUserType, claims.UserType)
 
 			via := ViaWeb
-			if claims.Via == ViaAssistant {
-				via = ViaAssistant
+			if claims.Via == ViaAssistant || claims.Via == ViaMCP {
+				via = claims.Via
 			}
 			c.SetRequest(c.Request().WithContext(WithVia(c.Request().Context(), via)))
 

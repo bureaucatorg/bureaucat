@@ -45,6 +45,11 @@ func (s *Server) registerRoutes() {
 	api.GET("/openapi.json", openAPISpec)
 
 	api.GET("/health", healthCheck)
+
+	// MCP server, outside /api/v1 by convention; PAT-only (enforced in mcpserver)
+	if s.mcpHandler != nil {
+		s.echo.Any("/mcp", echo.WrapHandler(s.mcpHandler), auth.Middleware(s.authManager, s.store))
+	}
 	api.GET("/ht/", s.healthCheckDetailed)
 
 	// Public settings routes

@@ -70,7 +70,7 @@ type ActivityLogResponse struct {
 	OldValue     interface{} `json:"old_value,omitempty"`
 	NewValue     interface{} `json:"new_value,omitempty"`
 	CreatedAt    time.Time   `json:"created_at"`
-	Via          string      `json:"via"` // web | assistant | pat
+	Via          string      `json:"via"` // web | assistant | pat | workflow | mcp
 }
 
 // ListComments returns comments for a task.

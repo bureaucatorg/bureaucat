@@ -46,10 +46,10 @@ func (m *Manager) GenerateAccessToken(userID uuid.UUID, username, userType strin
 	return m.generateAccessToken(userID, username, userType, "")
 }
 
-// GenerateAssistantToken creates an access token for in-process assistant tool calls,
-// marked so activity it causes is attributed to the assistant.
-func (m *Manager) GenerateAssistantToken(userID uuid.UUID, username, userType string) (string, time.Time, error) {
-	return m.generateAccessToken(userID, username, userType, ViaAssistant)
+// GenerateToolToken creates an access token for in-process tool calls (assistant, MCP),
+// marked with via so activity it causes is attributed to that channel.
+func (m *Manager) GenerateToolToken(userID uuid.UUID, username, userType, via string) (string, time.Time, error) {
+	return m.generateAccessToken(userID, username, userType, via)
 }
 
 func (m *Manager) generateAccessToken(userID uuid.UUID, username, userType, via string) (string, time.Time, error) {
