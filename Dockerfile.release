@@ -1,7 +1,7 @@
 # Release-runner image: contains everything `just release` needs so the whole
 # release runs inside Docker — Go (binaries), Bun (frontend), goreleaser, and the
 # Docker CLI (talks to the host daemon via the mounted /var/run/docker.sock).
-FROM golang:1.25.6-trixie
+FROM golang:1.27.3-trixie
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
         ca-certificates \
