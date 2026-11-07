@@ -138,6 +138,18 @@ var catalog = []Tool{
 	{Name: "delete_state", Title: "Delete state", Description: "Delete an unused, non-default state (project admin).", Method: http.MethodDelete, Path: pp + "/states/{state_id}", Confirm: true,
 		Params: []Param{pProject, pathStr("state_id", "State UUID")}},
 
+	// Workflow engine (opt-in per project)
+	{Name: "get_workflow", Title: "Get workflow", Description: "Get a project's workflow: whether it is configured/enabled, states (entry flag, on-enter assignee actions) and allowed transitions with their movers.", Method: http.MethodGet, Path: pp + "/workflow", Params: []Param{pProject}},
+	{Name: "save_workflow", Title: "Save workflow", Description: `Replace a project's whole workflow graph (project admin); enforcement on/off is unchanged. Call get_workflow first and send the full edited graph, keeping pos_x/pos_y of existing states.
+Only states listed take part; at least one must have is_entry (tasks can only be created in entry states). Transitions are an allowlist; a state with no outgoing transition is terminal.
+Movers: allow_assignees, allow_creator and mover_ids together limit who may make a transition; all unset means any member. Project admins bypass all checks. All user UUIDs must be project members.`,
+		Method: http.MethodPut, Path: pp + "/workflow", Confirm: true,
+		Params: []Param{pProject,
+			body("states", "object[]", `Each {"state_id": uuid, "is_entry": bool, "pos_x": number, "pos_y": number, "add_assignees": [user uuid] (added on enter), "remove_assignees": [user uuid] (removed on enter)}`).req(),
+			body("transitions", "object[]", `Each {"from_state_id": uuid, "to_state_id": uuid, "allow_assignees": bool, "allow_creator": bool, "mover_ids": [user uuid]}`).req()}},
+	{Name: "set_workflow_enabled", Title: "Enable/disable workflow", Description: "Turn workflow enforcement on or off, keeping the configuration (project admin). A workflow must be saved before enabling.", Method: http.MethodPut, Path: pp + "/workflow/enabled", Confirm: true,
+		Params: []Param{pProject, body("enabled", "boolean", "true to enforce the workflow").req()}},
+
 	// Labels
 	{Name: "list_labels", Title: "List labels", Description: "Labels of a project.", Method: http.MethodGet, Path: pp + "/labels", Params: []Param{pProject}},
 	{Name: "create_label", Title: "Create label", Description: "Create a project label.", Method: http.MethodPost, Path: pp + "/labels",
