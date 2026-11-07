@@ -65,7 +65,7 @@ ${fence}
 
 <template>
   <Card>
-    <CardContent class="space-y-4 pt-6">
+    <CardContent class="space-y-4">
       <div class="space-y-1 text-sm text-muted-foreground">
         <p>
           Prefer plain API calls? Give your agent a personal access token as

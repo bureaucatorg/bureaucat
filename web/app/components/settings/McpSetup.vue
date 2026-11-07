@@ -99,7 +99,7 @@ const clients = computed<Client[]>(() => [
 
 <template>
   <Card>
-    <CardContent class="space-y-4 pt-6">
+    <CardContent class="space-y-4">
       <div class="space-y-1 text-sm">
         <p>
           Server URL:
