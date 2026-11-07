@@ -760,6 +760,7 @@ func (h *TaskHandler) GetTask(c *echo.Context) error {
 		ParentTaskNumber: pgInt4ToIntPtr(task.ParentTaskNumber),
 		ParentTaskTitle:  textToStringPtr(task.ParentTaskTitle),
 		SubtaskCount:     int(task.SubtaskCount),
+		CommentCount:     int(task.CommentCount),
 		CycleID:          cycleID,
 		CycleTitle:       cycleTitle,
 		Modules:          h.getTaskModules(ctx, task.ID),
@@ -1044,6 +1045,8 @@ func (h *TaskHandler) UpdateTask(c *echo.Context) error {
 		CreatorAvatarURL: textToStringPtr(fullTask.CreatorAvatarUrl),
 		Assignees:       assignees,
 		Labels:          labels,
+		SubtaskCount:    int(fullTask.SubtaskCount),
+		CommentCount:    int(fullTask.CommentCount),
 		CreatedAt:       fullTask.CreatedAt.Time,
 		UpdatedAt:       fullTask.UpdatedAt.Time,
 	})
@@ -2185,6 +2188,8 @@ func (h *TaskHandler) MoveTask(c *echo.Context) error {
 		CreatorAvatarURL: textToStringPtr(fullTask.CreatorAvatarUrl),
 		Assignees:        assignees,
 		Labels:           labels,
+		SubtaskCount:     int(fullTask.SubtaskCount),
+		CommentCount:     int(fullTask.CommentCount),
 		CreatedAt:        fullTask.CreatedAt.Time,
 		UpdatedAt:        fullTask.UpdatedAt.Time,
 	})
