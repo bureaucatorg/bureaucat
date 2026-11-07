@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import { Check, Copy } from "lucide-vue-next";
-
 interface Snippet {
   label: string;
   hint: string;
@@ -97,18 +95,6 @@ const clients = computed<Client[]>(() => [
     ],
   },
 ]);
-
-const copiedKey = ref<string | null>(null);
-
-async function copy(key: string, text: string) {
-  try {
-    await navigator.clipboard.writeText(text);
-    copiedKey.value = key;
-    setTimeout(() => (copiedKey.value = null), 2000);
-  } catch {
-    // clipboard unavailable; the snippet is still selectable
-  }
-}
 </script>
 
 <template>
@@ -132,19 +118,7 @@ async function copy(key: string, text: string) {
         <TabsContent v-for="c in clients" :key="c.id" :value="c.id" class="space-y-4 pt-2">
           <div v-for="(s, i) in c.snippets" :key="i" class="space-y-1.5">
             <p class="text-xs font-medium text-muted-foreground">{{ s.label }}</p>
-            <div class="relative">
-              <pre class="overflow-x-auto rounded-md border bg-muted/50 p-3 pr-12 font-mono text-xs leading-relaxed">{{ s.code }}</pre>
-              <Button
-                variant="ghost"
-                size="icon"
-                class="absolute right-1.5 top-1.5 size-7"
-                :aria-label="copiedKey === `${c.id}-${i}` ? 'Copied' : 'Copy snippet'"
-                @click="copy(`${c.id}-${i}`, s.code)"
-              >
-                <Check v-if="copiedKey === `${c.id}-${i}`" class="size-3.5 text-green-500" />
-                <Copy v-else class="size-3.5" />
-              </Button>
-            </div>
+            <CopyableCode :code="s.code" />
             <p v-if="s.hint" class="text-xs text-muted-foreground">{{ s.hint }}</p>
           </div>
         </TabsContent>

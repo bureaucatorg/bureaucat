@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Key, Bell, Trash2, Loader2, Plus, Copy, Check, Eye, EyeOff, CalendarIcon, X, Clock, Plug } from "lucide-vue-next";
+import { Key, Bell, Trash2, Loader2, Plus, Copy, Check, Eye, EyeOff, CalendarIcon, X, Clock, Plug, FileCode } from "lucide-vue-next";
 import { getLocalTimeZone, today } from "@internationalized/date";
 import { cn } from "@/lib/utils";
 import type { DateValue } from "reka-ui";
@@ -448,6 +448,20 @@ onMounted(() => {
             </p>
           </div>
           <McpSetup />
+        </div>
+
+        <!-- API Skill Section -->
+        <div class="mt-12">
+          <div class="mb-4">
+            <h2 class="flex items-center gap-2 text-lg font-semibold">
+              <FileCode class="size-5" />
+              Use the API from your agent
+            </h2>
+            <p class="mt-1 text-sm text-muted-foreground">
+              No MCP needed: agents that can run shell commands can call the REST API directly with a token.
+            </p>
+          </div>
+          <ApiSkill />
         </div>
 
         <!-- Token Created Dialog -->
