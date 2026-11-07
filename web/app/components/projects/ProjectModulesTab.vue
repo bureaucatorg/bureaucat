@@ -27,6 +27,7 @@ function onSaved() {
 }
 
 onMounted(() => fetchPage(1));
+onDataChanged(() => fetchPage(page.value));
 
 watch(
   () => props.projectKey,
@@ -58,7 +59,7 @@ watch(
 
     <ModuleFiltersBar v-model="filters" :project-key="projectKey" />
 
-    <div v-if="loading" class="flex items-center justify-center py-12">
+    <div v-if="loading && modules.length === 0" class="flex items-center justify-center py-12">
       <Loader2 class="size-6 animate-spin text-muted-foreground" />
     </div>
 

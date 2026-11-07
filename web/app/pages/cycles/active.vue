@@ -10,6 +10,7 @@ const { activeCycles, loading, listActiveCycles } = useCycles();
 onMounted(() => {
   listActiveCycles();
 });
+onDataChanged(listActiveCycles);
 </script>
 
 <template>
@@ -34,7 +35,7 @@ onMounted(() => {
           </p>
         </div>
 
-        <div v-if="loading" class="flex items-center justify-center py-12">
+        <div v-if="loading && activeCycles.length === 0" class="flex items-center justify-center py-12">
           <Loader2 class="size-8 animate-spin text-muted-foreground" />
         </div>
 

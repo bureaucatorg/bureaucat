@@ -36,6 +36,7 @@ const showCreate = ref(false);
 onMounted(() => {
   listWorkspaces();
 });
+onDataChanged(listWorkspaces);
 
 // --- Edit ---------------------------------------------------------------
 const editing = ref<Workspace | null>(null);
@@ -160,7 +161,7 @@ async function handleRemoveMember(member: WorkspaceMember) {
           </Button>
         </div>
 
-        <div v-if="loading" class="flex items-center justify-center py-12">
+        <div v-if="loading && workspaces.length === 0" class="flex items-center justify-center py-12">
           <Loader2 class="size-8 animate-spin text-muted-foreground" />
         </div>
 

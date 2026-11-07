@@ -56,6 +56,7 @@ function goToPage(p: number) {
 onMounted(() => {
   fetchProjects(1);
 });
+onDataChanged(() => fetchProjects(page.value));
 </script>
 
 <template>
@@ -117,7 +118,7 @@ onMounted(() => {
         </div>
 
         <!-- Loading -->
-        <div v-if="loading" class="flex items-center justify-center py-12">
+        <div v-if="loading && projects.length === 0" class="flex items-center justify-center py-12">
           <Loader2 class="size-8 animate-spin text-muted-foreground" />
         </div>
 

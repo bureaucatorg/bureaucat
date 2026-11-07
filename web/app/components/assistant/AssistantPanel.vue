@@ -370,7 +370,18 @@ watch(
                   <p class="font-medium">{{ actionsByCall.get(tc.id)!.title }}</p>
                   <Badge variant="outline" class="capitalize">{{ actionsByCall.get(tc.id)!.status }}</Badge>
                 </div>
-                <dl class="mt-2 space-y-1 text-xs">
+                <WorkflowActionPreview
+                  v-if="actionsByCall.get(tc.id)!.tool === 'save_workflow'"
+                  :action="actionsByCall.get(tc.id)!"
+                >
+                  <dl class="space-y-1">
+                    <div v-for="(v, k) in actionsByCall.get(tc.id)!.args" :key="k" class="flex gap-2">
+                      <dt class="shrink-0 text-muted-foreground">{{ toolLabel(String(k)) }}</dt>
+                      <dd class="min-w-0 whitespace-pre-wrap break-words">{{ formatArg(v) }}</dd>
+                    </div>
+                  </dl>
+                </WorkflowActionPreview>
+                <dl v-else class="mt-2 space-y-1 text-xs">
                   <div v-for="(v, k) in actionsByCall.get(tc.id)!.args" :key="k" class="flex gap-2">
                     <dt class="shrink-0 text-muted-foreground">{{ toolLabel(String(k)) }}</dt>
                     <dd class="min-w-0 whitespace-pre-wrap break-words">{{ formatArg(v) }}</dd>

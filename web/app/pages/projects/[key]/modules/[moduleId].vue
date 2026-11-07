@@ -78,8 +78,9 @@ function formatRange(a?: string, b?: string): string {
 }
 
 
-async function loadAll() {
-  loading.value = true;
+async function loadAll(silent = false) {
+  if (silent && (loading.value || error.value)) return;
+  loading.value = !silent;
   error.value = null;
   const [m, met, t, mem] = await Promise.all([
     getModule(projectKey.value, moduleId.value),
@@ -158,6 +159,7 @@ onMounted(async () => {
   }
   await loadAll();
 });
+onDataChanged(() => loadAll(true));
 
 onBeforeUnmount(() => {
   clearCurrent();

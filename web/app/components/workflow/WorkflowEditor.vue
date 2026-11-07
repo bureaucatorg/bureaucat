@@ -103,19 +103,23 @@ function payload(): SaveWorkflowRequest {
 
 const dirty = computed(() => snapshot() !== savedSnapshot.value);
 
-async function load() {
-  loading.value = true;
+async function load(silent = false) {
+  loading.value = !silent;
   const res = await getWorkflow(props.projectKey, true);
   loading.value = false;
   if (!res.success || !res.data) {
-    toast.error(res.error || "Failed to load workflow");
+    if (!silent) toast.error(res.error || "Failed to load workflow");
     return;
   }
+  if (silent && (dirty.value || saving.value)) return;
   workflow.value = res.data;
   buildDraft(res.data);
 }
 
-onMounted(load);
+onMounted(() => load());
+onDataChanged(() => {
+  if (!loading.value && !dirty.value && !saving.value) load(true);
+});
 watch(
   () => props.states.map((s) => s.id).join(),
   () => workflow.value && buildDraft(workflow.value)

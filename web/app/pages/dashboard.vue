@@ -249,6 +249,12 @@ const tips: { id: string; show: () => boolean }[] = [
 
 const currentTip = ref<string | null>(null);
 
+onDataChanged(() => {
+  fetchProjects();
+  fetchAllProjects();
+  fetchMyTasks();
+});
+
 onMounted(async () => {
   fetchProjects();
   fetchAllProjects();
@@ -398,7 +404,7 @@ onMounted(async () => {
           </div>
 
           <!-- Loading -->
-          <div v-if="projectsLoading" class="flex items-center justify-center py-12">
+          <div v-if="projectsLoading && projects.length === 0" class="flex items-center justify-center py-12">
             <Loader2 class="size-8 animate-spin text-muted-foreground" />
           </div>
 

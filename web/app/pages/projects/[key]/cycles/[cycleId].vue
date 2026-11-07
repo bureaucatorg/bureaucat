@@ -78,8 +78,9 @@ const filteredAssigneeName = computed(() => {
   return a ? `${a.first_name} ${a.last_name}`.trim() || a.username : null;
 });
 
-async function loadAll() {
-  loading.value = true;
+async function loadAll(silent = false) {
+  if (silent && (loading.value || error.value)) return;
+  loading.value = !silent;
   error.value = null;
   const [c, m, t] = await Promise.all([
     getCycle(projectKey.value, cycleId.value),
@@ -132,6 +133,7 @@ onMounted(async () => {
   }
   await loadAll();
 });
+onDataChanged(() => loadAll(true));
 
 onBeforeUnmount(() => {
   clearCurrent();

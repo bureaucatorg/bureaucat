@@ -72,6 +72,7 @@ interface AssistantEvent {
   text?: string;
   tool?: string;
   status?: "running" | "done" | "error";
+  write?: boolean;
   action?: AssistantAction;
 }
 
@@ -336,6 +337,7 @@ export function useAssistant() {
         const existing = steps.value.findLast((s) => s.tool === ev.tool && s.status === "running");
         if (existing && ev.status !== "running") existing.status = ev.status!;
         else steps.value.push({ tool: ev.tool!, status: ev.status! });
+        if (ev.write) notifyDataChanged();
         break;
       }
       case "message":

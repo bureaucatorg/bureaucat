@@ -352,6 +352,23 @@ async function loadProject() {
   loading.value = false;
 }
 
+// Refetches in place so open tabs (and their unsaved edits) stay mounted.
+async function refreshProject() {
+  if (loading.value || error.value) return;
+  const result = await getProject(projectKey.value);
+  if (!result.success) return;
+  await Promise.all([
+    listMembers(projectKey.value),
+    listStates(projectKey.value),
+    listLabels(projectKey.value),
+    listTemplates(projectKey.value),
+    listViews(projectKey.value),
+    reloadActiveTasks(),
+  ]);
+}
+
+onDataChanged(refreshProject);
+
 const BOARD_CLOSED_LIMIT = 100;
 const BOARD_CLOSED_DAYS = 14;
 const CLOSED_STATE_TYPES = ["completed", "cancelled"];
@@ -718,7 +735,7 @@ onMounted(async () => {
 
             <!-- Tasks Tab -->
             <TabsContent value="tasks" class="mt-6 space-y-4">
-              <div v-if="tasksLoading" class="flex items-center justify-center py-12">
+              <div v-if="tasksLoading && tasks.length === 0" class="flex items-center justify-center py-12">
                 <Loader2 class="size-6 animate-spin text-muted-foreground" />
               </div>
 

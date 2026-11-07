@@ -31,6 +31,7 @@ async function loadStats() {
 
 watch([fromDate, toDate, () => props.projectKey], loadStats);
 onMounted(loadStats);
+onDataChanged(loadStats);
 
 const totalCards = computed(() => {
   const t = stats.value?.totals;

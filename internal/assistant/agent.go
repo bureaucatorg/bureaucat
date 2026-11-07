@@ -60,6 +60,7 @@ type Event struct {
 	Text   string      `json:"text,omitempty"`
 	Tool   string      `json:"tool,omitempty"`
 	Status string      `json:"status,omitempty"` // running | done | error
+	Write  bool        `json:"write,omitempty"`  // a non-GET tool succeeded
 	Action *ActionView `json:"action,omitempty"`
 }
 
@@ -156,7 +157,7 @@ func (s *Service) Resolve(ctx context.Context, userID, convID, actionID uuid.UUI
 			if isErr {
 				status, stepStatus = "failed", "error"
 			}
-			emit.Emit(Event{Type: "step", Tool: action.ToolName, Status: stepStatus})
+			emit.Emit(Event{Type: "step", Tool: action.ToolName, Status: stepStatus, Write: !isErr && tool.Method != http.MethodGet})
 		}
 	}
 	if err := s.finishAction(ctx, run, action, status, result, emit); err != nil {
@@ -308,7 +309,7 @@ func (s *Service) loop(ctx context.Context, run *runState, emit Emitter) error {
 			if isErr {
 				status = "error"
 			}
-			emit.Emit(Event{Type: "step", Tool: tc.Name, Status: status})
+			emit.Emit(Event{Type: "step", Tool: tc.Name, Status: status, Write: !isErr && tool.Method != http.MethodGet})
 			if _, err := s.addMessage(ctx, convID, RoleTool, out, nil, tc.ID, tc.Name); err != nil {
 				return err
 			}

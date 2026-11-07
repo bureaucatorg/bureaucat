@@ -55,6 +55,7 @@ function formatDate(dateStr: string): string {
 }
 
 onMounted(fetchPages);
+onDataChanged(fetchPages);
 
 watch(
   () => props.projectKey,
@@ -125,7 +126,7 @@ watch(
         </button>
       </div>
 
-      <div v-if="loading" class="flex items-center justify-center py-12">
+      <div v-if="loading && pages.length === 0" class="flex items-center justify-center py-12">
         <Loader2 class="size-6 animate-spin text-muted-foreground" />
       </div>
 

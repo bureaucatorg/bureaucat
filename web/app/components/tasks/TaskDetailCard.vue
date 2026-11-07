@@ -91,8 +91,8 @@ function formatDateTime(iso: string): string {
 
 // Fetch full task details directly (not via the shared store) so opening the
 // card from a parent task's page doesn't clobber the parent bound to the view.
-async function loadTask() {
-  loading.value = true;
+async function loadTask(silent = false) {
+  loading.value = !silent;
   error.value = null;
   try {
     const response = await fetch(
@@ -412,6 +412,11 @@ function handleCommentKeydown(event: KeyboardEvent) {
 
 onMounted(() => {
   loadTask();
+  loadComments();
+  loadAttachments();
+});
+onDataChanged(() => {
+  loadTask(true);
   loadComments();
   loadAttachments();
 });
@@ -769,7 +774,7 @@ onMounted(() => {
             </Button>
           </div>
 
-          <div v-if="commentsLoading" class="flex items-center justify-center py-6">
+          <div v-if="commentsLoading && comments.length === 0" class="flex items-center justify-center py-6">
             <Loader2 class="size-5 animate-spin text-muted-foreground" />
           </div>
 

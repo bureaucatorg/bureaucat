@@ -450,7 +450,7 @@ function getStateChangeDetail(activity: ActivityLogEntry): { from: string; to: s
     />
 
     <!-- Loading -->
-    <div v-if="loading" class="flex items-center justify-center py-8">
+    <div v-if="loading && feedItems.length === 0" class="flex items-center justify-center py-8">
       <Loader2 class="size-5 animate-spin text-muted-foreground" />
     </div>
 

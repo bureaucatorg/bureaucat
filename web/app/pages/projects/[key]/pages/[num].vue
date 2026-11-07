@@ -158,6 +158,18 @@ function copyLink() {
 }
 
 onMounted(loadData);
+
+// Skipped while local edits are unsaved so they are never overwritten.
+onDataChanged(async () => {
+  if (loading.value || error.value || saveStatus.value === "pending" || saveStatus.value === "saving") return;
+  const result = await getPage(projectKey.value, pageNum.value);
+  if (!result.success || !result.data || saveStatus.value === "pending" || saveStatus.value === "saving") return;
+  if (result.data.title === lastSaved.title && result.data.content === lastSaved.content) return;
+  ready.value = false;
+  title.value = lastSaved.title = result.data.title;
+  content.value = lastSaved.content = result.data.content;
+  nextTick(() => (ready.value = true));
+});
 onBeforeUnmount(() => {
   // Flush any pending edits on navigation away (fire-and-forget).
   if (saveStatus.value === "pending") flushSave();
