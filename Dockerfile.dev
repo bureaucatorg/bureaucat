@@ -1,4 +1,4 @@
-FROM golang:1.25.6-trixie
+FROM golang:1.27.3-trixie
 
 RUN set -ex \
   && apt update \
@@ -7,10 +7,10 @@ RUN set -ex \
     curl \
     bash \
     unzip \
-  && go install "github.com/air-verse/air@v1.63.6" \
-  && go install "github.com/sqlc-dev/sqlc/cmd/sqlc@v1.30.0" \
-  && go install "github.com/swaggo/swag/cmd/swag@latest" \
-  && curl -fsSL https://bun.com/install | bash -s "bun-v1.3.7"
+  && go install "github.com/air-verse/air@v1.67.4" \
+  && go install "github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1" \
+  && go install "github.com/swaggo/swag/v2/cmd/swag@v2.0.0-rc6" \
+  && curl -fsSL https://bun.com/install | bash -s "bun-v1.4.4"
 
 ENV PATH="/root/.bun/bin:${PATH}"
 

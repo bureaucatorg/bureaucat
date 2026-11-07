@@ -1,6 +1,6 @@
 services:
   landing:
-    image: oven/bun:1.3.7-slim
+    image: oven/bun:1.4.4-slim
     restart: unless-stopped
     working_dir: /app
     volumes:
