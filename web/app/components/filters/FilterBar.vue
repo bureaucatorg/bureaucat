@@ -115,6 +115,7 @@ function updatePredicate(index: number, p: Predicate) {
         v-if="hasAnyFilter()"
         variant="ghost"
         size="sm"
+        class="text-destructive hover:bg-destructive/10 hover:text-destructive"
         @click="emit('reset')"
       >
         <X class="mr-1 size-3.5" />
