@@ -27,6 +27,7 @@ const props = defineProps<{
   members: ProjectMember[];
   /** When true, show the Group-by control (board tab only). */
   showGroupBy?: boolean;
+  defaultHint?: string;
 }>();
 
 const emit = defineEmits<{
@@ -138,5 +139,8 @@ function updatePredicate(index: number, p: Predicate) {
         />
       </template>
     </div>
+    <p v-else-if="defaultHint" class="text-xs text-muted-foreground">
+      {{ defaultHint }}
+    </p>
   </div>
 </template>

@@ -23,7 +23,7 @@ import {
   Workflow as WorkflowIcon,
 } from "lucide-vue-next";
 import { toast } from "vue-sonner";
-import type { FilterTree, ProjectView, MoveTasksResponse } from "~/types";
+import type { FilterTree, ProjectView, MoveTasksResponse, Task } from "~/types";
 import { PRIORITY_LABELS } from "~/types";
 
 definePageMeta({
@@ -348,8 +348,78 @@ async function loadProject() {
     }
   }
 
-  await loadTasks(currentPageFromUrl.value);
+  await reloadActiveTasks();
   loading.value = false;
+}
+
+const BOARD_CLOSED_LIMIT = 100;
+const BOARD_CLOSED_DAYS = 14;
+const CLOSED_STATE_TYPES = ["completed", "cancelled"];
+
+const boardTasks = ref<Task[]>([]);
+let boardRequestId = 0;
+
+const isDefaultScope = computed(
+  () => !searchQuery.value && tree.value.children.length === 0 && !activeViewSlug.value
+);
+
+const filterHint = computed(() => {
+  if (!isDefaultScope.value || activeTab.value === "board") return undefined;
+  return "Hiding completed and cancelled tasks";
+});
+
+function closedSinceDate(): string {
+  // "after" is exclusive of the given day, so step back one extra day.
+  const d = new Date(Date.now() - (BOARD_CLOSED_DAYS + 1) * 24 * 60 * 60 * 1000);
+  return d.toISOString().slice(0, 10);
+}
+
+async function loadBoardTasks() {
+  const requestId = ++boardRequestId;
+  const sort = { sortBy: sortBy.value, sortDir: sortDir.value };
+  let next: Task[];
+
+  if (isDefaultScope.value) {
+    const [open, closed] = await Promise.all([
+      fetchAllTasks(projectKey.value, {
+        ...sort,
+        tree: {
+          children: [{ predicate: { field: "state_type", op: "not_in", value: CLOSED_STATE_TYPES } }],
+        },
+      }),
+      fetchAllTasks(
+        projectKey.value,
+        {
+          sortBy: "updated_at",
+          sortDir: "desc",
+          tree: {
+            children: [
+              { predicate: { field: "state_type", op: "in", value: CLOSED_STATE_TYPES } },
+              { predicate: { field: "updated_at", op: "after", value: closedSinceDate() } },
+            ],
+          },
+        },
+        BOARD_CLOSED_LIMIT
+      ),
+    ]);
+    next = [...(open.data ?? []), ...(closed.data ?? [])];
+  } else {
+    const hasFilter = effectiveTree.value.children.length > 0;
+    const res = await fetchAllTasks(projectKey.value, {
+      ...sort,
+      tree: effectiveTree.value,
+      viewSlug: hasFilter ? activeViewSlug.value ?? undefined : undefined,
+    });
+    next = res.data ?? [];
+  }
+
+  if (requestId === boardRequestId) boardTasks.value = next;
+}
+
+function reloadActiveTasks() {
+  return activeTab.value === "board"
+    ? loadBoardTasks()
+    : loadTasks(currentPageFromUrl.value);
 }
 
 async function loadTasks(page = 1) {
@@ -368,6 +438,10 @@ async function loadTasks(page = 1) {
 }
 
 async function handleTaskCreated() {
+  if (activeTab.value === "board") {
+    await loadBoardTasks();
+    return;
+  }
   setPageInUrl(1);
   await loadTasks(1);
 }
@@ -472,12 +546,17 @@ watch(currentPageFromUrl, (newPage) => {
 watch(
   [effectiveTree, sortBy, sortDir, activeViewSlug],
   () => {
-    if (!loading.value) {
-      loadTasks(1);
-    }
+    if (loading.value) return;
+    if (activeTab.value === "board") loadBoardTasks();
+    else loadTasks(1);
   },
   { deep: true }
 );
+
+watch(activeTab, (tab, prev) => {
+  if (loading.value) return;
+  if (tab === "board" || (tab === "tasks" && prev === "board")) reloadActiveTasks();
+});
 
 const existingMemberIds = computed(() => members.value.map((m) => m.user_id));
 
@@ -611,6 +690,7 @@ onMounted(async () => {
                   :labels="labels"
                   :members="members"
                   :show-group-by="activeTab === 'board'"
+                  :default-hint="filterHint"
                   @update:tree="handleTreeUpdate"
                   @update:search-query="(v) => (searchQuery = v)"
                   @update:sort-by="(v) => (sortBy = v)"
@@ -770,7 +850,7 @@ onMounted(async () => {
             <!-- Board Tab -->
             <TabsContent value="board" class="mx-[calc(50%-(100vw-var(--app-inset,0px))/2)] mt-6 -mb-6 px-4">
               <KanbanBoard
-                :tasks="tasks"
+                :tasks="boardTasks"
                 :states="states"
                 :members="members"
                 :labels="labels"
@@ -778,7 +858,7 @@ onMounted(async () => {
                 :is-member="canWrite"
                 :group-by="groupBy"
                 :current-user-id="currentUserId"
-                @refresh="() => loadTasks(tasksPage)"
+                @refresh="loadBoardTasks"
               />
             </TabsContent>
 
