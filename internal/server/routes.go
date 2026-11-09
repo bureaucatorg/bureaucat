@@ -87,9 +87,9 @@ func (s *Server) registerRoutes() {
 		api.POST("/token_refresh", s.authHandler.TokenRefresh)
 		api.POST("/logout", s.authHandler.Logout)
 
-		// Public upload serving (no auth required)
 		if s.uploadHandler != nil {
-			api.GET("/uploads/:id", s.uploadHandler.Serve)
+			api.GET("/uploads/:id", s.uploadHandler.Serve,
+				auth.AccessTokenCookieFallback(), auth.Middleware(s.authManager, s.store), auth.EnforcePATScope())
 		}
 
 		// Protected routes

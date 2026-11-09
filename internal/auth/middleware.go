@@ -147,3 +147,17 @@ func authenticateWithPAT(c *echo.Context, queries store.Querier, token string, n
 
 	return next(c)
 }
+
+// AccessTokenCookieFallback lets browser-initiated GETs (e.g. <img src>) authenticate via the access_token cookie.
+func AccessTokenCookieFallback() echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c *echo.Context) error {
+			if c.Request().Header.Get("Authorization") == "" {
+				if cookie, err := c.Cookie("access_token"); err == nil && cookie.Value != "" {
+					c.Request().Header.Set("Authorization", "Bearer "+cookie.Value)
+				}
+			}
+			return next(c)
+		}
+	}
+}
