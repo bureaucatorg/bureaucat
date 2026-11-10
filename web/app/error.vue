@@ -16,6 +16,7 @@ const message = computed(() =>
 );
 
 const route = useRoute();
+const { appName, logoUrl } = useSettings();
 
 useHead({ title: computed(() => (isNotFound.value ? "404 · Not found" : "Error")) });
 
@@ -34,8 +35,8 @@ function navigate(event: MouseEvent, to: string) {
   <div class="min-h-screen bg-background text-foreground">
     <header class="flex items-center gap-2 px-6 py-4">
       <NuxtLink to="/" class="flex items-center gap-2" @click="navigate($event, '/')">
-        <img src="/logo.svg" alt="" class="size-7" >
-        <span class="text-lg font-bold">Bureaucat</span>
+        <img :src="logoUrl || '/logo.svg'" alt="" class="h-7 w-auto max-w-32 object-contain" >
+        <span class="text-lg font-bold">{{ appName }}</span>
       </NuxtLink>
     </header>
 

@@ -17,6 +17,7 @@ import (
 
 	"bereaucat/internal/mailer"
 	"bereaucat/internal/auth"
+	"bereaucat/internal/branding"
 	"bereaucat/internal/store"
 )
 
@@ -87,8 +88,8 @@ var emailHTML = template.Must(template.New("email").Funcs(template.FuncMap{
 
 <tr><td class="px" style="padding:16px 28px">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
-{{if .EmbedLogo}}<td width="26" valign="middle" style="padding-right:8px;font-size:0;line-height:0"><img src="cid:{{logoCID}}" width="26" height="26" alt="" style="border:0;outline:none;text-decoration:none"></td>{{end}}
-<td valign="middle" style="font-family:{{sans}};font-size:17px;line-height:26px;color:#09090b"><b>Bureau<span style="color:#f59e0b">Cat</span></b></td>
+{{if .EmbedLogo}}<td width="{{.LogoWidth}}" valign="middle" style="padding-right:8px;font-size:0;line-height:0"><img src="cid:{{logoCID}}" width="{{.LogoWidth}}" height="26" alt="" style="border:0;outline:none;text-decoration:none"></td>{{end}}
+<td valign="middle" style="font-family:{{sans}};font-size:17px;line-height:26px;color:#09090b"><b>{{if .Custom}}{{.AppName}}{{else}}Bureau<span style="color:#f59e0b">Cat</span>{{end}}</b></td>
 <td align="right" valign="middle" style="font-family:{{sans}};font-size:12px;line-height:26px;color:#71717a">{{.ProjectName}}</td>
 </tr></table>
 </td></tr>
@@ -143,6 +144,7 @@ var emailHTML = template.Must(template.New("email").Funcs(template.FuncMap{
 <tr><td height="1" bgcolor="#e4e4e7" style="font-size:0;line-height:0">&nbsp;</td></tr>
 <tr><td class="px" style="padding:16px 28px 20px;font-family:{{sans}};font-size:12px;line-height:18px;color:#71717a">
 {{.Note}}{{if .SettingsLink}} <a href="{{.SettingsLink}}" style="color:#71717a">Manage email notifications</a>{{end}}
+{{if .Custom}}<br><span style="color:#a1a1aa">Powered by <a href="https://bureaucat.org" style="color:#a1a1aa">Bureaucat</a></span>{{end}}
 </td></tr>
 
 </table>
@@ -182,6 +184,9 @@ type emailData struct {
 	Note         string
 	SettingsLink string
 	EmbedLogo    bool
+	LogoWidth    int
+	AppName      string
+	Custom       bool
 }
 
 func activityLabel(activityType string) string {
@@ -320,7 +325,7 @@ func describeFieldChange(field string, value any) (verb, target, quote string) {
 	return "updated " + strings.ReplaceAll(field, "_", " "), "", ""
 }
 
-func notificationEmail(cfg mailer.Settings, row store.ClaimEmailNotificationsRow, events []emailEvent) (mailer.Message, error) {
+func notificationEmail(cfg mailer.Settings, brand branding.Brand, row store.ClaimEmailNotificationsRow, events []emailEvent) (mailer.Message, error) {
 	base := strings.TrimRight(cfg.AppURL, "/")
 	taskKey := fmt.Sprintf("%s-%d", row.ProjectKey, row.TaskNumber)
 	link := fmt.Sprintf("%s/projects/%s/tasks/%d", base, row.ProjectKey, row.TaskNumber)
@@ -345,11 +350,11 @@ func notificationEmail(cfg mailer.Settings, row store.ClaimEmailNotificationsRow
 		Note:         "You are receiving this because you are involved in " + taskKey + ".",
 		SettingsLink: base + "/settings",
 	}
-	return buildEmail(cfg, row.RecipientEmail, fmt.Sprintf("[%s] %s", taskKey, row.TaskTitle), data)
+	return buildEmail(cfg, brand, row.RecipientEmail, fmt.Sprintf("[%s] %s", taskKey, row.TaskTitle), data)
 }
 
 // TestEmail builds the SMTP connection test email in the same layout as notifications.
-func TestEmail(cfg mailer.Settings, to, senderFirstName, senderLastName string) (mailer.Message, error) {
+func TestEmail(cfg mailer.Settings, brand branding.Brand, to, senderFirstName, senderLastName string) (mailer.Message, error) {
 	data := emailData{
 		ProjectName: "Admin",
 		TaskKey:     "SMTP TEST",
@@ -357,15 +362,15 @@ func TestEmail(cfg mailer.Settings, to, senderFirstName, senderLastName string) 
 		Heading:     "DETAILS",
 		Events:      []emailEvent{newEvent(senderFirstName, senderLastName, "sent this test email from the admin email settings.")},
 		Link:        strings.TrimRight(cfg.AppURL, "/"),
-		LinkLabel:   "Open Bureaucat",
+		LinkLabel:   "Open " + brand.Name,
 		Note:        "Notification emails will arrive in this format.",
 	}
-	return buildEmail(cfg, to, "Bureaucat test email", data)
+	return buildEmail(cfg, brand, to, brand.Name+" test email", data)
 }
 
 // SampleEmail builds the exact email sent for activityType ("batched" for several updates,
 // "workflow" for a state change with workflow assignee changes), using placeholder task data.
-func SampleEmail(cfg mailer.Settings, to, activityType, actorFirstName, actorLastName string) (mailer.Message, error) {
+func SampleEmail(cfg mailer.Settings, brand branding.Brand, to, activityType, actorFirstName, actorLastName string) (mailer.Message, error) {
 	types := []string{activityType}
 	switch activityType {
 	case "batched":
@@ -413,7 +418,7 @@ func SampleEmail(cfg mailer.Settings, to, activityType, actorFirstName, actorLas
 	if strings.HasPrefix(row.ActivityType, "comment_") {
 		row.CommentID = pgtype.UUID{Bytes: uuid.New(), Valid: true}
 	}
-	return notificationEmail(cfg, row, events)
+	return notificationEmail(cfg, brand, row, events)
 }
 
 func sampleActivity(activityType, firstName, lastName string) store.ListEmailActivityRow {
@@ -444,15 +449,20 @@ func sampleActivity(activityType, firstName, lastName string) store.ListEmailAct
 	return a
 }
 
-func buildEmail(cfg mailer.Settings, to, subject string, data emailData) (mailer.Message, error) {
-	data.EmbedLogo = cfg.EmbedLogo
+func buildEmail(cfg mailer.Settings, brand branding.Brand, to, subject string, data emailData) (mailer.Message, error) {
+	logo, logoWidth := logoPNG, 26
+	if brand.Logo != nil {
+		logo, logoWidth = brand.Logo.Data, min(160, 26*brand.Logo.Width/brand.Logo.Height)
+	}
+	data.EmbedLogo, data.LogoWidth = cfg.EmbedLogo, max(logoWidth, 1)
+	data.AppName, data.Custom = brand.Name, brand.Custom
 	var body bytes.Buffer
 	if err := emailHTML.Execute(&body, data); err != nil {
 		return mailer.Message{}, err
 	}
 	msg := mailer.Message{To: to, Subject: subject, Text: plainText(data), HTML: body.String()}
 	if cfg.EmbedLogo {
-		msg.Inline = []mailer.InlineFile{{ContentID: logoCID, ContentType: "image/png", Filename: "logo.png", Data: logoPNG}}
+		msg.Inline = []mailer.InlineFile{{ContentID: logoCID, ContentType: "image/png", Filename: "logo.png", Data: logo}}
 	}
 	return msg, nil
 }
@@ -486,6 +496,9 @@ func plainText(data emailData) string {
 	fmt.Fprintf(&b, "\n%s: %s\n\n--\n%s\n", data.LinkLabel, data.Link, data.Note)
 	if data.SettingsLink != "" {
 		fmt.Fprintf(&b, "Manage email notifications: %s\n", data.SettingsLink)
+	}
+	if data.Custom {
+		b.WriteString("Powered by Bureaucat\n")
 	}
 	return b.String()
 }

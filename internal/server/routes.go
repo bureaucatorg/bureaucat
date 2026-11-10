@@ -55,6 +55,7 @@ func (s *Server) registerRoutes() {
 	// Public settings routes
 	if s.settingsHandler != nil {
 		api.GET("/settings/branding", s.settingsHandler.GetBranding)
+		api.GET("/settings/branding/:asset", s.settingsHandler.GetBrandingAsset)
 		api.GET("/settings/sso", s.settingsHandler.GetSSOProviders)
 		api.GET("/settings/signup", s.settingsHandler.GetSignupSettings)
 	}
@@ -374,6 +375,8 @@ func (s *Server) registerRoutes() {
 		// Admin settings
 		if s.settingsHandler != nil {
 			admin.PUT("/settings/branding", s.settingsHandler.UpdateBranding)
+			admin.PUT("/settings/branding/:asset", s.settingsHandler.UploadBrandingAsset)
+			admin.DELETE("/settings/branding/:asset", s.settingsHandler.RemoveBrandingAsset)
 			admin.PUT("/settings/signup", s.settingsHandler.UpdateSignupSettings)
 			admin.GET("/settings/sso", s.settingsHandler.GetSSOSettings)
 			admin.PUT("/settings/sso", s.settingsHandler.UpdateSSOSettings)

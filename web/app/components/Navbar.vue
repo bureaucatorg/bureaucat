@@ -2,7 +2,7 @@
 import { User, LogOut, LayoutDashboard, FolderKanban, Shield, Settings, Search } from "lucide-vue-next";
 
 const { user, isAuthenticated, logout } = useAuth();
-const { appName, signupSettings, fetchSignupSettings } = useSettings();
+const { appName, logoUrl, signupSettings, fetchSignupSettings } = useSettings();
 const { showAllWorkspaces } = useDashboardScope();
 const route = useRoute();
 
@@ -79,7 +79,8 @@ async function handleLogout() {
   <header class="sticky top-0 z-40 border-b border-border/50 bg-background/80 backdrop-blur-xl">
     <div class="mx-auto flex h-12 max-w-6xl items-center justify-between px-6">
       <NuxtLink to="/" class="flex items-center gap-2.5">
-        <BurecatLogo :size="28" />
+        <img v-if="logoUrl" :src="logoUrl" alt="" class="h-7 w-auto max-w-32 object-contain" >
+        <BurecatLogo v-else :size="28" />
         <span v-if="appName === 'Bureaucat'" class="text-lg font-semibold tracking-tight">Bureau<span class="text-amber-500">Cat</span></span>
         <span v-else class="text-lg font-semibold tracking-tight">{{ appName }}</span>
       </NuxtLink>

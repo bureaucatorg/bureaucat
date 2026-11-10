@@ -33,6 +33,7 @@ var nonCatalogRoutes = map[string]bool{
 	"GET /api/v1/og-image":             true,
 	"GET /api/v1/releases":             true,
 	"GET /api/v1/settings/branding":    true,
+	"GET /api/v1/settings/branding/{}": true,
 	"GET /api/v1/settings/feedback":    true,
 	"GET /api/v1/settings/signup":      true,
 	"GET /api/v1/settings/sso":         true,

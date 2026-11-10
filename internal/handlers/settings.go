@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/mail"
 	"net/url"
@@ -12,6 +13,7 @@ import (
 	"github.com/labstack/echo/v5"
 
 	"bereaucat/internal/auth"
+	"bereaucat/internal/branding"
 	"bereaucat/internal/mailer"
 	"bereaucat/internal/notifications"
 	"bereaucat/internal/notifier"
@@ -28,16 +30,12 @@ func NewSettingsHandler(store store.Querier) *SettingsHandler {
 	return &SettingsHandler{store: store}
 }
 
-// BrandingSettings represents the branding configuration.
-type BrandingSettings struct {
-	Enabled bool   `json:"enabled"`
-	AppName string `json:"app_name"`
-}
-
 // BrandingResponse is the API response for branding settings.
 type BrandingResponse struct {
-	Enabled bool   `json:"enabled"`
-	AppName string `json:"app_name"`
+	Enabled    bool    `json:"enabled"`
+	AppName    string  `json:"app_name"`
+	LogoURL    *string `json:"logo_url"`
+	FaviconURL *string `json:"favicon_url"`
 }
 
 // UpdateBrandingRequest is the request to update branding settings.
@@ -46,8 +44,25 @@ type UpdateBrandingRequest struct {
 	AppName string `json:"app_name"`
 }
 
+func optionalURL(a branding.Asset, img *branding.Image) *string {
+	if u := branding.URL(a, img); u != "" {
+		return &u
+	}
+	return nil
+}
+
+func (h *SettingsHandler) brandingResponse(ctx context.Context) BrandingResponse {
+	s := branding.LoadSettings(ctx, h.store)
+	return BrandingResponse{
+		Enabled:    s.Enabled,
+		AppName:    s.AppName,
+		LogoURL:    optionalURL(branding.AssetLogo, branding.LoadImage(ctx, h.store, branding.AssetLogo)),
+		FaviconURL: optionalURL(branding.AssetFavicon, branding.LoadImage(ctx, h.store, branding.AssetFavicon)),
+	}
+}
+
 // GetBranding returns the current branding settings.
-// This endpoint is public so the frontend can display the correct app name.
+// This endpoint is public so the frontend can display the correct app name and logo.
 //
 //	@Summary		Get branding
 //	@Description	Returns the current branding settings. Public endpoint.
@@ -56,29 +71,37 @@ type UpdateBrandingRequest struct {
 //	@Success		200	{object}	BrandingResponse
 //	@Router			/settings/branding [get]
 func (h *SettingsHandler) GetBranding(c *echo.Context) error {
-	ctx := c.Request().Context()
+	return c.JSON(http.StatusOK, h.brandingResponse(c.Request().Context()))
+}
 
-	setting, err := h.store.GetSetting(ctx, "branding")
-	if err != nil {
-		// Return defaults if not found
-		return c.JSON(http.StatusOK, BrandingResponse{
-			Enabled: false,
-			AppName: "Bureaucat",
-		})
+// GetBrandingAsset serves the uploaded logo or favicon. Public so sign-in and emails can use it.
+//
+//	@Summary		Get branding logo or favicon
+//	@Description	Serves the uploaded logo or favicon image. Public endpoint.
+//	@Tags			Settings
+//	@Produce		png
+//	@Param			asset	path	string	true	"logo or favicon"
+//	@Success		200
+//	@Failure		404	{object}	ErrorResponse
+//	@Router			/settings/branding/{asset} [get]
+func (h *SettingsHandler) GetBrandingAsset(c *echo.Context) error {
+	asset := branding.Asset(c.Param("asset"))
+	if !asset.Valid() {
+		return echo.NewHTTPError(http.StatusNotFound, "not found")
 	}
-
-	var branding BrandingSettings
-	if err := json.Unmarshal(setting.Value, &branding); err != nil {
-		return c.JSON(http.StatusOK, BrandingResponse{
-			Enabled: false,
-			AppName: "Bureaucat",
-		})
+	img := branding.LoadImage(c.Request().Context(), h.store, asset)
+	if img == nil {
+		return echo.NewHTTPError(http.StatusNotFound, "not found")
 	}
-
-	return c.JSON(http.StatusOK, BrandingResponse{
-		Enabled: branding.Enabled,
-		AppName: branding.AppName,
-	})
+	hdr := c.Response().Header()
+	hdr.Set("Cache-Control", "public, max-age=86400")
+	hdr.Set("ETag", `"`+img.Hash+`"`)
+	hdr.Set("X-Content-Type-Options", "nosniff")
+	hdr.Set("Content-Security-Policy", "default-src 'none'; sandbox")
+	if c.Request().Header.Get("If-None-Match") == `"`+img.Hash+`"` {
+		return c.NoContent(http.StatusNotModified)
+	}
+	return c.Blob(http.StatusOK, img.ContentType, img.Data)
 }
 
 // UpdateBranding updates the branding settings (admin only).
@@ -100,19 +123,14 @@ func (h *SettingsHandler) UpdateBranding(c *echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid request body")
 	}
 
-	// Validate app name
+	req.AppName = strings.TrimSpace(req.AppName)
 	if req.AppName == "" {
-		req.AppName = "Bureaucat"
+		req.AppName = branding.DefaultName
 	}
 
 	ctx := c.Request().Context()
 
-	branding := BrandingSettings{
-		Enabled: req.Enabled,
-		AppName: req.AppName,
-	}
-
-	value, err := json.Marshal(branding)
+	value, err := json.Marshal(branding.Settings{Enabled: req.Enabled, AppName: req.AppName})
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to marshal settings")
 	}
@@ -125,10 +143,75 @@ func (h *SettingsHandler) UpdateBranding(c *echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to update settings")
 	}
 
-	return c.JSON(http.StatusOK, BrandingResponse{
-		Enabled: branding.Enabled,
-		AppName: branding.AppName,
-	})
+	return c.JSON(http.StatusOK, h.brandingResponse(ctx))
+}
+
+// UploadBrandingAsset replaces the logo (PNG) or favicon (PNG/ICO) (admin only).
+//
+//	@Summary		Upload branding logo or favicon
+//	@Description	Multipart upload in field "file". Logo: PNG up to 256 KB. Favicon: PNG or ICO up to 64 KB. Requires admin role.
+//	@Tags			Admin - Settings
+//	@Accept			multipart/form-data
+//	@Produce		json
+//	@Param			asset	path		string	true	"logo or favicon"
+//	@Param			file	formData	file	true	"Image file"
+//	@Success		200		{object}	BrandingResponse
+//	@Failure		400		{object}	ErrorResponse
+//	@Security		BearerAuth
+//	@Router			/admin/settings/branding/{asset} [put]
+func (h *SettingsHandler) UploadBrandingAsset(c *echo.Context) error {
+	asset := branding.Asset(c.Param("asset"))
+	if !asset.Valid() {
+		return echo.NewHTTPError(http.StatusNotFound, "not found")
+	}
+	fh, err := c.FormFile("file")
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "file is required")
+	}
+	f, err := fh.Open()
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "failed to read file")
+	}
+	defer f.Close()
+	data, err := io.ReadAll(io.LimitReader(f, int64(asset.MaxBytes())+1))
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "failed to read file")
+	}
+
+	img, err := branding.NewImage(asset, data)
+	if err != nil {
+		if asset == branding.AssetLogo {
+			return echo.NewHTTPError(http.StatusBadRequest, "logo must be a PNG up to 256 KB")
+		}
+		return echo.NewHTTPError(http.StatusBadRequest, "favicon must be a PNG or ICO up to 64 KB")
+	}
+
+	ctx := c.Request().Context()
+	if err := branding.SaveImage(ctx, h.store, asset, img); err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to save image")
+	}
+	return c.JSON(http.StatusOK, h.brandingResponse(ctx))
+}
+
+// RemoveBrandingAsset clears the logo or favicon (admin only).
+//
+//	@Summary		Remove branding logo or favicon
+//	@Tags			Admin - Settings
+//	@Produce		json
+//	@Param			asset	path		string	true	"logo or favicon"
+//	@Success		200		{object}	BrandingResponse
+//	@Security		BearerAuth
+//	@Router			/admin/settings/branding/{asset} [delete]
+func (h *SettingsHandler) RemoveBrandingAsset(c *echo.Context) error {
+	asset := branding.Asset(c.Param("asset"))
+	if !asset.Valid() {
+		return echo.NewHTTPError(http.StatusNotFound, "not found")
+	}
+	ctx := c.Request().Context()
+	if err := branding.RemoveImage(ctx, h.store, asset); err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to remove image")
+	}
+	return c.JSON(http.StatusOK, h.brandingResponse(ctx))
 }
 
 // --- Signup Settings ---
@@ -689,10 +772,11 @@ func (h *SettingsHandler) TestSMTPSettings(c *echo.Context) error {
 	}
 
 	var msg mailer.Message
+	brand := branding.Load(ctx, h.store)
 	if req.Template == "" || req.Template == "connection" {
-		msg, err = notifications.TestEmail(cfg, addr.Address, user.FirstName, user.LastName)
+		msg, err = notifications.TestEmail(cfg, brand, addr.Address, user.FirstName, user.LastName)
 	} else {
-		msg, err = notifications.SampleEmail(cfg, addr.Address, req.Template, user.FirstName, user.LastName)
+		msg, err = notifications.SampleEmail(cfg, brand, addr.Address, req.Template, user.FirstName, user.LastName)
 	}
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid email template")

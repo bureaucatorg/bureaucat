@@ -28,8 +28,8 @@ export default defineNuxtConfig({
       ],
       htmlAttrs: { lang: "en" },
       link: [
-        { rel: "icon", type: "image/svg+xml", href: "/logo.svg" },
-        { rel: "icon", type: "image/x-icon", href: "/favicon.ico" },
+        { key: "favicon", rel: "icon", type: "image/svg+xml", href: "/logo.svg" },
+        { key: "favicon-ico", rel: "icon", type: "image/x-icon", href: "/favicon.ico" },
       ],
     },
   },

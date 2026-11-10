@@ -1,11 +1,11 @@
 package handlers
 
 import (
-	"encoding/json"
 	"net/http"
 
 	"github.com/labstack/echo/v5"
 
+	"bereaucat/internal/branding"
 	"bereaucat/internal/ogimage"
 	"bereaucat/internal/store"
 )
@@ -30,22 +30,9 @@ func NewOGHandler(store store.Querier) *OGHandler {
 //	@Failure		500	{object}	ErrorResponse
 //	@Router			/og-image [get]
 func (h *OGHandler) OGImage(c *echo.Context) error {
-	ctx := c.Request().Context()
+	brand := branding.Load(c.Request().Context(), h.store)
 
-	appName := "Bureaucat"
-	branded := false
-	setting, err := h.store.GetSetting(ctx, "branding")
-	if err == nil {
-		var branding BrandingSettings
-		if err := json.Unmarshal(setting.Value, &branding); err == nil {
-			if branding.Enabled && branding.AppName != "" {
-				appName = branding.AppName
-				branded = true
-			}
-		}
-	}
-
-	data, err := ogimage.Render(appName, branded)
+	data, err := ogimage.Render(brand.Name, brand.Custom)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to render og image"})
 	}

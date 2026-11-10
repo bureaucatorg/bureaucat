@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Users, Key, Shield, ArrowRight, Loader2, Upload, CheckCircle2, Copy, Check, MessageSquare, MessageCircle, Mail, UserPlus, BarChart3, Trash2, Network, Bot } from "lucide-vue-next";
 import { toast } from "vue-sonner";
-import type { SSOSettings, MattermostSettings, SMTPSettings, AssistantSettings } from "~/composables/useSettings";
+import type { SSOSettings, MattermostSettings, SMTPSettings, AssistantSettings, BrandingAsset } from "~/composables/useSettings";
 import { ACTIVITY_TYPE_LABELS } from "~/types";
 
 definePageMeta({
@@ -10,7 +10,7 @@ definePageMeta({
 
 useSeoMeta({ title: "Admin" });
 
-const { branding, updateBranding, signupSettings, updateSignupSettings, fetchSignupSettings, fetchSSOSettings, updateSSOSettings, fetchMattermostSettings, updateMattermostSettings, testMattermostConnection, fetchSMTPSettings, updateSMTPSettings, testSMTPSettings, fetchAssistantSettings, updateAssistantSettings, testAssistantSettings } = useSettings();
+const { branding, updateBranding, uploadBrandingAsset, removeBrandingAsset, signupSettings, updateSignupSettings, fetchSignupSettings, fetchSSOSettings, updateSSOSettings, fetchMattermostSettings, updateMattermostSettings, testMattermostConnection, fetchSMTPSettings, updateSMTPSettings, testSMTPSettings, fetchAssistantSettings, updateAssistantSettings, testAssistantSettings } = useSettings();
 const { getAuthHeader, user } = useAuth();
 
 const brandingForm = ref({
@@ -20,10 +20,48 @@ const brandingForm = ref({
 
 const savingBranding = ref(false);
 
+const brandingAssets = [
+  { asset: "logo", label: "Logo", accept: "image/png", hint: "PNG up to 256 KB. Used in the navbar, error page and emails." },
+  { asset: "favicon", label: "Favicon", accept: "image/png,image/x-icon,.ico", hint: "PNG or ICO up to 64 KB. Falls back to the logo." },
+] as const;
+const brandingFileInput = ref<HTMLInputElement | null>(null);
+const pendingAsset = ref<BrandingAsset>("logo");
+const assetBusy = ref<BrandingAsset | null>(null);
+
+function assetUrl(asset: BrandingAsset) {
+  return asset === "logo" ? branding.value.logo_url : branding.value.favicon_url;
+}
+
+function pickBrandingFile(asset: BrandingAsset, accept: string) {
+  const input = brandingFileInput.value;
+  if (!input) return;
+  pendingAsset.value = asset;
+  input.accept = accept;
+  input.value = "";
+  input.click();
+}
+
+async function runAssetAction(asset: BrandingAsset, action: () => Promise<{ success: boolean; error?: string }>) {
+  assetBusy.value = asset;
+  const result = await action();
+  assetBusy.value = null;
+  if (result.success) {
+    toast.success(asset === "logo" ? "Logo updated" : "Favicon updated");
+  } else {
+    toast.error(result.error || "Failed to update image");
+  }
+}
+
+function handleBrandingFile(event: Event) {
+  const file = (event.target as HTMLInputElement).files?.[0];
+  const asset = pendingAsset.value;
+  if (file) runAssetAction(asset, () => uploadBrandingAsset(asset, file));
+}
+
 // Sync form with branding when it changes
-watch(branding, (newBranding) => {
-  brandingForm.value.enabled = newBranding.enabled;
-  brandingForm.value.app_name = newBranding.app_name;
+watch(() => [branding.value.enabled, branding.value.app_name] as const, ([enabled, appName]) => {
+  brandingForm.value.enabled = enabled;
+  brandingForm.value.app_name = appName;
 }, { immediate: true });
 
 async function handleSaveBranding() {
@@ -576,7 +614,7 @@ const adminModels = [
                   <div>
                     <p class="font-medium">Hide from the bureaucrats 😾</p>
                     <p class="text-sm text-muted-foreground">
-                      Replace "Bureaucat" with a custom name
+                      Replace "Bureaucat" with a custom name and logo
                     </p>
                   </div>
                   <Switch
@@ -594,6 +632,42 @@ const adminModels = [
                     placeholder="Enter a custom name"
                     :disabled="savingBranding"
                   />
+                </div>
+
+                <div v-if="brandingForm.enabled" class="space-y-3">
+                  <div class="grid gap-4 sm:grid-cols-2">
+                    <div v-for="item in brandingAssets" :key="item.asset" class="space-y-2">
+                      <Label>{{ item.label }}</Label>
+                      <div class="flex items-center gap-3 rounded-md border p-3">
+                        <div class="flex h-10 w-16 shrink-0 items-center justify-center rounded bg-muted">
+                          <img v-if="assetUrl(item.asset)" :src="assetUrl(item.asset)!" alt="" class="max-h-8 max-w-14 object-contain" >
+                          <span v-else class="text-xs text-muted-foreground">Default</span>
+                        </div>
+                        <div class="flex flex-wrap gap-2">
+                          <Button size="sm" variant="outline" :disabled="assetBusy !== null" @click="pickBrandingFile(item.asset, item.accept)">
+                            <Loader2 v-if="assetBusy === item.asset" class="mr-2 size-4 animate-spin" />
+                            <Upload v-else class="mr-2 size-4" />
+                            Upload
+                          </Button>
+                          <Button
+                            v-if="assetUrl(item.asset)"
+                            size="sm"
+                            variant="ghost"
+                            :disabled="assetBusy !== null"
+                            @click="runAssetAction(item.asset, () => removeBrandingAsset(item.asset))"
+                          >
+                            <Trash2 class="mr-2 size-4" />
+                            Remove
+                          </Button>
+                        </div>
+                      </div>
+                      <p class="text-xs text-muted-foreground">{{ item.hint }}</p>
+                    </div>
+                  </div>
+                  <p class="text-xs text-muted-foreground">
+                    Images save immediately and are shown while custom branding is enabled.
+                  </p>
+                  <input ref="brandingFileInput" type="file" class="hidden" @change="handleBrandingFile" >
                 </div>
 
                 <!-- Save button -->

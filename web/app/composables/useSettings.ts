@@ -9,7 +9,11 @@ export interface AssistantSettings {
 export interface BrandingSettings {
   enabled: boolean;
   app_name: string;
+  logo_url: string | null;
+  favicon_url: string | null;
 }
+
+export type BrandingAsset = "logo" | "favicon";
 
 export interface SSOProviderConfig {
   enabled: boolean;
@@ -69,6 +73,8 @@ export interface FeedbackPublicSettings {
 const branding = ref<BrandingSettings>({
   enabled: false,
   app_name: "Bureaucat",
+  logo_url: null,
+  favicon_url: null,
 });
 
 const brandingLoaded = ref(false);
@@ -96,6 +102,11 @@ export function useSettings() {
     return "Bureaucat";
   });
 
+  const logoUrl = computed(() => (branding.value.enabled ? branding.value.logo_url : null));
+  const faviconUrl = computed(() =>
+    branding.value.enabled ? branding.value.favicon_url ?? branding.value.logo_url : null
+  );
+
   async function fetchBranding(): Promise<void> {
     if (brandingLoaded.value) return;
 
@@ -113,7 +124,7 @@ export function useSettings() {
   }
 
   async function updateBranding(
-    settings: BrandingSettings
+    settings: Pick<BrandingSettings, "enabled" | "app_name">
   ): Promise<{ success: boolean; error?: string }> {
     try {
       const response = await fetch("/api/v1/admin/settings/branding", {
@@ -493,12 +504,50 @@ export function useSettings() {
     }
   }
 
+  async function uploadBrandingAsset(
+    asset: BrandingAsset,
+    file: File
+  ): Promise<{ success: boolean; error?: string }> {
+    const body = new FormData();
+    body.append("file", file);
+    return sendBrandingAsset(asset, { method: "PUT", body });
+  }
+
+  async function removeBrandingAsset(asset: BrandingAsset): Promise<{ success: boolean; error?: string }> {
+    return sendBrandingAsset(asset, { method: "DELETE" });
+  }
+
+  async function sendBrandingAsset(
+    asset: BrandingAsset,
+    init: RequestInit
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      const response = await fetch(`/api/v1/admin/settings/branding/${asset}`, {
+        ...init,
+        headers: { ...getAuthHeader() },
+        credentials: "include",
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        return { success: false, error: data.message || `Failed to update ${asset}` };
+      }
+      branding.value = data;
+      return { success: true };
+    } catch {
+      return { success: false, error: "Network error" };
+    }
+  }
+
   return {
     branding,
     appName,
+    logoUrl,
+    faviconUrl,
     brandingLoaded,
     fetchBranding,
     updateBranding,
+    uploadBrandingAsset,
+    removeBrandingAsset,
     signupSettings,
     signupSettingsLoaded,
     fetchSignupSettings,

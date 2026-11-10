@@ -7,6 +7,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"bereaucat/internal/branding"
 	"bereaucat/internal/mailer"
 	"bereaucat/internal/store"
 )
@@ -46,8 +47,9 @@ func (s *Service) sendEmailDigest(ctx context.Context) {
 			log.Printf("notifications: failed to claim email notifications: %v", err)
 			return
 		}
+		brand := branding.Load(ctx, s.store)
 		for _, row := range rows {
-			msg, err := notificationEmail(cfg, row, s.emailEvents(ctx, row))
+			msg, err := notificationEmail(cfg, brand, row, s.emailEvents(ctx, row))
 			if err == nil {
 				err = mailer.Send(ctx, cfg, msg)
 			}
