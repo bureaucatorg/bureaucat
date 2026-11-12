@@ -65,6 +65,7 @@ var emailHTML = template.Must(template.New("email").Funcs(template.FuncMap{
 	"sans":    func() template.CSS { return fontSans },
 	"mono":    func() template.CSS { return fontMono },
 	"logoCID": func() string { return logoCID },
+	"inc":     func(i int) int { return i + 1 },
 }).Parse(`<!doctype html>
 <html lang="en">
 <head>
@@ -75,7 +76,7 @@ var emailHTML = template.Must(template.New("email").Funcs(template.FuncMap{
 <style>
 @media only screen and (max-width:600px) {
   .outer { padding:0 !important; }
-  .card { border-radius:0 !important; }
+  .card { border-radius:0 !important; border-left:0 !important; border-right:0 !important; }
   .px { padding-left:16px !important; padding-right:16px !important; }
   .title { font-size:20px !important; line-height:28px !important; }
 }
@@ -83,71 +84,97 @@ var emailHTML = template.Must(template.New("email").Funcs(template.FuncMap{
 </head>
 <body>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#f4f4f5">
-<tr><td class="outer" align="center" style="padding:32px 12px">
-<table class="card" role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#ffffff" style="max-width:580px;border-radius:12px">
+<tr><td class="outer" align="center" style="padding:32px 12px 20px">
+<table class="card" role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#ffffff" style="max-width:580px;border:1px solid #e4e4e7;border-radius:12px">
+<tr><td height="3" bgcolor="#f59e0b" style="font-size:0;line-height:0;border-radius:12px 12px 0 0">&nbsp;</td></tr>
 
-<tr><td class="px" style="padding:16px 28px">
+<tr><td class="px" style="padding:14px 28px">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
-{{if .EmbedLogo}}<td width="{{.LogoWidth}}" valign="middle" style="padding-right:8px;font-size:0;line-height:0"><img src="cid:{{logoCID}}" width="{{.LogoWidth}}" height="26" alt="" style="border:0;outline:none;text-decoration:none"></td>{{end}}
-<td valign="middle" style="font-family:{{sans}};font-size:17px;line-height:26px;color:#09090b"><b>{{if .Custom}}{{.AppName}}{{else}}Bureau<span style="color:#f59e0b">Cat</span>{{end}}</b></td>
-<td align="right" valign="middle" style="font-family:{{sans}};font-size:12px;line-height:26px;color:#71717a">{{.ProjectName}}</td>
+{{if .EmbedLogo}}<td width="{{.LogoWidth}}" valign="middle" style="padding-right:8px;font-size:0;line-height:0"><img src="cid:{{logoCID}}" width="{{.LogoWidth}}" height="24" alt="" style="border:0;outline:none;text-decoration:none"></td>{{end}}
+<td valign="middle" style="font-family:{{sans}};font-size:16px;line-height:24px;color:#09090b;letter-spacing:-0.01em"><b>{{if .Custom}}{{.AppName}}{{else}}Bureau<span style="color:#f59e0b">Cat</span>{{end}}</b></td>
+<td align="right" valign="middle" style="font-family:{{sans}};font-size:12px;line-height:24px;color:#a1a1aa">{{.ProjectName}}</td>
 </tr></table>
 </td></tr>
-<tr><td height="1" bgcolor="#e4e4e7" style="font-size:0;line-height:0">&nbsp;</td></tr>
+<tr><td height="1" bgcolor="#f4f4f5" style="font-size:0;line-height:0">&nbsp;</td></tr>
 
-<tr><td class="px" style="padding:24px 28px 0;font-family:{{mono}};font-size:12px;line-height:18px;color:#d97706"><b>{{.TaskKey}}</b></td></tr>
-<tr><td class="px title" style="padding:4px 28px 0;font-family:{{sans}};font-size:22px;line-height:30px;color:#09090b"><b>{{.TaskTitle}}</b></td></tr>
-{{with .State}}<tr><td class="px" style="padding:10px 28px 0">
+<tr><td class="px" style="padding:28px 28px 0">
 <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
-<td bgcolor="#f4f4f5" valign="middle" style="padding:2px 10px 4px;border-radius:9999px;font-family:{{sans}};font-size:12px;line-height:18px;color:#3f3f46"><span style="color:{{.Color}}">&#9679;</span>&nbsp;{{.Name}}</td>
+<td valign="middle" style="font-family:{{mono}};font-size:12px;line-height:20px;color:#b45309;letter-spacing:0.02em"><b>{{.TaskKey}}</b></td>
+{{with .State}}<td valign="middle" style="padding-left:10px">
+<table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
+<td valign="middle" style="padding:1px 9px 2px;border:1px solid #e4e4e7;border-radius:9999px;font-family:{{sans}};font-size:12px;line-height:18px;color:#3f3f46;white-space:nowrap"><span style="color:{{.Color}}">&#9679;</span>&nbsp;{{.Name}}</td>
 </tr></table>
-</td></tr>{{end}}
+</td>{{end}}
+</tr></table>
+</td></tr>
+<tr><td class="px title" style="padding:8px 28px 0;font-family:{{sans}};font-size:22px;line-height:30px;color:#09090b;letter-spacing:-0.015em"><b>{{.TaskTitle}}</b></td></tr>
 
-<tr><td class="px" style="padding:22px 28px 0"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td height="1" bgcolor="#e4e4e7" style="font-size:0;line-height:0">&nbsp;</td></tr></table></td></tr>
-<tr><td class="px" style="padding:16px 28px 0;font-family:{{mono}};font-size:11px;line-height:16px;letter-spacing:0.12em;color:#a1a1aa">{{.Heading}}</td></tr>
+<tr><td class="px" style="padding:28px 28px 18px">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+<td valign="bottom" style="font-family:{{sans}};font-size:13px;line-height:18px;color:#09090b"><b>{{.Heading}}</b></td>
+{{if .Count}}<td align="right" valign="bottom" style="font-family:{{sans}};font-size:12px;line-height:18px;color:#a1a1aa">{{.Count}}</td>{{end}}
+</tr>
+<tr><td colspan="2" style="padding-top:10px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td height="1" bgcolor="#f4f4f5" style="font-size:0;line-height:0">&nbsp;</td></tr></table></td></tr>
+</table>
+</td></tr>
 
-{{range .Events}}<tr><td class="px" style="padding:12px 28px 0">
+{{range $g := .Groups}}<tr><td class="px" style="padding:0 28px">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
 <tr>
-<td width="26" valign="top">
+<td colspan="3" width="28" valign="top">
 <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
-<td width="26" height="26" align="center" valign="middle" bgcolor="#fef3c7" style="border-radius:13px;font-family:{{mono}};font-size:10px;line-height:26px;color:#92400e"><b>{{.Initials}}</b></td>
+<td width="28" height="28" align="center" valign="middle" bgcolor="{{if $g.System}}#f4f4f5{{else}}#fef3c7{{end}}" style="border-radius:14px;font-family:{{mono}};font-size:10px;line-height:28px;color:{{if $g.System}}#52525b{{else}}#92400e{{end}}"><b>{{$g.Initials}}</b></td>
 </tr></table>
 </td>
-<td valign="middle" style="padding-left:10px;font-family:{{sans}};font-size:14px;line-height:20px;color:#52525b">
-<b style="color:#09090b">{{.Actor}}</b> {{.Verb}}{{if .Target}} <b style="color:#09090b">{{.Target}}</b>{{end}}{{with .Label}} <span style="padding:1px 8px 3px;border-radius:9999px;background-color:#f4f4f5;font-size:12px;color:#3f3f46"><span style="color:{{.Color}}">&#9679;</span>&nbsp;{{.Name}}</span>{{end}}
+<td valign="middle" style="padding-left:12px;font-family:{{sans}};font-size:14px;line-height:28px;color:#09090b"><b>{{$g.Actor}}</b>{{if $g.System}} <span style="font-size:12px;color:#a1a1aa">automation</span>{{end}}</td>
+</tr>
+<tr>
+<td width="13" style="font-size:0;line-height:0">&nbsp;</td>
+<td width="2" {{if not $g.Last}}bgcolor="#e4e4e7" {{end}}style="font-size:0;line-height:0">&nbsp;</td>
+<td width="13" style="font-size:0;line-height:0">&nbsp;</td>
+<td valign="top" style="padding:2px 0 {{if $g.Last}}4{{else}}24{{end}}px 12px">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+{{range $j, $e := $g.Items}}<tr><td style="padding-top:{{if $j}}14{{else}}0{{end}}px;font-family:{{sans}};font-size:14px;line-height:21px;color:#52525b">
+{{$e.Verb}}{{if $e.Target}} <b style="color:#09090b">{{$e.Target}}</b>{{end}}{{with $e.Label}} <span style="padding:1px 8px 2px;border:1px solid #e4e4e7;border-radius:9999px;font-size:12px;color:#3f3f46;white-space:nowrap"><span style="color:{{.Color}}">&#9679;</span>&nbsp;{{.Name}}</span>{{end}}
+</td></tr>
+{{if $e.To}}<tr><td style="padding-top:8px">
+<table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
+<td valign="middle" style="padding:1px 9px 2px;border:1px solid #e4e4e7;border-radius:9999px;font-family:{{sans}};font-size:12px;line-height:18px;color:#71717a;white-space:nowrap">{{$e.From.Name}}</td>
+<td valign="middle" style="padding:0 8px;font-family:{{sans}};font-size:13px;line-height:18px;color:#d4d4d8">&rarr;</td>
+<td bgcolor="#fffbeb" valign="middle" style="padding:1px 9px 2px;border:1px solid #fcd34d;border-radius:9999px;font-family:{{sans}};font-size:12px;line-height:18px;color:#92400e;white-space:nowrap"><span style="color:#f59e0b">&#9679;</span>&nbsp;<b>{{$e.To.Name}}</b></td>
+</tr></table>
+</td></tr>{{end}}
+{{if $e.Workflow}}<tr><td style="padding-top:10px">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#fafafa" style="border:1px solid #f0f0f1;border-radius:8px">
+<tr><td colspan="2" style="padding:8px 12px 2px;font-family:{{sans}};font-size:11px;line-height:16px;color:#a1a1aa">&#8627;&nbsp;Workflow Engine</td></tr>
+{{range $k, $w := $e.Workflow}}<tr>
+<td width="76" valign="top" style="padding:2px 0 {{if eq (len $e.Workflow) (inc $k)}}8{{else}}0{{end}}px 12px;font-family:{{sans}};font-size:12px;line-height:18px;color:#a1a1aa">{{$w.Verb}}</td>
+<td valign="top" style="padding:2px 12px {{if eq (len $e.Workflow) (inc $k)}}8{{else}}0{{end}}px 0;font-family:{{sans}};font-size:12px;line-height:18px;color:#3f3f46">{{$w.Names}}</td>
+</tr>{{end}}
+</table>
+</td></tr>{{end}}
+{{if $e.Quote}}<tr><td style="padding-top:10px">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#fafafa" style="border:1px solid #f0f0f1;border-radius:8px"><tr>
+<td style="padding:10px 14px;font-family:{{sans}};font-size:14px;line-height:22px;color:#3f3f46;word-break:break-word">{{$e.QuoteHTML}}</td>
+</tr></table>
+</td></tr>{{end}}
+{{end}}</table>
 </td>
 </tr>
-{{if .To}}<tr><td colspan="2" style="padding-top:8px">
-<table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
-<td bgcolor="#f4f4f5" valign="middle" style="padding:2px 10px 4px;border-radius:9999px;font-family:{{sans}};font-size:12px;line-height:18px;color:#71717a"><span style="color:{{.From.Color}}">&#9679;</span>&nbsp;{{.From.Name}}</td>
-<td valign="middle" style="padding:0 8px 6px;font-family:{{sans}};font-size:14px;line-height:12px;color:#a1a1aa">&rarr;</td>
-<td bgcolor="#f4f4f5" valign="middle" style="padding:2px 10px 4px;border-radius:9999px;font-family:{{sans}};font-size:12px;line-height:18px;color:#09090b"><span style="color:{{.To.Color}}">&#9679;</span>&nbsp;{{.To.Name}}</td>
-</tr></table>
-</td></tr>{{end}}
-{{if .Workflow}}<tr><td colspan="2" style="padding:6px 0 0 36px;font-family:{{sans}};font-size:12px;line-height:18px;color:#71717a">&#8627;&nbsp;Workflow Engine {{.Workflow}}</td></tr>{{end}}
-{{if .Quote}}<tr><td colspan="2" style="padding-top:8px">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#fafafa"><tr>
-<td width="3" bgcolor="#f59e0b" style="font-size:0;line-height:0">&nbsp;</td>
-<td style="padding:10px 12px;font-family:{{sans}};font-size:14px;line-height:21px;color:#3f3f46">{{.QuoteHTML}}</td>
-</tr></table>
-</td></tr>{{end}}
 </table>
 </td></tr>{{end}}
 
-<tr><td class="px" style="padding:24px 28px 28px">
+<tr><td class="px" style="padding:24px 28px 32px">
 <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
-<td bgcolor="#18181b" style="padding:10px 18px;border-radius:8px;font-family:{{sans}};font-size:14px;line-height:20px"><a href="{{.Link}}" style="color:#fafafa;text-decoration:none"><b>{{.LinkLabel}}&nbsp;&rarr;</b></a></td>
+<td bgcolor="#18181b" style="padding:11px 20px;border-radius:8px;font-family:{{sans}};font-size:14px;line-height:20px"><a href="{{.Link}}" style="color:#fafafa;text-decoration:none"><b>{{.LinkLabel}}&nbsp;&rarr;</b></a></td>
 </tr></table>
 </td></tr>
 
-<tr><td height="1" bgcolor="#e4e4e7" style="font-size:0;line-height:0">&nbsp;</td></tr>
-<tr><td class="px" style="padding:16px 28px 20px;font-family:{{sans}};font-size:12px;line-height:18px;color:#71717a">
-{{.Note}}{{if .SettingsLink}} <a href="{{.SettingsLink}}" style="color:#71717a">Manage email notifications</a>{{end}}
-{{if .Custom}}<br><span style="color:#a1a1aa">Powered by <a href="https://bureaucat.org" style="color:#a1a1aa">Bureaucat</a></span>{{end}}
-</td></tr>
-
 </table>
+</td></tr>
+<tr><td class="px" align="center" style="padding:0 28px 32px;font-family:{{sans}};font-size:12px;line-height:19px;color:#a1a1aa">
+{{.Note}}{{if .SettingsLink}}<br><a href="{{.SettingsLink}}" style="color:#71717a;text-decoration:underline">Manage email notifications</a>{{end}}
+{{if .Custom}}<br>Powered by <a href="https://bureaucat.org" style="color:#a1a1aa">Bureaucat</a>{{end}}
 </td></tr>
 </table>
 </body>
@@ -167,9 +194,22 @@ type emailEvent struct {
 	Label     *emailPill
 	From      *emailPill
 	To        *emailPill
-	Workflow  string
+	Workflow  []workflowChange
 	via       string
 	isTrigger bool
+}
+
+type workflowChange struct {
+	Verb, Names string
+}
+
+// emailGroup is a run of consecutive events by one actor, rendered under a single avatar.
+type emailGroup struct {
+	Actor    string
+	Initials string
+	System   bool
+	Last     bool
+	Items    []emailEvent
 }
 
 type emailData struct {
@@ -178,7 +218,9 @@ type emailData struct {
 	TaskTitle    string
 	State        *emailPill
 	Heading      string
+	Count        string
 	Events       []emailEvent
+	Groups       []emailGroup
 	Link         string
 	LinkLabel    string
 	Note         string
@@ -217,7 +259,7 @@ func newEvent(firstName, lastName, verb string) emailEvent {
 func groupEvents(activity []store.ListEmailActivityRow) []emailEvent {
 	events := make([]emailEvent, 0, len(activity))
 	triggers := map[string]int{}
-	var workflow map[int][][2]string
+	var workflow map[int][]workflowChange
 
 	for _, a := range activity {
 		e := eventFromActivity(a)
@@ -226,13 +268,13 @@ func groupEvents(activity []store.ListEmailActivityRow) []emailEvent {
 
 		if i, ok := triggers[trigger]; ok && a.Via == auth.ViaWorkflow && isAssignee && e.Target != "" {
 			if workflow == nil {
-				workflow = map[int][][2]string{}
+				workflow = map[int][]workflowChange{}
 			}
 			workflow[i] = appendGrouped(workflow[i], e.Verb, e.Target)
 			continue
 		}
 		if n := len(events); n > 0 && isAssignee && e.Target != "" {
-			if prev := &events[n-1]; prev.Actor == e.Actor && prev.via == e.via && prev.Verb == e.Verb && prev.Target != "" && prev.Workflow == "" && !prev.isTrigger {
+			if prev := &events[n-1]; prev.Actor == e.Actor && prev.via == e.via && prev.Verb == e.Verb && prev.Target != "" && prev.Workflow == nil && !prev.isTrigger {
 				prev.Target += ", " + e.Target
 				continue
 			}
@@ -244,24 +286,46 @@ func groupEvents(activity []store.ListEmailActivityRow) []emailEvent {
 		events = append(events, e)
 	}
 
-	for i, groups := range workflow {
-		parts := make([]string, len(groups))
-		for j, g := range groups {
-			parts[j] = g[0] + " " + g[1]
-		}
-		events[i].Workflow = strings.Join(parts, " · ")
+	for i, changes := range workflow {
+		events[i].Workflow = changes
 	}
 	return events
 }
 
-func appendGrouped(groups [][2]string, verb, name string) [][2]string {
-	for i := range groups {
-		if groups[i][0] == verb {
-			groups[i][1] += ", " + name
-			return groups
+func appendGrouped(changes []workflowChange, verb, name string) []workflowChange {
+	for i := range changes {
+		if changes[i].Verb == verb {
+			changes[i].Names += ", " + name
+			return changes
 		}
 	}
-	return append(groups, [2]string{verb, name})
+	return append(changes, workflowChange{verb, name})
+}
+
+// groupByActor folds consecutive events by the same actor into one group and capitalises each verb.
+func groupByActor(events []emailEvent) []emailGroup {
+	var groups []emailGroup
+	for _, e := range events {
+		e.Verb = capitalize(e.Verb)
+		if n := len(groups); n > 0 && groups[n-1].Actor == e.Actor && groups[n-1].System == (e.via == auth.ViaWorkflow) {
+			groups[n-1].Items = append(groups[n-1].Items, e)
+			continue
+		}
+		groups = append(groups, emailGroup{Actor: e.Actor, Initials: e.Initials, System: e.via == auth.ViaWorkflow, Items: []emailEvent{e}})
+	}
+	if n := len(groups); n > 0 {
+		groups[n-1].Last = true
+	}
+	return groups
+}
+
+func capitalize(s string) string {
+	r := []rune(s)
+	if len(r) == 0 {
+		return s
+	}
+	r[0] = unicode.ToUpper(r[0])
+	return string(r)
 }
 
 func eventFromActivity(a store.ListEmailActivityRow) emailEvent {
@@ -333,9 +397,9 @@ func notificationEmail(cfg mailer.Settings, brand branding.Brand, row store.Clai
 		link += "#comment-" + uuid.UUID(row.CommentID.Bytes).String()
 	}
 
-	heading := "ACTIVITY"
+	var count string
 	if n := max(len(events), int(row.EventCount)); n > 1 {
-		heading = fmt.Sprintf("ACTIVITY · %d UPDATES", n)
+		count = fmt.Sprintf("%d updates", n)
 	}
 
 	data := emailData{
@@ -343,7 +407,8 @@ func notificationEmail(cfg mailer.Settings, brand branding.Brand, row store.Clai
 		TaskKey:      taskKey,
 		TaskTitle:    row.TaskTitle,
 		State:        &emailPill{Name: row.StateName, Color: safeColor(row.StateColor.String)},
-		Heading:      heading,
+		Heading:      "Activity",
+		Count:        count,
 		Events:       events,
 		Link:         link,
 		LinkLabel:    "View task",
@@ -359,7 +424,7 @@ func TestEmail(cfg mailer.Settings, brand branding.Brand, to, senderFirstName, s
 		ProjectName: "Admin",
 		TaskKey:     "SMTP TEST",
 		TaskTitle:   "Email delivery is working",
-		Heading:     "DETAILS",
+		Heading:     "Details",
 		Events:      []emailEvent{newEvent(senderFirstName, senderLastName, "sent this test email from the admin email settings.")},
 		Link:        strings.TrimRight(cfg.AppURL, "/"),
 		LinkLabel:   "Open " + brand.Name,
@@ -377,6 +442,8 @@ func SampleEmail(cfg mailer.Settings, brand branding.Brand, to, activityType, ac
 		types = []string{"comment_created", "label_added", "state_changed"}
 	case "workflow":
 		types = []string{"state_changed"}
+	case "everything":
+		return everythingSample(cfg, brand, to, actorFirstName, actorLastName)
 	default:
 		if _, ok := activityLabels[activityType]; !ok && activityType != "description_updated" {
 			return mailer.Message{}, fmt.Errorf("unknown activity type %q", activityType)
@@ -421,6 +488,86 @@ func SampleEmail(cfg mailer.Settings, brand branding.Brand, to, activityType, ac
 	return notificationEmail(cfg, brand, row, events)
 }
 
+// everythingSample builds a long digest covering every activity type, workflow nesting and rich comments.
+func everythingSample(cfg mailer.Settings, brand branding.Brand, to, recipientFirstName, recipientLastName string) (mailer.Message, error) {
+	type person struct{ first, last string }
+	alex, jordan, casey := person{"ALEX", "EXAMPLE"}, person{"Jordan", "Doe"}, person{"Casey", "Tester"}
+	riley, morgan, taylor := person{"Riley", "Placeholder"}, person{"Morgan", "Demo"}, person{"Taylor", "Sample"}
+	name := func(p person) string { return fmt.Sprintf(`{"first_name":%q,"last_name":%q}`, p.first, p.last) }
+
+	var activity []store.ListEmailActivityRow
+	add := func(by person, activityType, field, oldV, newV string) {
+		a := store.ListEmailActivityRow{ActivityType: activityType, FirstName: by.first, LastName: by.last}
+		if field != "" {
+			a.FieldName = pgtype.Text{String: field, Valid: true}
+		}
+		if oldV != "" {
+			a.OldValue = []byte(oldV)
+		}
+		if newV != "" {
+			a.NewValue = []byte(newV)
+		}
+		activity = append(activity, a)
+	}
+	workflow := func(trigger person, activityType string, assignee person) {
+		add(trigger, activityType, "", "", "")
+		a := &activity[len(activity)-1]
+		a.Via = auth.ViaWorkflow
+		if activityType == "assignee_added" {
+			a.NewValue = []byte(name(assignee))
+		} else {
+			a.OldValue = []byte(name(assignee))
+		}
+	}
+	comment := func(by person, activityType, html string) {
+		b, _ := json.Marshal(map[string]string{"content": html})
+		add(by, activityType, "", "", string(b))
+	}
+
+	add(alex, "task_created", "", "", "")
+	workflow(alex, "assignee_added", jordan)
+	workflow(alex, "assignee_added", casey)
+	add(alex, "assignee_added", "", "", name(person{recipientFirstName, recipientLastName}))
+	comment(jordan, "comment_created", "<p>reasoning please?</p>")
+	comment(alex, "comment_created", `<p><a href="/profile/0">@Jordan Doe</a> Need to see these dashboards : <a href="https://dashboards.example.com/dashboard/673-admin-table-diagnosis-and-square-off-stats?segment=Both&amp;tab=68-historical-stats">https://dashboards.example.com/dashboard/673-admin-table-diagnosis-and-square-off-stats?segment=Both&amp;tab=68-historical-stats</a>, <a href="https://dashboards.example.com/dashboard/624-monitoring-dashboard">https://dashboards.example.com/dashboard/624-monitoring-dashboard</a>, <a href="https://dashboards.example.com/dashboard/669-market-adapter">https://dashboards.example.com/dashboard/669-market-adapter</a></p>`)
+	comment(alex, "comment_created", "Also, I publish data for multiple tables, including ticks, profiles, etc. I want to check those as well.")
+	add(jordan, "state_changed", "", `{"name":"Approval Pending"}`, `{"name":"CSec Approved"}`)
+	workflow(jordan, "assignee_added", riley)
+	workflow(jordan, "assignee_added", morgan)
+	workflow(jordan, "assignee_removed", jordan)
+	workflow(jordan, "assignee_removed", casey)
+	add(morgan, "state_changed", "", `{"name":"CSec Approved"}`, `{"name":"ISec Approved"}`)
+	workflow(morgan, "assignee_removed", riley)
+	workflow(morgan, "assignee_removed", morgan)
+	add(casey, "label_added", "", "", `{"name":"Access request","color":"#3b82f6"}`)
+	add(casey, "label_removed", "", `{"name":"Needs info","color":"#ef4444"}`, "")
+	add(casey, "task_updated", "priority", "", `4`)
+	add(casey, "task_updated", "title", "", `"Need access for analytics dashboards"`)
+	add(riley, "task_updated", "due_date", "", `"2026-11-20T00:00:00Z"`)
+	add(riley, "task_updated", "start_date", "", `null`)
+	activity = append(activity, sampleActivity("description_updated", riley.first, riley.last))
+	comment(jordan, "comment_updated", "<p>reasoning please? Which <strong>tables</strong> exactly?</p><pre><code>ticks\nprofiles</code></pre>")
+	add(jordan, "comment_deleted", "", "", "")
+	add(morgan, "blocker_added", "", "", "")
+	add(morgan, "blocker_removed", "", "", "")
+	add(morgan, "assignee_removed", "", name(casey), "")
+	add(morgan, "task_updated", "estimate", "", `3`)
+	workflow(taylor, "assignee_added", taylor)
+
+	row := store.ClaimEmailNotificationsRow{
+		ActivityType:   "state_changed",
+		EventCount:     int32(len(activity)),
+		RecipientEmail: to,
+		TaskNumber:     985,
+		TaskTitle:      "Need access for analytics dashboards",
+		ProjectKey:     "DEVOP",
+		ProjectName:    "Devops",
+		StateName:      "ISec Approved",
+		StateColor:     pgtype.Text{String: "#22c55e", Valid: true},
+	}
+	return notificationEmail(cfg, brand, row, groupEvents(activity))
+}
+
 func sampleActivity(activityType, firstName, lastName string) store.ListEmailActivityRow {
 	a := store.ListEmailActivityRow{ActivityType: activityType, FirstName: firstName, LastName: lastName}
 	assignee := `{"first_name":"Sam","last_name":"Sample"}`
@@ -456,6 +603,7 @@ func buildEmail(cfg mailer.Settings, brand branding.Brand, to, subject string, d
 	}
 	data.EmbedLogo, data.LogoWidth = cfg.EmbedLogo, max(logoWidth, 1)
 	data.AppName, data.Custom = brand.Name, brand.Custom
+	data.Groups = groupByActor(data.Events)
 	var body bytes.Buffer
 	if err := emailHTML.Execute(&body, data); err != nil {
 		return mailer.Message{}, err
@@ -486,8 +634,8 @@ func plainText(data emailData) string {
 			fmt.Fprintf(&b, ": %s → %s", e.From.Name, e.To.Name)
 		}
 		b.WriteString("\n")
-		if e.Workflow != "" {
-			fmt.Fprintf(&b, "  ↳ Workflow Engine %s\n", e.Workflow)
+		for _, w := range e.Workflow {
+			fmt.Fprintf(&b, "  ↳ Workflow Engine %s %s\n", w.Verb, w.Names)
 		}
 		if e.Quote != "" {
 			fmt.Fprintf(&b, "  > %s\n", e.Quote)

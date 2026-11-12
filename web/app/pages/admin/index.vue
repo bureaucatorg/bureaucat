@@ -336,6 +336,7 @@ const testEmailTemplates = [
   { value: "description_updated", label: "Notification: updated the description" },
   { value: "batched", label: "Notification: several updates batched" },
   { value: "workflow", label: "Notification: workflow assignee changes" },
+  { value: "everything", label: "Notification: every activity type (long digest)" },
 ];
 
 function openTestEmailDialog() {
