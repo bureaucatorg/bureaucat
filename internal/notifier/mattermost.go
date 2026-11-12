@@ -16,12 +16,14 @@ import (
 type MattermostConfig struct {
 	ServerURL string
 	BotToken  string
+	AppURL    string
 }
 
 // MattermostNotifier sends DM notifications via a Mattermost bot.
 type MattermostNotifier struct {
 	serverURL string
 	botToken  string
+	appURL    string
 	botUserID string
 	client    *http.Client
 
@@ -36,6 +38,7 @@ func NewMattermostNotifier(cfg MattermostConfig) *MattermostNotifier {
 	return &MattermostNotifier{
 		serverURL:  serverURL,
 		botToken:   cfg.BotToken,
+		appURL:     strings.TrimRight(cfg.AppURL, "/"),
 		client:     &http.Client{Timeout: 10 * time.Second},
 		emailCache: make(map[string]string),
 	}
@@ -65,7 +68,10 @@ func (m *MattermostNotifier) Send(ctx context.Context, recipientEmail string, n 
 		return fmt.Errorf("create DM channel: %w", err)
 	}
 
-	// Build message
+	// The configured App URL wins: in-process requests (assistant, MCP) have no Host to derive it from.
+	if m.appURL != "" {
+		n.BaseURL = m.appURL
+	}
 	message := formatMessage(n)
 
 	// Post message

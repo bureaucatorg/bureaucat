@@ -810,5 +810,6 @@ func notifierFromSettings(mm MattermostSettings) *notifier.MattermostNotifier {
 	return notifier.NewMattermostNotifier(notifier.MattermostConfig{
 		ServerURL: mm.ServerURL,
 		BotToken:  mm.BotToken,
+		AppURL:    mm.AppURL,
 	})
 }

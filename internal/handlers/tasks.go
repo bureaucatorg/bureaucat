@@ -2407,6 +2407,9 @@ func (h *TaskHandler) getTaskFollowers(ctx context.Context, taskID uuid.UUID) []
 
 // requestBaseURL extracts the base URL from the request (e.g. "https://bureaucat.example.com").
 func requestBaseURL(c *echo.Context) string {
+	if c.Request().Host == "" {
+		return ""
+	}
 	scheme := "https"
 	if c.Request().TLS == nil {
 		if proto := c.Request().Header.Get("X-Forwarded-Proto"); proto != "" {

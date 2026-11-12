@@ -105,11 +105,13 @@ func (s *Service) getProviders() []Notifier {
 			Enabled   bool   `json:"enabled"`
 			ServerURL string `json:"server_url"`
 			BotToken  string `json:"bot_token"`
+			AppURL    string `json:"app_url"`
 		}
 		if json.Unmarshal(setting.Value, &mm) == nil && mm.Enabled && mm.ServerURL != "" && mm.BotToken != "" {
 			providers = append(providers, NewMattermostNotifier(MattermostConfig{
 				ServerURL: mm.ServerURL,
 				BotToken:  mm.BotToken,
+				AppURL:    mm.AppURL,
 			}))
 		}
 	}
