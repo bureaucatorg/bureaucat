@@ -31,6 +31,11 @@ const state = reactive<AuthState>({
 });
 
 let refreshTimer: ReturnType<typeof setTimeout> | null = null;
+let refreshInFlight: Promise<boolean> | null = null;
+let wakeListenersAdded = false;
+let retryAttempt = 0;
+let router: ReturnType<typeof useRouter> | null = null;
+const MAX_RETRY_DELAY_MS = 60000;
 
 export function useAuth() {
   const isAuthenticated = computed(() => !!state.accessToken && !!state.user);
@@ -103,30 +108,74 @@ export function useAuth() {
     useWorkspaces().clearWorkspaces();
   }
 
-  async function refreshToken(): Promise<boolean> {
+  function refreshToken(): Promise<boolean> {
+    refreshInFlight ??= doRefresh().finally(() => {
+      refreshInFlight = null;
+    });
+    return refreshInFlight;
+  }
+
+  // Tabs share the refresh cookie and each refresh rotates it, so serialise across tabs.
+  async function doRefresh(): Promise<boolean> {
+    if (!navigator.locks) return refreshOnce();
+    return navigator.locks.request("bureaucat-token-refresh", refreshOnce);
+  }
+
+  async function refreshOnce(): Promise<boolean> {
+    let response: Response;
     try {
-      const response = await fetch("/api/v1/token_refresh", {
+      response = await fetch("/api/v1/token_refresh", {
         method: "POST",
         credentials: "include",
       });
-
-      if (!response.ok) {
-        clearAuthState();
-        return false;
-      }
-
-      const authResponse: AuthResponse = await response.json();
-      setAuthState(authResponse);
-      scheduleTokenRefresh();
-      return true;
     } catch {
-      clearAuthState();
+      if (state.user) scheduleRetry();
       return false;
     }
+
+    if (response.status === 401) {
+      const wasAuthenticated = !!state.user;
+      clearAuthState();
+      if (wasAuthenticated && router) {
+        const redirect = router.currentRoute.value.fullPath;
+        router.push({ path: "/signin", query: { redirect } });
+      }
+      return false;
+    }
+
+    if (!response.ok) {
+      if (state.user) scheduleRetry();
+      return false;
+    }
+
+    const authResponse: AuthResponse = await response.json();
+    retryAttempt = 0;
+    setAuthState(authResponse);
+    scheduleTokenRefresh();
+    return true;
+  }
+
+  function scheduleRetry(): void {
+    if (refreshTimer) clearTimeout(refreshTimer);
+    const delay = Math.min(1000 * 2 ** retryAttempt, MAX_RETRY_DELAY_MS);
+    retryAttempt++;
+    refreshTimer = setTimeout(refreshToken, delay);
+  }
+
+  function refreshIfStale(): void {
+    if (document.visibilityState !== "visible" || !state.expiresAt) return;
+    if (state.expiresAt * 1000 - Date.now() < 60000) refreshToken();
   }
 
   async function initAuth(): Promise<void> {
     state.isLoading = true;
+    router = useRouter();
+
+    if (!wakeListenersAdded) {
+      wakeListenersAdded = true;
+      document.addEventListener("visibilitychange", refreshIfStale);
+      window.addEventListener("online", refreshIfStale);
+    }
 
     // Try to refresh token on app load (uses httpOnly cookie)
     const success = await refreshToken();
@@ -155,6 +204,7 @@ export function useAuth() {
     state.user = null;
     state.accessToken = null;
     state.expiresAt = null;
+    retryAttempt = 0;
     if (refreshTimer) {
       clearTimeout(refreshTimer);
       refreshTimer = null;
