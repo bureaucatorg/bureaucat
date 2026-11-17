@@ -11,6 +11,7 @@ import {
   ChevronRight,
 } from "lucide-vue-next";
 import type { Project, Task, ProjectState } from "~/types";
+import { renderRichText } from "~/utils/markdown";
 
 definePageMeta({
   middleware: ["auth"],
@@ -238,7 +239,10 @@ async function fetchStatesForMyTasks() {
 }
 
 // Tips
-const { ssoProviders, fetchSSOProviders } = useSettings();
+const { ssoProviders, fetchSSOProviders, fetchDashboardMessage } = useSettings();
+
+const dashboardMessage = ref("");
+const renderedDashboardMessage = computed(() => renderRichText(dashboardMessage.value));
 
 const tips: { id: string; show: () => boolean }[] = [
   {
@@ -259,6 +263,7 @@ onMounted(async () => {
   fetchProjects();
   fetchAllProjects();
   fetchMyTasks();
+  fetchDashboardMessage().then((content) => (dashboardMessage.value = content));
   await fetchSSOProviders();
 
   const applicable = tips.filter((t) => t.show());
@@ -282,6 +287,11 @@ onMounted(async () => {
           <p class="mt-2 text-muted-foreground">
             Here's an overview of your projects and tasks
           </p>
+          <div
+            v-if="dashboardMessage"
+            class="prose prose-sm mt-4 max-w-none rounded-lg border bg-muted/40 px-4 py-3 dark:prose-invert [&>*:first-child]:mt-0 [&>*:last-child]:mb-0"
+            v-html="renderedDashboardMessage"
+          />
         </div>
 
         <!-- Tip -->

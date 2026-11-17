@@ -34,6 +34,10 @@ export interface SSOProvidersPublic {
   zitadel_url?: string;
 }
 
+export interface DashboardMessage {
+  content: string;
+}
+
 export interface SignupSettings {
   enabled: boolean;
 }
@@ -190,6 +194,42 @@ export function useSettings() {
       const data = await response.json();
       signupSettings.value = data;
       return { success: true };
+    } catch {
+      return { success: false, error: "Network error" };
+    }
+  }
+
+  // --- Dashboard Message ---
+
+  async function fetchDashboardMessage(): Promise<string> {
+    try {
+      const response = await fetch("/api/v1/settings/dashboard_message", {
+        headers: { ...getAuthHeader() },
+        credentials: "include",
+      });
+      if (!response.ok) return "";
+      const data: DashboardMessage = await response.json();
+      return data.content;
+    } catch {
+      return "";
+    }
+  }
+
+  async function updateDashboardMessage(
+    content: string
+  ): Promise<{ success: boolean; data?: DashboardMessage; error?: string }> {
+    try {
+      const response = await fetch("/api/v1/admin/settings/dashboard_message", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", ...getAuthHeader() },
+        credentials: "include",
+        body: JSON.stringify({ content }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        return { success: false, error: data.message || "Failed to update dashboard message" };
+      }
+      return { success: true, data };
     } catch {
       return { success: false, error: "Network error" };
     }
@@ -552,6 +592,8 @@ export function useSettings() {
     signupSettingsLoaded,
     fetchSignupSettings,
     updateSignupSettings,
+    fetchDashboardMessage,
+    updateDashboardMessage,
     ssoProviders,
     ssoProvidersLoaded,
     fetchSSOProviders,

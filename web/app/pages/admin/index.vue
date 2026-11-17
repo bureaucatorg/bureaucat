@@ -10,7 +10,7 @@ definePageMeta({
 
 useSeoMeta({ title: "Admin" });
 
-const { branding, updateBranding, uploadBrandingAsset, removeBrandingAsset, signupSettings, updateSignupSettings, fetchSignupSettings, fetchSSOSettings, updateSSOSettings, fetchMattermostSettings, updateMattermostSettings, testMattermostConnection, fetchSMTPSettings, updateSMTPSettings, testSMTPSettings, fetchAssistantSettings, updateAssistantSettings, testAssistantSettings } = useSettings();
+const { branding, updateBranding, uploadBrandingAsset, removeBrandingAsset, signupSettings, updateSignupSettings, fetchSignupSettings, fetchDashboardMessage, updateDashboardMessage, fetchSSOSettings, updateSSOSettings, fetchMattermostSettings, updateMattermostSettings, testMattermostConnection, fetchSMTPSettings, updateSMTPSettings, testSMTPSettings, fetchAssistantSettings, updateAssistantSettings, testAssistantSettings } = useSettings();
 const { getAuthHeader, user } = useAuth();
 
 const brandingForm = ref({
@@ -76,6 +76,27 @@ async function handleSaveBranding() {
     toast.success("Branding settings saved");
   } else {
     toast.error(result.error || "Failed to save branding settings");
+  }
+}
+
+const { uploadFiles } = useFileAttach();
+const dashboardMessage = ref("");
+const dashboardMessageLoaded = ref(false);
+const savingDashboardMessage = ref(false);
+
+async function loadDashboardMessage() {
+  dashboardMessage.value = await fetchDashboardMessage();
+  dashboardMessageLoaded.value = true;
+}
+
+async function handleSaveDashboardMessage() {
+  savingDashboardMessage.value = true;
+  const result = await updateDashboardMessage(dashboardMessage.value);
+  savingDashboardMessage.value = false;
+  if (result.success) {
+    toast.success("Dashboard message saved");
+  } else {
+    toast.error(result.error || "Failed to save dashboard message");
   }
 }
 
@@ -410,6 +431,7 @@ async function handleTestAssistant() {
 
 onMounted(() => {
   fetchSignupSettings();
+  loadDashboardMessage();
   loadSSOSettings();
   loadMattermostSettings();
   loadSMTPSettings();
@@ -678,6 +700,34 @@ const adminModels = [
                     Save Changes
                   </Button>
                 </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <!-- Dashboard Message -->
+        <div class="mt-12">
+          <div class="mb-4">
+            <h2 class="text-xl font-semibold">Dashboard Message</h2>
+            <p class="text-sm text-muted-foreground">
+              Shown to everyone below the dashboard greeting. Attach files to link them. Leave empty to hide.
+            </p>
+          </div>
+
+          <Card>
+            <CardContent class="space-y-4 pt-6">
+              <TiptapEditor
+                v-if="dashboardMessageLoaded"
+                v-model="dashboardMessage"
+                compact
+                :disabled="savingDashboardMessage"
+                :upload-handler="uploadFiles"
+              />
+              <div class="flex justify-end">
+                <Button :disabled="savingDashboardMessage || !dashboardMessageLoaded" @click="handleSaveDashboardMessage">
+                  <Loader2 v-if="savingDashboardMessage" class="mr-2 size-4 animate-spin" />
+                  Save Changes
+                </Button>
               </div>
             </CardContent>
           </Card>

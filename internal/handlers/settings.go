@@ -280,6 +280,58 @@ func (h *SettingsHandler) IsSignupEnabled(ctx context.Context) bool {
 	return signup.Enabled
 }
 
+// --- Dashboard Message ---
+
+const maxDashboardMessageLen = 20000
+
+// DashboardMessage is rich-text HTML shown under the dashboard greeting; empty hides it.
+type DashboardMessage struct {
+	Content string `json:"content"`
+}
+
+// GetDashboardMessage returns the admin-configured dashboard message.
+//
+//	@Summary		Get dashboard message
+//	@Tags			Settings
+//	@Produce		json
+//	@Success		200	{object}	DashboardMessage
+//	@Security		BearerAuth
+//	@Router			/settings/dashboard_message [get]
+func (h *SettingsHandler) GetDashboardMessage(c *echo.Context) error {
+	var msg DashboardMessage
+	if setting, err := h.store.GetSetting(c.Request().Context(), "dashboard_message"); err == nil {
+		_ = json.Unmarshal(setting.Value, &msg)
+	}
+	return c.JSON(http.StatusOK, msg)
+}
+
+// UpdateDashboardMessage replaces the dashboard message (admin only).
+func (h *SettingsHandler) UpdateDashboardMessage(c *echo.Context) error {
+	var req DashboardMessage
+	if err := c.Bind(&req); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid request body")
+	}
+	req.Content = strings.TrimSpace(req.Content)
+	if req.Content == "<p></p>" {
+		req.Content = ""
+	}
+	if len(req.Content) > maxDashboardMessageLen {
+		return echo.NewHTTPError(http.StatusBadRequest, "dashboard message is too long")
+	}
+
+	value, err := json.Marshal(req)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to marshal settings")
+	}
+	if _, err := h.store.UpsertSetting(c.Request().Context(), store.UpsertSettingParams{
+		Key:   "dashboard_message",
+		Value: value,
+	}); err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to update settings")
+	}
+	return c.JSON(http.StatusOK, req)
+}
+
 // --- SSO Settings ---
 
 // SSOProviderConfig represents configuration for a single SSO provider.

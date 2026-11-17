@@ -98,6 +98,10 @@ func (s *Server) registerRoutes() {
 		protected.GET("/me", s.authHandler.Me)
 		protected.GET("/me/tasks", s.authHandler.MyTasks)
 
+		if s.settingsHandler != nil {
+			protected.GET("/settings/dashboard_message", s.settingsHandler.GetDashboardMessage)
+		}
+
 		// Per-user in-app notifications
 		if s.notificationsHandler != nil {
 			protected.GET("/me/notifications", s.notificationsHandler.ListNotifications)
@@ -378,6 +382,7 @@ func (s *Server) registerRoutes() {
 			admin.PUT("/settings/branding/:asset", s.settingsHandler.UploadBrandingAsset)
 			admin.DELETE("/settings/branding/:asset", s.settingsHandler.RemoveBrandingAsset)
 			admin.PUT("/settings/signup", s.settingsHandler.UpdateSignupSettings)
+			admin.PUT("/settings/dashboard_message", s.settingsHandler.UpdateDashboardMessage)
 			admin.GET("/settings/sso", s.settingsHandler.GetSSOSettings)
 			admin.PUT("/settings/sso", s.settingsHandler.UpdateSSOSettings)
 			admin.GET("/settings/mattermost", s.settingsHandler.GetMattermostSettings)

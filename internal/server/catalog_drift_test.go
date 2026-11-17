@@ -42,6 +42,9 @@ var nonCatalogRoutes = map[string]bool{
 	"GET /api/v1/uploads/{}":           true,
 	"POST /api/v1/uploads":             true,
 
+	// Admin-authored UI content, not useful to the assistant.
+	"GET /api/v1/settings/dashboard_message": true,
+
 	// Not catalogued yet; candidates for new tools.
 	"GET /api/v1/graph":                                              true,
 	"GET /api/v1/graph/filters":                                      true,
