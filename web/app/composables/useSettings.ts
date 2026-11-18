@@ -29,6 +29,18 @@ export interface SSOSettings {
   zitadel: SSOProviderConfig;
 }
 
+export interface NewUserDefaultProject {
+  project_id: string;
+  role: "guest" | "member";
+  project_key?: string;
+  project_name?: string;
+  workspace_name?: string;
+}
+
+export interface NewUserDefaults {
+  projects: NewUserDefaultProject[];
+}
+
 export interface SSOProvidersPublic {
   google: boolean;
   zitadel: boolean;
@@ -229,6 +241,47 @@ export function useSettings() {
       const data = await response.json();
       if (!response.ok) {
         return { success: false, error: data.message || "Failed to update dashboard message" };
+      }
+      return { success: true, data };
+    } catch {
+      return { success: false, error: "Network error" };
+    }
+  }
+
+  // --- New User Defaults ---
+
+  async function fetchNewUserDefaults(): Promise<{ success: boolean; data?: NewUserDefaults; error?: string }> {
+    try {
+      const response = await fetch("/api/v1/admin/settings/new_user_defaults", {
+        headers: { ...getAuthHeader() },
+        credentials: "include",
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        return { success: false, error: data.message || "Failed to fetch new user defaults" };
+      }
+      return { success: true, data };
+    } catch {
+      return { success: false, error: "Network error" };
+    }
+  }
+
+  async function updateNewUserDefaults(
+    settings: NewUserDefaults
+  ): Promise<{ success: boolean; data?: NewUserDefaults; error?: string }> {
+    try {
+      const response = await fetch("/api/v1/admin/settings/new_user_defaults", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          ...getAuthHeader(),
+        },
+        credentials: "include",
+        body: JSON.stringify(settings),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        return { success: false, error: data.message || "Failed to update new user defaults" };
       }
       return { success: true, data };
     } catch {
@@ -600,6 +653,8 @@ export function useSettings() {
     fetchSSOProviders,
     fetchSSOSettings,
     updateSSOSettings,
+    fetchNewUserDefaults,
+    updateNewUserDefaults,
     fetchMattermostSettings,
     updateMattermostSettings,
     testMattermostConnection,

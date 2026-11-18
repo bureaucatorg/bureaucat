@@ -385,6 +385,8 @@ func (s *Server) registerRoutes() {
 			admin.PUT("/settings/dashboard_message", s.settingsHandler.UpdateDashboardMessage)
 			admin.GET("/settings/sso", s.settingsHandler.GetSSOSettings)
 			admin.PUT("/settings/sso", s.settingsHandler.UpdateSSOSettings)
+			admin.GET("/settings/new_user_defaults", s.settingsHandler.GetNewUserDefaults)
+			admin.PUT("/settings/new_user_defaults", s.settingsHandler.UpdateNewUserDefaults)
 			admin.GET("/settings/mattermost", s.settingsHandler.GetMattermostSettings)
 			admin.PUT("/settings/mattermost", s.settingsHandler.UpdateMattermostSettings)
 			admin.POST("/settings/mattermost/test", s.settingsHandler.TestMattermostConnection)

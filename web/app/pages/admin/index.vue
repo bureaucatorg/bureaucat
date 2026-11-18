@@ -765,6 +765,8 @@ const adminModels = [
               </CardContent>
             </Card>
 
+            <NewUserDefaultsCard />
+
             <!-- Google SSO -->
             <Card>
               <CardContent class="pt-6">

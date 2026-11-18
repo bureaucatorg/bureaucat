@@ -418,6 +418,7 @@ func (h *OAuthHandler) findOrCreateUser(ctx context.Context, provider string, cl
 	if err != nil {
 		return nil, fmt.Errorf("failed to create user: %w", err)
 	}
+	applyNewUserDefaults(ctx, h.store, newUser.ID)
 
 	avatarPtr := textToStringPtr(pgtype.Text{String: claims.Picture, Valid: claims.Picture != ""})
 	return &userInfo{

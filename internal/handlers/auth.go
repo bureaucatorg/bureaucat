@@ -155,6 +155,7 @@ func (h *AuthHandler) Signup(c *echo.Context) error {
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to create user")
 	}
+	applyNewUserDefaults(ctx, h.store, user.ID)
 
 	// Generate tokens
 	return h.generateAndSetTokens(c, ctx, user.ID, user.Username, user.UserType, userFromCreateRow(user))

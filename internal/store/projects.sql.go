@@ -123,6 +123,33 @@ func (q *Queries) AddTaskLabel(ctx context.Context, arg AddTaskLabelParams) erro
 	return err
 }
 
+const addUserToDefaultProjects = `-- name: AddUserToDefaultProjects :exec
+WITH defaults AS (
+  SELECT p.id AS project_id, p.workspace_id
+  FROM projects p
+  WHERE p.id = ANY($2::uuid[]) AND p.deleted_at IS NULL
+), added_projects AS (
+  INSERT INTO project_members (project_id, user_id, role)
+  SELECT project_id, $1::uuid, $3::project_role FROM defaults
+  ON CONFLICT (project_id, user_id) DO NOTHING
+)
+INSERT INTO workspace_members (workspace_id, user_id)
+SELECT DISTINCT workspace_id, $1::uuid FROM defaults
+ON CONFLICT (workspace_id, user_id) DO NOTHING
+`
+
+type AddUserToDefaultProjectsParams struct {
+	UserID     uuid.UUID   `json:"user_id"`
+	ProjectIds []uuid.UUID `json:"project_ids"`
+	Role       string      `json:"role"`
+}
+
+// Adds the user to each live project with the given role, plus each project's workspace.
+func (q *Queries) AddUserToDefaultProjects(ctx context.Context, arg AddUserToDefaultProjectsParams) error {
+	_, err := q.db.Exec(ctx, addUserToDefaultProjects, arg.UserID, arg.ProjectIds, arg.Role)
+	return err
+}
+
 const blockerLinkWouldCycle = `-- name: BlockerLinkWouldCycle :one
 WITH RECURSIVE downstream AS (
     SELECT tb.task_id
@@ -1965,6 +1992,45 @@ func (q *Queries) ListProjectTasks(ctx context.Context, arg ListProjectTasksPara
 			&i.StateType,
 			&i.StateColor,
 			&i.CreatorUsername,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listProjectsWithWorkspaceByIDs = `-- name: ListProjectsWithWorkspaceByIDs :many
+SELECT p.id, p.project_key, p.name, w.name AS workspace_name
+FROM projects p
+JOIN workspaces w ON w.id = p.workspace_id
+WHERE p.id = ANY($1::uuid[]) AND p.deleted_at IS NULL
+`
+
+type ListProjectsWithWorkspaceByIDsRow struct {
+	ID            uuid.UUID `json:"id"`
+	ProjectKey    string    `json:"project_key"`
+	Name          string    `json:"name"`
+	WorkspaceName string    `json:"workspace_name"`
+}
+
+func (q *Queries) ListProjectsWithWorkspaceByIDs(ctx context.Context, ids []uuid.UUID) ([]ListProjectsWithWorkspaceByIDsRow, error) {
+	rows, err := q.db.Query(ctx, listProjectsWithWorkspaceByIDs, ids)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListProjectsWithWorkspaceByIDsRow{}
+	for rows.Next() {
+		var i ListProjectsWithWorkspaceByIDsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.ProjectKey,
+			&i.Name,
+			&i.WorkspaceName,
 		); err != nil {
 			return nil, err
 		}

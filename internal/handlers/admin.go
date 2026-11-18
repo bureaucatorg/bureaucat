@@ -259,6 +259,7 @@ func (h *AdminHandler) CreateUser(c *echo.Context) error {
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to create user")
 	}
+	applyNewUserDefaults(ctx, h.store, user.ID)
 
 	return c.JSON(http.StatusCreated, UserResponse{
 		ID:        user.ID,

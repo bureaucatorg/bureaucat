@@ -915,3 +915,24 @@ SELECT id, project_id, name, color, created_at
 FROM project_labels
 WHERE project_id = $1 AND name = $2
 LIMIT 1;
+
+-- name: ListProjectsWithWorkspaceByIDs :many
+SELECT p.id, p.project_key, p.name, w.name AS workspace_name
+FROM projects p
+JOIN workspaces w ON w.id = p.workspace_id
+WHERE p.id = ANY(sqlc.arg('ids')::uuid[]) AND p.deleted_at IS NULL;
+
+-- name: AddUserToDefaultProjects :exec
+-- Adds the user to each live project with the given role, plus each project's workspace.
+WITH defaults AS (
+  SELECT p.id AS project_id, p.workspace_id
+  FROM projects p
+  WHERE p.id = ANY(sqlc.arg('project_ids')::uuid[]) AND p.deleted_at IS NULL
+), added_projects AS (
+  INSERT INTO project_members (project_id, user_id, role)
+  SELECT project_id, sqlc.arg('user_id')::uuid, sqlc.arg('role')::project_role FROM defaults
+  ON CONFLICT (project_id, user_id) DO NOTHING
+)
+INSERT INTO workspace_members (workspace_id, user_id)
+SELECT DISTINCT workspace_id, sqlc.arg('user_id')::uuid FROM defaults
+ON CONFLICT (workspace_id, user_id) DO NOTHING;

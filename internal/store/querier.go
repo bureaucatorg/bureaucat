@@ -32,6 +32,8 @@ type Querier interface {
 	AddTaskLabel(ctx context.Context, arg AddTaskLabelParams) error
 	// ==================== CYCLE TASKS ====================
 	AddTasksToCycle(ctx context.Context, arg AddTasksToCycleParams) error
+	// Adds the user to each live project with the given role, plus each project's workspace.
+	AddUserToDefaultProjects(ctx context.Context, arg AddUserToDefaultProjectsParams) error
 	AddWorkflowStateAction(ctx context.Context, arg AddWorkflowStateActionParams) error
 	AddWorkflowTransitionMover(ctx context.Context, arg AddWorkflowTransitionMoverParams) error
 	// ==================== WORKSPACE MEMBERS ====================
@@ -278,6 +280,7 @@ type Querier interface {
 	ListProjectTasksNotInModule(ctx context.Context, arg ListProjectTasksNotInModuleParams) ([]ListProjectTasksNotInModuleRow, error)
 	// Returns every shared view in the project plus private views owned by the caller.
 	ListProjectViews(ctx context.Context, arg ListProjectViewsParams) ([]ListProjectViewsRow, error)
+	ListProjectsWithWorkspaceByIDs(ctx context.Context, ids []uuid.UUID) ([]ListProjectsWithWorkspaceByIDsRow, error)
 	ListSettings(ctx context.Context) ([]Setting, error)
 	ListStateActions(ctx context.Context, stateID uuid.UUID) ([]ListStateActionsRow, error)
 	// Picker source for "attach an existing task as a subtask". Returns project
