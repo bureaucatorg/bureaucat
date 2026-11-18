@@ -197,6 +197,11 @@ func (h *OAuthHandler) CallbackSSO(c *echo.Context) error {
 		return h.redirectError(c, "email not provided by identity provider")
 	}
 
+	if !isEmailDomainAllowed(claims.Email, providerConfig.AllowedDomains) {
+		domain := strings.ToLower(claims.Email[strings.LastIndex(claims.Email, "@")+1:])
+		return c.Redirect(http.StatusTemporaryRedirect, "/auth/callback?status=error&reason=domain_not_allowed&domain="+url.QueryEscape(domain))
+	}
+
 	// Find or create user
 	user, err := h.findOrCreateUser(ctx, provider, claims)
 	if err != nil {

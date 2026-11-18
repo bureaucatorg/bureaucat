@@ -21,6 +21,7 @@ export interface SSOProviderConfig {
   client_secret: string;
   issuer_url?: string;
   redirect_uri: string;
+  allowed_domains: string[];
 }
 
 export interface SSOSettings {

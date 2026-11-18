@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/mail"
@@ -336,17 +337,54 @@ func (h *SettingsHandler) UpdateDashboardMessage(c *echo.Context) error {
 
 // SSOProviderConfig represents configuration for a single SSO provider.
 type SSOProviderConfig struct {
-	Enabled      bool   `json:"enabled"`
-	ClientID     string `json:"client_id"`
-	ClientSecret string `json:"client_secret"`
-	IssuerURL    string `json:"issuer_url,omitempty"` // Zitadel only
-	RedirectURI  string `json:"redirect_uri"`
+	Enabled        bool     `json:"enabled"`
+	ClientID       string   `json:"client_id"`
+	ClientSecret   string   `json:"client_secret"`
+	IssuerURL      string   `json:"issuer_url,omitempty"` // Zitadel only
+	RedirectURI    string   `json:"redirect_uri"`
+	AllowedDomains []string `json:"allowed_domains"`
 }
 
 // SSOSettings holds all SSO provider configs.
 type SSOSettings struct {
 	Google  SSOProviderConfig `json:"google"`
 	Zitadel SSOProviderConfig `json:"zitadel"`
+}
+
+// normalizeEmailDomains lowercases, trims, strips a leading "@" and dedupes.
+func normalizeEmailDomains(domains []string) ([]string, error) {
+	out := []string{}
+	seen := map[string]bool{}
+	for _, d := range domains {
+		d = strings.TrimPrefix(strings.ToLower(strings.TrimSpace(d)), "@")
+		if d == "" || seen[d] {
+			continue
+		}
+		if strings.ContainsAny(d, "@ \t/") || !strings.Contains(d, ".") || strings.HasPrefix(d, ".") || strings.HasSuffix(d, ".") {
+			return nil, fmt.Errorf("invalid domain: %q", d)
+		}
+		seen[d] = true
+		out = append(out, d)
+	}
+	return out, nil
+}
+
+// isEmailDomainAllowed reports whether email's domain is in allowed; an empty list allows all.
+func isEmailDomainAllowed(email string, allowed []string) bool {
+	if len(allowed) == 0 {
+		return true
+	}
+	at := strings.LastIndex(email, "@")
+	if at < 0 {
+		return false
+	}
+	domain := strings.ToLower(strings.TrimSpace(email[at+1:]))
+	for _, d := range allowed {
+		if domain == d {
+			return true
+		}
+	}
+	return false
 }
 
 // SSOProvidersPublicResponse is the public response showing only which providers are enabled.
@@ -468,6 +506,13 @@ func (h *SettingsHandler) UpdateSSOSettings(c *echo.Context) error {
 		if req.Zitadel.ClientID == "" || req.Zitadel.ClientSecret == "" || req.Zitadel.IssuerURL == "" {
 			return echo.NewHTTPError(http.StatusBadRequest, "Zitadel SSO requires client_id, client_secret, and issuer_url")
 		}
+	}
+
+	if req.Google.AllowedDomains, err = normalizeEmailDomains(req.Google.AllowedDomains); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "Google: "+err.Error())
+	}
+	if req.Zitadel.AllowedDomains, err = normalizeEmailDomains(req.Zitadel.AllowedDomains); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "Zitadel: "+err.Error())
 	}
 
 	// Auto-generate redirect URIs from request host

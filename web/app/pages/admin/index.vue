@@ -175,9 +175,15 @@ async function handlePlaneImport() {
 
 // SSO Settings
 const ssoForm = ref<SSOSettings>({
-  google: { enabled: false, client_id: "", client_secret: "", redirect_uri: "" },
-  zitadel: { enabled: false, client_id: "", client_secret: "", issuer_url: "", redirect_uri: "" },
+  google: { enabled: false, client_id: "", client_secret: "", redirect_uri: "", allowed_domains: [] },
+  zitadel: { enabled: false, client_id: "", client_secret: "", issuer_url: "", redirect_uri: "", allowed_domains: [] },
 });
+const ssoAllowedDomains = ref({ google: "", zitadel: "" });
+
+function parseDomains(input: string): string[] {
+  return input.split(/[\s,]+/).filter(Boolean);
+}
+
 const savingSSO = ref(false);
 const ssoLoaded = ref(false);
 const copiedField = ref("");
@@ -189,51 +195,45 @@ function getRedirectURI(provider: string): string {
   return `/api/v1/auth/sso/${provider}/callback`;
 }
 
+function applySSOSettings(data: SSOSettings) {
+  ssoForm.value = {
+    google: {
+      enabled: data.google?.enabled || false,
+      client_id: data.google?.client_id || "",
+      client_secret: data.google?.client_secret || "",
+      redirect_uri: data.google?.redirect_uri || "",
+      allowed_domains: data.google?.allowed_domains || [],
+    },
+    zitadel: {
+      enabled: data.zitadel?.enabled || false,
+      client_id: data.zitadel?.client_id || "",
+      client_secret: data.zitadel?.client_secret || "",
+      issuer_url: data.zitadel?.issuer_url || "",
+      redirect_uri: data.zitadel?.redirect_uri || "",
+      allowed_domains: data.zitadel?.allowed_domains || [],
+    },
+  };
+  ssoAllowedDomains.value = {
+    google: ssoForm.value.google.allowed_domains.join(", "),
+    zitadel: ssoForm.value.zitadel.allowed_domains.join(", "),
+  };
+}
+
 async function loadSSOSettings() {
   const result = await fetchSSOSettings();
-  if (result.success && result.data) {
-    ssoForm.value = {
-      google: {
-        enabled: result.data.google?.enabled || false,
-        client_id: result.data.google?.client_id || "",
-        client_secret: result.data.google?.client_secret || "",
-        redirect_uri: result.data.google?.redirect_uri || "",
-      },
-      zitadel: {
-        enabled: result.data.zitadel?.enabled || false,
-        client_id: result.data.zitadel?.client_id || "",
-        client_secret: result.data.zitadel?.client_secret || "",
-        issuer_url: result.data.zitadel?.issuer_url || "",
-        redirect_uri: result.data.zitadel?.redirect_uri || "",
-      },
-    };
-  }
+  if (result.success && result.data) applySSOSettings(result.data);
   ssoLoaded.value = true;
 }
 
 async function handleSaveSSO() {
   savingSSO.value = true;
+  ssoForm.value.google.allowed_domains = parseDomains(ssoAllowedDomains.value.google);
+  ssoForm.value.zitadel.allowed_domains = parseDomains(ssoAllowedDomains.value.zitadel);
   const result = await updateSSOSettings(ssoForm.value);
   savingSSO.value = false;
 
   if (result.success) {
-    if (result.data) {
-      ssoForm.value = {
-        google: {
-          enabled: result.data.google?.enabled || false,
-          client_id: result.data.google?.client_id || "",
-          client_secret: result.data.google?.client_secret || "",
-          redirect_uri: result.data.google?.redirect_uri || "",
-        },
-        zitadel: {
-          enabled: result.data.zitadel?.enabled || false,
-          client_id: result.data.zitadel?.client_id || "",
-          client_secret: result.data.zitadel?.client_secret || "",
-          issuer_url: result.data.zitadel?.issuer_url || "",
-          redirect_uri: result.data.zitadel?.redirect_uri || "",
-        },
-      };
-    }
+    if (result.data) applySSOSettings(result.data);
     toast.success("SSO settings saved");
   } else {
     toast.error(result.error || "Failed to save SSO settings");
@@ -803,6 +803,18 @@ const adminModels = [
                       />
                     </div>
                     <div class="space-y-2">
+                      <Label for="google-allowed-domains">Allowed email domains</Label>
+                      <Input
+                        id="google-allowed-domains"
+                        v-model="ssoAllowedDomains.google"
+                        placeholder="example.com, example.org"
+                        :disabled="savingSSO"
+                      />
+                      <p class="text-xs text-muted-foreground">
+                        Only these domains can sign in with Google, including existing users. Leave empty to allow all.
+                      </p>
+                    </div>
+                    <div class="space-y-2">
                       <Label>Redirect URI</Label>
                       <div class="flex items-center gap-2">
                         <Input
@@ -874,6 +886,18 @@ const adminModels = [
                         placeholder="Enter client secret"
                         :disabled="savingSSO"
                       />
+                    </div>
+                    <div class="space-y-2">
+                      <Label for="zitadel-allowed-domains">Allowed email domains</Label>
+                      <Input
+                        id="zitadel-allowed-domains"
+                        v-model="ssoAllowedDomains.zitadel"
+                        placeholder="example.com, example.org"
+                        :disabled="savingSSO"
+                      />
+                      <p class="text-xs text-muted-foreground">
+                        Only these domains can sign in with Zitadel, including existing users. Leave empty to allow all.
+                      </p>
                     </div>
                     <div class="space-y-2">
                       <Label>Redirect URI</Label>

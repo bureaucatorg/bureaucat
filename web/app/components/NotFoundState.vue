@@ -65,8 +65,8 @@ const filedOn = new Date().toLocaleDateString("en-GB", {
           <h1 class="nf-fade mt-5 text-xl font-semibold tracking-tight sm:text-2xl" style="--d: 140ms">
             {{ title }}
           </h1>
-          <p v-if="message" class="nf-fade mt-1.5 max-w-md text-sm text-muted-foreground" style="--d: 200ms">
-            {{ message }}
+          <p v-if="message || $slots.message" class="nf-fade mt-1.5 max-w-md text-sm text-muted-foreground" style="--d: 200ms">
+            <slot name="message">{{ message }}</slot>
           </p>
 
           <!-- Form lines -->
