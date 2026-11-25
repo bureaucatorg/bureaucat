@@ -36,7 +36,6 @@ type WorkflowTransitionConfig struct {
 type WorkflowResponse struct {
 	Configured  bool                       `json:"configured"`
 	Enabled     bool                       `json:"enabled"`
-	Bypass      bool                       `json:"bypass"`
 	States      []WorkflowStateConfig      `json:"states"`
 	Transitions []WorkflowTransitionConfig `json:"transitions"`
 }
@@ -77,7 +76,6 @@ func (h *TaskHandler) GetWorkflow(c *echo.Context) error {
 func (h *TaskHandler) loadWorkflow(c *echo.Context, projectID uuid.UUID) (WorkflowResponse, error) {
 	ctx := c.Request().Context()
 	resp := WorkflowResponse{
-		Bypass:      c.Request().Header.Get(auth.HeaderProjectRole) == "admin",
 		States:      []WorkflowStateConfig{},
 		Transitions: []WorkflowTransitionConfig{},
 	}

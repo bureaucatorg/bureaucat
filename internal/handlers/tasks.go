@@ -475,8 +475,7 @@ func (h *TaskHandler) CreateTask(c *echo.Context) error {
 	if st, err := h.store.GetProjectStateByID(ctx, stateID); err != nil || st.ProjectID != projectID {
 		return echo.NewHTTPError(http.StatusBadRequest, "state does not belong to this project")
 	}
-	isProjectAdmin := c.Request().Header.Get(auth.HeaderProjectRole) == "admin"
-	if err := workflow.CheckEntry(ctx, h.store, projectID, stateID, isProjectAdmin); err != nil {
+	if err := workflow.CheckEntry(ctx, h.store, projectID, stateID); err != nil {
 		return workflowHTTPError(err)
 	}
 
@@ -861,8 +860,7 @@ func (h *TaskHandler) UpdateTask(c *echo.Context) error {
 		if st, err := h.store.GetProjectStateByID(ctx, id); err != nil || st.ProjectID != projectID {
 			return echo.NewHTTPError(http.StatusBadRequest, "state does not belong to this project")
 		}
-		isProjectAdmin := c.Request().Header.Get(auth.HeaderProjectRole) == "admin"
-		if err := workflow.CheckTransition(ctx, h.store, projectID, oldTask.ID, oldTask.CreatedBy, oldTask.StateID, id, userID, isProjectAdmin); err != nil {
+		if err := workflow.CheckTransition(ctx, h.store, projectID, oldTask.ID, oldTask.CreatedBy, oldTask.StateID, id, userID); err != nil {
 			return workflowHTTPError(err)
 		}
 	}

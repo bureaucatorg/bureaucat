@@ -18,7 +18,6 @@ export interface WorkflowTransitionConfig {
 export interface Workflow {
   configured: boolean;
   enabled: boolean;
-  bypass: boolean;
   states: WorkflowStateConfig[];
   transitions: WorkflowTransitionConfig[];
 }

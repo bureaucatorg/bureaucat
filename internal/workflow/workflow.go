@@ -39,8 +39,8 @@ func Enabled(ctx context.Context, q store.Querier, projectID uuid.UUID) (bool, e
 }
 
 // CheckTransition verifies actorID may move the task from fromID to toID.
-func CheckTransition(ctx context.Context, q store.Querier, projectID, taskID, createdBy, fromID, toID, actorID uuid.UUID, isAdmin bool) error {
-	if isAdmin || fromID == toID {
+func CheckTransition(ctx context.Context, q store.Querier, projectID, taskID, createdBy, fromID, toID, actorID uuid.UUID) error {
+	if fromID == toID {
 		return nil
 	}
 	on, err := Enabled(ctx, q, projectID)
@@ -87,10 +87,7 @@ func CheckTransition(ctx context.Context, q store.Querier, projectID, taskID, cr
 }
 
 // CheckEntry verifies a new task may start in stateID.
-func CheckEntry(ctx context.Context, q store.Querier, projectID, stateID uuid.UUID, isAdmin bool) error {
-	if isAdmin {
-		return nil
-	}
+func CheckEntry(ctx context.Context, q store.Querier, projectID, stateID uuid.UUID) error {
 	on, err := Enabled(ctx, q, projectID)
 	if err != nil || !on {
 		return err

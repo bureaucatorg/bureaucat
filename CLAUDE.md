@@ -102,11 +102,11 @@ The `bureaucat api <tool>` CLI (`internal/cli/api.go`) is also generated from th
 
 ### Workflow Routes (project-scoped)
 ```
-GET    /api/v1/projects/:key/workflow          # Graph config + enabled + bypass (any project role)
+GET    /api/v1/projects/:key/workflow          # Graph config + enabled (any project role)
 PUT    /api/v1/projects/:key/workflow          # Replace graph atomically (project admin)
 PUT    /api/v1/projects/:key/workflow/enabled  # Toggle enforcement, config kept (project admin)
 ```
-Opt-in per project. Enforced in `internal/workflow` from `CreateTask` (entry states), `UpdateTask` (edges are an allowlist, optional movers: users/assignees/creator) and on-enter assignee actions (also on cross-project move-in). Project/global admins bypass checks.
+Opt-in per project. Enforced in `internal/workflow` from `CreateTask` (entry states), `UpdateTask` (edges are an allowlist, optional movers: users/assignees/creator) and on-enter assignee actions (also on cross-project move-in). Admins are not exempt.
 
 ### Admin Routes (requires Bearer token + admin role)
 ```

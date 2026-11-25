@@ -150,7 +150,7 @@ var catalog = []Tool{
 	{Name: "get_workflow", Title: "Get workflow", Description: "Get a project's workflow: whether it is configured/enabled, states (entry flag, on-enter assignee actions) and allowed transitions with their movers.", Method: http.MethodGet, Path: pp + "/workflow", Params: []Param{pProject}},
 	{Name: "save_workflow", Title: "Save workflow", Description: `Replace a project's whole workflow graph (project admin); enforcement on/off is unchanged. Call get_workflow first and send the full edited graph, keeping pos_x/pos_y of existing states.
 Only states listed take part; at least one must have is_entry (tasks can only be created in entry states). Transitions are an allowlist; a state with no outgoing transition is terminal.
-Movers: allow_assignees, allow_creator and mover_ids together limit who may make a transition; all unset means any member. Project admins bypass all checks. All user UUIDs must be project members.`,
+Movers: allow_assignees, allow_creator and mover_ids together limit who may make a transition; all unset means any member. Admins are not exempt. All user UUIDs must be project members.`,
 		Method: http.MethodPut, Path: pp + "/workflow", Confirm: true,
 		Params: []Param{pProject,
 			body("states", "object[]", `Each {"state_id": uuid, "is_entry": bool, "pos_x": number, "pos_y": number, "add_assignees": [user uuid] (added on enter), "remove_assignees": [user uuid] (removed on enter)}`).req(),

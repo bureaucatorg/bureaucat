@@ -1,7 +1,7 @@
 import type { Workflow, WorkflowTaskRef, WorkflowTransitionConfig } from "~/types";
 
 function isActive(wf: Workflow | undefined): wf is Workflow {
-  return !!wf && wf.enabled && !wf.bypass;
+  return !!wf && wf.enabled;
 }
 
 // Mirrors internal/workflow.CheckTransition. Unknown assignees count as allowed;
