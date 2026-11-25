@@ -1,16 +1,19 @@
 image := "docker.io/codingcoffee/bureaucat"
 runner := "bureaucat-release:local"
 
+podman-auth := env_var_or_default("REGISTRY_AUTH_FILE", env_var_or_default("XDG_RUNTIME_DIR", "/run/user/1000") + "/containers/auth.json")
+podman-sock := env_var_or_default("PODMAN_SOCK", env_var_or_default("XDG_RUNTIME_DIR", "/run/user/1000") + "/podman/podman.sock")
+
 # The whole release runs inside this image (go + bun + goreleaser + docker cli).
-# Host docker socket + docker config + GITHUB_TOKEN are passed through so
-# goreleaser can build/push the image and create the GitHub release.
+# The image's docker cli talks to the host podman socket and reuses `podman login` creds.
 release-run := '''
-docker run --rm \
+podman run --rm \
+    --security-opt label=disable \
     -v "$PWD":/app \
-    -v /var/run/docker.sock:/var/run/docker.sock \
-    -v "$HOME/.docker":/root/.docker \
+    -v ''' + podman-sock + ''':/var/run/docker.sock \
+    -v ''' + podman-auth + ''':/root/.docker/config.json:ro \
     -e GITHUB_TOKEN \
-    -e DOCKER_CONFIG=/root/.docker \
+    -e DOCKER_BUILDKIT=0 \
     -w /app \
     ''' + runner
 
@@ -20,7 +23,7 @@ version:
 
 # Build the release-runner image (cached; rebuild when Dockerfile.release changes)
 release-image:
-    docker build -f Dockerfile.release -t {{runner}} .
+    podman build -f Dockerfile.release -t {{runner}} .
 
 # Release a new version: just release patch|minor|major
 release kind="patch": release-image
@@ -64,7 +67,7 @@ release kind="patch": release-image
 
     # Build binaries + frontend, push docker image, create GitHub release —
     # all inside the runner container.
-    echo "Running goreleaser in Docker..."
+    echo "Running goreleaser in Podman..."
     {{release-run}} goreleaser release --clean
 
     echo ""
