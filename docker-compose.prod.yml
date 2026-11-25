@@ -1,6 +1,6 @@
 services:
   landing:
-    image: codingcoffee/bureaucat-landing:${VERSION:-latest}
+    image: ghcr.io/bureaucatorg/bureaucat-landing:${VERSION:-latest}
     build:
       context: ./
       dockerfile: landing/Dockerfile
@@ -11,7 +11,7 @@ services:
       APP_URL: ${APP_URL:?set APP_URL to the app's public URL, e.g. https://app.example.com}
 
   app:
-    image: docker.io/codingcoffee/bureaucat:${VERSION:-latest}
+    image: ghcr.io/bureaucatorg/bureaucat:${VERSION:-latest}
     build:
       context: ./
       dockerfile: Dockerfile

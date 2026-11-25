@@ -28,7 +28,7 @@ BureauCat is not a fit for: a managed SaaS with no hosting responsibility, time 
 - [OpenAPI spec](https://www.bureaucat.org/openapi.json): Machine-readable spec of the REST API (served at `/api/v1/openapi.json` on every instance)
 - [API catalog](https://www.bureaucat.org/.well-known/api-catalog): RFC 9727 linkset pointing to the spec and docs
 - [Releases](https://github.com/bureaucatorg/bureaucat/releases): Prebuilt `bureaucat` binaries for Linux and macOS (amd64, arm64)
-- [Docker image](https://hub.docker.com/r/codingcoffee/bureaucat): `codingcoffee/bureaucat`
+- [Container image](https://github.com/bureaucatorg/bureaucat/pkgs/container/bureaucat): `ghcr.io/bureaucatorg/bureaucat`
 
 ## How to call the API
 

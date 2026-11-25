@@ -1,4 +1,4 @@
-image := "docker.io/codingcoffee/bureaucat"
+image := "ghcr.io/bureaucatorg/bureaucat"
 runner := "bureaucat-release:local"
 
 podman-auth := env_var_or_default("REGISTRY_AUTH_FILE", env_var_or_default("XDG_RUNTIME_DIR", "/run/user/1000") + "/containers/auth.json")

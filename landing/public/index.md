@@ -37,7 +37,7 @@ BureauCat is an open-source, self-hosted task manager built around approval work
 Yes. BureauCat is free and open source under the GNU Affero General Public License v3.0 (AGPL-3.0). You host it yourself.
 
 ### How do I self-host BureauCat?
-Run the single `bureaucat` binary or the `codingcoffee/bureaucat` Docker image with a PostgreSQL database. Set `DATABASE_URL` and `JWT_SECRET`, then start it with `bureaucat serve --migrate`. The web app and API are served from one port.
+Run the single `bureaucat` binary or the `ghcr.io/bureaucatorg/bureaucat` container image with a PostgreSQL database. Set `DATABASE_URL` and `JWT_SECRET`, then start it with `bureaucat serve --migrate`. The web app and API are served from one port.
 
 ### How do approvals work?
 Approval is a task state. The default workflow includes Approval Pending, so a request waiting for sign-off sits in its own column on the board, with assignees, followers and a full history, instead of in an email thread.

@@ -63,10 +63,11 @@ dockers:
     goarch: amd64
     dockerfile: Dockerfile.goreleaser
     image_templates:
-      - "docker.io/codingcoffee/bureaucat:{{ .Tag }}"
-      - "docker.io/codingcoffee/bureaucat:latest"
+      - "ghcr.io/bureaucatorg/bureaucat:{{ .Tag }}"
+      - "ghcr.io/bureaucatorg/bureaucat:latest"
     build_flag_templates:
       - "--label=org.opencontainers.image.title={{ .ProjectName }}"
+      - "--label=org.opencontainers.image.source=https://github.com/bureaucatorg/bureaucat"
       - "--label=org.opencontainers.image.version={{ .Tag }}"
       - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
 
@@ -86,10 +87,11 @@ dockers:
       - landing/public
       - landing/nginx
     image_templates:
-      - "docker.io/codingcoffee/bureaucat-landing:{{ .Tag }}"
-      - "docker.io/codingcoffee/bureaucat-landing:latest"
+      - "ghcr.io/bureaucatorg/bureaucat-landing:{{ .Tag }}"
+      - "ghcr.io/bureaucatorg/bureaucat-landing:latest"
     build_flag_templates:
       - "--label=org.opencontainers.image.title={{ .ProjectName }}-landing"
+      - "--label=org.opencontainers.image.source=https://github.com/bureaucatorg/bureaucat"
       - "--label=org.opencontainers.image.version={{ .Tag }}"
       - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
 

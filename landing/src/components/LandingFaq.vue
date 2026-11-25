@@ -12,7 +12,7 @@ const faqs = [
   },
   {
     q: "How do I self-host BureauCat?",
-    a: "Run the single bureaucat binary or the codingcoffee/bureaucat Docker image with a PostgreSQL database. Set DATABASE_URL and JWT_SECRET, then start it with bureaucat serve --migrate. The web app and API are served from one port.",
+    a: "Run the single bureaucat binary or the ghcr.io/bureaucatorg/bureaucat container image with a PostgreSQL database. Set DATABASE_URL and JWT_SECRET, then start it with bureaucat serve --migrate. The web app and API are served from one port.",
   },
   {
     q: "How do approvals work?",
