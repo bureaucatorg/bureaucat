@@ -5,7 +5,10 @@
 <h1 align="center">Bureaucat</h1>
 
 <p align="center">
-  Bureaucracy that actually moves. A task and approval workflow app built for teams that value clarity, auditability, and speed.
+  🔥️📝️⏰ Open-source Jira, Linear, Monday, ClickUp, Plane alternative.
+  BureauCat is a modern AI native project management platform with manage
+  tasks, sprints, docs, approval workflows and triage app built for teams that
+  value clarity, auditability, and speed.
 </p>
 
 <p align="center">
