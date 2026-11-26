@@ -1,5 +1,5 @@
 #!/bin/sh
-# Podman's compat API omits the digest from `docker push` output, which goreleaser
+# Some docker-compatible engines omit the digest from `docker push` output, which goreleaser
 # parses; after a push, fetch it from the registry and print it in docker's format.
 set -e
 [ "$1" = "push" ] || exec docker-real "$@"

@@ -1,17 +1,18 @@
 image := "ghcr.io/bureaucatorg/bureaucat"
 runner := "bureaucat-release:local"
 
-podman-auth := env_var_or_default("REGISTRY_AUTH_FILE", env_var_or_default("XDG_RUNTIME_DIR", "/run/user/1000") + "/containers/auth.json")
-podman-sock := env_var_or_default("PODMAN_SOCK", env_var_or_default("XDG_RUNTIME_DIR", "/run/user/1000") + "/podman/podman.sock")
+docker-auth := env_var_or_default("REGISTRY_AUTH_FILE", env_var_or_default("DOCKER_CONFIG", home_directory() + "/.docker") + "/config.json")
+docker-auth-mount := if path_exists(docker-auth) == "true" { "-v " + docker-auth + ":/root/.docker/config.json:ro" } else { "" }
+docker-sock := replace(env_var_or_default("DOCKER_HOST", "unix:///var/run/docker.sock"), "unix://", "")
 
 # The whole release runs inside this image (go + bun + goreleaser + docker cli).
-# The image's docker cli talks to the host podman socket and reuses `podman login` creds.
+# The image's docker cli talks to the host docker socket and reuses `docker login` creds.
 release-run := '''
-podman run --rm \
+docker run --rm \
     --security-opt label=disable \
     -v "$PWD":/app \
-    -v ''' + podman-sock + ''':/var/run/docker.sock \
-    -v ''' + podman-auth + ''':/root/.docker/config.json:ro \
+    -v ''' + docker-sock + ''':/var/run/docker.sock \
+    ''' + docker-auth-mount + ''' \
     -e GITHUB_TOKEN \
     -e DOCKER_BUILDKIT=0 \
     -w /app \
@@ -23,7 +24,7 @@ version:
 
 # Build the release-runner image (cached; rebuild when Dockerfile.release changes)
 release-image:
-    podman build -f Dockerfile.release -t {{runner}} .
+    docker build -f Dockerfile.release -t {{runner}} .
 
 # Release a new version: just release patch|minor|major
 release kind="patch": release-image
@@ -32,6 +33,9 @@ release kind="patch": release-image
 
     if [[ -z "${GITHUB_TOKEN:-}" ]]; then
         echo "GITHUB_TOKEN is not set (needed to publish the GitHub release)."; exit 1
+    fi
+    if [[ ! -f "{{docker-auth}}" ]]; then
+        echo "{{docker-auth}} not found; run 'docker login ghcr.io' or set REGISTRY_AUTH_FILE."; exit 1
     fi
 
     # Get current version from latest tag (default v0.0.0 if no tags)
@@ -67,7 +71,7 @@ release kind="patch": release-image
 
     # Build binaries + frontend, push docker image, create GitHub release —
     # all inside the runner container.
-    echo "Running goreleaser in Podman..."
+    echo "Running goreleaser in Docker..."
     {{release-run}} goreleaser release --clean
 
     echo ""
