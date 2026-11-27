@@ -7,6 +7,7 @@ export interface Project {
   cover_url?: string;
   role: string;
   disabled: boolean;
+  require_template: boolean;
   workspace_id: string;
   created_by: string;
   created_at: string;
@@ -77,6 +78,7 @@ export interface UpdateProjectRequest {
   description?: string;
   icon_id?: string;
   cover_id?: string;
+  require_template?: boolean;
 }
 
 export interface AddMemberRequest {
@@ -111,11 +113,31 @@ export interface UpdateLabelRequest {
   color?: string;
 }
 
+export type TemplateFieldType = "text" | "textarea" | "number" | "select";
+
+export interface TemplateField {
+  key: string;
+  label: string;
+  type: TemplateFieldType;
+  description?: string;
+  required: boolean;
+  options?: string[];
+  multiple?: boolean;
+  min?: number;
+  max?: number;
+}
+
+export type TemplateFieldValue = string | number | string[] | undefined;
+
 export interface TaskTemplate {
   id: string;
   name: string;
   title: string;
   description: string;
+  fields: TemplateField[];
+  default_priority: number | null;
+  default_labels: string[];
+  default_assignees: string[];
   created_by: string;
   created_at: string;
   updated_at: string;
@@ -125,10 +147,24 @@ export interface CreateTemplateRequest {
   name: string;
   title: string;
   description: string;
+  fields: TemplateField[];
+  default_priority: number | null;
+  default_labels: string[];
+  default_assignees: string[];
 }
 
-export interface UpdateTemplateRequest {
-  name?: string;
-  title?: string;
-  description?: string;
+export type UpdateTemplateRequest = Partial<CreateTemplateRequest>;
+
+export interface EditableTemplateField {
+  uid: string;
+  key: string;
+  label: string;
+  type: TemplateFieldType;
+  description: string;
+  required: boolean;
+  optionsText: string;
+  multiple: boolean;
+  min: string;
+  max: string;
 }
+

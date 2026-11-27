@@ -9,7 +9,6 @@ import type {
   TaskTemplate,
   SubtaskCandidate,
 } from "~/types";
-import { mdToHtml } from "~/utils/markdown";
 
 const props = withDefaults(
   defineProps<{
@@ -271,16 +270,27 @@ async function selectProject(key: string) {
   await loadProjectMeta(key);
 }
 
-watch(selectedTemplateId, (id) => {
-  if (!id) return;
-  const tmpl = effTemplates.value.find((t) => t.id === id);
-  if (tmpl) {
-    form.value.title = tmpl.title;
-    // Templates are stored as HTML; convert any legacy markdown ones so the
-    // Tiptap editor receives valid HTML rather than raw markdown text.
-    form.value.description = mdToHtml(tmpl.description);
-  }
+const {
+  selectedTemplate,
+  templateFields,
+  hasFields,
+  fieldValues,
+  fieldErrors,
+  validate: validateTemplateFields,
+  payload: templatePayload,
+} = useTemplateForm({
+  selectedTemplateId,
+  templates: effTemplates,
+  labels: effLabels,
+  members: effMembers,
+  form,
 });
+
+// Locked-project mode is only used for subtasks, which never need a template.
+const requireTemplate = computed(() => !!selectedProject.value?.require_template);
+const templateMissing = computed(
+  () => requireTemplate.value && !isSubtaskMode.value && !selectedTemplateId.value
+);
 
 watch(open, async (isOpen) => {
   if (isOpen) {
@@ -331,6 +341,14 @@ async function handleSubmit() {
     error.value = "Start date cannot be after due date";
     return;
   }
+  if (templateMissing.value) {
+    error.value = "This project requires a template";
+    return;
+  }
+  if (!validateTemplateFields()) {
+    error.value = "Fill in the required template fields";
+    return;
+  }
 
   loading.value = true;
   error.value = null;
@@ -345,6 +363,7 @@ async function handleSubmit() {
     assignees: form.value.assignees.length > 0 ? form.value.assignees : undefined,
     labels: form.value.labels.length > 0 ? form.value.labels : undefined,
     parent_task_number: props.parentTaskNumber,
+    ...templatePayload(),
   });
 
   if (result.success && result.data) {
@@ -448,10 +467,6 @@ const priorities = [
   { value: 3, label: "High" },
   { value: 4, label: "Urgent" },
 ];
-
-const selectedTemplate = computed(
-  () => effTemplates.value.find((t) => t.id === selectedTemplateId.value) ?? null
-);
 
 function selectTemplate(id: string) {
   selectedTemplateId.value = id;
@@ -685,7 +700,10 @@ function removeLabel(labelId: string) {
              assignees, labels, templates) simply populate once a project is
              chosen in selector mode. -->
         <div class="space-y-2">
-          <Label for="template">Template</Label>
+          <Label for="template">
+            Template
+            <span v-if="requireTemplate && !isSubtaskMode" class="text-destructive" aria-hidden="true">*</span>
+          </Label>
             <Popover v-model:open="templateOpen">
               <PopoverTrigger as-child>
                 <Button
@@ -697,7 +715,7 @@ function removeLabel(labelId: string) {
                   class="w-full justify-between font-normal"
                 >
                   <span v-if="selectedTemplate" class="truncate">{{ selectedTemplate.name }}</span>
-                  <span v-else class="text-muted-foreground">No template</span>
+                  <span v-else class="text-muted-foreground">{{ templateMissing ? "Select a template" : "No template" }}</span>
                   <ChevronsUpDown class="size-4 shrink-0 opacity-50" />
                 </Button>
               </PopoverTrigger>
@@ -707,7 +725,7 @@ function removeLabel(labelId: string) {
                   <CommandList>
                     <CommandEmpty>No template found.</CommandEmpty>
                     <CommandGroup>
-                      <CommandItem value="no-template" @select="selectTemplate('')">
+                      <CommandItem v-if="!requireTemplate || isSubtaskMode" value="no-template" @select="selectTemplate('')">
                         <Check :class="['size-4', selectedTemplateId ? 'opacity-0' : 'opacity-100']" />
                         No template
                       </CommandItem>
@@ -738,8 +756,17 @@ function removeLabel(labelId: string) {
             />
           </div>
 
+          <TemplateFieldsForm
+            v-if="hasFields"
+            v-model="fieldValues"
+            :fields="templateFields"
+            :errors="fieldErrors"
+            :guidance="selectedTemplate?.description"
+            :disabled="loading"
+          />
+
           <div class="space-y-2">
-            <Label>Description</Label>
+            <Label>{{ hasFields ? "Additional details (optional)" : "Description" }}</Label>
             <TiptapEditor
               v-model="form.description"
               :disabled="loading"
@@ -875,7 +902,7 @@ function removeLabel(labelId: string) {
           >
             Cancel
           </Button>
-          <Button type="submit" :disabled="loading || !form.title || !effectiveProjectKey">
+          <Button type="submit" :disabled="loading || !form.title || !effectiveProjectKey || templateMissing">
             <Loader2 v-if="loading" class="mr-2 size-4 animate-spin" />
             {{ isSubtaskMode ? "Create Subtask" : "Create Task" }}
           </Button>

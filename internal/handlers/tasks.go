@@ -185,6 +185,10 @@ type CreateTaskRequest struct {
 	// (project-local) parent task. One level only: the parent must not itself
 	// be a subtask.
 	ParentTaskNumber *int `json:"parent_task_number"`
+	// TemplateID applies a template: Fields are validated against it and
+	// rendered into the description, and its defaults fill omitted values.
+	TemplateID *string        `json:"template_id"`
+	Fields     map[string]any `json:"fields"`
 }
 
 // UpdateTaskRequest represents the request to update a task.
@@ -451,11 +455,15 @@ func (h *TaskHandler) CreateTask(c *echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid request body")
 	}
 
+	ctx := c.Request().Context()
+
+	if err := applyTemplate(ctx, h.store, projectID, &req); err != nil {
+		return err
+	}
+
 	if req.Title == "" {
 		return echo.NewHTTPError(http.StatusBadRequest, "title is required")
 	}
-
-	ctx := c.Request().Context()
 
 	// Get or use default state
 	var stateID uuid.UUID

@@ -73,6 +73,11 @@ var (
 	pPriority  = body("priority", "integer", "0 none, 1 low, 2 medium, 3 high, 4 urgent")
 	pColor     = body("color", "string", "Hex colour, e.g. #3B82F6")
 	pUpload    = body("upload_id", "string", "upload_id of a file the user attached in this chat").req()
+
+	pTemplateFields    = body("fields", "object[]", `Structured fields users must fill when creating a task. Each {"key": "lowercase_snake", "label": string, "type": "text"|"textarea"|"number"|"select", "description": help text, "required": bool, "options": [string] (select), "multiple": bool (select), "min": number, "max": number (number)}`)
+	pTemplatePriority  = body("default_priority", "integer", "Default priority applied when a task omits it: 0 none, 1 low, 2 medium, 3 high, 4 urgent")
+	pTemplateLabels    = body("default_labels", "string[]", "Label UUIDs applied when a task omits labels")
+	pTemplateAssignees = body("default_assignees", "string[]", "Member user UUIDs assigned when a task omits assignees")
 )
 
 const (
@@ -109,7 +114,7 @@ var catalog = []Tool{
 	// Projects
 	{Name: "list_projects", Title: "List projects", Description: "Projects the user can access.", Method: http.MethodGet, Path: "/projects",
 		Params: []Param{pPage, pPerPage, pSearch, query("workspace_id", "string", "Optional workspace UUID")}},
-	{Name: "get_project", Title: "Get project", Description: "Get a project, including the user's role in it.", Method: http.MethodGet, Path: pp, Params: []Param{pProject}},
+	{Name: "get_project", Title: "Get project", Description: "Get a project, including the user's role in it and whether new tasks must use a template (require_template).", Method: http.MethodGet, Path: pp, Params: []Param{pProject}},
 	{Name: "get_project_stats", Title: "Get project stats", Description: "Task counts, state buckets and per-member load for a project.", Method: http.MethodGet, Path: pp + "/stats", Params: []Param{pProject}},
 	{Name: "create_project", Title: "Create project", Description: "Create a project with default states.", Method: http.MethodPost, Path: "/projects", Confirm: true,
 		Params: []Param{
@@ -118,8 +123,9 @@ var catalog = []Tool{
 			body("description", "string", "Description"),
 			body("workspace_id", "string", "Workspace UUID").req(),
 		}},
-	{Name: "update_project", Title: "Update project", Description: "Update project name/description (project admin).", Method: http.MethodPatch, Path: pp, Confirm: true,
-		Params: []Param{pProject, body("name", "string", "New name"), body("description", "string", "New description")}},
+	{Name: "update_project", Title: "Update project", Description: "Update project name/description, or require a template for new top-level tasks (project admin).", Method: http.MethodPatch, Path: pp, Confirm: true,
+		Params: []Param{pProject, body("name", "string", "New name"), body("description", "string", "New description"),
+			body("require_template", "boolean", "true to require a template for new top-level tasks (needs at least one template)")}},
 	{Name: "delete_project", Title: "Delete project", Description: "Delete a project (project admin).", Method: http.MethodDelete, Path: pp, Confirm: true, Params: []Param{pProject}},
 
 	// Project members
@@ -168,11 +174,13 @@ Movers: allow_assignees, allow_creator and mover_ids together limit who may make
 		Params: []Param{pProject, pathStr("label_id", "Label UUID")}},
 
 	// Templates
-	{Name: "list_templates", Title: "List templates", Description: "Task templates of a project.", Method: http.MethodGet, Path: pp + "/templates", Params: []Param{pProject}},
+	{Name: "list_templates", Title: "List templates", Description: "Task templates of a project, with their structured fields (key, label, type, required, options, min/max) and default labels/assignees/priority.", Method: http.MethodGet, Path: pp + "/templates", Params: []Param{pProject}},
 	{Name: "create_template", Title: "Create template", Description: "Create a task template (project admin).", Method: http.MethodPost, Path: pp + "/templates",
-		Params: []Param{pProject, body("name", "string", "Template name").req(), body("title", "string", "Default task title"), body("description", "string", "Default task description (markdown)")}},
-	{Name: "update_template", Title: "Update template", Description: "Update a task template (project admin).", Method: http.MethodPatch, Path: pp + "/templates/{template_id}", Confirm: true,
-		Params: []Param{pProject, pathStr("template_id", "Template UUID"), body("name", "string", "Name"), body("title", "string", "Title"), body("description", "string", "Description")}},
+		Params: []Param{pProject, body("name", "string", "Template name").req(), body("title", "string", "Default task title"), body("description", "string", "Guidance shown above the fields, or the pre-filled description when there are no fields"),
+			pTemplateFields, pTemplatePriority, pTemplateLabels, pTemplateAssignees}},
+	{Name: "update_template", Title: "Update template", Description: "Update a task template (project admin). fields replaces the whole list.", Method: http.MethodPatch, Path: pp + "/templates/{template_id}", Confirm: true,
+		Params: []Param{pProject, pathStr("template_id", "Template UUID"), body("name", "string", "Name"), body("title", "string", "Title"), body("description", "string", "Description"),
+			pTemplateFields, pTemplatePriority, pTemplateLabels, pTemplateAssignees}},
 	{Name: "delete_template", Title: "Delete template", Description: "Delete a task template (project admin).", Method: http.MethodDelete, Path: pp + "/templates/{template_id}", Confirm: true,
 		Params: []Param{pProject, pathStr("template_id", "Template UUID")}},
 
@@ -281,7 +289,9 @@ Movers: allow_assignees, allow_creator and mover_ids together limit who may make
 			body("state_id", "string", "State UUID; default state if omitted"), pPriority,
 			body("start_date", "string", "RFC3339, e.g. 2026-10-16T00:00:00Z"), body("due_date", "string", "RFC3339, not before start_date"),
 			body("assignees", "string[]", "Assignee user UUIDs"), body("labels", "string[]", "Label UUIDs"),
-			body("parent_task_number", "integer", "Parent task number (must be top-level) to create a subtask")}},
+			body("parent_task_number", "integer", "Parent task number (must be top-level) to create a subtask"),
+			body("template_id", "string", "Template UUID from list_templates; required for top-level tasks when the project requires templates"),
+			body("fields", "object", `Template field values keyed by field key: string for text/textarea, number for number, option string (or array when multiple) for select. All required fields must be set; ask the user for missing ones. Rendered into the description, so description is then only extra details`)}},
 	{Name: "update_task", Title: "Update task", Description: "Update task fields. Assignees, labels, parent, cycle and modules have their own tools.", Method: http.MethodPatch, Path: ppt,
 		Params: []Param{pProject, pTask, body("title", "string", "Title"), body("description", "string", "Markdown (replaces existing)"),
 			body("state_id", "string", "State UUID; the project workflow may reject the transition"), pPriority,

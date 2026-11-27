@@ -152,6 +152,8 @@ export interface CreateTaskRequest {
   // When set, creates this task as a subtask of the given (project-local)
   // parent task number. One level of nesting only.
   parent_task_number?: number;
+  template_id?: string;
+  fields?: Record<string, string | number | string[]>;
 }
 
 export interface UpdateTaskRequest {

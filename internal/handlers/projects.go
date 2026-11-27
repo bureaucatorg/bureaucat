@@ -28,18 +28,19 @@ func NewProjectHandler(store store.Querier) *ProjectHandler {
 
 // ProjectResponse represents a project in API responses.
 type ProjectResponse struct {
-	ID          uuid.UUID `json:"id"`
-	ProjectKey  string    `json:"project_key"`
-	Name        string    `json:"name"`
-	Description *string   `json:"description,omitempty"`
-	IconURL     *string   `json:"icon_url,omitempty"`
-	CoverURL    *string   `json:"cover_url,omitempty"`
-	Role        string    `json:"role,omitempty"`
-	Disabled    bool      `json:"disabled"`
-	WorkspaceID uuid.UUID `json:"workspace_id"`
-	CreatedBy   uuid.UUID `json:"created_by"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
+	ID              uuid.UUID `json:"id"`
+	ProjectKey      string    `json:"project_key"`
+	Name            string    `json:"name"`
+	Description     *string   `json:"description,omitempty"`
+	IconURL         *string   `json:"icon_url,omitempty"`
+	CoverURL        *string   `json:"cover_url,omitempty"`
+	Role            string    `json:"role,omitempty"`
+	Disabled        bool      `json:"disabled"`
+	RequireTemplate bool      `json:"require_template"`
+	WorkspaceID     uuid.UUID `json:"workspace_id"`
+	CreatedBy       uuid.UUID `json:"created_by"`
+	CreatedAt       time.Time `json:"created_at"`
+	UpdatedAt       time.Time `json:"updated_at"`
 }
 
 // CreateProjectRequest represents the request to create a project.
@@ -54,10 +55,11 @@ type CreateProjectRequest struct {
 
 // UpdateProjectRequest represents the request to update a project.
 type UpdateProjectRequest struct {
-	Name        *string `json:"name"`
-	Description *string `json:"description"`
-	IconID      *string `json:"icon_id"`
-	CoverID     *string `json:"cover_id"`
+	Name            *string `json:"name"`
+	Description     *string `json:"description"`
+	IconID          *string `json:"icon_id"`
+	CoverID         *string `json:"cover_id"`
+	RequireTemplate *bool   `json:"require_template"`
 }
 
 // PaginatedProjectsResponse represents a paginated list of projects.
@@ -160,17 +162,18 @@ func (h *ProjectHandler) ListProjects(c *echo.Context) error {
 		projectResponses = make([]ProjectResponse, len(projects))
 		for i, p := range projects {
 			projectResponses[i] = ProjectResponse{
-				ID:          p.ID,
-				ProjectKey:  p.ProjectKey,
-				Name:        p.Name,
-				Description: textToStringPtr(p.Description),
-				IconURL:     pgtypeUUIDToURL(p.IconID),
-				CoverURL:    pgtypeUUIDToURL(p.CoverID),
-				Role:        p.Role,
-				WorkspaceID: p.WorkspaceID,
-				CreatedBy:   p.CreatedBy,
-				CreatedAt:   p.CreatedAt.Time,
-				UpdatedAt:   p.UpdatedAt.Time,
+				ID:              p.ID,
+				ProjectKey:      p.ProjectKey,
+				Name:            p.Name,
+				Description:     textToStringPtr(p.Description),
+				IconURL:         pgtypeUUIDToURL(p.IconID),
+				CoverURL:        pgtypeUUIDToURL(p.CoverID),
+				Role:            p.Role,
+				RequireTemplate: p.RequireTemplate,
+				WorkspaceID:     p.WorkspaceID,
+				CreatedBy:       p.CreatedBy,
+				CreatedAt:       p.CreatedAt.Time,
+				UpdatedAt:       p.UpdatedAt.Time,
 			}
 		}
 	} else {
@@ -195,17 +198,18 @@ func (h *ProjectHandler) ListProjects(c *echo.Context) error {
 		projectResponses = make([]ProjectResponse, len(projects))
 		for i, p := range projects {
 			projectResponses[i] = ProjectResponse{
-				ID:          p.ID,
-				ProjectKey:  p.ProjectKey,
-				Name:        p.Name,
-				Description: textToStringPtr(p.Description),
-				IconURL:     pgtypeUUIDToURL(p.IconID),
-				CoverURL:    pgtypeUUIDToURL(p.CoverID),
-				Role:        p.Role,
-				WorkspaceID: p.WorkspaceID,
-				CreatedBy:   p.CreatedBy,
-				CreatedAt:   p.CreatedAt.Time,
-				UpdatedAt:   p.UpdatedAt.Time,
+				ID:              p.ID,
+				ProjectKey:      p.ProjectKey,
+				Name:            p.Name,
+				Description:     textToStringPtr(p.Description),
+				IconURL:         pgtypeUUIDToURL(p.IconID),
+				CoverURL:        pgtypeUUIDToURL(p.CoverID),
+				Role:            p.Role,
+				RequireTemplate: p.RequireTemplate,
+				WorkspaceID:     p.WorkspaceID,
+				CreatedBy:       p.CreatedBy,
+				CreatedAt:       p.CreatedAt.Time,
+				UpdatedAt:       p.UpdatedAt.Time,
 			}
 		}
 	}
@@ -347,17 +351,18 @@ func (h *ProjectHandler) CreateProject(c *echo.Context) error {
 	}
 
 	return c.JSON(http.StatusCreated, ProjectResponse{
-		ID:          project.ID,
-		ProjectKey:  project.ProjectKey,
-		Name:        project.Name,
-		Description: textToStringPtr(project.Description),
-		IconURL:     pgtypeUUIDToURL(project.IconID),
-		CoverURL:    pgtypeUUIDToURL(project.CoverID),
-		Role:        "admin",
-		WorkspaceID: project.WorkspaceID,
-		CreatedBy:   project.CreatedBy,
-		CreatedAt:   project.CreatedAt.Time,
-		UpdatedAt:   project.UpdatedAt.Time,
+		ID:              project.ID,
+		ProjectKey:      project.ProjectKey,
+		Name:            project.Name,
+		Description:     textToStringPtr(project.Description),
+		IconURL:         pgtypeUUIDToURL(project.IconID),
+		CoverURL:        pgtypeUUIDToURL(project.CoverID),
+		Role:            "admin",
+		RequireTemplate: project.RequireTemplate,
+		WorkspaceID:     project.WorkspaceID,
+		CreatedBy:       project.CreatedBy,
+		CreatedAt:       project.CreatedAt.Time,
+		UpdatedAt:       project.UpdatedAt.Time,
 	})
 }
 
@@ -389,18 +394,19 @@ func (h *ProjectHandler) GetProject(c *echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, ProjectResponse{
-		ID:          project.ID,
-		ProjectKey:  project.ProjectKey,
-		Name:        project.Name,
-		Description: textToStringPtr(project.Description),
-		IconURL:     pgtypeUUIDToURL(project.IconID),
-		CoverURL:    pgtypeUUIDToURL(project.CoverID),
-		Role:        role,
-		Disabled:    project.Disabled,
-		WorkspaceID: project.WorkspaceID,
-		CreatedBy:   project.CreatedBy,
-		CreatedAt:   project.CreatedAt.Time,
-		UpdatedAt:   project.UpdatedAt.Time,
+		ID:              project.ID,
+		ProjectKey:      project.ProjectKey,
+		Name:            project.Name,
+		Description:     textToStringPtr(project.Description),
+		IconURL:         pgtypeUUIDToURL(project.IconID),
+		CoverURL:        pgtypeUUIDToURL(project.CoverID),
+		Role:            role,
+		Disabled:        project.Disabled,
+		RequireTemplate: project.RequireTemplate,
+		WorkspaceID:     project.WorkspaceID,
+		CreatedBy:       project.CreatedBy,
+		CreatedAt:       project.CreatedAt.Time,
+		UpdatedAt:       project.UpdatedAt.Time,
 	})
 }
 
@@ -432,29 +438,47 @@ func (h *ProjectHandler) UpdateProject(c *echo.Context) error {
 
 	ctx := c.Request().Context()
 
+	if req.RequireTemplate != nil && *req.RequireTemplate {
+		templates, err := h.store.ListTaskTemplates(ctx, projectID)
+		if err != nil {
+			return echo.NewHTTPError(http.StatusInternalServerError, "failed to list templates")
+		}
+		if len(templates) == 0 {
+			return echo.NewHTTPError(http.StatusBadRequest, "create a template before requiring one")
+		}
+	}
+
+	var requireTemplate pgtype.Bool
+	if req.RequireTemplate != nil {
+		requireTemplate = pgtype.Bool{Bool: *req.RequireTemplate, Valid: true}
+	}
+
 	project, err := h.store.UpdateProject(ctx, store.UpdateProjectParams{
-		ID:          projectID,
-		Name:        stringToPgtypeText(req.Name),
-		Description: stringToPgtypeText(req.Description),
-		IconID:      stringToPgtypeUUID(req.IconID),
-		CoverID:     stringToPgtypeUUID(req.CoverID),
+		ID:              projectID,
+		Name:            stringToPgtypeText(req.Name),
+		Description:     stringToPgtypeText(req.Description),
+		IconID:          stringToPgtypeUUID(req.IconID),
+		CoverID:         stringToPgtypeUUID(req.CoverID),
+		RequireTemplate: requireTemplate,
 	})
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to update project")
 	}
 
 	return c.JSON(http.StatusOK, ProjectResponse{
-		ID:          project.ID,
-		ProjectKey:  project.ProjectKey,
-		Name:        project.Name,
-		Description: textToStringPtr(project.Description),
-		IconURL:     pgtypeUUIDToURL(project.IconID),
-		CoverURL:    pgtypeUUIDToURL(project.CoverID),
-		Disabled:    project.Disabled,
-		WorkspaceID: project.WorkspaceID,
-		CreatedBy:   project.CreatedBy,
-		CreatedAt:   project.CreatedAt.Time,
-		UpdatedAt:   project.UpdatedAt.Time,
+		ID:              project.ID,
+		ProjectKey:      project.ProjectKey,
+		Name:            project.Name,
+		Description:     textToStringPtr(project.Description),
+		IconURL:         pgtypeUUIDToURL(project.IconID),
+		CoverURL:        pgtypeUUIDToURL(project.CoverID),
+		Role:            c.Request().Header.Get(auth.HeaderProjectRole),
+		Disabled:        project.Disabled,
+		RequireTemplate: project.RequireTemplate,
+		WorkspaceID:     project.WorkspaceID,
+		CreatedBy:       project.CreatedBy,
+		CreatedAt:       project.CreatedAt.Time,
+		UpdatedAt:       project.UpdatedAt.Time,
 	})
 }
 
@@ -613,17 +637,18 @@ func (h *ProjectHandler) MoveProjectToWorkspace(c *echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, ProjectResponse{
-		ID:          updated.ID,
-		ProjectKey:  updated.ProjectKey,
-		Name:        updated.Name,
-		Description: textToStringPtr(updated.Description),
-		IconURL:     pgtypeUUIDToURL(updated.IconID),
-		CoverURL:    pgtypeUUIDToURL(updated.CoverID),
-		Disabled:    updated.Disabled,
-		WorkspaceID: updated.WorkspaceID,
-		CreatedBy:   updated.CreatedBy,
-		CreatedAt:   updated.CreatedAt.Time,
-		UpdatedAt:   updated.UpdatedAt.Time,
+		ID:              updated.ID,
+		ProjectKey:      updated.ProjectKey,
+		Name:            updated.Name,
+		Description:     textToStringPtr(updated.Description),
+		IconURL:         pgtypeUUIDToURL(updated.IconID),
+		CoverURL:        pgtypeUUIDToURL(updated.CoverID),
+		Disabled:        updated.Disabled,
+		RequireTemplate: updated.RequireTemplate,
+		WorkspaceID:     updated.WorkspaceID,
+		CreatedBy:       updated.CreatedBy,
+		CreatedAt:       updated.CreatedAt.Time,
+		UpdatedAt:       updated.UpdatedAt.Time,
 	})
 }
 
@@ -670,18 +695,19 @@ func (h *ProjectHandler) SetProjectDisabled(c *echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, ProjectResponse{
-		ID:          project.ID,
-		ProjectKey:  project.ProjectKey,
-		Name:        project.Name,
-		Description: textToStringPtr(project.Description),
-		IconURL:     pgtypeUUIDToURL(project.IconID),
-		CoverURL:    pgtypeUUIDToURL(project.CoverID),
-		Role:        c.Request().Header.Get(auth.HeaderProjectRole),
-		Disabled:    project.Disabled,
-		WorkspaceID: project.WorkspaceID,
-		CreatedBy:   project.CreatedBy,
-		CreatedAt:   project.CreatedAt.Time,
-		UpdatedAt:   project.UpdatedAt.Time,
+		ID:              project.ID,
+		ProjectKey:      project.ProjectKey,
+		Name:            project.Name,
+		Description:     textToStringPtr(project.Description),
+		IconURL:         pgtypeUUIDToURL(project.IconID),
+		CoverURL:        pgtypeUUIDToURL(project.CoverID),
+		Role:            c.Request().Header.Get(auth.HeaderProjectRole),
+		Disabled:        project.Disabled,
+		RequireTemplate: project.RequireTemplate,
+		WorkspaceID:     project.WorkspaceID,
+		CreatedBy:       project.CreatedBy,
+		CreatedAt:       project.CreatedAt.Time,
+		UpdatedAt:       project.UpdatedAt.Time,
 	})
 }
 
@@ -1508,212 +1534,6 @@ func (h *ProjectHandler) DeleteLabel(c *echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, map[string]string{"message": "label deleted"})
-}
-
-// TemplateResponse represents a task template in API responses.
-type TemplateResponse struct {
-	ID          uuid.UUID `json:"id"`
-	Name        string    `json:"name"`
-	Title       string    `json:"title"`
-	Description string    `json:"description"`
-	CreatedBy   uuid.UUID `json:"created_by"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
-}
-
-// CreateTemplateRequest represents the request to create a template.
-type CreateTemplateRequest struct {
-	Name        string `json:"name"`
-	Title       string `json:"title"`
-	Description string `json:"description"`
-}
-
-// UpdateTemplateRequest represents the request to update a template.
-type UpdateTemplateRequest struct {
-	Name        *string `json:"name"`
-	Title       *string `json:"title"`
-	Description *string `json:"description"`
-}
-
-// ListTemplates returns project task templates.
-//
-//	@Summary		List templates
-//	@Description	Returns all task templates for a project.
-//	@Tags			Project Templates
-//	@Produce		json
-//	@Param			projectKey	path		string	true	"Project key"
-//	@Success		200			{array}		TemplateResponse
-//	@Failure		500			{object}	ErrorResponse
-//	@Security		BearerAuth
-//	@Router			/projects/{projectKey}/templates [get]
-func (h *ProjectHandler) ListTemplates(c *echo.Context) error {
-	projectIDStr := c.Request().Header.Get(auth.HeaderProjectID)
-	projectID, err := uuid.Parse(projectIDStr)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, "invalid project ID in context")
-	}
-
-	ctx := c.Request().Context()
-
-	templates, err := h.store.ListTaskTemplates(ctx, projectID)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, "failed to list templates")
-	}
-
-	templateResponses := make([]TemplateResponse, len(templates))
-	for i, t := range templates {
-		templateResponses[i] = TemplateResponse{
-			ID:          t.ID,
-			Name:        t.Name,
-			Title:       t.Title,
-			Description: t.Description,
-			CreatedBy:   t.CreatedBy,
-			CreatedAt:   t.CreatedAt.Time,
-			UpdatedAt:   t.UpdatedAt.Time,
-		}
-	}
-
-	return c.JSON(http.StatusOK, templateResponses)
-}
-
-// CreateTemplate creates a new task template.
-//
-//	@Summary		Create template
-//	@Description	Create a new task template. Requires project admin role.
-//	@Tags			Project Templates
-//	@Accept			json
-//	@Produce		json
-//	@Param			projectKey	path		string					true	"Project key"
-//	@Param			body		body		CreateTemplateRequest	true	"Template details"
-//	@Success		201			{object}	TemplateResponse
-//	@Failure		400			{object}	ErrorResponse
-//	@Failure		500			{object}	ErrorResponse
-//	@Security		BearerAuth
-//	@Router			/projects/{projectKey}/templates [post]
-func (h *ProjectHandler) CreateTemplate(c *echo.Context) error {
-	projectIDStr := c.Request().Header.Get(auth.HeaderProjectID)
-	projectID, err := uuid.Parse(projectIDStr)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, "invalid project ID in context")
-	}
-
-	userIDStr := c.Request().Header.Get(auth.HeaderUserID)
-	userID, err := uuid.Parse(userIDStr)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusUnauthorized, "invalid user ID")
-	}
-
-	var req CreateTemplateRequest
-	if err := c.Bind(&req); err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, "invalid request body")
-	}
-
-	if req.Name == "" {
-		return echo.NewHTTPError(http.StatusBadRequest, "name is required")
-	}
-
-	ctx := c.Request().Context()
-
-	template, err := h.store.CreateTaskTemplate(ctx, store.CreateTaskTemplateParams{
-		ProjectID:   projectID,
-		Name:        req.Name,
-		Title:       req.Title,
-		Description: req.Description,
-		CreatedBy:   userID,
-	})
-	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, "failed to create template")
-	}
-
-	return c.JSON(http.StatusCreated, TemplateResponse{
-		ID:          template.ID,
-		Name:        template.Name,
-		Title:       template.Title,
-		Description: template.Description,
-		CreatedBy:   template.CreatedBy,
-		CreatedAt:   template.CreatedAt.Time,
-		UpdatedAt:   template.UpdatedAt.Time,
-	})
-}
-
-// UpdateTemplate updates a task template.
-//
-//	@Summary		Update template
-//	@Description	Update a task template. Requires project admin role.
-//	@Tags			Project Templates
-//	@Accept			json
-//	@Produce		json
-//	@Param			projectKey	path		string					true	"Project key"
-//	@Param			templateId	path		string					true	"Template ID"
-//	@Param			body		body		UpdateTemplateRequest	true	"Fields to update"
-//	@Success		200			{object}	TemplateResponse
-//	@Failure		400			{object}	ErrorResponse
-//	@Failure		500			{object}	ErrorResponse
-//	@Security		BearerAuth
-//	@Router			/projects/{projectKey}/templates/{templateId} [patch]
-func (h *ProjectHandler) UpdateTemplate(c *echo.Context) error {
-	templateIDStr := c.Param("templateId")
-	templateID, err := uuid.Parse(templateIDStr)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, "invalid template ID")
-	}
-
-	var req UpdateTemplateRequest
-	if err := c.Bind(&req); err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, "invalid request body")
-	}
-
-	ctx := c.Request().Context()
-
-	template, err := h.store.UpdateTaskTemplate(ctx, store.UpdateTaskTemplateParams{
-		ID:          templateID,
-		Name:        stringToPgtypeText(req.Name),
-		Title:       stringToPgtypeText(req.Title),
-		Description: stringToPgtypeText(req.Description),
-	})
-	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, "failed to update template")
-	}
-
-	return c.JSON(http.StatusOK, TemplateResponse{
-		ID:          template.ID,
-		Name:        template.Name,
-		Title:       template.Title,
-		Description: template.Description,
-		CreatedBy:   template.CreatedBy,
-		CreatedAt:   template.CreatedAt.Time,
-		UpdatedAt:   template.UpdatedAt.Time,
-	})
-}
-
-// DeleteTemplate deletes a task template.
-//
-//	@Summary		Delete template
-//	@Description	Delete a task template. Requires project admin role.
-//	@Tags			Project Templates
-//	@Produce		json
-//	@Param			projectKey	path		string	true	"Project key"
-//	@Param			templateId	path		string	true	"Template ID"
-//	@Success		200			{object}	MessageResponse
-//	@Failure		400			{object}	ErrorResponse
-//	@Failure		500			{object}	ErrorResponse
-//	@Security		BearerAuth
-//	@Router			/projects/{projectKey}/templates/{templateId} [delete]
-func (h *ProjectHandler) DeleteTemplate(c *echo.Context) error {
-	templateIDStr := c.Param("templateId")
-	templateID, err := uuid.Parse(templateIDStr)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, "invalid template ID")
-	}
-
-	ctx := c.Request().Context()
-
-	err = h.store.DeleteTaskTemplate(ctx, templateID)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, "failed to delete template")
-	}
-
-	return c.JSON(http.StatusOK, map[string]string{"message": "template deleted"})
 }
 
 // Helper functions for pgtype conversions

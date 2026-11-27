@@ -454,18 +454,19 @@ type PersonalAccessToken struct {
 }
 
 type Project struct {
-	ID          uuid.UUID          `json:"id"`
-	ProjectKey  string             `json:"project_key"`
-	Name        string             `json:"name"`
-	Description pgtype.Text        `json:"description"`
-	IconID      pgtype.UUID        `json:"icon_id"`
-	CoverID     pgtype.UUID        `json:"cover_id"`
-	CreatedBy   uuid.UUID          `json:"created_by"`
-	CreatedAt   pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
-	DeletedAt   pgtype.Timestamptz `json:"deleted_at"`
-	Disabled    bool               `json:"disabled"`
-	WorkspaceID uuid.UUID          `json:"workspace_id"`
+	ID              uuid.UUID          `json:"id"`
+	ProjectKey      string             `json:"project_key"`
+	Name            string             `json:"name"`
+	Description     pgtype.Text        `json:"description"`
+	IconID          pgtype.UUID        `json:"icon_id"`
+	CoverID         pgtype.UUID        `json:"cover_id"`
+	CreatedBy       uuid.UUID          `json:"created_by"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
+	DeletedAt       pgtype.Timestamptz `json:"deleted_at"`
+	Disabled        bool               `json:"disabled"`
+	WorkspaceID     uuid.UUID          `json:"workspace_id"`
+	RequireTemplate bool               `json:"require_template"`
 }
 
 type ProjectLabel struct {
@@ -580,14 +581,18 @@ type TaskLabel struct {
 }
 
 type TaskTemplate struct {
-	ID          uuid.UUID          `json:"id"`
-	ProjectID   uuid.UUID          `json:"project_id"`
-	Name        string             `json:"name"`
-	Title       string             `json:"title"`
-	Description string             `json:"description"`
-	CreatedBy   uuid.UUID          `json:"created_by"`
-	CreatedAt   pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+	ID               uuid.UUID          `json:"id"`
+	ProjectID        uuid.UUID          `json:"project_id"`
+	Name             string             `json:"name"`
+	Title            string             `json:"title"`
+	Description      string             `json:"description"`
+	CreatedBy        uuid.UUID          `json:"created_by"`
+	CreatedAt        pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
+	Fields           []byte             `json:"fields"`
+	DefaultPriority  pgtype.Int4        `json:"default_priority"`
+	DefaultLabels    []uuid.UUID        `json:"default_labels"`
+	DefaultAssignees []uuid.UUID        `json:"default_assignees"`
 }
 
 type Upload struct {

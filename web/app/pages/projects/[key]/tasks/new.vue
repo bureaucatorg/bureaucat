@@ -2,7 +2,6 @@
 import { ChevronLeft, Loader2, Plus, X, Search } from "lucide-vue-next";
 import { toast } from "vue-sonner";
 import type { ProjectState, ProjectLabel, ProjectMember, TaskTemplate } from "~/types";
-import { mdToHtml } from "~/utils/markdown";
 
 definePageMeta({
   middleware: ["auth"],
@@ -126,18 +125,28 @@ async function loadProjectData() {
   pageLoading.value = false;
 }
 
-watch(selectedTemplateId, (id) => {
-  if (!id) return;
-  const tmpl = templates.value.find((t) => t.id === id);
-  if (tmpl) {
-    form.value.title = tmpl.title;
-    // Templates are stored as HTML; convert any legacy markdown ones so the
-    // Tiptap editor receives valid HTML rather than raw markdown text.
-    form.value.description = mdToHtml(tmpl.description);
-  }
-});
+const requireTemplate = computed(() => !!currentProject.value?.require_template);
+const templateMissing = computed(() => requireTemplate.value && !selectedTemplateId.value);
+
+const {
+  selectedTemplate,
+  templateFields,
+  hasFields,
+  fieldValues,
+  fieldErrors,
+  validate: validateTemplateFields,
+  payload: templatePayload,
+} = useTemplateForm({ selectedTemplateId, templates, labels, members, form });
 
 async function handleSubmit() {
+  if (templateMissing.value) {
+    error.value = "This project requires a template";
+    return;
+  }
+  if (!validateTemplateFields()) {
+    error.value = "Fill in the required template fields";
+    return;
+  }
   loading.value = true;
   error.value = null;
 
@@ -148,6 +157,7 @@ async function handleSubmit() {
     priority: form.value.priority,
     assignees: form.value.assignees.length > 0 ? form.value.assignees : undefined,
     labels: form.value.labels.length > 0 ? form.value.labels : undefined,
+    ...templatePayload(),
   });
 
   if (result.success && result.data) {
@@ -178,9 +188,9 @@ const priorities = [
 // string for "no selection" — so these adapters bridge to the form's types.
 const NO_TEMPLATE = "__none__";
 const templateValue = computed({
-  get: () => selectedTemplateId.value || NO_TEMPLATE,
-  set: (v: string) => {
-    selectedTemplateId.value = v === NO_TEMPLATE ? "" : v;
+  get: () => selectedTemplateId.value || (requireTemplate.value ? undefined : NO_TEMPLATE),
+  set: (v: string | undefined) => {
+    selectedTemplateId.value = !v || v === NO_TEMPLATE ? "" : v;
   },
 });
 const priorityValue = computed({
@@ -308,13 +318,16 @@ onMounted(() => {
 
             <!-- Template -->
             <div v-if="templates.length > 0" class="space-y-2">
-              <Label for="template">Template</Label>
+              <Label for="template">
+                Template
+                <span v-if="requireTemplate" class="text-destructive" aria-hidden="true">*</span>
+              </Label>
               <Select v-model="templateValue" :disabled="loading">
                 <SelectTrigger id="template" class="w-full">
-                  <SelectValue placeholder="No template" />
+                  <SelectValue :placeholder="requireTemplate ? 'Select a template' : 'No template'" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem :value="NO_TEMPLATE">No template</SelectItem>
+                  <SelectItem v-if="!requireTemplate" :value="NO_TEMPLATE">No template</SelectItem>
                   <SelectItem v-for="tmpl in templates" :key="tmpl.id" :value="tmpl.id">
                     {{ tmpl.name }}
                   </SelectItem>
@@ -335,9 +348,18 @@ onMounted(() => {
               />
             </div>
 
+            <TemplateFieldsForm
+              v-if="hasFields"
+              v-model="fieldValues"
+              :fields="templateFields"
+              :errors="fieldErrors"
+              :guidance="selectedTemplate?.description"
+              :disabled="loading"
+            />
+
             <!-- Description -->
             <div class="space-y-2">
-              <Label>Description</Label>
+              <Label>{{ hasFields ? "Additional details (optional)" : "Description" }}</Label>
               <TiptapEditor
                 v-model="form.description"
                 :disabled="loading"
@@ -542,7 +564,7 @@ onMounted(() => {
               <Button type="button" variant="outline" :disabled="loading" as-child>
                 <NuxtLink :to="`/projects/${projectKey}`">Cancel</NuxtLink>
               </Button>
-              <Button type="submit" :disabled="loading || !form.title">
+              <Button type="submit" :disabled="loading || !form.title || templateMissing">
                 <Loader2 v-if="loading" class="mr-2 size-4 animate-spin" />
                 Create Task
               </Button>

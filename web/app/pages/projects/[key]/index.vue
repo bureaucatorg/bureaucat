@@ -993,8 +993,11 @@ onMounted(async () => {
 
               <TemplatesManager
                 :templates="templates"
+                :labels="labels"
+                :members="members"
                 :project-key="projectKey"
                 :is-admin="isAdmin"
+                :require-template="!!currentProject?.require_template"
                 @refresh="listTemplates(projectKey)"
               />
 

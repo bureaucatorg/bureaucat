@@ -1,52 +1,46 @@
 <script setup lang="ts">
-import { Plus, Trash2, Pencil, Loader2, Check, X } from "lucide-vue-next";
+import { Plus, Trash2, Pencil, Loader2 } from "lucide-vue-next";
 import { toast } from "vue-sonner";
-import type { TaskTemplate } from "~/types";
-import { mdToHtml } from "~/utils/markdown";
+import type { CreateTemplateRequest, ProjectLabel, ProjectMember, TaskTemplate } from "~/types";
 
 const props = defineProps<{
   templates: TaskTemplate[];
+  labels: ProjectLabel[];
+  members: ProjectMember[];
   projectKey: string;
   isAdmin: boolean;
+  requireTemplate: boolean;
 }>();
 
 const emit = defineEmits<{
   refresh: [];
 }>();
 
-const { createTemplate, updateTemplate, deleteTemplate } = useProjects();
+const { createTemplate, updateTemplate, deleteTemplate, updateProject } = useProjects();
 
 const loading = ref(false);
 const showCreateForm = ref(false);
 const editingId = ref<string | null>(null);
 const deletingId = ref<string | null>(null);
+const savingSettings = ref(false);
 
-const newTemplate = ref({
-  name: "",
-  title: "",
-  description: "",
-});
+async function toggleRequire(value: boolean) {
+  savingSettings.value = true;
+  const res = await updateProject(props.projectKey, { require_template: value });
+  savingSettings.value = false;
+  if (res.success) {
+    toast.success(value ? "Templates are now required" : "Templates are now optional");
+  } else {
+    toast.error(res.error || "Failed to update template settings");
+  }
+}
 
-const editForm = ref({
-  name: "",
-  title: "",
-  description: "",
-});
-
-async function handleCreate() {
-  if (!newTemplate.value.name.trim()) return;
-
+async function handleCreate(data: CreateTemplateRequest) {
   loading.value = true;
-  const result = await createTemplate(props.projectKey, {
-    name: newTemplate.value.name,
-    title: newTemplate.value.title,
-    description: newTemplate.value.description,
-  });
+  const result = await createTemplate(props.projectKey, data);
   loading.value = false;
-
   if (result.success) {
     toast.success("Template created");
-    newTemplate.value = { name: "", title: "", description: "" };
     showCreateForm.value = false;
     emit("refresh");
   } else {
@@ -54,36 +48,14 @@ async function handleCreate() {
   }
 }
 
-function startEdit(template: TaskTemplate) {
-  editingId.value = template.id;
-  editForm.value = {
-    name: template.name,
-    title: template.title,
-    // Legacy templates are stored as markdown; convert so the rich editor
-    // shows them formatted rather than as raw markdown text.
-    description: mdToHtml(template.description),
-  };
-}
-
-function cancelEdit() {
-  editingId.value = null;
-  editForm.value = { name: "", title: "", description: "" };
-}
-
-async function handleUpdate() {
-  if (!editingId.value || !editForm.value.name.trim()) return;
-
+async function handleUpdate(data: CreateTemplateRequest) {
+  if (!editingId.value) return;
   loading.value = true;
-  const result = await updateTemplate(props.projectKey, editingId.value, {
-    name: editForm.value.name,
-    title: editForm.value.title,
-    description: editForm.value.description,
-  });
+  const result = await updateTemplate(props.projectKey, editingId.value, data);
   loading.value = false;
-
   if (result.success) {
     toast.success("Template updated");
-    cancelEdit();
+    editingId.value = null;
     emit("refresh");
   } else {
     toast.error(result.error || "Failed to update template");
@@ -94,7 +66,6 @@ async function handleDelete(template: TaskTemplate) {
   deletingId.value = template.id;
   const result = await deleteTemplate(props.projectKey, template.id);
   deletingId.value = null;
-
   if (result.success) {
     toast.success("Template deleted");
     emit("refresh");
@@ -102,15 +73,22 @@ async function handleDelete(template: TaskTemplate) {
     toast.error(result.error || "Failed to delete template");
   }
 }
+
+function fieldSummary(t: TaskTemplate) {
+  const n = t.fields?.length ?? 0;
+  if (!n) return "";
+  const req = t.fields.filter((f) => f.required).length;
+  return `${n} field${n === 1 ? "" : "s"}${req ? `, ${req} required` : ""}`;
+}
 </script>
 
 <template>
   <div class="space-y-6">
-    <div class="flex items-center justify-between">
+    <div class="flex flex-wrap items-center justify-between gap-3">
       <div>
         <h3 class="font-semibold">Templates</h3>
         <p class="text-sm text-muted-foreground">
-          Pre-fill task title and description when creating tasks
+          Structured forms people fill when creating tasks
         </p>
       </div>
       <Button
@@ -123,54 +101,33 @@ async function handleDelete(template: TaskTemplate) {
       </Button>
     </div>
 
-    <!-- Create form -->
+    <div class="flex items-center justify-between gap-4 rounded-lg border px-3 py-2">
+      <div>
+        <p class="text-sm font-medium">Require a template</p>
+        <p class="text-xs text-muted-foreground">
+          New tasks must use one of these templates. Subtasks are exempt.
+        </p>
+      </div>
+      <Switch
+        :checked="requireTemplate"
+        :disabled="!isAdmin || savingSettings || (!requireTemplate && templates.length === 0)"
+        @update:checked="toggleRequire"
+      />
+    </div>
+
     <Card v-if="showCreateForm" class="border-dashed">
       <CardContent class="pt-6">
-        <form class="space-y-4" @submit.prevent="handleCreate">
-          <div class="space-y-2">
-            <Label>Name</Label>
-            <Input
-              v-model="newTemplate.name"
-              placeholder="Template name"
-              :disabled="loading"
-            />
-          </div>
-          <div class="space-y-2">
-            <Label>Title</Label>
-            <Input
-              v-model="newTemplate.title"
-              placeholder="Pre-filled task title"
-              :disabled="loading"
-            />
-          </div>
-          <div class="space-y-2">
-            <Label>Description</Label>
-            <TiptapEditor
-              v-model="newTemplate.description"
-              :disabled="loading"
-              compact
-            />
-          </div>
-          <div class="flex justify-end gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              :disabled="loading"
-              @click="showCreateForm = false"
-            >
-              Cancel
-            </Button>
-            <Button type="submit" size="sm" :disabled="loading || !newTemplate.name">
-              <Loader2 v-if="loading" class="mr-1.5 size-4 animate-spin" />
-              Create
-            </Button>
-          </div>
-        </form>
+        <TemplateForm
+          :labels="labels"
+          :members="members"
+          :loading="loading"
+          submit-label="Create"
+          @submit="handleCreate"
+          @cancel="showCreateForm = false"
+        />
       </CardContent>
     </Card>
 
-    <!-- Templates list -->
     <div v-if="templates.length === 0" class="py-8 text-center text-sm text-muted-foreground">
       No templates yet. Create your first template to speed up task creation.
     </div>
@@ -180,93 +137,47 @@ async function handleDelete(template: TaskTemplate) {
         :key="template.id"
         class="rounded-lg border px-3 py-2"
       >
-        <template v-if="editingId === template.id">
-          <form class="space-y-3" @submit.prevent="handleUpdate">
-            <div class="space-y-2">
-              <Label>Name</Label>
-              <Input
-                v-model="editForm.name"
-                class="h-8"
-                :disabled="loading"
-              />
-            </div>
-            <div class="space-y-2">
-              <Label>Title</Label>
-              <Input
-                v-model="editForm.title"
-                class="h-8"
-                :disabled="loading"
-              />
-            </div>
-            <div class="space-y-2">
-              <Label>Description</Label>
-              <TiptapEditor
-                v-model="editForm.description"
-                :disabled="loading"
-                compact
-              />
-            </div>
-            <div class="flex justify-end gap-1">
-              <Button
-                type="submit"
-                variant="ghost"
-                size="icon"
-                aria-label="Save"
-                class="size-8"
-                :disabled="loading"
-              >
-                <Loader2 v-if="loading" class="size-4 animate-spin" />
-                <Check v-else class="size-4" />
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                aria-label="Cancel"
-                class="size-8"
-                :disabled="loading"
-                @click="cancelEdit"
-              >
-                <X class="size-4" />
-              </Button>
-            </div>
-          </form>
-        </template>
-        <template v-else>
-          <div class="flex items-center gap-3">
-            <div class="min-w-0 flex-1">
-              <p class="font-medium">{{ template.name }}</p>
-              <p v-if="template.title" class="truncate text-sm text-muted-foreground">
-                {{ template.title }}
-              </p>
-            </div>
-            <Button
-              v-if="isAdmin"
-              variant="ghost"
-              size="icon"
-              aria-label="Edit template"
-              class="size-8"
-              @click="startEdit(template)"
-            >
-              <Pencil class="size-4" />
-            </Button>
-            <Button
-              v-if="isAdmin"
-              variant="ghost"
-              size="icon"
-              aria-label="Delete template"
-              class="size-8 text-destructive hover:text-destructive"
-              :disabled="deletingId === template.id"
-              @click="handleDelete(template)"
-            >
-              <Loader2
-                v-if="deletingId === template.id"
-                class="size-4 animate-spin"
-              />
-              <Trash2 v-else class="size-4" />
-            </Button>
+        <div v-if="editingId === template.id" class="py-2">
+          <TemplateForm
+            :template="template"
+            :labels="labels"
+            :members="members"
+            :loading="loading"
+            submit-label="Save"
+            @submit="handleUpdate"
+            @cancel="editingId = null"
+          />
+        </div>
+        <div v-else class="flex items-center gap-3">
+          <div class="min-w-0 flex-1">
+            <p class="font-medium">{{ template.name }}</p>
+            <p class="truncate text-sm text-muted-foreground">
+              {{ [template.title, fieldSummary(template)].filter(Boolean).join(" · ") }}
+            </p>
           </div>
-        </template>
+          <Button
+            v-if="isAdmin"
+            variant="ghost"
+            size="icon"
+            aria-label="Edit template"
+            class="size-8"
+            @click="editingId = template.id"
+          >
+            <Pencil class="size-4" />
+          </Button>
+          <Button
+            v-if="isAdmin"
+            variant="ghost"
+            size="icon"
+            aria-label="Delete template"
+            class="size-8 text-destructive hover:text-destructive"
+            :disabled="deletingId === template.id"
+            @click="handleDelete(template)"
+          >
+            <Loader2 v-if="deletingId === template.id" class="size-4 animate-spin" />
+            <Trash2 v-else class="size-4" />
+          </Button>
+        </div>
       </div>
     </div>
   </div>

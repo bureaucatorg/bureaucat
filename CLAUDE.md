@@ -108,6 +108,13 @@ PUT    /api/v1/projects/:key/workflow/enabled  # Toggle enforcement, config kept
 ```
 Opt-in per project. Enforced in `internal/workflow` from `CreateTask` (entry states), `UpdateTask` (edges are an allowlist, optional movers: users/assignees/creator) and on-enter assignee actions (also on cross-project move-in). Admins are not exempt.
 
+### Template Routes (project-scoped)
+```
+GET|POST         /api/v1/projects/:key/templates              # List (any role) / create (project admin)
+PATCH|DELETE     /api/v1/projects/:key/templates/:templateId  # Update / delete (project admin)
+```
+Templates carry typed `fields` (text, textarea, number, select) plus default priority/labels/assignees. `CreateTask` takes `template_id` + `fields`; `applyTemplate` in `internal/handlers/templates.go` validates them on every path (UI, assistant, MCP, CLI) and renders answers into the description (HTML, or markdown when the extra description is markdown). With `projects.require_template` on (set via `PATCH /projects/:key`), top-level tasks need a template; subtasks are exempt.
+
 ### Admin Routes (requires Bearer token + admin role)
 ```
 GET    /api/v1/admin/users           # List users (paginated)

@@ -3,15 +3,15 @@
 -- name: CreateProject :one
 INSERT INTO projects (project_key, name, description, icon_id, cover_id, created_by, workspace_id)
 VALUES ($1, $2, $3, $4, $5, $6, $7)
-RETURNING id, project_key, name, description, icon_id, cover_id, created_by, created_at, updated_at, deleted_at, disabled, workspace_id;
+RETURNING id, project_key, name, description, icon_id, cover_id, created_by, created_at, updated_at, deleted_at, disabled, workspace_id, require_template;
 
 -- name: GetProjectByID :one
-SELECT id, project_key, name, description, icon_id, cover_id, created_by, created_at, updated_at, deleted_at, disabled, workspace_id
+SELECT id, project_key, name, description, icon_id, cover_id, created_by, created_at, updated_at, deleted_at, disabled, workspace_id, require_template
 FROM projects
 WHERE id = $1 AND deleted_at IS NULL;
 
 -- name: GetProjectByKey :one
-SELECT id, project_key, name, description, icon_id, cover_id, created_by, created_at, updated_at, deleted_at, disabled, workspace_id
+SELECT id, project_key, name, description, icon_id, cover_id, created_by, created_at, updated_at, deleted_at, disabled, workspace_id, require_template
 FROM projects
 WHERE project_key = $1 AND deleted_at IS NULL;
 
@@ -19,7 +19,7 @@ WHERE project_key = $1 AND deleted_at IS NULL;
 UPDATE projects
 SET disabled = sqlc.arg('disabled'), updated_at = NOW()
 WHERE id = sqlc.arg('id') AND deleted_at IS NULL
-RETURNING id, project_key, name, description, icon_id, cover_id, created_by, created_at, updated_at, deleted_at, disabled, workspace_id;
+RETURNING id, project_key, name, description, icon_id, cover_id, created_by, created_at, updated_at, deleted_at, disabled, workspace_id, require_template;
 
 -- name: UpdateProject :one
 UPDATE projects
@@ -27,15 +27,16 @@ SET name = COALESCE(sqlc.narg('name'), name),
     description = COALESCE(sqlc.narg('description'), description),
     icon_id = COALESCE(sqlc.narg('icon_id'), icon_id),
     cover_id = COALESCE(sqlc.narg('cover_id'), cover_id),
+    require_template = COALESCE(sqlc.narg('require_template'), require_template),
     updated_at = NOW()
 WHERE id = $1 AND deleted_at IS NULL
-RETURNING id, project_key, name, description, icon_id, cover_id, created_by, created_at, updated_at, deleted_at, disabled, workspace_id;
+RETURNING id, project_key, name, description, icon_id, cover_id, created_by, created_at, updated_at, deleted_at, disabled, workspace_id, require_template;
 
 -- name: UpdateProjectWorkspace :one
 UPDATE projects
 SET workspace_id = $2, updated_at = NOW()
 WHERE id = $1 AND deleted_at IS NULL
-RETURNING id, project_key, name, description, icon_id, cover_id, created_by, created_at, updated_at, deleted_at, disabled, workspace_id;
+RETURNING id, project_key, name, description, icon_id, cover_id, created_by, created_at, updated_at, deleted_at, disabled, workspace_id, require_template;
 
 -- name: ListProjectMembersMissingFromWorkspace :many
 -- Project members who are NOT members of the given workspace. Used to preview
@@ -110,7 +111,7 @@ FROM projects p
 WHERE p.deleted_at IS NULL;
 
 -- name: ListUserProjectsFiltered :many
-SELECT p.id, p.project_key, p.name, p.description, p.icon_id, p.cover_id, p.created_by, p.created_at, p.updated_at, p.deleted_at, p.workspace_id, pm.role
+SELECT p.id, p.project_key, p.name, p.description, p.icon_id, p.cover_id, p.created_by, p.created_at, p.updated_at, p.deleted_at, p.workspace_id, p.require_template, pm.role
 FROM projects p
 JOIN project_members pm ON p.id = pm.project_id
 WHERE pm.user_id = $1 AND p.deleted_at IS NULL
@@ -128,7 +129,7 @@ WHERE pm.user_id = $1 AND p.deleted_at IS NULL
   AND (sqlc.narg('search')::text IS NULL OR p.name ILIKE '%' || sqlc.narg('search') || '%' OR p.project_key ILIKE '%' || sqlc.narg('search') || '%' OR p.description ILIKE '%' || sqlc.narg('search') || '%');
 
 -- name: ListAllProjectsFiltered :many
-SELECT p.id, p.project_key, p.name, p.description, p.icon_id, p.cover_id, p.created_by, p.created_at, p.updated_at, p.deleted_at, p.workspace_id, 'admin' AS role
+SELECT p.id, p.project_key, p.name, p.description, p.icon_id, p.cover_id, p.created_by, p.created_at, p.updated_at, p.deleted_at, p.workspace_id, p.require_template, 'admin' AS role
 FROM projects p
 WHERE p.deleted_at IS NULL
   AND (sqlc.narg('workspace_id')::uuid IS NULL OR p.workspace_id = sqlc.narg('workspace_id'))
@@ -780,8 +781,8 @@ ORDER BY created_at ASC;
 -- ==================== TASK TEMPLATES ====================
 
 -- name: CreateTaskTemplate :one
-INSERT INTO task_templates (project_id, name, title, description, created_by)
-VALUES ($1, $2, $3, $4, $5)
+INSERT INTO task_templates (project_id, name, title, description, created_by, fields, default_priority, default_labels, default_assignees)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 RETURNING *;
 
 -- name: GetTaskTemplateByID :one
@@ -795,6 +796,10 @@ UPDATE task_templates
 SET name = COALESCE(sqlc.narg('name'), name),
     title = COALESCE(sqlc.narg('title'), title),
     description = COALESCE(sqlc.narg('description'), description),
+    fields = COALESCE(sqlc.narg('fields'), fields),
+    default_priority = CASE WHEN sqlc.arg('set_default_priority')::boolean THEN sqlc.narg('default_priority')::int ELSE default_priority END,
+    default_labels = COALESCE(sqlc.narg('default_labels')::uuid[], default_labels),
+    default_assignees = COALESCE(sqlc.narg('default_assignees')::uuid[], default_assignees),
     updated_at = NOW()
 WHERE id = $1
 RETURNING *;

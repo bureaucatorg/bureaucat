@@ -447,7 +447,7 @@ const createProject = `-- name: CreateProject :one
 
 INSERT INTO projects (project_key, name, description, icon_id, cover_id, created_by, workspace_id)
 VALUES ($1, $2, $3, $4, $5, $6, $7)
-RETURNING id, project_key, name, description, icon_id, cover_id, created_by, created_at, updated_at, deleted_at, disabled, workspace_id
+RETURNING id, project_key, name, description, icon_id, cover_id, created_by, created_at, updated_at, deleted_at, disabled, workspace_id, require_template
 `
 
 type CreateProjectParams struct {
@@ -485,6 +485,7 @@ func (q *Queries) CreateProject(ctx context.Context, arg CreateProjectParams) (P
 		&i.DeletedAt,
 		&i.Disabled,
 		&i.WorkspaceID,
+		&i.RequireTemplate,
 	)
 	return i, err
 }
@@ -629,17 +630,21 @@ func (q *Queries) CreateTask(ctx context.Context, arg CreateTaskParams) (CreateT
 
 const createTaskTemplate = `-- name: CreateTaskTemplate :one
 
-INSERT INTO task_templates (project_id, name, title, description, created_by)
-VALUES ($1, $2, $3, $4, $5)
-RETURNING id, project_id, name, title, description, created_by, created_at, updated_at
+INSERT INTO task_templates (project_id, name, title, description, created_by, fields, default_priority, default_labels, default_assignees)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+RETURNING id, project_id, name, title, description, created_by, created_at, updated_at, fields, default_priority, default_labels, default_assignees
 `
 
 type CreateTaskTemplateParams struct {
-	ProjectID   uuid.UUID `json:"project_id"`
-	Name        string    `json:"name"`
-	Title       string    `json:"title"`
-	Description string    `json:"description"`
-	CreatedBy   uuid.UUID `json:"created_by"`
+	ProjectID        uuid.UUID   `json:"project_id"`
+	Name             string      `json:"name"`
+	Title            string      `json:"title"`
+	Description      string      `json:"description"`
+	CreatedBy        uuid.UUID   `json:"created_by"`
+	Fields           []byte      `json:"fields"`
+	DefaultPriority  pgtype.Int4 `json:"default_priority"`
+	DefaultLabels    []uuid.UUID `json:"default_labels"`
+	DefaultAssignees []uuid.UUID `json:"default_assignees"`
 }
 
 // ==================== TASK TEMPLATES ====================
@@ -650,6 +655,10 @@ func (q *Queries) CreateTaskTemplate(ctx context.Context, arg CreateTaskTemplate
 		arg.Title,
 		arg.Description,
 		arg.CreatedBy,
+		arg.Fields,
+		arg.DefaultPriority,
+		arg.DefaultLabels,
+		arg.DefaultAssignees,
 	)
 	var i TaskTemplate
 	err := row.Scan(
@@ -661,6 +670,10 @@ func (q *Queries) CreateTaskTemplate(ctx context.Context, arg CreateTaskTemplate
 		&i.CreatedBy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Fields,
+		&i.DefaultPriority,
+		&i.DefaultLabels,
+		&i.DefaultAssignees,
 	)
 	return i, err
 }
@@ -877,7 +890,7 @@ func (q *Queries) GetNextTaskNumber(ctx context.Context, projectID uuid.UUID) (i
 }
 
 const getProjectByID = `-- name: GetProjectByID :one
-SELECT id, project_key, name, description, icon_id, cover_id, created_by, created_at, updated_at, deleted_at, disabled, workspace_id
+SELECT id, project_key, name, description, icon_id, cover_id, created_by, created_at, updated_at, deleted_at, disabled, workspace_id, require_template
 FROM projects
 WHERE id = $1 AND deleted_at IS NULL
 `
@@ -898,12 +911,13 @@ func (q *Queries) GetProjectByID(ctx context.Context, id uuid.UUID) (Project, er
 		&i.DeletedAt,
 		&i.Disabled,
 		&i.WorkspaceID,
+		&i.RequireTemplate,
 	)
 	return i, err
 }
 
 const getProjectByKey = `-- name: GetProjectByKey :one
-SELECT id, project_key, name, description, icon_id, cover_id, created_by, created_at, updated_at, deleted_at, disabled, workspace_id
+SELECT id, project_key, name, description, icon_id, cover_id, created_by, created_at, updated_at, deleted_at, disabled, workspace_id, require_template
 FROM projects
 WHERE project_key = $1 AND deleted_at IS NULL
 `
@@ -924,6 +938,7 @@ func (q *Queries) GetProjectByKey(ctx context.Context, projectKey string) (Proje
 		&i.DeletedAt,
 		&i.Disabled,
 		&i.WorkspaceID,
+		&i.RequireTemplate,
 	)
 	return i, err
 }
@@ -1271,7 +1286,7 @@ func (q *Queries) GetTaskByProjectAndNumber(ctx context.Context, arg GetTaskByPr
 }
 
 const getTaskTemplateByID = `-- name: GetTaskTemplateByID :one
-SELECT id, project_id, name, title, description, created_by, created_at, updated_at FROM task_templates WHERE id = $1
+SELECT id, project_id, name, title, description, created_by, created_at, updated_at, fields, default_priority, default_labels, default_assignees FROM task_templates WHERE id = $1
 `
 
 func (q *Queries) GetTaskTemplateByID(ctx context.Context, id uuid.UUID) (TaskTemplate, error) {
@@ -1286,6 +1301,10 @@ func (q *Queries) GetTaskTemplateByID(ctx context.Context, id uuid.UUID) (TaskTe
 		&i.CreatedBy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Fields,
+		&i.DefaultPriority,
+		&i.DefaultLabels,
+		&i.DefaultAssignees,
 	)
 	return i, err
 }
@@ -1409,7 +1428,7 @@ func (q *Queries) ListAllProjects(ctx context.Context, arg ListAllProjectsParams
 }
 
 const listAllProjectsFiltered = `-- name: ListAllProjectsFiltered :many
-SELECT p.id, p.project_key, p.name, p.description, p.icon_id, p.cover_id, p.created_by, p.created_at, p.updated_at, p.deleted_at, p.workspace_id, 'admin' AS role
+SELECT p.id, p.project_key, p.name, p.description, p.icon_id, p.cover_id, p.created_by, p.created_at, p.updated_at, p.deleted_at, p.workspace_id, p.require_template, 'admin' AS role
 FROM projects p
 WHERE p.deleted_at IS NULL
   AND ($3::uuid IS NULL OR p.workspace_id = $3)
@@ -1426,18 +1445,19 @@ type ListAllProjectsFilteredParams struct {
 }
 
 type ListAllProjectsFilteredRow struct {
-	ID          uuid.UUID          `json:"id"`
-	ProjectKey  string             `json:"project_key"`
-	Name        string             `json:"name"`
-	Description pgtype.Text        `json:"description"`
-	IconID      pgtype.UUID        `json:"icon_id"`
-	CoverID     pgtype.UUID        `json:"cover_id"`
-	CreatedBy   uuid.UUID          `json:"created_by"`
-	CreatedAt   pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
-	DeletedAt   pgtype.Timestamptz `json:"deleted_at"`
-	WorkspaceID uuid.UUID          `json:"workspace_id"`
-	Role        string             `json:"role"`
+	ID              uuid.UUID          `json:"id"`
+	ProjectKey      string             `json:"project_key"`
+	Name            string             `json:"name"`
+	Description     pgtype.Text        `json:"description"`
+	IconID          pgtype.UUID        `json:"icon_id"`
+	CoverID         pgtype.UUID        `json:"cover_id"`
+	CreatedBy       uuid.UUID          `json:"created_by"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
+	DeletedAt       pgtype.Timestamptz `json:"deleted_at"`
+	WorkspaceID     uuid.UUID          `json:"workspace_id"`
+	RequireTemplate bool               `json:"require_template"`
+	Role            string             `json:"role"`
 }
 
 func (q *Queries) ListAllProjectsFiltered(ctx context.Context, arg ListAllProjectsFilteredParams) ([]ListAllProjectsFilteredRow, error) {
@@ -1466,6 +1486,7 @@ func (q *Queries) ListAllProjectsFiltered(ctx context.Context, arg ListAllProjec
 			&i.UpdatedAt,
 			&i.DeletedAt,
 			&i.WorkspaceID,
+			&i.RequireTemplate,
 			&i.Role,
 		); err != nil {
 			return nil, err
@@ -2611,7 +2632,7 @@ func (q *Queries) ListTaskParticipants(ctx context.Context, taskID uuid.UUID) ([
 }
 
 const listTaskTemplates = `-- name: ListTaskTemplates :many
-SELECT id, project_id, name, title, description, created_by, created_at, updated_at FROM task_templates WHERE project_id = $1 ORDER BY name ASC
+SELECT id, project_id, name, title, description, created_by, created_at, updated_at, fields, default_priority, default_labels, default_assignees FROM task_templates WHERE project_id = $1 ORDER BY name ASC
 `
 
 func (q *Queries) ListTaskTemplates(ctx context.Context, projectID uuid.UUID) ([]TaskTemplate, error) {
@@ -2632,6 +2653,10 @@ func (q *Queries) ListTaskTemplates(ctx context.Context, projectID uuid.UUID) ([
 			&i.CreatedBy,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Fields,
+			&i.DefaultPriority,
+			&i.DefaultLabels,
+			&i.DefaultAssignees,
 		); err != nil {
 			return nil, err
 		}
@@ -2928,7 +2953,7 @@ func (q *Queries) ListUserProjects(ctx context.Context, arg ListUserProjectsPara
 }
 
 const listUserProjectsFiltered = `-- name: ListUserProjectsFiltered :many
-SELECT p.id, p.project_key, p.name, p.description, p.icon_id, p.cover_id, p.created_by, p.created_at, p.updated_at, p.deleted_at, p.workspace_id, pm.role
+SELECT p.id, p.project_key, p.name, p.description, p.icon_id, p.cover_id, p.created_by, p.created_at, p.updated_at, p.deleted_at, p.workspace_id, p.require_template, pm.role
 FROM projects p
 JOIN project_members pm ON p.id = pm.project_id
 WHERE pm.user_id = $1 AND p.deleted_at IS NULL
@@ -2947,18 +2972,19 @@ type ListUserProjectsFilteredParams struct {
 }
 
 type ListUserProjectsFilteredRow struct {
-	ID          uuid.UUID          `json:"id"`
-	ProjectKey  string             `json:"project_key"`
-	Name        string             `json:"name"`
-	Description pgtype.Text        `json:"description"`
-	IconID      pgtype.UUID        `json:"icon_id"`
-	CoverID     pgtype.UUID        `json:"cover_id"`
-	CreatedBy   uuid.UUID          `json:"created_by"`
-	CreatedAt   pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
-	DeletedAt   pgtype.Timestamptz `json:"deleted_at"`
-	WorkspaceID uuid.UUID          `json:"workspace_id"`
-	Role        string             `json:"role"`
+	ID              uuid.UUID          `json:"id"`
+	ProjectKey      string             `json:"project_key"`
+	Name            string             `json:"name"`
+	Description     pgtype.Text        `json:"description"`
+	IconID          pgtype.UUID        `json:"icon_id"`
+	CoverID         pgtype.UUID        `json:"cover_id"`
+	CreatedBy       uuid.UUID          `json:"created_by"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
+	DeletedAt       pgtype.Timestamptz `json:"deleted_at"`
+	WorkspaceID     uuid.UUID          `json:"workspace_id"`
+	RequireTemplate bool               `json:"require_template"`
+	Role            string             `json:"role"`
 }
 
 func (q *Queries) ListUserProjectsFiltered(ctx context.Context, arg ListUserProjectsFilteredParams) ([]ListUserProjectsFilteredRow, error) {
@@ -2988,6 +3014,7 @@ func (q *Queries) ListUserProjectsFiltered(ctx context.Context, arg ListUserProj
 			&i.UpdatedAt,
 			&i.DeletedAt,
 			&i.WorkspaceID,
+			&i.RequireTemplate,
 			&i.Role,
 		); err != nil {
 			return nil, err
@@ -3472,7 +3499,7 @@ const setProjectDisabled = `-- name: SetProjectDisabled :one
 UPDATE projects
 SET disabled = $1, updated_at = NOW()
 WHERE id = $2 AND deleted_at IS NULL
-RETURNING id, project_key, name, description, icon_id, cover_id, created_by, created_at, updated_at, deleted_at, disabled, workspace_id
+RETURNING id, project_key, name, description, icon_id, cover_id, created_by, created_at, updated_at, deleted_at, disabled, workspace_id, require_template
 `
 
 type SetProjectDisabledParams struct {
@@ -3496,6 +3523,7 @@ func (q *Queries) SetProjectDisabled(ctx context.Context, arg SetProjectDisabled
 		&i.DeletedAt,
 		&i.Disabled,
 		&i.WorkspaceID,
+		&i.RequireTemplate,
 	)
 	return i, err
 }
@@ -3602,17 +3630,19 @@ SET name = COALESCE($2, name),
     description = COALESCE($3, description),
     icon_id = COALESCE($4, icon_id),
     cover_id = COALESCE($5, cover_id),
+    require_template = COALESCE($6, require_template),
     updated_at = NOW()
 WHERE id = $1 AND deleted_at IS NULL
-RETURNING id, project_key, name, description, icon_id, cover_id, created_by, created_at, updated_at, deleted_at, disabled, workspace_id
+RETURNING id, project_key, name, description, icon_id, cover_id, created_by, created_at, updated_at, deleted_at, disabled, workspace_id, require_template
 `
 
 type UpdateProjectParams struct {
-	ID          uuid.UUID   `json:"id"`
-	Name        pgtype.Text `json:"name"`
-	Description pgtype.Text `json:"description"`
-	IconID      pgtype.UUID `json:"icon_id"`
-	CoverID     pgtype.UUID `json:"cover_id"`
+	ID              uuid.UUID   `json:"id"`
+	Name            pgtype.Text `json:"name"`
+	Description     pgtype.Text `json:"description"`
+	IconID          pgtype.UUID `json:"icon_id"`
+	CoverID         pgtype.UUID `json:"cover_id"`
+	RequireTemplate pgtype.Bool `json:"require_template"`
 }
 
 func (q *Queries) UpdateProject(ctx context.Context, arg UpdateProjectParams) (Project, error) {
@@ -3622,6 +3652,7 @@ func (q *Queries) UpdateProject(ctx context.Context, arg UpdateProjectParams) (P
 		arg.Description,
 		arg.IconID,
 		arg.CoverID,
+		arg.RequireTemplate,
 	)
 	var i Project
 	err := row.Scan(
@@ -3637,6 +3668,7 @@ func (q *Queries) UpdateProject(ctx context.Context, arg UpdateProjectParams) (P
 		&i.DeletedAt,
 		&i.Disabled,
 		&i.WorkspaceID,
+		&i.RequireTemplate,
 	)
 	return i, err
 }
@@ -3726,7 +3758,7 @@ const updateProjectWorkspace = `-- name: UpdateProjectWorkspace :one
 UPDATE projects
 SET workspace_id = $2, updated_at = NOW()
 WHERE id = $1 AND deleted_at IS NULL
-RETURNING id, project_key, name, description, icon_id, cover_id, created_by, created_at, updated_at, deleted_at, disabled, workspace_id
+RETURNING id, project_key, name, description, icon_id, cover_id, created_by, created_at, updated_at, deleted_at, disabled, workspace_id, require_template
 `
 
 type UpdateProjectWorkspaceParams struct {
@@ -3750,6 +3782,7 @@ func (q *Queries) UpdateProjectWorkspace(ctx context.Context, arg UpdateProjectW
 		&i.DeletedAt,
 		&i.Disabled,
 		&i.WorkspaceID,
+		&i.RequireTemplate,
 	)
 	return i, err
 }
@@ -3833,16 +3866,25 @@ UPDATE task_templates
 SET name = COALESCE($2, name),
     title = COALESCE($3, title),
     description = COALESCE($4, description),
+    fields = COALESCE($5, fields),
+    default_priority = CASE WHEN $6::boolean THEN $7::int ELSE default_priority END,
+    default_labels = COALESCE($8::uuid[], default_labels),
+    default_assignees = COALESCE($9::uuid[], default_assignees),
     updated_at = NOW()
 WHERE id = $1
-RETURNING id, project_id, name, title, description, created_by, created_at, updated_at
+RETURNING id, project_id, name, title, description, created_by, created_at, updated_at, fields, default_priority, default_labels, default_assignees
 `
 
 type UpdateTaskTemplateParams struct {
-	ID          uuid.UUID   `json:"id"`
-	Name        pgtype.Text `json:"name"`
-	Title       pgtype.Text `json:"title"`
-	Description pgtype.Text `json:"description"`
+	ID                 uuid.UUID   `json:"id"`
+	Name               pgtype.Text `json:"name"`
+	Title              pgtype.Text `json:"title"`
+	Description        pgtype.Text `json:"description"`
+	Fields             []byte      `json:"fields"`
+	SetDefaultPriority bool        `json:"set_default_priority"`
+	DefaultPriority    pgtype.Int4 `json:"default_priority"`
+	DefaultLabels      []uuid.UUID `json:"default_labels"`
+	DefaultAssignees   []uuid.UUID `json:"default_assignees"`
 }
 
 func (q *Queries) UpdateTaskTemplate(ctx context.Context, arg UpdateTaskTemplateParams) (TaskTemplate, error) {
@@ -3851,6 +3893,11 @@ func (q *Queries) UpdateTaskTemplate(ctx context.Context, arg UpdateTaskTemplate
 		arg.Name,
 		arg.Title,
 		arg.Description,
+		arg.Fields,
+		arg.SetDefaultPriority,
+		arg.DefaultPriority,
+		arg.DefaultLabels,
+		arg.DefaultAssignees,
 	)
 	var i TaskTemplate
 	err := row.Scan(
@@ -3862,6 +3909,10 @@ func (q *Queries) UpdateTaskTemplate(ctx context.Context, arg UpdateTaskTemplate
 		&i.CreatedBy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Fields,
+		&i.DefaultPriority,
+		&i.DefaultLabels,
+		&i.DefaultAssignees,
 	)
 	return i, err
 }
