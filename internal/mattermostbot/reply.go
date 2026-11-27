@@ -202,7 +202,7 @@ func sanitize(text, appURL string) string {
 			target = base + target
 		}
 		if g[1] != "" || !inApp(target) {
-			return defuseURLs(label, inApp)
+			return label
 		}
 		links = append(links, fmt.Sprintf("[%s](%s)", label, target))
 		return fmt.Sprintf("\x00%d\x00", len(links)-1)
