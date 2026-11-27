@@ -23,19 +23,19 @@ withDefaults(defineProps<{
     <!-- Head -->
     <circle cx="16" cy="18" r="11" class="fill-amber-500" />
     <!-- Glasses - round nerdy frames -->
-    <circle cx="11.5" cy="16.5" r="3.8" class="stroke-foreground" stroke-width="1" fill="none" />
-    <circle cx="20.5" cy="16.5" r="3.8" class="stroke-foreground" stroke-width="1" fill="none" />
+    <circle cx="11.5" cy="16.5" r="3.8" class="stroke-zinc-950" stroke-width="1" fill="none" />
+    <circle cx="20.5" cy="16.5" r="3.8" class="stroke-zinc-950" stroke-width="1" fill="none" />
     <!-- Glasses bridge -->
-    <path d="M15.3 16C15.5 15.2 16.5 15.2 16.7 16" class="stroke-foreground" stroke-width="0.8" fill="none" />
+    <path d="M15.3 16C15.5 15.2 16.5 15.2 16.7 16" class="stroke-zinc-950" stroke-width="0.8" fill="none" />
     <!-- Eyes - big round nerdy eyes -->
-    <ellipse cx="11.5" cy="16.8" rx="1.8" ry="2" class="fill-foreground" />
-    <ellipse cx="20.5" cy="16.8" rx="1.8" ry="2" class="fill-foreground" />
+    <ellipse cx="11.5" cy="16.8" rx="1.8" ry="2" class="fill-zinc-950" />
+    <ellipse cx="20.5" cy="16.8" rx="1.8" ry="2" class="fill-zinc-950" />
     <!-- Pupils - looking slightly up (curious) -->
     <circle cx="11.8" cy="16.2" r="0.9" class="fill-amber-500" />
     <circle cx="20.8" cy="16.2" r="0.9" class="fill-amber-500" />
     <!-- Eye glint -->
-    <circle cx="12.3" cy="15.7" r="0.45" class="fill-background" />
-    <circle cx="21.3" cy="15.7" r="0.45" class="fill-background" />
+    <circle cx="12.3" cy="15.7" r="0.45" class="fill-zinc-50" />
+    <circle cx="21.3" cy="15.7" r="0.45" class="fill-zinc-50" />
     <!-- Nose -->
     <path d="M14.8 21L16 20L17.2 21Z" class="fill-amber-700" />
     <!-- Small content smile -->
