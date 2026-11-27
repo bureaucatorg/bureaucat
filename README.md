@@ -12,7 +12,19 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/bureaucatorg/bureaucat/releases/latest"><img src="https://img.shields.io/github/v/release/bureaucatorg/bureaucat?sort=semver" alt="Latest release" /></a>
+  <a href="https://github.com/bureaucatorg/bureaucat/actions/workflows/release.yml"><img src="https://img.shields.io/github/actions/workflow/status/bureaucatorg/bureaucat/release.yml?label=release%20build" alt="Release build" /></a>
+  <a href="https://github.com/bureaucatorg/bureaucat/pkgs/container/bureaucat"><img src="https://img.shields.io/badge/ghcr.io-bureaucatorg%2Fbureaucat-blue?logo=docker&logoColor=white" alt="Container image" /></a>
+  <a href="https://github.com/bureaucatorg/bureaucat/releases"><img src="https://img.shields.io/github/downloads/bureaucatorg/bureaucat/total" alt="Downloads" /></a>
+  <a href="go.mod"><img src="https://img.shields.io/github/go-mod/go-version/bureaucatorg/bureaucat" alt="Go version" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/bureaucatorg/bureaucat" alt="License" /></a>
+  <a href="https://github.com/bureaucatorg/bureaucat/commits/main"><img src="https://img.shields.io/github/last-commit/bureaucatorg/bureaucat" alt="Last commit" /></a>
+  <a href="https://github.com/bureaucatorg/bureaucat/stargazers"><img src="https://img.shields.io/github/stars/bureaucatorg/bureaucat?style=social" alt="Stars" /></a>
+</p>
+
+<p align="center">
   <a href="https://github.com/bureaucatorg/bureaucat">GitHub</a> &middot;
+  <a href="#install">Install</a> &middot;
   <a href="#quickstart">Quickstart</a> &middot;
   <a href="#features">Features</a>
 </p>
@@ -38,6 +50,38 @@
 | Database | PostgreSQL 18 + [sqlc](https://sqlc.dev/) |
 | Styling | Tailwind CSS v4 + [shadcn-vue](https://www.shadcn-vue.com/) |
 | Package Manager | [Bun](https://bun.sh/) (frontend) |
+
+## Install
+
+Every [release](https://github.com/bureaucatorg/bureaucat/releases) ships a
+single binary (frontend and migrations embedded) plus container images.
+
+### Container image
+
+| Image | Purpose |
+|-------|---------|
+| [`ghcr.io/bureaucatorg/bureaucat`](https://github.com/bureaucatorg/bureaucat/pkgs/container/bureaucat) | App (API + web UI) on port `1341` |
+| [`ghcr.io/bureaucatorg/bureaucat-landing`](https://github.com/bureaucatorg/bureaucat/pkgs/container/bureaucat-landing) | Optional marketing site (nginx), needs `APP_URL` |
+
+Tags: `latest` and each release version (e.g. `v0.16.47`), `linux/amd64` only.
+
+```bash
+docker pull ghcr.io/bureaucatorg/bureaucat:latest
+docker run --env-file .env -p 1341:1341 ghcr.io/bureaucatorg/bureaucat:latest
+```
+
+### Binary
+
+Prebuilt archives for `linux` and `darwin` on `amd64` and `arm64`, with a
+`checksums.txt` for verification:
+
+```bash
+curl -LO https://github.com/bureaucatorg/bureaucat/releases/latest/download/bureaucat_linux_amd64.tar.gz
+curl -LO https://github.com/bureaucatorg/bureaucat/releases/latest/download/checksums.txt
+sha256sum --ignore-missing -c checksums.txt
+tar -xzf bureaucat_linux_amd64.tar.gz
+./bureaucat serve --migrate
+```
 
 ## Quickstart
 
@@ -68,10 +112,15 @@ This starts:
 ### Production
 
 ```bash
+# Pull published images (set VERSION=v0.16.47 to pin a release)
+docker compose -f docker-compose.prod.yml pull
+docker compose -f docker-compose.prod.yml up -d
+
+# Or build locally from source
 docker compose -f docker-compose.prod.yml up --build
 ```
 
-Builds a single Go binary with the frontend embedded. Serves everything on port `1341`.
+Serves everything on port `1341`.
 
 ## Configuration
 
