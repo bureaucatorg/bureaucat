@@ -449,6 +449,9 @@ func (b *Bot) bureaucatUser(ctx context.Context, email string) (uuid.UUID, strin
 	case 0:
 		return uuid.Nil, "No Bureaucat account matches your Mattermost email.", nil
 	case 1:
+		if rows[0].Deactivated {
+			return uuid.Nil, "Your Bureaucat account is deactivated.", nil
+		}
 		return rows[0].ID, "", nil
 	default:
 		return uuid.Nil, "More than one Bureaucat account matches your Mattermost email. Ask an admin to fix it.", nil

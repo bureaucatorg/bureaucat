@@ -27,6 +27,7 @@ export interface AdminUserDetail {
   auth_provider?: string;
   has_password: boolean;
   email_notifications: boolean;
+  deactivated: boolean;
   active_sessions: number;
   active_tokens: number;
   workspaces: { workspace_key: string; name: string }[];
@@ -40,6 +41,7 @@ export interface AdminUserUpdate {
   last_name: string;
   user_type: string;
   email_notifications: boolean;
+  deactivated: boolean;
 }
 
 export interface MergeUserResult {

@@ -70,6 +70,7 @@ FROM personal_access_tokens pat
 JOIN users u ON pat.user_id = u.id
 WHERE pat.token_hash = $1
   AND (pat.expires_at IS NULL OR pat.expires_at > NOW())
+  AND u.deactivated_at IS NULL
 `
 
 type GetPersonalAccessTokenByHashRow struct {

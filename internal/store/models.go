@@ -614,6 +614,7 @@ type User struct {
 	ProviderUserID     pgtype.Text        `json:"provider_user_id"`
 	AvatarUrl          pgtype.Text        `json:"avatar_url"`
 	EmailNotifications bool               `json:"email_notifications"`
+	DeactivatedAt      pgtype.Timestamptz `json:"deactivated_at"`
 }
 
 type WorkflowState struct {

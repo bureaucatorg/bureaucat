@@ -25,6 +25,7 @@ const form = ref<AdminUserUpdate>({
   last_name: "",
   user_type: "user",
   email_notifications: false,
+  deactivated: false,
 });
 
 const isSelf = computed(() => detail.value?.id === currentUser.value?.id);
@@ -36,7 +37,8 @@ const dirty = computed(() => {
     form.value.first_name.trim() !== d.first_name ||
     form.value.last_name.trim() !== d.last_name ||
     form.value.user_type !== d.user_type ||
-    form.value.email_notifications !== d.email_notifications
+    form.value.email_notifications !== d.email_notifications ||
+    form.value.deactivated !== d.deactivated
   );
 });
 
@@ -55,6 +57,7 @@ function setDetail(d: AdminUserDetail) {
     last_name: d.last_name,
     user_type: d.user_type,
     email_notifications: d.email_notifications,
+    deactivated: d.deactivated,
   };
 }
 
@@ -199,6 +202,20 @@ watch(
                 @update:checked="form.email_notifications = $event"
               />
             </div>
+          </div>
+          <div class="flex items-center justify-between gap-4 rounded-md border px-3 py-2">
+            <div class="space-y-0.5">
+              <Label for="detail_deactivated" class="cursor-pointer">Deactivated</Label>
+              <p class="text-xs text-muted-foreground">
+                {{ isSelf ? "You can't deactivate yourself." : "Blocks sign-in, ends sessions, and blocks API tokens and the Mattermost bot." }}
+              </p>
+            </div>
+            <Switch
+              id="detail_deactivated"
+              :checked="form.deactivated"
+              :disabled="saving || isSelf"
+              @update:checked="form.deactivated = $event"
+            />
           </div>
         </div>
 

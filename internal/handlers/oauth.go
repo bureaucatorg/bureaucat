@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/big"
 	"net/http"
@@ -210,6 +211,9 @@ func (h *OAuthHandler) CallbackSSO(c *echo.Context) error {
 
 	// Generate tokens and set cookies
 	_, err = h.authHandler.GenerateTokensAndSetCookies(c, ctx, user.ID, user.Username, user.UserType, *user)
+	if errors.Is(err, ErrUserDeactivated) {
+		return h.redirectError(c, "your account is deactivated")
+	}
 	if err != nil {
 		return h.redirectError(c, "failed to create session")
 	}

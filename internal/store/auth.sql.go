@@ -14,25 +14,30 @@ import (
 
 const adminUpdateUser = `-- name: AdminUpdateUser :exec
 UPDATE users
-SET first_name = $2, last_name = $3, user_type = $4, email_notifications = $5, updated_at = NOW()
-WHERE id = $1
+SET first_name = $1, last_name = $2, user_type = $3,
+    email_notifications = $4,
+    deactivated_at = CASE WHEN $5::boolean THEN COALESCE(deactivated_at, NOW()) END,
+    updated_at = NOW()
+WHERE id = $6
 `
 
 type AdminUpdateUserParams struct {
-	ID                 uuid.UUID `json:"id"`
 	FirstName          string    `json:"first_name"`
 	LastName           string    `json:"last_name"`
 	UserType           string    `json:"user_type"`
 	EmailNotifications bool      `json:"email_notifications"`
+	Deactivated        bool      `json:"deactivated"`
+	ID                 uuid.UUID `json:"id"`
 }
 
 func (q *Queries) AdminUpdateUser(ctx context.Context, arg AdminUpdateUserParams) error {
 	_, err := q.db.Exec(ctx, adminUpdateUser,
-		arg.ID,
 		arg.FirstName,
 		arg.LastName,
 		arg.UserType,
 		arg.EmailNotifications,
+		arg.Deactivated,
+		arg.ID,
 	)
 	return err
 }
@@ -236,7 +241,8 @@ func (q *Queries) DeleteUserByID(ctx context.Context, id uuid.UUID) error {
 const getAdminUserDetail = `-- name: GetAdminUserDetail :one
 SELECT u.id, u.username, u.email, u.first_name, u.last_name, u.user_type, u.avatar_url, u.auth_provider,
        (u.password_hash IS NOT NULL AND u.password_hash <> '')::boolean AS has_password,
-       u.email_notifications, u.created_at, u.updated_at,
+       u.email_notifications, (u.deactivated_at IS NOT NULL)::boolean AS deactivated,
+       u.created_at, u.updated_at,
        (SELECT COUNT(*) FROM refresh_tokens rt
         WHERE rt.user_id = u.id AND rt.revoked_at IS NULL AND rt.expires_at > NOW())::bigint AS active_sessions,
        (SELECT COUNT(*) FROM personal_access_tokens pat
@@ -256,6 +262,7 @@ type GetAdminUserDetailRow struct {
 	AuthProvider       pgtype.Text        `json:"auth_provider"`
 	HasPassword        bool               `json:"has_password"`
 	EmailNotifications bool               `json:"email_notifications"`
+	Deactivated        bool               `json:"deactivated"`
 	CreatedAt          pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt          pgtype.Timestamptz `json:"updated_at"`
 	ActiveSessions     int64              `json:"active_sessions"`
@@ -276,6 +283,7 @@ func (q *Queries) GetAdminUserDetail(ctx context.Context, id uuid.UUID) (GetAdmi
 		&i.AuthProvider,
 		&i.HasPassword,
 		&i.EmailNotifications,
+		&i.Deactivated,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.ActiveSessions,
@@ -486,6 +494,17 @@ func (q *Queries) GetUserByProviderID(ctx context.Context, arg GetUserByProvider
 	return i, err
 }
 
+const isUserDeactivated = `-- name: IsUserDeactivated :one
+SELECT (deactivated_at IS NOT NULL)::boolean AS deactivated FROM users WHERE id = $1
+`
+
+func (q *Queries) IsUserDeactivated(ctx context.Context, id uuid.UUID) (bool, error) {
+	row := q.db.QueryRow(ctx, isUserDeactivated, id)
+	var deactivated bool
+	err := row.Scan(&deactivated)
+	return deactivated, err
+}
+
 const linkProviderToUser = `-- name: LinkProviderToUser :exec
 UPDATE users
 SET auth_provider = $2, provider_user_id = $3, updated_at = NOW()
@@ -560,14 +579,15 @@ func (q *Queries) ListActiveRefreshTokens(ctx context.Context, arg ListActiveRef
 }
 
 const listUsersByEmailInsensitive = `-- name: ListUsersByEmailInsensitive :many
-SELECT id, username FROM users
+SELECT id, username, (deactivated_at IS NOT NULL)::boolean AS deactivated FROM users
 WHERE LOWER(email) = LOWER($1)
 LIMIT 2
 `
 
 type ListUsersByEmailInsensitiveRow struct {
-	ID       uuid.UUID `json:"id"`
-	Username string    `json:"username"`
+	ID          uuid.UUID `json:"id"`
+	Username    string    `json:"username"`
+	Deactivated bool      `json:"deactivated"`
 }
 
 func (q *Queries) ListUsersByEmailInsensitive(ctx context.Context, lower string) ([]ListUsersByEmailInsensitiveRow, error) {
@@ -579,7 +599,7 @@ func (q *Queries) ListUsersByEmailInsensitive(ctx context.Context, lower string)
 	items := []ListUsersByEmailInsensitiveRow{}
 	for rows.Next() {
 		var i ListUsersByEmailInsensitiveRow
-		if err := rows.Scan(&i.ID, &i.Username); err != nil {
+		if err := rows.Scan(&i.ID, &i.Username, &i.Deactivated); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

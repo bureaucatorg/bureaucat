@@ -8,6 +8,9 @@ SELECT id, username, email, first_name, last_name, user_type, avatar_url, create
 FROM users
 WHERE id = $1;
 
+-- name: IsUserDeactivated :one
+SELECT (deactivated_at IS NOT NULL)::boolean AS deactivated FROM users WHERE id = $1;
+
 -- name: GetUserByEmailOrUsername :one
 SELECT id, username, email, password_hash, first_name, last_name, user_type,
        avatar_url, auth_provider, provider_user_id, created_at, updated_at
@@ -106,7 +109,7 @@ FROM users
 WHERE email = $1;
 
 -- name: ListUsersByEmailInsensitive :many
-SELECT id, username FROM users
+SELECT id, username, (deactivated_at IS NOT NULL)::boolean AS deactivated FROM users
 WHERE LOWER(email) = LOWER($1)
 LIMIT 2;
 
@@ -144,7 +147,8 @@ WHERE id = $1;
 -- name: GetAdminUserDetail :one
 SELECT u.id, u.username, u.email, u.first_name, u.last_name, u.user_type, u.avatar_url, u.auth_provider,
        (u.password_hash IS NOT NULL AND u.password_hash <> '')::boolean AS has_password,
-       u.email_notifications, u.created_at, u.updated_at,
+       u.email_notifications, (u.deactivated_at IS NOT NULL)::boolean AS deactivated,
+       u.created_at, u.updated_at,
        (SELECT COUNT(*) FROM refresh_tokens rt
         WHERE rt.user_id = u.id AND rt.revoked_at IS NULL AND rt.expires_at > NOW())::bigint AS active_sessions,
        (SELECT COUNT(*) FROM personal_access_tokens pat
@@ -154,5 +158,8 @@ WHERE u.id = $1;
 
 -- name: AdminUpdateUser :exec
 UPDATE users
-SET first_name = $2, last_name = $3, user_type = $4, email_notifications = $5, updated_at = NOW()
-WHERE id = $1;
+SET first_name = sqlc.arg(first_name), last_name = sqlc.arg(last_name), user_type = sqlc.arg(user_type),
+    email_notifications = sqlc.arg(email_notifications),
+    deactivated_at = CASE WHEN sqlc.arg(deactivated)::boolean THEN COALESCE(deactivated_at, NOW()) END,
+    updated_at = NOW()
+WHERE id = sqlc.arg(id);

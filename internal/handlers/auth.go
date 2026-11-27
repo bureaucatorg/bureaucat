@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -544,9 +545,20 @@ func userFromGetByIDRow(u store.GetUserByIDRow) userInfo {
 	}
 }
 
+// ErrUserDeactivated is returned when issuing tokens for a deactivated user.
+var ErrUserDeactivated = errors.New("user is deactivated")
+
 // GenerateTokensAndSetCookies creates access + refresh tokens, stores refresh in DB, and sets cookies.
 // Returns the AuthResponse data without sending it. Used by both normal auth and SSO callback.
 func (h *AuthHandler) GenerateTokensAndSetCookies(c *echo.Context, ctx context.Context, userID uuid.UUID, username, userType string, user userInfo) (*AuthResponse, error) {
+	deactivated, err := h.store.IsUserDeactivated(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	if deactivated {
+		return nil, ErrUserDeactivated
+	}
+
 	// Generate access token
 	accessToken, expiresAt, err := h.authManager.GenerateAccessToken(userID, username, userType)
 	if err != nil {
@@ -595,6 +607,9 @@ func (h *AuthHandler) GenerateTokensAndSetCookies(c *echo.Context, ctx context.C
 // generateAndSetTokens generates access and refresh tokens, sets cookies, and returns JSON response.
 func (h *AuthHandler) generateAndSetTokens(c *echo.Context, ctx context.Context, userID uuid.UUID, username, userType string, user userInfo) error {
 	resp, err := h.GenerateTokensAndSetCookies(c, ctx, userID, username, userType, user)
+	if errors.Is(err, ErrUserDeactivated) {
+		return echo.NewHTTPError(http.StatusUnauthorized, "your account is deactivated")
+	}
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to generate tokens")
 	}

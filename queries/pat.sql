@@ -13,7 +13,8 @@ SELECT pat.id, pat.user_id, pat.expires_at, pat.last_used_at, pat.created_at, pa
 FROM personal_access_tokens pat
 JOIN users u ON pat.user_id = u.id
 WHERE pat.token_hash = $1
-  AND (pat.expires_at IS NULL OR pat.expires_at > NOW());
+  AND (pat.expires_at IS NULL OR pat.expires_at > NOW())
+  AND u.deactivated_at IS NULL;
 
 -- name: ListPersonalAccessTokensByUser :many
 SELECT id, name, expires_at, last_used_at, created_at, scope

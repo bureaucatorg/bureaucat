@@ -216,6 +216,7 @@ type Querier interface {
 	HasTaskLabel(ctx context.Context, arg HasTaskLabelParams) (bool, error)
 	IsProjectMember(ctx context.Context, arg IsProjectMemberParams) (bool, error)
 	IsTaskAssignee(ctx context.Context, arg IsTaskAssigneeParams) (bool, error)
+	IsUserDeactivated(ctx context.Context, id uuid.UUID) (bool, error)
 	IsWorkspaceMember(ctx context.Context, arg IsWorkspaceMemberParams) (bool, error)
 	LinkProviderToUser(ctx context.Context, arg LinkProviderToUserParams) error
 	ListActiveCyclesForUser(ctx context.Context, userID uuid.UUID) ([]ListActiveCyclesForUserRow, error)

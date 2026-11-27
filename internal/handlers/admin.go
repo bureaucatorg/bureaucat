@@ -448,6 +448,7 @@ type AdminUserDetailResponse struct {
 	AuthProvider       *string              `json:"auth_provider,omitempty"`
 	HasPassword        bool                 `json:"has_password"`
 	EmailNotifications bool                 `json:"email_notifications"`
+	Deactivated        bool                 `json:"deactivated"`
 	ActiveSessions     int64                `json:"active_sessions"`
 	ActiveTokens       int64                `json:"active_tokens"`
 	Workspaces         []AdminUserWorkspace `json:"workspaces"`
@@ -462,6 +463,7 @@ type UpdateUserRequest struct {
 	LastName           string `json:"last_name"`
 	UserType           string `json:"user_type"`
 	EmailNotifications bool   `json:"email_notifications"`
+	Deactivated        bool   `json:"deactivated"`
 }
 
 const adminUserMembershipLimit = 500
@@ -487,10 +489,10 @@ func (h *AdminHandler) GetUserDetail(c *echo.Context) error {
 	return h.respondUserDetail(c, userID)
 }
 
-// UpdateUser updates a user's name, role and email notification preference.
+// UpdateUser updates a user's name, role, email notification preference and deactivation.
 //
 //	@Summary		Update user
-//	@Description	Update a user's first/last name, role and email notifications. Username and email are not editable. Cannot demote yourself.
+//	@Description	Update a user's first/last name, role, email notifications and deactivation. Deactivated users can't sign in (password or SSO), use PATs or the Mattermost bot, and their sessions are revoked. Username and email are not editable. Cannot demote or deactivate yourself.
 //	@Tags			Admin - Users
 //	@Accept			json
 //	@Produce		json
@@ -528,6 +530,9 @@ func (h *AdminHandler) UpdateUser(c *echo.Context) error {
 	if userID == currentUserID && req.UserType != "admin" {
 		return echo.NewHTTPError(http.StatusBadRequest, "cannot demote yourself")
 	}
+	if userID == currentUserID && req.Deactivated {
+		return echo.NewHTTPError(http.StatusBadRequest, "cannot deactivate yourself")
+	}
 
 	ctx := c.Request().Context()
 	if _, err := h.store.GetUserByID(ctx, userID); err != nil {
@@ -540,8 +545,14 @@ func (h *AdminHandler) UpdateUser(c *echo.Context) error {
 		LastName:           req.LastName,
 		UserType:           req.UserType,
 		EmailNotifications: req.EmailNotifications,
+		Deactivated:        req.Deactivated,
 	}); err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to update user")
+	}
+	if req.Deactivated {
+		if err := h.store.RevokeAllUserRefreshTokens(ctx, userID); err != nil {
+			return echo.NewHTTPError(http.StatusInternalServerError, "failed to revoke sessions")
+		}
 	}
 
 	return h.respondUserDetail(c, userID)
@@ -579,6 +590,7 @@ func (h *AdminHandler) respondUserDetail(c *echo.Context, userID uuid.UUID) erro
 		UserType:           u.UserType,
 		HasPassword:        u.HasPassword,
 		EmailNotifications: u.EmailNotifications,
+		Deactivated:        u.Deactivated,
 		ActiveSessions:     u.ActiveSessions,
 		ActiveTokens:       u.ActiveTokens,
 		Workspaces:         make([]AdminUserWorkspace, len(workspaces)),
