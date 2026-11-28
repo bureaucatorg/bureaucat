@@ -1,6 +1,6 @@
-<a href="https://zerodha.tech">
-  <img src="https://zerodha.tech/static/images/github-badge.svg" align="right" alt="Zerodha Tech" />
-</a>
+<p align="right">
+  <a href="https://zerodha.tech"><img src="https://zerodha.tech/static/images/github-badge.svg" alt="Made at Zerodha Tech" /></a>
+</p>
 
 <p align="center">
   <img src="web/public/logo.svg" width="80" alt="Bureaucat" />
